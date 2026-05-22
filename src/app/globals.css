@@ -4449,6 +4449,92 @@ body.layout-no-header {
   display: block;
 }
 
+/* ── Home companies card grid ── */
+.home-companies {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    linear-gradient(180deg, #0d1421 0%, #101827 100%);
+}
+
+.home-companies-in {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 2.75rem 1.5rem 3rem;
+}
+
+.home-companies-hd {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.58);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0 0 1.4rem;
+}
+
+.home-companies-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.home-company-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  padding: 0.7rem 0.8rem;
+  background: rgba(255, 255, 255, 0.025);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+  cursor: pointer;
+  min-height: 52px;
+  justify-content: center;
+}
+
+.home-company-item:hover {
+  background: rgba(37, 99, 235, 0.1);
+  border-left-color: rgba(37, 99, 235, 0.45);
+}
+
+.home-company-item--static {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.home-company-item--static:hover {
+  background: rgba(255, 255, 255, 0.025);
+  border-left-color: transparent;
+}
+
+.home-company-zh {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(248, 250, 252, 0.88);
+  letter-spacing: -0.12px;
+  line-height: 1.25;
+}
+
+.home-company-en {
+  font-size: 0.65rem;
+  font-weight: 400;
+  color: rgba(248, 250, 252, 0.38);
+  letter-spacing: -0.04px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 740px) {
+  .home-companies-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* ── Footer ── */
 .home-footer-v2 {
   background: var(--apple-black);
@@ -6720,6 +6806,7 @@ body {
 .home-signals-in,
 .home-members-in,
 .home-footer-v2-in,
+.home-companies-in,
 .company-wrap,
 .person-wrap,
 .holdings-wrap {
