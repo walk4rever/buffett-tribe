@@ -23,7 +23,7 @@ const DOCUMENTS: DocumentItem[] = [
     rawHref: "/api/documents/annual-meeting/unscripted",
   },
   {
-    id: "duan-investment-qa",
+    id: "duan-investment",
     ownerId: "duan",
     title: "段永平投资问答录 · 投资篇",
     subtitle: "估值、仓位、长期持有与认知边界。",
@@ -33,7 +33,7 @@ const DOCUMENTS: DocumentItem[] = [
     rawHref: "/api/documents/duan/investment",
   },
   {
-    id: "duan-business-qa",
+    id: "duan-business",
     ownerId: "duan",
     title: "段永平投资问答录 · 商业篇",
     subtitle: "商业模式、护城河、本分文化。",

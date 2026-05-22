@@ -7,8 +7,8 @@ export function generateStaticParams() {
 }
 
 const SLUG_TO_ID: Record<string, string> = {
-  business: "duan-business-qa",
-  investment: "duan-investment-qa",
+  business: "duan-business",
+  investment: "duan-investment",
 };
 
 export default async function DuanPdfPage({ params }: { params: Promise<{ slug: string }> }) {
