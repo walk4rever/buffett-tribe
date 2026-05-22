@@ -11,6 +11,7 @@ import {
   getCompanySecurities,
   getRecentHolders,
 } from "@/lib/company-data";
+import { formatShares } from "@/lib/master-data";
 
 export const dynamic = "force-dynamic";
 
@@ -455,7 +456,6 @@ export default async function CompanyPage({ params }: Props) {
   const listedSecurities = securities.length
     ? securities.map(formatSecurityLabel)
     : [company.ticker ?? "—"];
-  const stockLabel = listedSecurities[0] ?? company.ticker ?? company.canonicalName;
 
   const latest = financials[0];
   const fiveYearsAgo = financials[4];
@@ -834,40 +834,48 @@ export default async function CompanyPage({ params }: Props) {
                 <table className="company-holders-table">
                   <thead>
                     <tr>
-                      <th>机构 Holder</th>
-                      <th>股票 Stock</th>
-                      <th>仓位 % of Portfolio</th>
-                      <th>近期动作 Recent Activity</th>
-                      <th>持股 Shares</th>
-                      <th>申报价 Reported Price*</th>
-                      <th>市值（亿） Value</th>
+                      <th className="holdings-th">机构<br/><span className="holdings-th-en">Holder</span></th>
+                      <th className="holdings-th">证券<br/><span className="holdings-th-en">Ticker</span></th>
+                      <th className="holdings-th holdings-th--num">仓位<br/><span className="holdings-th-en">% of Portfolio</span></th>
+                      <th className="holdings-th">近期动作<br/><span className="holdings-th-en">Recent Activity</span></th>
+                      <th className="holdings-th holdings-th--num">季度<br/><span className="holdings-th-en">Quarter</span></th>
+                      <th className="holdings-th holdings-th--num">持股<br/><span className="holdings-th-en">Shares</span></th>
+                      <th className="holdings-th holdings-th--num">申报价<br/><span className="holdings-th-en">Reported Price*</span></th>
+                      <th className="holdings-th holdings-th--num">市值（亿）<br/><span className="holdings-th-en">Value</span></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {holders.holders.map((h) => {
+                    {holders.holders.map((h, i) => {
                       const member = h.tribeId ? getTribeMember(h.tribeId) : null;
-                      const holderName = member?.nameZh ?? h.name;
+                      const holderName = member?.nameZh ?? h.holderName;
+                      // Show holder name only on first row of the group
+                      const prevHolder = i > 0 ? holders.holders[i - 1] : null;
+                      const isFirstOfGroup = !prevHolder || prevHolder.holderName !== h.holderName;
                       return (
-                        <tr key={h.id}>
-                          <td className="company-holders-holder">
-                            {h.tribeId ? (
-                              <Link href={`/master/${h.tribeId}`} className="company-holder-link company-holder-link--name">
+                        <tr key={`${h.id}-${h.ticker}`} className={h.isSoldOut ? "company-holders-row--soldout" : ""}>
+                          <td className="holdings-td holdings-td--num company-holders-holder">
+                            {isFirstOfGroup ? (
+                              h.tribeId ? (
+                                <Link href={`/master/${h.tribeId}`} className="company-holder-link company-holder-link--name">
+                                  <strong>{holderName}</strong>
+                                </Link>
+                              ) : (
                                 <strong>{holderName}</strong>
-                              </Link>
+                              )
                             ) : (
-                              <strong>{holderName}</strong>
+                              <span />
                             )}
-                            <span className="company-holder-fund">{h.name}</span>
                           </td>
-                          <td className="company-holders-stock">
-                            <strong>{stockLabel}</strong>
-                            <span>{company.canonicalName}</span>
+                          <td className="holdings-td holdings-td--num company-holders-stock">
+                            <strong>{h.ticker ?? "—"}</strong>
                           </td>
-                          <td className="company-holders-num">
+                          <td className="holdings-td holdings-td--num">
                             {h.percent != null ? `${h.percent.toFixed(2)}%` : "—"}
                           </td>
-                          <td className="company-holders-activity">
-                            {h.activity === "New" ? (
+                          <td className="holdings-td holdings-td--act">
+                            {h.activity === "SoldOut" ? (
+                              <span className="holdings-activity-soldout">Sold Out</span>
+                            ) : h.activity === "New" ? (
                               <span className="holdings-activity-new">New</span>
                             ) : h.activity === "Added" ? (
                               <span className="holdings-activity-delta holdings-activity-delta--up">
@@ -881,13 +889,18 @@ export default async function CompanyPage({ params }: Props) {
                               <span className="holdings-activity-delta">—</span>
                             )}
                           </td>
-                          <td className="company-holders-num">
-                            {h.shares != null ? h.shares.toLocaleString() : "—"}
+                          <td className="holdings-td holdings-td--num">
+                            {h.sourceYear != null && h.sourceQuarter != null
+                              ? `${h.sourceYear} Q${h.sourceQuarter}`
+                              : "—"}
                           </td>
-                          <td className="company-holders-num">
+                          <td className="holdings-td holdings-td--num">
+                            {formatShares(h.shares)}
+                          </td>
+                          <td className="holdings-td holdings-td--num">
                             {formatPriceFromValueAndShares(h.valueUsd, h.shares)}
                           </td>
-                          <td className="company-holders-num">{formatMoney(h.valueUsd)}</td>
+                          <td className="holdings-td holdings-td--num">{formatMoney(h.valueUsd)}</td>
                         </tr>
                       );
                     })}

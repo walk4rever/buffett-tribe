@@ -223,6 +223,23 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
     .map(([year, items]) => ({ year, items }));
 }
 
+export type HolderRow = {
+  id: string;
+  holderName: string;
+  tribeId: string | null;
+  ticker: string | null;
+  securityName: string;
+  percent: number | null;
+  valueUsd: bigint | null;
+  shares: bigint | null;
+  sourceYear: number | null;
+  sourceQuarter: number | null;
+  asOfDate: Date | null;
+  activity: "New" | "Added" | "Reduced" | "Unchanged" | "SoldOut";
+  shareDeltaPct: number | null;
+  isSoldOut: boolean;
+};
+
 export async function getRecentHolders(entityId: string, limit = 20) {
   const securityScope = await getSecurityIdsForCompany(entityId);
   const rows = await db.holding.findMany({
@@ -234,85 +251,87 @@ export async function getRecentHolders(entityId: string, limit = 20) {
     },
     orderBy: [
       { holderEntityId: "asc" },
+      { securityId: "asc" },
       { asOfDate: "desc" },
-      { valueUsd: "desc" },
     ],
     include: {
       holder: { select: { id: true, canonicalName: true, tribeId: true } },
+      securityProfile: { select: { ticker: true } },
       source: { select: { periodYear: true, periodQuarter: true } },
     },
-    take: 500,
+    take: 1000,
   });
+
   if (!rows.length) {
-    return {
-      asOfDate: null,
-      holders: [] as Array<{
-        id: string;
-        name: string;
-        tribeId: string | null;
+    return { holders: [] as HolderRow[] };
+  }
+
+  // Find each holder's latest filing quarter across ALL holdings
+  const holderIds = [...new Set(rows.map((r) => r.holder.id))];
+  const holderLatestMap = new Map<string, { asOfDate: Date; year: number; quarter: number }>();
+  if (holderIds.length) {
+    // Get latest asOfDate + source period for each holder
+    const holderLatestHoldings = await Promise.all(
+      holderIds.map((id) =>
+        db.holding.findFirst({
+          where: { holderEntityId: id },
+          orderBy: { asOfDate: "desc" },
+          select: {
+            holderEntityId: true,
+            asOfDate: true,
+            source: { select: { periodYear: true, periodQuarter: true } },
+          },
+        }),
+      ),
+    );
+    for (const h of holderLatestHoldings) {
+      if (h && h.asOfDate) {
+        holderLatestMap.set(h.holderEntityId, {
+          asOfDate: h.asOfDate,
+          year: h.source.periodYear ?? 0,
+          quarter: h.source.periodQuarter ?? 0,
+        });
+      }
+    }
+  }
+
+  // Group by (holder, security) — no aggregation across securities
+  const pairKey = (r: (typeof rows)[number]) => `${r.holder.id}|${r.securityId}`;
+
+  const pairs = new Map<
+    string,
+    {
+      holderId: string;
+      holderName: string;
+      tribeId: string | null;
+      securityId: string;
+      ticker: string | null;
+      current: {
+        asOfDate: Date;
         percent: number | null;
         valueUsd: bigint | null;
         shares: bigint | null;
         sourceYear: number | null;
         sourceQuarter: number | null;
-        asOfDate: Date | null;
-        activity: "New" | "Added" | "Reduced" | "Unchanged";
-        shareDeltaPct: number | null;
-      }>,
-    };
-  }
-
-  type Row = (typeof rows)[number];
-  type HolderState = {
-    id: string;
-    name: string;
-    tribeId: string | null;
-    current: {
-      asOfDate: Date | null;
-      percent: number | null;
-      valueUsd: bigint | null;
-      shares: bigint | null;
-      sourceYear: number | null;
-      sourceQuarter: number | null;
-    };
-    previous: {
-      asOfDate: Date | null;
-      percent: number | null;
-      valueUsd: bigint | null;
-      shares: bigint | null;
-      sourceYear: number | null;
-      sourceQuarter: number | null;
-    } | null;
-  };
-
-  const byHolder = new Map<string, HolderState>();
-
-  const addToBucket = (
-    bucket: {
-      asOfDate: Date | null;
-      percent: number | null;
-      valueUsd: bigint | null;
-      shares: bigint | null;
-      sourceYear: number | null;
-      sourceQuarter: number | null;
-    },
-    row: Row,
-  ) => {
-    bucket.percent = (bucket.percent ?? 0) + (row.percentOfPortfolio ?? 0);
-    bucket.valueUsd = (bucket.valueUsd ?? BigInt(0)) + (row.valueUsd ?? BigInt(0));
-    bucket.shares = (bucket.shares ?? BigInt(0)) + (row.shares ?? BigInt(0));
-    bucket.sourceYear = row.source.periodYear ?? bucket.sourceYear;
-    bucket.sourceQuarter = row.source.periodQuarter ?? bucket.sourceQuarter;
-  };
+        isSoldOut: boolean;
+      } | null;
+      previous: {
+        asOfDate: Date;
+        shares: bigint | null;
+      } | null;
+    }
+  >();
 
   for (const row of rows) {
-    const key = row.holder.id;
-    const state = byHolder.get(key);
-    if (!state) {
-      byHolder.set(key, {
-        id: row.holder.id,
-        name: row.holder.canonicalName,
+    const key = pairKey(row);
+    const existing = pairs.get(key);
+    if (!existing) {
+      pairs.set(key, {
+        holderId: row.holder.id,
+        holderName: row.holder.canonicalName,
         tribeId: row.holder.tribeId,
+        securityId: row.securityId!,
+        ticker: row.securityProfile?.ticker ?? null,
         current: {
           asOfDate: row.asOfDate,
           percent: row.percentOfPortfolio,
@@ -320,65 +339,71 @@ export async function getRecentHolders(entityId: string, limit = 20) {
           shares: row.shares,
           sourceYear: row.source.periodYear,
           sourceQuarter: row.source.periodQuarter,
+          isSoldOut: row.isSoldOut ?? false,
         },
         previous: null,
       });
       continue;
     }
-
-    const currentTime = state.current.asOfDate?.getTime() ?? 0;
-    const currentRowTime = row.asOfDate.getTime();
-    const previousTime = state.previous?.asOfDate?.getTime() ?? null;
-
-    if (currentRowTime === currentTime) {
-      addToBucket(state.current, row);
-      continue;
-    }
-
-    if (previousTime == null) {
-      state.previous = {
+    // Only track the two most recent quarters
+    if (!existing.previous) {
+      existing.previous = {
         asOfDate: row.asOfDate,
-        percent: row.percentOfPortfolio,
-        valueUsd: row.valueUsd,
         shares: row.shares,
-        sourceYear: row.source.periodYear,
-        sourceQuarter: row.source.periodQuarter,
       };
-      continue;
-    }
-
-    if (currentRowTime === previousTime && state.previous) {
-      addToBucket(state.previous, row);
     }
   }
 
-  const holders = [...byHolder.values()]
-    .map((state) => {
-      const shareDeltaPct = computeShareDeltaPct(state.previous?.shares, state.current.shares);
-      const activity = state.previous
-        ? computeHoldingActivity(true, true, shareDeltaPct)
-        : "New";
-      return {
-        id: state.id,
-        name: state.name,
-        tribeId: state.tribeId,
-        percent: state.current.percent,
-        valueUsd: state.current.valueUsd,
-        shares: state.current.shares,
-        sourceYear: state.current.sourceYear,
-        sourceQuarter: state.current.sourceQuarter,
-        asOfDate: state.current.asOfDate,
-        activity,
-        shareDeltaPct,
-      };
-    })
-    .sort((a, b) => Number(b.valueUsd ?? BigInt(0)) - Number(a.valueUsd ?? BigInt(0)))
-    .slice(0, limit);
+  // Build result: one row per (holder, security) pair
+  const holders: HolderRow[] = [];
 
-  return {
-    asOfDate: null,
-    holders,
-  };
+  for (const [, p] of pairs) {
+    if (!p.current) continue;
+
+    const shareDeltaPct = computeShareDeltaPct(p.previous?.shares, p.current.shares);
+
+    // A holder sold out if they filed a newer quarter without this security
+    const holderLatest = holderLatestMap.get(p.holderId);
+    const isSoldOutByQuarter =
+      !!holderLatest && p.current.asOfDate.getTime() < holderLatest.asOfDate.getTime();
+
+    let activity: HolderRow["activity"];
+    if (p.current.isSoldOut || isSoldOutByQuarter) {
+      activity = "SoldOut";
+    } else if (!p.previous) {
+      activity = "New";
+    } else {
+      activity = computeHoldingActivity(true, true, shareDeltaPct) as HolderRow["activity"];
+    }
+
+    holders.push({
+      id: p.holderId,
+      holderName: p.holderName,
+      tribeId: p.tribeId,
+      ticker: p.ticker,
+      securityName: p.ticker ?? "",
+      percent: p.current.percent,
+      valueUsd: p.current.valueUsd,
+      shares: p.current.shares,
+      sourceYear: isSoldOutByQuarter ? holderLatest?.year ?? p.current.sourceYear : p.current.sourceYear,
+      sourceQuarter: isSoldOutByQuarter ? holderLatest?.quarter ?? p.current.sourceQuarter : p.current.sourceQuarter,
+      asOfDate: isSoldOutByQuarter ? holderLatest?.asOfDate ?? p.current.asOfDate : p.current.asOfDate,
+      activity,
+      shareDeltaPct,
+      isSoldOut: p.current.isSoldOut || isSoldOutByQuarter,
+    });
+  }
+
+  // Sort: tribe order (buffett → lilu → duan), then by value desc
+  const tribeOrder: Record<string, number> = { buffett: 0, lilu: 1, duan: 2 };
+  holders.sort((a, b) => {
+    const ao = tribeOrder[a.tribeId ?? ""] ?? 3;
+    const bo = tribeOrder[b.tribeId ?? ""] ?? 3;
+    if (ao !== bo) return ao - bo;
+    return Number(b.valueUsd ?? BigInt(0)) - Number(a.valueUsd ?? BigInt(0));
+  });
+
+  return { holders: holders.slice(0, limit) };
 }
 
 export function formatMoney(v: string | bigint | null) {

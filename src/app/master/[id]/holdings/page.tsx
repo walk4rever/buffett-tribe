@@ -137,16 +137,16 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
             <thead>
               <tr>
                 <th className="holdings-th holdings-th--rank">#</th>
-                <th className="holdings-th">股票 Stock</th>
-                <th className="holdings-th holdings-th--num">仓位 % of Portfolio</th>
-                <th className="holdings-th">近期动作 Recent Activity</th>
-                <th className="holdings-th holdings-th--num">持股 Shares</th>
-                <th className="holdings-th holdings-th--num">申报价 Reported Price*</th>
-                <th className="holdings-th holdings-th--num">市值（亿） Value</th>
-                <th className="holdings-th holdings-th--num">现价 Current Price</th>
-                <th className="holdings-th holdings-th--num">较申报价 +/- Reported Price</th>
-                <th className="holdings-th holdings-th--num">52周低点 52 Week Low</th>
-                <th className="holdings-th holdings-th--num">52周高点 52 Week High</th>
+                <th className="holdings-th">股票<br/><span className="holdings-th-en">Stock</span></th>
+                <th className="holdings-th holdings-th--num">仓位<br/><span className="holdings-th-en">% of Portfolio</span></th>
+                <th className="holdings-th">近期动作<br/><span className="holdings-th-en">Recent Activity</span></th>
+                <th className="holdings-th holdings-th--num">持股<br/><span className="holdings-th-en">Shares</span></th>
+                <th className="holdings-th holdings-th--num">申报价<br/><span className="holdings-th-en">Reported Price*</span></th>
+                <th className="holdings-th holdings-th--num">市值（亿）<br/><span className="holdings-th-en">Value</span></th>
+                <th className="holdings-th holdings-th--num">现价<br/><span className="holdings-th-en">Current Price</span></th>
+                <th className="holdings-th holdings-th--num">较申报价<br/><span className="holdings-th-en">+/- Reported Price</span></th>
+                <th className="holdings-th holdings-th--num">52周低点<br/><span className="holdings-th-en">52 Week Low</span></th>
+                <th className="holdings-th holdings-th--num">52周高点<br/><span className="holdings-th-en">52 Week High</span></th>
               </tr>
             </thead>
             <tbody>
@@ -212,7 +212,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
                         />
                       </div>
                     </td>
-                    <td className="holdings-td">
+                    <td className="holdings-td holdings-td--act">
                       {activity === "New" ? (
                         <span className="holdings-activity-new">New</span>
                       ) : activity === "Added" ? (
@@ -267,7 +267,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
                       </span>
                     </td>
                     <td className="holdings-td holdings-td--num">0.00%</td>
-                    <td className="holdings-td">
+                    <td className="holdings-td holdings-td--act">
                       <span className="holdings-activity-soldout">Sold Out</span>
                     </td>
                     <td className="holdings-td holdings-td--num">{formatShares(h.shares)}</td>
