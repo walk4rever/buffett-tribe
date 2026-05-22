@@ -2,7 +2,7 @@
 
 # 巴菲特部落 · Buffett Tribe — 产品设计文档
 
-> 最后更新：2026-05-22（v0.35.4）
+> 最后更新：2026-05-22（v0.35.5）
 
 ---
 
@@ -294,7 +294,13 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.35.4）
+## 当前实现状态（v0.35.5）
+
+### v0.35.5 变更
+
+- **PDF 存储迁移到 Cloudflare R2**：文档 PDF 从本地 `data/` 迁移到 R2（`ai-pulse/buffett-tribe/`），API 路由改为 S3 流式代理。解决 Vercel 部署无本地文件的 404 问题，后续加文档不需要重新部署
+- **新增 `src/lib/r2.ts`**：封装 S3Client + `uploadToR2()` + `getR2Stream()`
+- **新增 `scripts/upload-documents-to-r2.ts`**：一次性迁移脚本
 
 ### v0.35.4 变更
 
