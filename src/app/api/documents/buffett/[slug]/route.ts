@@ -1,14 +1,24 @@
+export const runtime = "nodejs";
+
+import { NextRequest } from "next/server";
 import { getDocumentById } from "@/lib/documents";
 import { getR2Stream } from "@/lib/r2";
 
-const doc = getDocumentById("buffett-annual-meeting-unscripted");
+const slugToDocId: Record<string, string> = {
+  unscripted: "buffett-annual-meeting-unscripted",
+};
 
-export async function GET() {
-  if (!doc) {
-    return new Response("not found", { status: 404 });
-  }
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ slug: string }> },
+) {
+  const { slug } = await params;
+  const docId = slugToDocId[slug];
+  if (!docId) return new Response("not found", { status: 404 });
 
-  // Strip data/documents/raw/ prefix, add buffett-tribe/ namespace
+  const doc = getDocumentById(docId);
+  if (!doc) return new Response("not found", { status: 404 });
+
   const r2Key = "buffett-tribe/" + doc.rawPath.replace(/^data\/documents\/raw\//, "");
 
   try {
@@ -17,7 +27,7 @@ export async function GET() {
     return new Response(stream, {
       headers: {
         "Content-Type": contentType,
-        "Content-Disposition": 'inline; filename="Buffett-and-Munger-Unscripted.pdf"',
+        "Content-Disposition": `inline; filename="${doc.title}.pdf"`,
         "Content-Length": String(contentLength),
         "Cache-Control": "public, max-age=31536000, immutable",
       },

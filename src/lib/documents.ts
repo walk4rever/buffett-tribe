@@ -19,8 +19,8 @@ const DOCUMENTS: DocumentItem[] = [
     subtitle: "历年股东大会问答实录。",
     badge: "书籍",
     rawPath: "data/documents/raw/master/buffett/annual-meeting-unscripted.pdf",
-    readerHref: "/documents/annual-meeting/unscripted",
-    rawHref: "/api/documents/annual-meeting/unscripted",
+    readerHref: "/documents/buffett/unscripted",
+    rawHref: "/api/documents/buffett/unscripted",
   },
   {
     id: "duan-investment",

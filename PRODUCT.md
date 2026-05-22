@@ -2,7 +2,7 @@
 
 # 巴菲特部落 · Buffett Tribe — 产品设计文档
 
-> 最后更新：2026-05-22（v0.35.5）
+> 最后更新：2026-05-22（v0.35.6）
 
 ---
 
@@ -295,6 +295,11 @@ Apple HIG 精简风格：
 ---
 
 ## 当前实现状态（v0.35.5）
+
+### v0.35.6 变更
+
+- **文档路由统一**：Buffett PDF 从 `/documents/annual-meeting/unscripted` 迁到 `/documents/buffett/unscripted`，与 duan/lilu 统一为 `/documents/[owner]/[slug]` 模式
+- 删除旧的硬编码 annual-meeting 页面和 API 路由
 
 ### v0.35.5 变更
 

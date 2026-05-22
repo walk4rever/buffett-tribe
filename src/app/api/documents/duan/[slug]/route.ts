@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { NextRequest } from "next/server";
 import { getDocumentById } from "@/lib/documents";
 import { getR2Stream } from "@/lib/r2";

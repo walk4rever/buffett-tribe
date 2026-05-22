@@ -440,7 +440,7 @@ export default async function PersonHubPage({ params }: Props) {
                   title: bookDoc?.title ?? "Buffett & Munger Unscripted",
                   subtitle: "历年股东大会问答实录。",
                   badge: "书籍",
-                  href: bookDoc?.readerHref ?? "/documents/annual-meeting/unscripted",
+                  href: bookDoc?.readerHref ?? "/documents/buffett/unscripted",
                 },
               ].map((card) => (
                 <Link key={card.key} href={card.href} className="document-card document-card--link">

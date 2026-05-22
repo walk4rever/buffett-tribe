@@ -2,13 +2,17 @@ import { notFound } from "next/navigation";
 import { SiteNav } from "@/components/SiteNav";
 import { getDocumentById } from "@/lib/documents";
 
-export const metadata = {
-  title: "Buffett & Munger Unscripted PDF | Buffett Tribe",
-  description: "原始 PDF 阅读样例：Buffett & Munger Unscripted",
+export function generateStaticParams() {
+  return [{ slug: "unscripted" }];
+}
+
+const SLUG_TO_ID: Record<string, string> = {
+  unscripted: "buffett-annual-meeting-unscripted",
 };
 
-export default function UnscriptedPdfPage() {
-  const doc = getDocumentById("buffett-annual-meeting-unscripted");
+export default async function BuffettPdfPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const doc = getDocumentById(SLUG_TO_ID[slug]);
   if (!doc) notFound();
 
   return (
