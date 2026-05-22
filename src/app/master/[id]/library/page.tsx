@@ -5,6 +5,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { getTribeMember } from "@/lib/tribe";
 import { LetterReadingArea } from "@/components/LetterReadingArea";
 import { ArticleReadingArea, type ArticleSource } from "@/components/ArticleReadingArea";
+import { getDocumentsForOwner } from "@/lib/documents";
 
 // Cache pages for 5 minutes — letter content changes rarely.
 // Use revalidate instead of force-dynamic to avoid hammering the DB on every request.
@@ -13,14 +14,8 @@ export const revalidate = 300;
 
 // ── Category config ───────────────────────────────────────────────────────────
 
-const CATEGORIES = [
-  { key: "letter",  label: "信件" },
-  { key: "article", label: "文章" },
-  { key: "book",    label: "书籍" },
-  { key: "video",   label: "视频" },
-] as const;
-type Category = typeof CATEGORIES[number]["key"];
-const VALID_CATEGORIES = CATEGORIES.map((c) => c.key) as string[];
+const VALID_CATEGORIES = ["letter", "article", "book", "video", "document"] as const;
+type Category = (typeof VALID_CATEGORIES)[number];
 
 // Map source.type → category
 const TYPE_TO_CATEGORY: Record<string, Category> = {
@@ -65,14 +60,55 @@ export default async function LibraryPage({ params, searchParams }: Props) {
   const member = getTribeMember(id);
   if (!member) notFound();
 
+  const documentOwner = id === "buffett" ? "buffett" : id === "duan" ? "duan" : null;
+  const documentItems = documentOwner ? getDocumentsForOwner(documentOwner) : [];
+
   if (id !== "buffett") {
     return (
-      <div className="person-page">
+      <div className="person-page library-page">
         <SiteNav />
-        <div className="person-wrap">
-          <section className="person-section">
-            <p className="person-empty">该人物的资料库内容建设中。</p>
-          </section>
+        <div className="masterclass-layout">
+          <aside className="masterclass-sidebar">
+            <Link href={`/master/${id}#library`} className="masterclass-sidebar-head masterclass-sidebar-head--link">
+              {member.nameZh} · 资料库
+            </Link>
+            <nav className="library-cats" aria-label="资料分类">
+              <Link
+                href={`/master/${id}/library?category=document`}
+                className="library-cat-tab library-cat-tab--active"
+              >
+                文档
+              </Link>
+            </nav>
+            <p className="library-empty-hint">
+              这里统一放原始 PDF、Markdown 资料和后续的逐字稿文档。
+            </p>
+          </aside>
+
+          <main className="masterclass-main masterclass-main--reader">
+            {documentItems.length > 0 ? (
+              <div className="document-grid">
+                {documentItems.map((doc) => (
+                  <Link key={doc.id} href={doc.readerHref} className="document-card document-card--link">
+                    <div className="document-card-head">
+                      <span className="document-card-badge">{doc.badge}</span>
+                      <h2 className="document-card-title">{doc.title}</h2>
+                      <p className="document-card-subtitle">{doc.subtitle}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="library-placeholder">
+                <div>
+                  <p>文档资料建设中</p>
+                  <p style={{ fontSize: "0.8rem", marginTop: "0.5rem", opacity: 0.6 }}>
+                    后续会在这里统一放入 PDF、Markdown 和逐字稿文档。
+                  </p>
+                </div>
+              </div>
+            )}
+          </main>
         </div>
       </div>
     );
@@ -124,10 +160,10 @@ export default async function LibraryPage({ params, searchParams }: Props) {
   // ── Resolve active category ────────────────────────────────────────────────
 
   const activeCategory: Category = (
-    sp.category && VALID_CATEGORIES.includes(sp.category)
-      ? sp.category
+    sp.category && (VALID_CATEGORIES as readonly string[]).includes(sp.category)
+      ? (sp.category as Category)
       : "letter"
-  ) as Category;
+  );
 
   // ── Resolve active selection ───────────────────────────────────────────────
 
@@ -143,11 +179,12 @@ export default async function LibraryPage({ params, searchParams }: Props) {
         ? sp.type
         : firstLetter?.type ?? "shareholder";
     const parsedYear = sp.year ? Number(sp.year) : NaN;
-    activeLetterYear = letterNavItems.find(
+    const activeLetterNavItems = letterNavItems.filter((item) => item.type === activeLetterType);
+    activeLetterYear = activeLetterNavItems.find(
       (i) => i.type === activeLetterType && i.year === parsedYear,
     )
       ? parsedYear
-      : letterNavItems.find((i) => i.type === activeLetterType)?.year ?? 0;
+      : activeLetterNavItems.find((i) => i.type === activeLetterType)?.year ?? 0;
   }
 
   if (activeCategory === "article") {
@@ -168,6 +205,10 @@ export default async function LibraryPage({ params, searchParams }: Props) {
   let letterContentMd = "";
   let activeArticle: ArticleSource | null = null;
   let activeVideo:   ArticleSource | null = null;
+  const activeLetterNavItems =
+    activeCategory === "letter"
+      ? letterNavItems.filter((item) => item.type === activeLetterType)
+      : [];
 
   if (activeCategory === "letter" && activeLetterYear > 0) {
     const activeIds = letterKeyToIds.get(`${activeLetterType}:${activeLetterYear}`) ?? [];
@@ -212,28 +253,17 @@ export default async function LibraryPage({ params, searchParams }: Props) {
       <div className="masterclass-layout">
         {/* ── Sidebar ── */}
         <aside className="masterclass-sidebar">
-          <div className="masterclass-sidebar-head">{member.nameZh} · 资料库</div>
-
-          {/* Category tabs */}
-          <nav className="library-cats" aria-label="资料分类">
-            {CATEGORIES.map((cat) => (
-              <Link
-                key={cat.key}
-                href={`/master/${id}/library?category=${cat.key}`}
-                className={`library-cat-tab${activeCategory === cat.key ? " library-cat-tab--active" : ""}`}
-              >
-                {cat.label}
-              </Link>
-            ))}
-          </nav>
+          <Link href={`/master/${id}#library`} className="masterclass-sidebar-head masterclass-sidebar-head--link">
+            {member.nameZh} · 资料库
+          </Link>
 
           {/* ── Letter nav ── */}
           {activeCategory === "letter" && (
             <div className="library-year-list">
-              {letterNavItems.length === 0 && (
+              {activeLetterNavItems.length === 0 && (
                 <p className="library-empty-hint">暂无信件资料</p>
               )}
-              {letterNavItems.map(({ type, year }) => {
+              {activeLetterNavItems.map(({ type, year }) => {
                 const active = type === activeLetterType && year === activeLetterYear;
                 return (
                   <Link
@@ -303,6 +333,13 @@ export default async function LibraryPage({ params, searchParams }: Props) {
               })}
             </div>
           )}
+
+          {/* ── Document nav ── */}
+          {activeCategory === "document" && (
+            <div className="library-empty-hint">
+              PDF / Markdown / 逐字稿这类资料会在这里统一出现。
+            </div>
+          )}
         </aside>
 
         {/* ── Main reading area ── */}
@@ -313,7 +350,6 @@ export default async function LibraryPage({ params, searchParams }: Props) {
                 year={activeLetterYear}
                 contentMd={letterContentMd}
                 sourceType={activeLetterType}
-                backHref={`/master/${id}`}
               />
             ) : (
               <div className="library-placeholder">暂无内容</div>
@@ -360,11 +396,25 @@ export default async function LibraryPage({ params, searchParams }: Props) {
                 <div>
                   <p>视频资料建设中</p>
                   <p style={{ fontSize: "0.8rem", marginTop: "0.5rem", opacity: 0.6 }}>
-                    股东大会、演讲等视频及文字整理即将上线
+                    股东大会、演讲、原文 PDF 阅读样例即将上线
                   </p>
                 </div>
               </div>
             )
+          )}
+
+          {activeCategory === "document" && (
+            <div className="document-grid">
+              {documentItems.map((doc) => (
+                <Link key={doc.id} href={doc.readerHref} className="document-card document-card--link">
+                  <div className="document-card-head">
+                    <span className="document-card-badge">{doc.badge}</span>
+                    <h2 className="document-card-title">{doc.title}</h2>
+                    <p className="document-card-subtitle">{doc.subtitle}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
           )}
         </main>
       </div>

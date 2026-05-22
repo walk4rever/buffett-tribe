@@ -5,6 +5,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { formatCompanyPathFromCik } from "@/lib/cik";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
 import { getTribeMember } from "@/lib/tribe";
+import { getDocumentsForOwner } from "@/lib/documents";
 import { getMasterProfile } from "@/lib/master-profile";
 import {
   formatShares,
@@ -244,6 +245,9 @@ export default async function PersonHubPage({ params }: Props) {
   const prevBySecurityId = new Map(prevHoldings.map((h) => [holdingKey(h), h] as const));
   const currentKeySet = new Set(fullHoldings.map((h) => holdingKey(h)));
   const soldOutRows = prevHoldings.filter((h) => !currentKeySet.has(holdingKey(h)));
+  const documentOwner = id === "buffett" || id === "duan" || id === "lilu" ? id : null;
+  const documents = documentOwner ? getDocumentsForOwner(documentOwner) : [];
+  const bookDoc = id === "buffett" ? documents[0] ?? null : null;
 
   return (
     <div className="person-page">
@@ -409,35 +413,84 @@ export default async function PersonHubPage({ params }: Props) {
           </section>
         )}
 
-        <section className="person-section">
+        <section className="person-section" id="library">
           <div className="person-section-head">
             <h2 className="person-section-title">资料库</h2>
           </div>
-          <div className="person-master-grid">
-            {masterClass.filter((item) => item.count > 0).map((item) => (
-              <Link
-                key={item.key}
-                href={
-                  item.latest
-                    ? `/master/${id}/library?type=${encodeURIComponent(item.key)}&year=${item.latest}`
-                    : item.href
-                }
-                className="person-master-card"
-              >
-                <div className="person-master-title">{item.label}</div>
-                <div className="person-master-meta">
-                  <span>{item.count} 篇</span>
-                  <span>{item.range}</span>
-                </div>
-                <div className="person-master-latest">
-                  最近:{item.latest ?? "-"}
-                </div>
-              </Link>
-            ))}
-          </div>
+
+          {id === "buffett" ? (
+            <div className="document-grid">
+              {[
+                {
+                  key: "partnership",
+                  title: `合伙人信件（${masterClass.find((item) => item.key === "partnership")?.range ?? "1958–1970"}）`,
+                  subtitle: "巴菲特合伙人时期致投资者的年度信件。",
+                  badge: "信件",
+                  href: "/master/buffett/library?category=letter&type=partnership",
+                },
+                {
+                  key: "shareholder",
+                  title: `股东信件（${masterClass.find((item) => item.key === "shareholder")?.range ?? "1965–2025"}）`,
+                  subtitle: "伯克希尔·哈撒韦历年致股东的信。",
+                  badge: "信件",
+                  href: "/master/buffett/library?category=letter&type=shareholder",
+                },
+                {
+                  key: "book",
+                  title: bookDoc?.title ?? "Buffett & Munger Unscripted",
+                  subtitle: "历年股东大会问答实录。",
+                  badge: "书籍",
+                  href: bookDoc?.readerHref ?? "/documents/annual-meeting/unscripted",
+                },
+              ].map((card) => (
+                <Link key={card.key} href={card.href} className="document-card document-card--link">
+                  <div className="document-card-head">
+                    <span className="document-card-badge">{card.badge}</span>
+                    <h2 className="document-card-title">{card.title}</h2>
+                    <p className="document-card-subtitle">{card.subtitle}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : documents.length > 0 ? (
+            <div className="document-grid">
+              {documents.map((doc) => (
+                <Link key={doc.id} href={doc.readerHref} className="document-card document-card--link">
+                  <div className="document-card-head">
+                    <span className="document-card-badge">{doc.badge}</span>
+                    <h2 className="document-card-title">{doc.title}</h2>
+                    <p className="document-card-subtitle">{doc.subtitle}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="person-master-grid">
+              {masterClass.filter((item) => item.count > 0).map((item) => (
+                <Link
+                  key={item.key}
+                  href={
+                    item.latest
+                      ? `/master/${id}/library?type=${encodeURIComponent(item.key)}&year=${item.latest}`
+                      : item.href
+                  }
+                  className="person-master-card"
+                >
+                  <div className="person-master-title">{item.label}</div>
+                  <div className="person-master-meta">
+                    <span>{item.count} 篇</span>
+                    <span>{item.range}</span>
+                  </div>
+                  <div className="person-master-latest">
+                    最近:{item.latest ?? "-"}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </section>
 
-        <section className="person-section">
+        <section className="person-section" id="holdings">
           <div className="person-section-head">
             <div>
               <h2 className="person-section-title">最新持仓({latestLabel})</h2>

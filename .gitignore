@@ -66,7 +66,11 @@ tests/evals/history/mvp_benchmark_30_summary_*.json
 /.pi/
 /.qoder/
 /.trae/
+/.context/
 /skills/*
 !/skills/buffett-tribe/
 skills-lock.json
 .gstack/
+
+# One-off development scripts
+/scratch/

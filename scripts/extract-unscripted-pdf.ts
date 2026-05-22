@@ -4,7 +4,7 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const pdf = require('pdf-parse');
 
-const PDF_PATH = '/Users/rafael/R129/Vault/Buffett-and-Munger-Unscripted.pdf';
+const PDF_PATH = path.join(process.cwd(), 'data/documents/raw/master/buffett/annual-meeting-unscripted.pdf');
 const OUTPUT_DIR = path.join(process.cwd(), 'data/annual_meeting/raw_en');
 
 async function extract() {

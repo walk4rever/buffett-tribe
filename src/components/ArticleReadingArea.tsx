@@ -155,7 +155,7 @@ export function ArticleReadingArea({ source, backHref = "/" }: ArticleReadingAre
             >
               A<sup>−</sup>
             </button>
-            <span className="reader-ctrl-val">{FONT_SIZES[fontIdx]}px</span>
+            <span className="reader-ctrl-val" suppressHydrationWarning>{FONT_SIZES[fontIdx]}px</span>
             <button
               className="reader-ctrl-btn"
               onClick={() => changeFontIdx(fontIdx + 1)}
@@ -178,7 +178,7 @@ export function ArticleReadingArea({ source, backHref = "/" }: ArticleReadingAre
             >
               <LineHeightIcon tight />
             </button>
-            <span className="reader-ctrl-val">{LINE_HEIGHTS[lineIdx].toFixed(1)}</span>
+            <span className="reader-ctrl-val" suppressHydrationWarning>{LINE_HEIGHTS[lineIdx].toFixed(1)}</span>
             <button
               className="reader-ctrl-btn"
               onClick={() => changeLineIdx(lineIdx + 1)}

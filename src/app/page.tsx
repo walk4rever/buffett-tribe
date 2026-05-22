@@ -4,7 +4,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { HeroSearch } from "@/components/HeroSearch";
 import { formatAumForHome, TRIBE_MEMBERS } from "@/lib/tribe";
 import { getLatestHomeSignalCards } from "@/lib/home-signals";
-import { getAvailableQuarters, getMasterClassSummary } from "@/lib/master-data";
+import { getAvailableQuarters } from "@/lib/master-data";
 
 export const dynamic = "force-dynamic";
 
@@ -13,14 +13,10 @@ export default async function Home() {
     getLatestHomeSignalCards(),
     Promise.all(
       TRIBE_MEMBERS.map(async (m) => {
-        const [quarters, classes] = await Promise.all([
-          getAvailableQuarters(m.id),
-          getMasterClassSummary(m.id),
-        ]);
+        const quarters = await getAvailableQuarters(m.id);
         return {
           id: m.id,
           latestQuarter: quarters[0] ?? null,
-          hasLibrary: classes.some((c) => c.count > 0),
         };
       })
     ),
@@ -90,25 +86,15 @@ export default async function Home() {
                     </div>
                   </Link>
                   <div className="home-member-links">
-                    {state.hasLibrary ? (
-                      <Link href={m.materialHref} className="home-member-link">
-                        <span className="home-member-link-icon">{m.icon}</span>
-                        <span className="home-member-link-text">
-                          {m.materialLabel}
-                          <em>{m.materialSub}</em>
-                        </span>
-                      </Link>
-                    ) : (
-                      <span className="home-member-link home-member-link--disabled" title="即将上线">
-                        <span className="home-member-link-icon">{m.icon}</span>
-                        <span className="home-member-link-text">
-                          {m.materialLabel}
-                          <em>即将上线</em>
-                        </span>
+                    <Link href={`/master/${m.id}#library`} className="home-member-link">
+                      <span className="home-member-link-icon">{m.icon}</span>
+                      <span className="home-member-link-text">
+                        资料库
+                        <em>{m.materialSub}</em>
                       </span>
-                    )}
+                    </Link>
                     {state.latestQuarter ? (
-                      <Link href={m.holdingsHref} className="home-member-link">
+                      <Link href={`/master/${m.id}#holdings`} className="home-member-link">
                         <span className="home-member-link-icon">📊</span>
                         <span className="home-member-link-text">
                           最新持仓
