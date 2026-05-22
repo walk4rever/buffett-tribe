@@ -82,6 +82,16 @@ const DOCUMENTS: DocumentItem[] = [
     readerHref: "/documents/lilu/modernization-full-2014",
     rawHref: "/api/documents/lilu/modernization-full-2014",
   },
+  {
+    id: "lilu-civilization-modernization-value",
+    ownerId: "lilu",
+    title: "文明、现代化、价值投资与中国（2020年2月）",
+    subtitle: "李录 2020 年出版，系统阐释文明演进、现代化路径与价值投资理念。",
+    badge: "书籍",
+    rawPath: "data/documents/raw/master/lilu/civilization-modernization-value-investing-china.pdf",
+    readerHref: "/documents/lilu/civilization-modernization-value-investing-china",
+    rawHref: "/api/documents/lilu/civilization-modernization-value-investing-china",
+  },
 ];
 
 export function getDocumentsForOwner(ownerId: DocumentOwnerId): DocumentItem[] {

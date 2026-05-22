@@ -58,6 +58,12 @@ const DOCUMENTS: DocEntry[] = [
     title: "李录谈现代化（全文）（2014年7月）",
     badge: "文章",
   },
+  {
+    id: "lilu-civilization-modernization-value",
+    rawPath: "data/documents/raw/master/lilu/civilization-modernization-value-investing-china.pdf",
+    title: "文明、现代化、价值投资与中国（2020年2月）",
+    badge: "书籍",
+  },
 ];
 
 function r2Key(rawPath: string): string {

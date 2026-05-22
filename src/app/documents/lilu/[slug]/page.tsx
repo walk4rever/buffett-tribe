@@ -8,6 +8,7 @@ const slugToDocId: Record<string, string> = {
   "value-investing-china-2015": "lilu-value-investing-china-2015",
   "modernization-us-china": "lilu-modernization-us-china",
   "modernization-full-2014": "lilu-modernization-full-2014",
+  "civilization-modernization-value-investing-china": "lilu-civilization-modernization-value",
 };
 
 export default async function LiluPdfPage({ params }: { params: Promise<{ slug: string }> }) {
