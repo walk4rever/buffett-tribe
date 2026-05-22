@@ -27,7 +27,6 @@ export async function GET(
     return new Response(stream, {
       headers: {
         "Content-Type": contentType,
-        "Content-Disposition": `inline; filename="${doc.title}.pdf"`,
         "Content-Length": String(contentLength),
         "Cache-Control": "public, max-age=31536000, immutable",
       },

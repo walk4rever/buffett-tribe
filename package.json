@@ -1,6 +1,6 @@
 {
   "name": "buffett-tribe",
-  "version": "0.35.6",
+  "version": "0.35.7",
   "private": true,
   "type": "module",
   "scripts": {
