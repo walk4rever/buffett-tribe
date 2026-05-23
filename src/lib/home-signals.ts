@@ -193,7 +193,16 @@ function getCompanyInfo(row: HoldingRow) {
     company?.canonicalName ||
     security.canonicalName;
   const ticker = security.ticker?.trim().toUpperCase() ?? company?.ticker?.trim().toUpperCase() ?? null;
-  const tickerLabel = ticker ? `${companyZh}（${ticker}）` : companyZh;
+  const primaryTicker = company?.ticker?.trim().toUpperCase() ?? null;
+  const companyTickers = company?.securitiesAsCompany
+    ?.map((s) => s.ticker?.trim().toUpperCase() ?? null)
+    .filter((value): value is string => !!normalizeTicker(value))
+    .sort((a, b) => a.localeCompare(b));
+  const tickerLabelParts = [primaryTicker, ticker, ...(companyTickers ?? [])]
+    .map((value) => normalizeTicker(value))
+    .filter((value): value is string => !!value);
+  const tickerDisplay = [...new Set(tickerLabelParts)].join("/");
+  const tickerLabel = tickerDisplay ? `${companyZh}（${tickerDisplay}）` : companyZh;
   const cik = company?.cik ?? null;
   const companyKey = cik ? `cik:${cik}` : company?.id ? `entity:${company.id}` : `ticker:${normalizeTicker(ticker) ?? security.id}`;
 

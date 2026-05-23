@@ -16,8 +16,9 @@
  *   npm run backfill:security:company-links -- --strict
  */
 import { PrismaClient } from "@prisma/client";
-import { issuerKey, normalizeEnglishName } from "../src/lib/company-name-map";
+import { hasChineseText, issuerKey, normalizeEnglishName } from "../src/lib/company-name-map";
 import { normalizeTicker } from "../src/lib/ticker";
+import { translateCompanyNameToZh, upsertNameMapEntries } from "./lib/company-name-zh";
 
 const db = new PrismaClient();
 const dryRun = process.argv.includes("--dry-run");
@@ -111,7 +112,7 @@ async function main() {
   for (const row of nameMapRows) {
     if (row.keyType === "ticker") {
       const ticker = normalizeTicker(row.key);
-      if (row.nameZh && ticker) zhByTicker.set(ticker, row.nameZh);
+      if (hasChineseText(row.nameZh) && ticker) zhByTicker.set(ticker, row.nameZh);
       continue;
     }
     if (row.keyType === "cusip") {
@@ -212,7 +213,22 @@ async function main() {
           companyId = byCik.id;
         } else if (!dryRun) {
           const nameEnShort = normalizeEnglishName(secRef.title);
-          const nameZh = zhByTicker.get(resolvedTicker) ?? nameEnShort;
+          let nameZh = zhByTicker.get(resolvedTicker) ?? null;
+          if (!nameZh) {
+            nameZh = await translateCompanyNameToZh({
+              englishName: secRef.title,
+              ticker: resolvedTicker,
+            });
+            await upsertNameMapEntries({
+              db,
+              issuerKey: issuerKey(secRef.title),
+              ticker: resolvedTicker,
+              nameZh,
+              nameEnShort,
+              source: "import-translation",
+            });
+            zhByTicker.set(resolvedTicker, nameZh);
+          }
           const created = await db.entity.create({
             data: {
               type: "company",
@@ -222,7 +238,7 @@ async function main() {
               metadata: {
                 source: "sec-edgar",
                 importedBy: "backfill-security-company-links",
-                nameZh,
+                ...(nameZh ? { nameZh } : {}),
                 nameEnShort,
               },
             },

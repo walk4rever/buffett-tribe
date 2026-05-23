@@ -11,7 +11,7 @@
  *   --years 5 (if --from/--to not provided)
  */
 import { PrismaClient } from "@prisma/client";
-import { issuerKey, normalizeEnglishName } from "../src/lib/company-name-map";
+import { hasChineseText, issuerKey, normalizeEnglishName } from "../src/lib/company-name-map";
 import { translateCompanyNameToZh, upsertNameMapEntries } from "./lib/company-name-zh";
 import {
   fetchAllAnnualFilings,
@@ -430,8 +430,8 @@ async function upsertCompanyEntity(cik: string, ticker: string, title: string, p
     select: { nameZh: true },
   });
   const existingZh =
-    dbNameMap?.nameZh ??
-    (typeof existingMeta.nameZh === "string" ? existingMeta.nameZh : null);
+    (hasChineseText(dbNameMap?.nameZh) ? dbNameMap.nameZh : null) ??
+    (hasChineseText(typeof existingMeta.nameZh === "string" ? existingMeta.nameZh : null) ? existingMeta.nameZh as string : null);
   const nameEnShort = normalizeEnglishName(title);
   let nameZh = zhByTickerDb.get(ticker.toUpperCase()) ?? existingZh;
   if (!nameZh) {
@@ -554,7 +554,7 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
       select: { key: true, nameZh: true },
     });
     for (const row of maps) {
-      if (row.nameZh) zhByTickerDb.set(row.key.toUpperCase(), row.nameZh);
+      if (hasChineseText(row.nameZh)) zhByTickerDb.set(row.key.toUpperCase(), row.nameZh);
     }
   }
 

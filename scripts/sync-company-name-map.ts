@@ -9,7 +9,7 @@
  *   node --env-file=.env.local ./node_modules/.bin/tsx scripts/sync-company-name-map.ts
  */
 import { PrismaClient } from "@prisma/client";
-import { issuerKey } from "../src/lib/company-name-map";
+import { hasChineseText, issuerKey } from "../src/lib/company-name-map";
 import { normalizeTicker } from "../src/lib/ticker";
 
 const db = new PrismaClient();
@@ -29,7 +29,8 @@ async function main() {
     .filter((c) => c.ticker)
     .map((c) => {
       const meta = (c.metadata as Record<string, unknown> | null) ?? {};
-      const nameZh = typeof meta.nameZh === "string" ? meta.nameZh : null;
+      const metaNameZh = typeof meta.nameZh === "string" ? meta.nameZh : null;
+      const nameZh = hasChineseText(metaNameZh) ? metaNameZh : null;
       const ticker = normalizeTicker(c.ticker);
       if (!ticker) return null;
       return {
@@ -44,7 +45,8 @@ async function main() {
 
   const issuerRows = companies.map((c) => {
     const meta = (c.metadata as Record<string, unknown> | null) ?? {};
-    const nameZh = typeof meta.nameZh === "string" ? meta.nameZh : null;
+    const metaNameZh = typeof meta.nameZh === "string" ? meta.nameZh : null;
+    const nameZh = hasChineseText(metaNameZh) ? metaNameZh : null;
     const ticker = normalizeTicker(c.ticker);
     return {
       keyType: "issuer",

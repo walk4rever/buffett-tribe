@@ -23,13 +23,13 @@ export async function translateCompanyNameToZh(input: TranslateInput): Promise<s
   const hit = translationCache.get(key);
   if (hit) return hit;
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is required for zh translation.");
+  const apiKey = process.env.AI_API_KEY;
+  const baseUrl = process.env.AI_API_BASE_URL;
+  const model = process.env.AI_MODEL;
+  if (!apiKey || !baseUrl || !model) {
+    throw new Error("Missing AI_API_KEY / AI_API_BASE_URL / AI_MODEL env vars for zh translation.");
   }
 
-  const model = process.env.OPENAI_TRANSLATION_MODEL ?? "gpt-4.1-mini";
-  const baseUrl = process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1";
   const endpoint = `${baseUrl.replace(/\/$/, "")}/chat/completions`;
   const tickerHint = input.ticker ? `Ticker: ${input.ticker}` : "Ticker: (unknown)";
   const userPrompt =
@@ -51,10 +51,12 @@ export async function translateCompanyNameToZh(input: TranslateInput): Promise<s
     body: JSON.stringify({
       model,
       temperature: 0,
+      max_tokens: 1000,
+      stream: false,
       messages: [
         {
           role: "system",
-          content: "You are a financial terminology translator.",
+          content: "You are a financial terminology translator. Answer directly with only the final Chinese display name.",
         },
         {
           role: "user",

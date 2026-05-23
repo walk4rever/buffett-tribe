@@ -6,7 +6,7 @@
  */
 import { PrismaClient } from "@prisma/client";
 import { XMLParser } from "fast-xml-parser";
-import { issuerKey, resolveCompanyNamesFromMaps } from "../src/lib/company-name-map";
+import { hasChineseText, issuerKey, resolveCompanyNamesFromMaps } from "../src/lib/company-name-map";
 import { normalizeTicker } from "../src/lib/ticker";
 import { translateCompanyNameToZh, upsertNameMapEntries } from "./lib/company-name-zh";
 
@@ -90,7 +90,7 @@ async function translateMissingNames(entries: InfoTableEntry[], concurrency = 4)
 
   for (const entry of entries) {
     const names = resolveNamesDbFirst(entry.nameOfIssuer);
-    if (names.nameZh !== names.nameEnShort) continue;
+    if (names.nameZh) continue;
     if (!pending.has(names.issuerKey)) {
       pending.set(names.issuerKey, {
         canonicalName: entry.nameOfIssuer,
@@ -346,12 +346,12 @@ async function seedEntityCache() {
   for (const row of dbMaps) {
     if (row.keyType === "ticker") {
       const ticker = normalizeTicker(row.key);
-      if (row.nameZh && ticker) zhByTickerDb.set(ticker, row.nameZh);
+      if (hasChineseText(row.nameZh) && ticker) zhByTickerDb.set(ticker, row.nameZh);
     } else if (row.keyType === "cusip") {
       const ticker = normalizeTicker(row.ticker);
       if (ticker) tickerByCusipDb.set(row.key.toUpperCase(), ticker);
     } else {
-      if (row.nameZh) zhByIssuerDb.set(row.key, row.nameZh);
+      if (hasChineseText(row.nameZh)) zhByIssuerDb.set(row.key, row.nameZh);
       const ticker = normalizeTicker(row.ticker);
       if (ticker) tickerByIssuerDb.set(row.key, ticker);
     }
