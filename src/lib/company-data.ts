@@ -234,6 +234,8 @@ export type HolderRow = {
   shares: bigint | null;
   sourceYear: number | null;
   sourceQuarter: number | null;
+  positionYear: number | null;
+  positionQuarter: number | null;
   asOfDate: Date | null;
   activity: "New" | "Added" | "Reduced" | "Unchanged" | "SoldOut";
   shareDeltaPct: number | null;
@@ -251,11 +253,12 @@ export async function getRecentHolders(entityId: string, limit = 20) {
     },
     orderBy: [
       { holderEntityId: "asc" },
-      { securityId: "asc" },
       { asOfDate: "desc" },
+      { securityId: "asc" },
     ],
     include: {
       holder: { select: { id: true, canonicalName: true, tribeId: true } },
+      security: { select: { ticker: true } },
       securityProfile: { select: { ticker: true } },
       source: { select: { periodYear: true, periodQuarter: true } },
     },
@@ -266,37 +269,41 @@ export async function getRecentHolders(entityId: string, limit = 20) {
     return { holders: [] as HolderRow[] };
   }
 
-  // Find each holder's latest filing quarter across ALL holdings
+  // Find each holder's filing timeline across ALL holdings.
+  // Sold-out rows should point to the first filing quarter after the last held quarter,
+  // not the holder's latest quarter in the database.
   const holderIds = [...new Set(rows.map((r) => r.holder.id))];
-  const holderLatestMap = new Map<string, { asOfDate: Date; year: number; quarter: number }>();
+  const holderQuarterMap = new Map<string, Array<{ asOfDate: Date; year: number; quarter: number }>>();
   if (holderIds.length) {
-    // Get latest asOfDate + source period for each holder
-    const holderLatestHoldings = await Promise.all(
-      holderIds.map((id) =>
-        db.holding.findFirst({
-          where: { holderEntityId: id },
-          orderBy: { asOfDate: "desc" },
-          select: {
-            holderEntityId: true,
-            asOfDate: true,
-            source: { select: { periodYear: true, periodQuarter: true } },
-          },
-        }),
-      ),
-    );
-    for (const h of holderLatestHoldings) {
-      if (h && h.asOfDate) {
-        holderLatestMap.set(h.holderEntityId, {
-          asOfDate: h.asOfDate,
-          year: h.source.periodYear ?? 0,
-          quarter: h.source.periodQuarter ?? 0,
+    const holderQuarters = await Promise.all(
+      holderIds.map(async (id) => {
+        const filings = await db.extSource.findMany({
+          where: { filerEntityId: id, kind: "13f" },
+          orderBy: [{ periodYear: "asc" }, { periodQuarter: "asc" }],
+          select: { periodYear: true, periodQuarter: true, ts: true },
         });
-      }
+        return {
+          id,
+          quarters: filings
+            .filter((f) => f.periodYear != null && f.periodQuarter != null)
+            .map((f) => ({
+              asOfDate: f.ts ?? new Date(Date.UTC(f.periodYear!, (f.periodQuarter! - 1) * 3 + 2, 31)),
+              year: f.periodYear!,
+              quarter: f.periodQuarter!,
+            })),
+        };
+      }),
+    );
+    for (const item of holderQuarters) {
+      holderQuarterMap.set(item.id, item.quarters);
     }
   }
 
-  // Group by (holder, security) — no aggregation across securities
-  const pairKey = (r: (typeof rows)[number]) => `${r.holder.id}|${r.securityId}`;
+  // Group by (holder, ticker). The same ticker can have multiple Security rows from historical imports;
+  // company pages should show one row per master × ticker, not one row per internal security profile.
+  const rowTicker = (r: (typeof rows)[number]) =>
+    normalizeTicker(r.securityProfile?.ticker ?? r.security.ticker) ?? r.securityId ?? r.securityEntityId;
+  const pairKey = (r: (typeof rows)[number]) => `${r.holder.id}|${rowTicker(r)}`;
 
   const pairs = new Map<
     string,
@@ -330,8 +337,8 @@ export async function getRecentHolders(entityId: string, limit = 20) {
         holderId: row.holder.id,
         holderName: row.holder.canonicalName,
         tribeId: row.holder.tribeId,
-        securityId: row.securityId!,
-        ticker: row.securityProfile?.ticker ?? null,
+        securityId: row.securityId ?? row.securityEntityId,
+        ticker: rowTicker(row),
         current: {
           asOfDate: row.asOfDate,
           percent: row.percentOfPortfolio,
@@ -345,8 +352,8 @@ export async function getRecentHolders(entityId: string, limit = 20) {
       });
       continue;
     }
-    // Only track the two most recent quarters
-    if (!existing.previous) {
+    // Only track the nearest prior quarter. Skip duplicate rows for the same quarter/ticker.
+    if (!existing.previous && row.asOfDate.getTime() !== existing.current?.asOfDate.getTime()) {
       existing.previous = {
         asOfDate: row.asOfDate,
         shares: row.shares,
@@ -360,15 +367,18 @@ export async function getRecentHolders(entityId: string, limit = 20) {
   for (const [, p] of pairs) {
     if (!p.current) continue;
 
-    const shareDeltaPct = computeShareDeltaPct(p.previous?.shares, p.current.shares);
+    const current = p.current;
+    const shareDeltaPct = computeShareDeltaPct(p.previous?.shares, current.shares);
 
-    // A holder sold out if they filed a newer quarter without this security
-    const holderLatest = holderLatestMap.get(p.holderId);
-    const isSoldOutByQuarter =
-      !!holderLatest && p.current.asOfDate.getTime() < holderLatest.asOfDate.getTime();
+    // A holder sold out if their next 13F filing after the last held quarter no longer includes this security.
+    const holderQuarters = holderQuarterMap.get(p.holderId) ?? [];
+    const soldOutQuarter = holderQuarters.find(
+      (q) => q.asOfDate.getTime() > current.asOfDate.getTime(),
+    ) ?? null;
+    const isSoldOutByQuarter = soldOutQuarter !== null;
 
     let activity: HolderRow["activity"];
-    if (p.current.isSoldOut || isSoldOutByQuarter) {
+    if (current.isSoldOut || isSoldOutByQuarter) {
       activity = "SoldOut";
     } else if (!p.previous) {
       activity = "New";
@@ -382,15 +392,17 @@ export async function getRecentHolders(entityId: string, limit = 20) {
       tribeId: p.tribeId,
       ticker: p.ticker,
       securityName: p.ticker ?? "",
-      percent: p.current.percent,
-      valueUsd: p.current.valueUsd,
-      shares: p.current.shares,
-      sourceYear: isSoldOutByQuarter ? holderLatest?.year ?? p.current.sourceYear : p.current.sourceYear,
-      sourceQuarter: isSoldOutByQuarter ? holderLatest?.quarter ?? p.current.sourceQuarter : p.current.sourceQuarter,
-      asOfDate: isSoldOutByQuarter ? holderLatest?.asOfDate ?? p.current.asOfDate : p.current.asOfDate,
+      percent: current.percent,
+      valueUsd: current.valueUsd,
+      shares: current.shares,
+      sourceYear: isSoldOutByQuarter ? soldOutQuarter.year : current.sourceYear,
+      sourceQuarter: isSoldOutByQuarter ? soldOutQuarter.quarter : current.sourceQuarter,
+      positionYear: isSoldOutByQuarter ? current.sourceYear : null,
+      positionQuarter: isSoldOutByQuarter ? current.sourceQuarter : null,
+      asOfDate: isSoldOutByQuarter ? soldOutQuarter.asOfDate : current.asOfDate,
       activity,
       shareDeltaPct,
-      isSoldOut: p.current.isSoldOut || isSoldOutByQuarter,
+      isSoldOut: current.isSoldOut || isSoldOutByQuarter,
     });
   }
 

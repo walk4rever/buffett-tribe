@@ -838,7 +838,7 @@ export default async function CompanyPage({ params }: Props) {
                       <th className="holdings-th">证券<br/><span className="holdings-th-en">Ticker</span></th>
                       <th className="holdings-th holdings-th--num">仓位<br/><span className="holdings-th-en">% of Portfolio</span></th>
                       <th className="holdings-th">近期动作<br/><span className="holdings-th-en">Recent Activity</span></th>
-                      <th className="holdings-th holdings-th--num">季度<br/><span className="holdings-th-en">Quarter</span></th>
+                      <th className="holdings-th holdings-th--num">动作季度<br/><span className="holdings-th-en">Activity Quarter</span></th>
                       <th className="holdings-th holdings-th--num">持股<br/><span className="holdings-th-en">Shares</span></th>
                       <th className="holdings-th holdings-th--num">申报价<br/><span className="holdings-th-en">Reported Price*</span></th>
                       <th className="holdings-th holdings-th--num">市值（亿）<br/><span className="holdings-th-en">Value</span></th>
@@ -852,7 +852,10 @@ export default async function CompanyPage({ params }: Props) {
                       const prevHolder = i > 0 ? holders.holders[i - 1] : null;
                       const isFirstOfGroup = !prevHolder || prevHolder.holderName !== h.holderName;
                       return (
-                        <tr key={`${h.id}-${h.ticker}`} className={h.isSoldOut ? "company-holders-row--soldout" : ""}>
+                        <tr
+                          key={`${h.id}-${h.ticker ?? "unknown"}-${h.sourceYear ?? "unknown"}-${h.sourceQuarter ?? "unknown"}-${i}`}
+                          className={h.isSoldOut ? "company-holders-row--soldout" : ""}
+                        >
                           <td className="holdings-td holdings-td--num company-holders-holder">
                             {isFirstOfGroup ? (
                               h.tribeId ? (
@@ -900,14 +903,16 @@ export default async function CompanyPage({ params }: Props) {
                           <td className="holdings-td holdings-td--num">
                             {formatPriceFromValueAndShares(h.valueUsd, h.shares)}
                           </td>
-                          <td className="holdings-td holdings-td--num">{formatMoney(h.valueUsd)}</td>
+                          <td className="holdings-td holdings-td--num">
+                            {formatMoney(h.valueUsd)}
+                          </td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
               </div>
-              <p className="company-holders-note">* Reported Price = 市值 ÷ 持股数，按申报日折算。</p>
+              <p className="company-holders-note">* Reported Price = 市值 ÷ 持股数，按申报日折算。Sold Out 行的仓位、持股、申报价和市值为清仓前最后一次披露的持仓数据。</p>
             </>
           ) : (
             <p className="company-empty">暂无该公司的持仓记录。</p>
