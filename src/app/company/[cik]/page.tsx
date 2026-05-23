@@ -19,7 +19,7 @@ interface Props {
   params: Promise<{ cik: string }>;
 }
 
-type YearItems = { year: number; items: Record<string, string> };
+type YearItems = { year: number; periodEnd: Date; items: Record<string, string> };
 type MoatDimension = {
   key: string;
   zhLabel: string;
@@ -106,6 +106,16 @@ function getItems(financials: YearItems[], year: number) {
   return row?.items ?? null;
 }
 
+function getFiscalDate(financials: YearItems[], year: number) {
+  const row = financials.find((f) => f.year === year);
+  return row?.periodEnd ?? null;
+}
+
+function formatFiscalDate(date: Date | null) {
+  if (!date) return "—";
+  return date.toISOString().slice(0, 10);
+}
+
 function normalizeMeta(metadata: unknown): Record<string, string | number | boolean | null> {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return {};
   return metadata as Record<string, string | number | boolean | null>;
@@ -190,7 +200,7 @@ function buildCompanyNarrative(params: {
         content: `苹果是一家在 ${exchange ?? "美国"} 上市的全球消费科技公司，定位于高端消费电子与数字生态平台，业务覆盖硬件、软件与互联网服务，核心市场遍布北美、欧洲与亚洲主要消费市场。`,
       },
       business: {
-        title: "主打产品、服务与营收结构",
+        title: "业务概览",
         content: `核心收入仍由 iPhone 驱动，同时通过 Mac、iPad、Apple Watch、AirPods 与服务业务构建软硬件一体化生态。最近一个完整财年（FY ${latestYear ?? "—"}）营收约 ${formatMoney(revenue == null ? null : String(revenue))}，商业模式的关键在于设备销售、服务订阅与高频复购。`,
       },
     };
@@ -211,7 +221,7 @@ function buildCompanyNarrative(params: {
       content: `${companyName} 是一家${marketText}${sectorText}公司${industryText}。当前页面以 SEC 档案和结构化财报为基础，重点关注其行业位置、主营业务与长期竞争优势。`,
     },
     business: {
-      title: "主打产品、服务与营收结构",
+      title: "业务概览",
       content: `${companyName} 的主营产品与服务结构仍需继续补充；当前可先结合 10-K 财报和行业属性理解其收入来源、核心产品线与增长引擎。${revenueText}`,
     },
   };
@@ -582,10 +592,6 @@ export default async function CompanyPage({ params }: Props) {
                 <h3>{companyNarrative.overview.title}</h3>
                 <p className="company-intro">{companyNarrative.overview.content}</p>
               </div>
-              <div className="company-narrative-block">
-                <h3>{companyNarrative.business.title}</h3>
-                <p className="company-intro">{companyNarrative.business.content}</p>
-              </div>
             </div>
             <aside className="company-profile-card" aria-label="Company profile">
               <dl className="company-profile-grid">
@@ -600,6 +606,16 @@ export default async function CompanyPage({ params }: Props) {
                 ))}
               </dl>
             </aside>
+          </div>
+        </section>
+
+        <section className="company-section">
+          <div className="company-section-head">
+            <h2>业务概览</h2>
+            <span>Business Overview</span>
+          </div>
+          <div className="company-text-card">
+            <p>{companyNarrative.business.content}</p>
           </div>
         </section>
 
@@ -634,7 +650,10 @@ export default async function CompanyPage({ params }: Props) {
                       <span className="company-table-sub">Metric</span>
                     </th>
                     {displayYears.map((year) => (
-                      <th key={year}>{year}</th>
+                      <th key={year}>
+                        <span className="company-table-label">FY {year}</span>
+                        <span className="company-table-sub">{formatFiscalDate(getFiscalDate(financials, year))}</span>
+                      </th>
                     ))}
                   </tr>
                 </thead>

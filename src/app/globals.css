@@ -4473,7 +4473,7 @@ body.layout-no-header {
 
 .home-companies-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 1px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -4527,6 +4527,12 @@ body.layout-no-header {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .home-companies-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 740px) {
@@ -5430,8 +5436,8 @@ body.layout-no-header {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(150px, 0.56fr) minmax(380px, 1.30fr) minmax(220px, 0.55fr);
-  gap: 0.65rem;
+  grid-template-columns: minmax(150px, 0.58fr) minmax(260px, 0.85fr) minmax(300px, 0.9fr);
+  gap: 0.8rem;
   align-items: start;
 }
 
@@ -5477,7 +5483,7 @@ body.layout-no-header {
 }
 
 .company-intro {
-  max-width: 72ch;
+  max-width: 52ch;
   margin: 0;
   color: #475569;
   font-size: 0.9rem;
@@ -5600,6 +5606,22 @@ body.layout-no-header {
 .company-section-head span {
   font-size: 0.74rem;
   color: var(--company-text-secondary);
+}
+
+.company-text-card {
+  border: 1px solid var(--company-border-soft);
+  background: linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%);
+  border-radius: 10px;
+  padding: 0.82rem 0.9rem;
+}
+
+.company-text-card p {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  color: #334155;
+  font-size: 0.88rem;
+  line-height: 1.72;
 }
 
 .company-kpi-grid {

@@ -207,20 +207,21 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
     take: 400,
   });
 
-  const byYear = new Map<number, Record<string, string>>();
+  const byYear = new Map<number, { periodEnd: Date; items: Record<string, string> }>();
   for (const row of rows) {
     const year = row.periodEnd.getUTCFullYear();
-    if (!byYear.has(year)) byYear.set(year, {});
+    if (!byYear.has(year)) byYear.set(year, { periodEnd: row.periodEnd, items: {} });
     const bucket = byYear.get(year)!;
-    if (!(row.lineItem in bucket) && row.value != null) {
-      bucket[row.lineItem] = row.value.toString();
+    if (row.periodEnd > bucket.periodEnd) bucket.periodEnd = row.periodEnd;
+    if (!(row.lineItem in bucket.items) && row.value != null) {
+      bucket.items[row.lineItem] = row.value.toString();
     }
   }
 
   return [...byYear.entries()]
     .sort((a, b) => b[0] - a[0])
     .slice(0, limit)
-    .map(([year, items]) => ({ year, items }));
+    .map(([year, data]) => ({ year, periodEnd: data.periodEnd, items: data.items }));
 }
 
 export type HolderRow = {
