@@ -146,7 +146,7 @@ const TICKER_ALIASES: Record<string, string> = {
   YY: "JOYY",
 };
 
-const ANNUAL_FORMS = new Set(["10-K", "10-K/A", "20-F", "20-F/A"]);
+const ANNUAL_FORMS = new Set(["10-K", "10-K/A", "20-F", "20-F/A", "40-F", "40-F/A"]);
 const zhByTickerDb = new Map<string, string>();
 
 function normalizeTicker(ticker: string): string {
@@ -520,7 +520,7 @@ async function upsertExtSource(
 
   const existing = await db.extSource.findFirst({
     where: {
-      kind: filing.form.startsWith("20-F") ? "20f" : "10k",
+      kind: filing.form.startsWith("20-F") ? "20f" : filing.form.startsWith("40-F") ? "40f" : "10k",
       filerEntityId: entityId,
       periodYear: year,
       periodQuarter: quarter,
@@ -531,7 +531,7 @@ async function upsertExtSource(
 
   return db.extSource.create({
     data: {
-      kind: "10k",
+      kind: filing.form.startsWith("20-F") ? "20f" : filing.form.startsWith("40-F") ? "40f" : "10k",
       filerEntityId: entityId,
       periodYear: year,
       periodQuarter: quarter,
@@ -580,7 +580,7 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
     })
     .sort((a, b) => (a.reportDate < b.reportDate ? 1 : -1));
 
-  console.log(`Found ${targetFilings.length} annual filings (10-K/20-F) in ${fromYear}-${toYear}`);
+  console.log(`Found ${targetFilings.length} annual filings (10-K/20-F/40-F) in ${fromYear}-${toYear}`);
   if (!targetFilings.length) return;
 
   for (const filing of targetFilings) {

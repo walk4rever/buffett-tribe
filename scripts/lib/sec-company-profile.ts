@@ -56,7 +56,7 @@ export type SecRecentFiling = {
   form: string;
 };
 
-const ANNUAL_FORMS = new Set(["10-K", "10-K/A", "20-F", "20-F/A"]);
+const ANNUAL_FORMS = new Set(["10-K", "10-K/A", "20-F", "20-F/A", "40-F", "40-F/A"]);
 
 function normalizeList(values: string[] | undefined) {
   if (!values) return [] as string[];
