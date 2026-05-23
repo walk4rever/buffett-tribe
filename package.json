@@ -1,6 +1,6 @@
 {
   "name": "buffett-tribe",
-  "version": "0.35.12",
+  "version": "0.35.13",
   "private": true,
   "type": "module",
   "scripts": {
@@ -30,6 +30,10 @@
     "backfill:security:company-links:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-security-company-links.ts --dry-run",
     "cleanup:duplicate-companies": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/cleanup-duplicate-company-entities.ts",
     "cleanup:duplicate-companies:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/cleanup-duplicate-company-entities.ts --dry-run",
+    "cleanup:duplicate-securities": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/cleanup-duplicate-security-profiles.ts",
+    "cleanup:duplicate-securities:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/cleanup-duplicate-security-profiles.ts --dry-run",
+    "cleanup:duplicate-security-entities": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/cleanup-duplicate-security-entities.ts",
+    "cleanup:duplicate-security-entities:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/cleanup-duplicate-security-entities.ts --dry-run",
     "backfill:company:profiles": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-profiles.ts",
     "backfill:company:profiles:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-profiles.ts --dry-run",
     "check:security:integrity": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/check-security-integrity.ts",
