@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { SiteNav } from "@/components/SiteNav";
 import { getDocumentsForOwner } from "@/lib/documents";
+import PdfViewer from "@/components/PdfViewer";
 
 const docs = getDocumentsForOwner("lilu");
 const slugToDocId: Record<string, string> = {
@@ -20,11 +21,7 @@ export default async function LiluPdfPage({ params }: { params: Promise<{ slug: 
     <div className="pdf-reader-page">
       <SiteNav />
       <main className="pdf-reader-shell">
-        <iframe
-          className="pdf-reader-frame pdf-reader-frame--full"
-          src={doc.rawHref}
-          title={`${doc.title} PDF`}
-        />
+        <PdfViewer key={doc.rawHref} url={doc.rawHref} title={doc.title} backHref="/master/lilu#library" />
       </main>
     </div>
   );

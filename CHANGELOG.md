@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.35.17] - 2026-05-23
+
+### Added
+- PDF reader toolbar refinements: stronger selected states, fit-width/fit-height modes, and page number jump input.
+- PDF sidebar tabs for thumbnails and document outline/bookmarks, including outline selection and scroll-follow behavior.
+- Back link from PDF reader titles to the corresponding master library section.
+
+### Fixed
+- PDF reader hydration mismatch from persisted view mode.
+- Continuous/single mode switching, fit-height persistence, thumbnail follow, and current-page tracking edge cases.
+
 ## [v0.34.0] - 2026-05-11
 
 ### Added

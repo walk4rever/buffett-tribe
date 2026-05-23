@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { SiteNav } from "@/components/SiteNav";
 import { getDocumentById } from "@/lib/documents";
+import PdfViewer from "@/components/PdfViewer";
 
 export function generateStaticParams() {
   return [{ slug: "business" }, { slug: "investment" }];
@@ -20,11 +21,7 @@ export default async function DuanPdfPage({ params }: { params: Promise<{ slug: 
     <div className="pdf-reader-page">
       <SiteNav />
       <main className="pdf-reader-shell">
-        <iframe
-          className="pdf-reader-frame pdf-reader-frame--full"
-          src={doc.rawHref}
-          title={`${doc.title} PDF`}
-        />
+        <PdfViewer key={doc.rawHref} url={doc.rawHref} title={doc.title} backHref="/master/duan#library" />
       </main>
     </div>
   );

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { SiteNav } from "@/components/SiteNav";
 import { getDocumentById } from "@/lib/documents";
+import PdfViewer from "@/components/PdfViewer";
 
 export function generateStaticParams() {
   return [{ slug: "unscripted" }];
@@ -19,11 +20,7 @@ export default async function BuffettPdfPage({ params }: { params: Promise<{ slu
     <div className="pdf-reader-page">
       <SiteNav />
       <main className="pdf-reader-shell">
-        <iframe
-          className="pdf-reader-frame pdf-reader-frame--full"
-          src={doc.rawHref}
-          title={`${doc.title} PDF`}
-        />
+        <PdfViewer key={doc.rawHref} url={doc.rawHref} title={doc.title} backHref="/master/buffett#library" />
       </main>
     </div>
   );
