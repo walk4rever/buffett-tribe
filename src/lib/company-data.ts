@@ -369,10 +369,21 @@ export async function getRecentHolders(entityId: string, limit = 20) {
     if (!p.current) continue;
 
     const current = p.current;
-    const shareDeltaPct = computeShareDeltaPct(p.previous?.shares, current.shares);
+
+    // Only compare with the immediately previous 13F filing. If a holder owned the
+    // same stock years ago, then exited, then bought again, that latest row should
+    // be treated as a new position instead of a reduction from the old holding.
+    const holderQuarters = holderQuarterMap.get(p.holderId) ?? [];
+    const previousFilingQuarter = [...holderQuarters]
+      .reverse()
+      .find((q) => q.asOfDate.getTime() < current.asOfDate.getTime()) ?? null;
+    const comparablePrevious =
+      previousFilingQuarter && p.previous?.asOfDate.getTime() === previousFilingQuarter.asOfDate.getTime()
+        ? p.previous
+        : null;
+    const shareDeltaPct = computeShareDeltaPct(comparablePrevious?.shares, current.shares);
 
     // A holder sold out if their next 13F filing after the last held quarter no longer includes this security.
-    const holderQuarters = holderQuarterMap.get(p.holderId) ?? [];
     const soldOutQuarter = holderQuarters.find(
       (q) => q.asOfDate.getTime() > current.asOfDate.getTime(),
     ) ?? null;
@@ -381,10 +392,12 @@ export async function getRecentHolders(entityId: string, limit = 20) {
     let activity: HolderRow["activity"];
     if (current.isSoldOut || isSoldOutByQuarter) {
       activity = "SoldOut";
-    } else if (!p.previous) {
-      activity = "New";
     } else {
-      activity = computeHoldingActivity(true, true, shareDeltaPct) as HolderRow["activity"];
+      activity = computeHoldingActivity(
+        Boolean(previousFilingQuarter),
+        Boolean(comparablePrevious),
+        shareDeltaPct,
+      ) as HolderRow["activity"];
     }
 
     holders.push({

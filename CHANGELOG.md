@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.35.18] - 2026-05-23
+
+### Fixed
+- Company pages now only calculate holding change percentages against the immediately previous 13F filing, so re-opened positions like Buffett's DAL in 2026 Q1 show as new buys instead of reductions from years-old holdings.
+
 ## [v0.35.17] - 2026-05-23
 
 ### Added
