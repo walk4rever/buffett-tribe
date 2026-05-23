@@ -304,6 +304,20 @@ function parseReportDate(reportDate: string): { year: number; quarter: number; d
   return { year: d.getUTCFullYear(), quarter, date: d };
 }
 
+function infer13fValueUsdScale(entries: InfoTableEntry[]) {
+  const prices = entries
+    .filter((entry) => entry.shares > BigInt(0) && entry.value > BigInt(0))
+    .map((entry) => Number(entry.value) / Number(entry.shares))
+    .filter(Number.isFinite)
+    .sort((a, b) => a - b);
+
+  if (!prices.length) return 1;
+
+  const median = prices[Math.floor(prices.length / 2)] ?? 0;
+  const underOneRatio = prices.filter((price) => price < 1).length / prices.length;
+  return median < 1 || underOneRatio >= 0.6 ? 1000 : 1;
+}
+
 async function seedEntityCache() {
   const entities = await db.entity.findMany({
     where: { type: "security" },
@@ -535,6 +549,7 @@ async function importFiling(
   const asOfDate = date;
 
   const totalValue = entries.reduce((sum, e) => sum + e.value, BigInt(0));
+  const valueUsdScale = BigInt(infer13fValueUsdScale(entries));
 
   const existingSource = await db.extSource.findFirst({
     where: { filerEntityId, periodYear: year, periodQuarter: quarter, kind: "13f" },
@@ -589,7 +604,7 @@ async function importFiling(
       sourceId: extSource.id,
       asOfDate,
       shares: entry.shares,
-      valueUsd: entry.value,
+      valueUsd: entry.value * valueUsdScale,
       percentOfPortfolio,
     });
   }

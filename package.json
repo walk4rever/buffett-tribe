@@ -1,6 +1,6 @@
 {
   "name": "buffett-tribe",
-  "version": "0.35.14",
+  "version": "0.35.15",
   "private": true,
   "type": "module",
   "scripts": {
@@ -44,6 +44,8 @@
     "sync:company-name-map:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/sync-company-name-map.ts --dry-run",
     "backfill:names": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-names.ts",
     "backfill:names:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-names.ts --dry-run",
+    "backfill:13f:value-units": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-13f-value-usd-units.ts --apply",
+    "backfill:13f:value-units:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-13f-value-usd-units.ts",
     "generate:master-profile": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-master-profile.ts",
     "generate:master-profile:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-master-profile.ts --dry-run",
     "generate:portfolio-insight": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-portfolio-insight.ts",
