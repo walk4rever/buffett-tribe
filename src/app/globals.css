@@ -3909,12 +3909,15 @@ body.layout-no-header {
   margin: 0 auto;
   padding: 0 1.5rem;
   height: var(--site-nav-height);
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-areas: "logo center right";
   align-items: center;
-  justify-content: space-between;
 }
 
 .home-nav-logo {
+  grid-area: logo;
+  justify-self: start;
   font-size: 0.75rem;
   font-weight: 400;
   color: var(--apple-white);
@@ -3937,9 +3940,21 @@ body.layout-no-header {
   flex-shrink: 0;
 }
 
-.home-nav-right {
+.home-nav-center {
+  grid-area: center;
+  justify-self: center;
   display: flex;
   align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.home-nav-right {
+  grid-area: right;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 1.25rem;
 }
 
@@ -4624,9 +4639,33 @@ body.layout-no-header {
   }
 }
 
+@media (max-width: 640px) {
+  .home-nav-in {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "logo right"
+      "center center";
+    height: auto;
+    min-height: var(--site-nav-height);
+    padding-top: 0.55rem;
+    padding-bottom: 0.5rem;
+    row-gap: 0.45rem;
+  }
+
+  .home-nav-center {
+    width: 100%;
+    justify-content: center;
+    gap: 1.25rem;
+  }
+}
+
 @media (max-width: 480px) {
-  .home-nav-link {
-    display: none;
+  .home-nav-center {
+    gap: 1rem;
+  }
+
+  .home-nav-center .home-nav-link {
+    font-size: 0.72rem;
   }
 }
 
@@ -6821,7 +6860,6 @@ body {
 }
 
 /* ─── Graphite Pro Premium Layout System ───────────────────────────────── */
-.home-nav-in,
 .home-signals-in,
 .home-members-in,
 .home-footer-v2-in,
@@ -6832,7 +6870,12 @@ body {
   max-width: 1120px;
 }
 
-.home-nav-in,
+.home-nav-in {
+  max-width: none;
+  padding-left: clamp(1rem, 3vw, 3.5rem);
+  padding-right: clamp(1rem, 3vw, 3.5rem);
+}
+
 .home-footer-v2-in {
   padding-left: clamp(1rem, 2vw, 1.5rem);
   padding-right: clamp(1rem, 2vw, 1.5rem);

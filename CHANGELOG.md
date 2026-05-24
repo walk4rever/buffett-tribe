@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.35.19] - 2026-05-23
+
+### Changed
+- Header now uses wider edge-aligned spacing and adds direct tribe member links for Buffett, Li Lu, and Duan Yongping.
+- Mobile header keeps account access on the first row and shows tribe member links on a second row.
+
 ## [v0.35.18] - 2026-05-23
 
 ### Fixed

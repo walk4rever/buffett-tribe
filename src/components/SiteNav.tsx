@@ -28,6 +28,11 @@ export function SiteNav() {
           <BtLogoMark />
           Buffett Tribe
         </Link>
+        <div className="home-nav-center" aria-label="部落成员">
+          <Link href="/master/buffett" className="home-nav-link">巴菲特</Link>
+          <Link href="/master/lilu" className="home-nav-link">李录</Link>
+          <Link href="/master/duan" className="home-nav-link">段永平</Link>
+        </div>
         <div className="home-nav-right">
           {session ? (
             <div className="user-menu" ref={userMenuRef}>
