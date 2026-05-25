@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.35.25] - 2026-05-23
+
+### Fixed
+- 清理 BRK-B / AAPL / NVDA / PDD / TSLA 的重复 Entity 记录：
+  - 将 Holdings（作为被持股票）从旧的无 CIK entity 迁移到有 10-K 数据的主 entity。
+  - 删除 5 个空壳重复 entity，确保每家公司只有一条完整记录。
+  - 新增 `scripts/merge-duplicate-entity.ts`，支持按 URL 映射合并重复 entity 的 FinancialFact / Financial / FilingSection 数据。
+
 ## [v0.35.24] - 2026-05-23
 
 ### Added
