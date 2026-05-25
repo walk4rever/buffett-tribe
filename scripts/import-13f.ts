@@ -478,7 +478,7 @@ async function upsertSecurityEntity(entry: InfoTableEntry): Promise<SecuritySnap
 
   // 5. Check if a security already exists for this company entity
   const existingByEntity = await db.security.findFirst({
-    where: { entityId: companyId },
+    where: { companyEntityId: companyId },
   });
   if (existingByEntity) {
     // Update it with this cusip if missing
@@ -506,7 +506,6 @@ async function upsertSecurityEntity(entry: InfoTableEntry): Promise<SecuritySnap
   // 6. Create security record
   const newSec = await db.security.create({
     data: {
-      entityId: companyId,
       companyEntityId: companyId,
       ticker: resolved.ticker,
       cusip: entry.cusip,
@@ -574,7 +573,6 @@ async function importFiling(
 
   const prepared: Array<{
     holderEntityId: string;
-    securityEntityId: string;
     securityId: string | null;
     sourceId: string;
     asOfDate: Date;
@@ -600,7 +598,6 @@ async function importFiling(
 
     prepared.push({
       holderEntityId: filerEntityId,
-      securityEntityId: snapshot.companyEntityId,
       securityId: snapshot.securityId,
       sourceId: extSource.id,
       asOfDate,
@@ -618,7 +615,7 @@ async function importFiling(
       asOfDate,
       securityId: { in: securityIds },
     },
-    select: { id: true, securityId: true, securityEntityId: true },
+    select: { id: true, securityId: true },
   });
 
   const existingByKey = new Map<string, { id: string }>();
