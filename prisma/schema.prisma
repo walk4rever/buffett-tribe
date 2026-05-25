@@ -191,9 +191,7 @@ model Entity {
   filingSections     FilingSection[]
   filingAttachments  FilingAttachment[]
   holdingsAsHolder   Holding[]        @relation("HolderEntity")
-  holdingsAsSecurity Holding[]        @relation("SecurityEntity")
   securitiesAsCompany Security[]      @relation("SecurityCompany")
-  securityProfile     Security?       @relation("SecurityEntityProfile")
   extSourcesAsFiler  ExtSource[]
   relationsAsSrc     EntityRelation[] @relation("RelationSrc")
   relationsAsDst     EntityRelation[] @relation("RelationDst")
@@ -207,7 +205,6 @@ model Entity {
 
 model Security {
   id              String   @id @default(cuid())
-  entityId        String   @unique // links to legacy Entity(type='security')
   companyEntityId String? // links to Entity(type='company'|'master via fallback metadata)
   ticker          String?
   cusip           String?  @unique
@@ -219,7 +216,6 @@ model Security {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  entity  Entity  @relation("SecurityEntityProfile", fields: [entityId], references: [id], onDelete: Cascade)
   company Entity? @relation("SecurityCompany", fields: [companyEntityId], references: [id], onDelete: SetNull)
   holdings Holding[]
 
@@ -378,8 +374,7 @@ model FilingAttachment {
 model Holding {
   id                 String   @id @default(cuid())
   holderEntityId     String
-  securityEntityId   String
-  securityId         String?
+  securityId         String
   sourceId           String
   asOfDate           DateTime
   shares             BigInt?
@@ -391,13 +386,11 @@ model Holding {
   createdAt          DateTime @default(now())
 
   holder   Entity    @relation("HolderEntity", fields: [holderEntityId], references: [id], onDelete: Cascade)
-  security Entity    @relation("SecurityEntity", fields: [securityEntityId], references: [id], onDelete: Cascade)
-  securityProfile Security? @relation(fields: [securityId], references: [id], onDelete: SetNull)
+  security Security  @relation(fields: [securityId], references: [id], onDelete: Cascade)
   source   ExtSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
-  @@unique([holderEntityId, securityEntityId, asOfDate])
+  @@unique([holderEntityId, securityId, asOfDate])
   @@index([securityId, asOfDate])
-  @@index([securityEntityId, asOfDate])
   @@index([holderEntityId, asOfDate])
 }
 

@@ -47,7 +47,6 @@ export async function getCompanyByTicker(ticker: string) {
       _count: {
         select: {
           financials: true,
-          holdingsAsSecurity: true,
         },
       },
     },
@@ -57,7 +56,7 @@ export async function getCompanyByTicker(ticker: string) {
     // Fallback: resolve via security ticker (e.g. GOOG/GOOGL share classes).
     const security = await db.security.findFirst({
       where: { ticker: { equals: normalizedTicker, mode: "insensitive" } },
-      select: { companyEntityId: true, entityId: true },
+      select: { companyEntityId: true },
       orderBy: { updatedAt: "desc" },
     });
 
@@ -83,8 +82,7 @@ export async function getCompanyByTicker(ticker: string) {
     const score = (x: (typeof rows)[number]) =>
       (x.type === "master" ? 120 : 0) +
       (x.cik ? 100 : 0) +
-      (x._count.financials > 0 ? 50 : 0) +
-      (x._count.holdingsAsSecurity > 0 ? 30 : 0);
+      (x._count.financials > 0 ? 50 : 0);
     const diff = score(b) - score(a);
     if (diff !== 0) return diff;
     return b.updatedAt.getTime() - a.updatedAt.getTime();
@@ -250,7 +248,7 @@ export async function getRecentHolders(entityId: string, limit = 20) {
     ],
     include: {
       holder: { select: { id: true, canonicalName: true, tribeId: true } },
-      securityProfile: { select: { ticker: true } },
+      security: { select: { ticker: true } },
       source: { select: { periodYear: true, periodQuarter: true } },
     },
     take: 1000,
@@ -293,7 +291,7 @@ export async function getRecentHolders(entityId: string, limit = 20) {
   // Group by (holder, ticker). The same ticker can have multiple Security rows from historical imports;
   // company pages should show one row per master × ticker, not one row per internal security profile.
   const rowTicker = (r: (typeof rows)[number]) =>
-    normalizeTicker(r.securityProfile?.ticker) ?? r.securityId;
+    normalizeTicker(r.security?.ticker) ?? r.securityId;
   const pairKey = (r: (typeof rows)[number]) => `${r.holder.id}|${rowTicker(r)}`;
 
   const pairs = new Map<

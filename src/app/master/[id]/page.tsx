@@ -66,10 +66,7 @@ function buildPieSeries(
   let colorIdx = 0;
   for (const h of holdings) {
     const d = getHoldingDisplay(h.security);
-    const meta = (h.security.metadata ?? {}) as { companyEntityId?: string };
-    const companyEntityId =
-      h.securityProfile?.companyEntityId ??
-      (typeof meta.companyEntityId === "string" ? meta.companyEntityId : null);
+    const companyEntityId = h.security?.companyEntityId ?? null;
     const key = companyEntityId ? `cmp:${companyEntityId}` : `sec:${h.securityId}`;
     const pct = Math.max(0, h.percentOfPortfolio ?? 0);
     const securityTicker = getHoldingTicker(h)?.toUpperCase() ?? null;
@@ -105,22 +102,23 @@ function buildPieSeries(
 
 function getHoldingDisplay(security: {
   ticker: string | null;
-  canonicalName: string;
   metadata: unknown;
+  company?: { canonicalName: string } | null;
 }) {
   const meta = (security.metadata ?? {}) as { cusip?: string; nameZh?: string; nameEnShort?: string };
   const code = security.ticker ?? meta.cusip ?? "-";
-  const en = meta.nameEnShort ?? security.canonicalName;
+  const canonicalName = security.company?.canonicalName ?? "-";
+  const en = meta.nameEnShort ?? canonicalName;
   const zh = meta.nameZh ?? en;
   return { code, zh, en };
 }
 
 function getHoldingTicker(h: Awaited<ReturnType<typeof getHoldingsByQuarter>>[number]) {
-  return h.securityProfile?.ticker ?? h.securityProfile?.company?.ticker ?? null;
+  return h.security?.ticker ?? h.security?.company?.ticker ?? null;
 }
 
 function getHoldingCompanyPath(h: Awaited<ReturnType<typeof getHoldingsByQuarter>>[number]) {
-  return formatCompanyPathFromCik(h.securityProfile?.company?.cik);
+  return formatCompanyPathFromCik(h.security?.company?.cik);
 }
 
 function splitNarrative(text: string) {

@@ -180,19 +180,19 @@ function cleanDisplayText(value: string) {
 }
 
 function getCompanyInfo(row: HoldingRow) {
-  const company = row.securityProfile?.company;
+  const company = row.security?.company;
   const security = row.security;
   const meta = normalizeMeta(company?.metadata);
 
   const companyZh =
     (typeof meta.nameZh === "string" && cleanDisplayText(meta.nameZh)) ||
     company?.canonicalName ||
-    security.canonicalName;
+    (security?.company?.canonicalName ?? "-");
   const companyEn =
     (typeof meta.nameEnShort === "string" && cleanDisplayText(meta.nameEnShort)) ||
     company?.canonicalName ||
-    security.canonicalName;
-  const ticker = security.ticker?.trim().toUpperCase() ?? company?.ticker?.trim().toUpperCase() ?? null;
+    (security?.company?.canonicalName ?? "-");
+  const ticker = security?.ticker?.trim().toUpperCase() ?? company?.ticker?.trim().toUpperCase() ?? null;
   const primaryTicker = company?.ticker?.trim().toUpperCase() ?? null;
   const companyTickers = company?.securitiesAsCompany
     ?.map((s) => s.ticker?.trim().toUpperCase() ?? null)
@@ -204,7 +204,7 @@ function getCompanyInfo(row: HoldingRow) {
   const tickerDisplay = [...new Set(tickerLabelParts)].join("/");
   const tickerLabel = tickerDisplay ? `${companyZh}（${tickerDisplay}）` : companyZh;
   const cik = company?.cik ?? null;
-  const companyKey = cik ? `cik:${cik}` : company?.id ? `entity:${company.id}` : `ticker:${normalizeTicker(ticker) ?? security.id}`;
+  const companyKey = cik ? `cik:${cik}` : company?.id ? `entity:${company.id}` : `ticker:${normalizeTicker(ticker) ?? security?.id ?? ""}`;
 
   return {
     companyZh,

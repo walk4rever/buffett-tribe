@@ -34,11 +34,11 @@ function formatSignedPct(diffPct: number | null) {
 }
 
 function getHoldingTicker(h: Awaited<ReturnType<typeof getHoldingsByQuarter>>[number]) {
-  return h.securityProfile?.ticker ?? h.securityProfile?.company?.ticker ?? null;
+  return h.security?.ticker ?? h.security?.company?.ticker ?? null;
 }
 
 function getHoldingCompanyPath(h: Awaited<ReturnType<typeof getHoldingsByQuarter>>[number]) {
-  return formatCompanyPathFromCik(h.securityProfile?.company?.cik);
+  return formatCompanyPathFromCik(h.security?.company?.cik);
 }
 
 export default async function HoldingsPage({ params, searchParams }: Props) {
@@ -168,9 +168,10 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
                 const pctVsReported = "—";
                 const low52 = "—";
                 const high52 = "—";
-                const meta = (h.security.metadata ?? {}) as { nameZh?: string; nameEnShort?: string };
-                const zhName = meta.nameZh ?? h.security.canonicalName;
-                const enName = meta.nameEnShort ?? h.security.canonicalName;
+                const meta = (h.security?.metadata ?? {}) as { nameZh?: string; nameEnShort?: string };
+                const company = h.security?.company;
+                const zhName = meta.nameZh ?? company?.canonicalName ?? h.security?.ticker ?? "-";
+                const enName = meta.nameEnShort ?? company?.canonicalName ?? h.security?.ticker ?? "-";
 
                 return (
                   <tr key={h.id} className={rowClass}>
@@ -238,9 +239,10 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
                 );
               })}
               {soldOutRows.map((h, i) => {
-                const meta = (h.security.metadata ?? {}) as { nameZh?: string; nameEnShort?: string };
-                const zhName = meta.nameZh ?? h.security.canonicalName;
-                const enName = meta.nameEnShort ?? h.security.canonicalName;
+                const meta = (h.security?.metadata ?? {}) as { nameZh?: string; nameEnShort?: string };
+                const company = h.security?.company;
+                const zhName = meta.nameZh ?? company?.canonicalName ?? h.security?.ticker ?? "-";
+                const enName = meta.nameEnShort ?? company?.canonicalName ?? h.security?.ticker ?? "-";
                 const reportedPrice = formatPriceFromValueAndShares(h.valueUsd, h.shares);
                 return (
                   <tr key={`exit-${h.id}`} className="holdings-row holdings-row--soldout">

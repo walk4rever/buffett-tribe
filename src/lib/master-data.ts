@@ -39,9 +39,8 @@ export async function getHoldingsByQuarter(tribeId: string, year: number, quarte
         source: { is: { periodYear: year, periodQuarter: quarter, kind: "13f" } },
       },
       include: {
-        securityProfile: {
+        security: {
           include: {
-            entity: true,
             company: {
               include: {
                 securitiesAsCompany: {
@@ -54,13 +53,7 @@ export async function getHoldingsByQuarter(tribeId: string, year: number, quarte
       },
       orderBy: { percentOfPortfolio: "desc" },
     });
-    const normalized = rows.map((row) => {
-      const securityEntity = row.securityProfile!.entity!;
-      return {
-        ...row,
-        security: securityEntity,
-      };
-    });
+    const normalized = rows;
 
     // Defensive dedupe: historical imports may contain duplicates that share the same security profile.
     const deduped = new Map<string, typeof normalized[number]>();
@@ -254,7 +247,7 @@ export async function getLatestHoldingChangeSet(tribeId: string): Promise<Holdin
     .map((r) => ({
       securityId: r.securityId!,
       ticker: r.security.ticker,
-      name: r.security.canonicalName,
+      name: r.security.company?.canonicalName ?? r.security.ticker ?? "",
       prevPct: r.percentOfPortfolio ?? 0,
     }))
     .sort((a, b) => b.prevPct - a.prevPct);
@@ -321,38 +314,38 @@ export function buildHoldingInsights(changeSet: HoldingChangeSet): PortfolioInsi
   ];
 
   for (const pos of changeSet.newPositions.slice(0, 4)) {
-    const ticker = pos.security.ticker ?? pos.security.canonicalName;
+    const ticker = pos.security.ticker ?? pos.security.company?.canonicalName ?? "";
     items.push({
       kind: "new",
       label: "新进",
       detail: `${ticker} 仓位 ${(pos.percentOfPortfolio ?? 0).toFixed(2)}%`,
       ticker,
-      nameZh: pos.security.canonicalName,
+      nameZh: pos.security.company?.canonicalName ?? pos.security.ticker ?? "",
       percentOfPortfolio: pos.percentOfPortfolio ?? 0,
     });
   }
 
   for (const { row, delta } of changeSet.adds.slice(0, 4)) {
-    const ticker = row.security.ticker ?? row.security.canonicalName;
+    const ticker = row.security.ticker ?? row.security.company?.canonicalName ?? "";
     items.push({
       kind: "add",
       label: "增持",
       detail: `${ticker} +${delta.toFixed(2)}pp → ${(row.percentOfPortfolio ?? 0).toFixed(2)}%`,
       ticker,
-      nameZh: row.security.canonicalName,
+      nameZh: row.security.company?.canonicalName ?? row.security.ticker ?? "",
       deltaPct: delta,
       percentOfPortfolio: row.percentOfPortfolio ?? 0,
     });
   }
 
   for (const { row, delta } of changeSet.trims.slice(0, 4)) {
-    const ticker = row.security.ticker ?? row.security.canonicalName;
+    const ticker = row.security.ticker ?? row.security.company?.canonicalName ?? "";
     items.push({
       kind: "trim",
       label: "减持",
       detail: `${ticker} ${delta.toFixed(2)}pp → ${(row.percentOfPortfolio ?? 0).toFixed(2)}%`,
       ticker,
-      nameZh: row.security.canonicalName,
+      nameZh: row.security.company?.canonicalName ?? row.security.ticker ?? "",
       deltaPct: delta,
       percentOfPortfolio: row.percentOfPortfolio ?? 0,
     });
