@@ -11,6 +11,7 @@ import {
   getCompanySecurities,
   getRecentHolders,
 } from "@/lib/company-data";
+import { buildCompanyFinancialDashboard } from "@/lib/company-financial-dashboard";
 import { formatShares } from "@/lib/master-data";
 
 export const dynamic = "force-dynamic";
@@ -60,50 +61,11 @@ type RadarPoint = {
   anchor: "start" | "middle" | "end";
 };
 
-const LINE_ITEMS = [
-  { key: "Revenue", zhLabel: "营收", enLabel: "Revenue" },
-  { key: "GrossProfit", zhLabel: "毛利润", enLabel: "Gross Profit" },
-  { key: "OperatingIncome", zhLabel: "营业利润", enLabel: "Operating Income" },
-  { key: "NetIncome", zhLabel: "净利润", enLabel: "Net Income" },
-  { key: "OperatingCashFlow", zhLabel: "经营现金流", enLabel: "Operating Cash Flow" },
-  { key: "TotalAssets", zhLabel: "总资产", enLabel: "Total Assets" },
-  { key: "TotalLiabilities", zhLabel: "总负债", enLabel: "Total Liabilities" },
-  { key: "ShareholdersEquity", zhLabel: "股东权益", enLabel: "Shareholders' Equity" },
-  { key: "EPSBasic", zhLabel: "基本每股收益", enLabel: "EPS Basic" },
-  { key: "EPSDiluted", zhLabel: "摊薄每股收益", enLabel: "EPS Diluted" },
-];
-
 function num(items: Record<string, string>, key: string) {
   const raw = items[key];
   if (!raw) return null;
   const n = Number(raw);
   return Number.isFinite(n) ? n : null;
-}
-
-function ratio(numerator: number | null, denominator: number | null) {
-  if (numerator == null || denominator == null || denominator === 0) return null;
-  return numerator / denominator;
-}
-
-function pct(v: number | null, digits = 1) {
-  if (v == null || !Number.isFinite(v)) return "—";
-  return `${(v * 100).toFixed(digits)}%`;
-}
-
-function cagr(end: number | null, start: number | null, years: number) {
-  if (end == null || start == null || start <= 0 || years <= 0) return null;
-  return Math.pow(end / start, 1 / years) - 1;
-}
-
-function getValue(financials: YearItems[], year: number, key: string) {
-  const row = financials.find((f) => f.year === year);
-  if (!row) return null;
-  return num(row.items, key);
-}
-
-function getItems(financials: YearItems[], year: number) {
-  const row = financials.find((f) => f.year === year);
-  return row?.items ?? null;
 }
 
 function getFiscalDate(financials: YearItems[], year: number) {
@@ -468,36 +430,16 @@ export default async function CompanyPage({ params }: Props) {
     : [company.ticker ?? "—"];
 
   const latest = financials[0];
-  const fiveYearsAgo = financials[4];
-
+  const dashboard = buildCompanyFinancialDashboard(company, financials);
   const rev = latest ? num(latest.items, "Revenue") : null;
-  const gross = latest ? num(latest.items, "GrossProfit") : null;
-  const net = latest ? num(latest.items, "NetIncome") : null;
-  const equity = latest ? num(latest.items, "ShareholdersEquity") : null;
-  const liabilities = latest ? num(latest.items, "TotalLiabilities") : null;
-  const assets = latest ? num(latest.items, "TotalAssets") : null;
-
-  const rev5y = latest && fiveYearsAgo ? cagr(rev, num(fiveYearsAgo.items, "Revenue"), 4) : null;
-
-  const grossMargin = ratio(gross, rev);
-  const netMargin = ratio(net, rev);
-  const roe = ratio(net, equity);
-  const debtToAssets = ratio(liabilities, assets);
 
   const meta = normalizeMeta(company.metadata);
   const zhName =
     (typeof meta.nameZh === "string" && meta.nameZh.trim()) ? meta.nameZh.trim() : company.canonicalName;
   const enNameShort =
     (typeof meta.nameEnShort === "string" && meta.nameEnShort.trim()) ? meta.nameEnShort.trim() : company.canonicalName;
-  const latestYear = latest?.year ?? null;
-  const displayYears = latestYear
-    ? Array.from({ length: 5 }, (_, index) => latestYear - index)
-    : [];
-  const priorYear = latestYear ? latestYear - 1 : null;
-  const revYoY =
-    latestYear && priorYear
-      ? ratio(rev, getValue(financials, priorYear, "Revenue"))
-      : null;
+  const latestYear = dashboard.latestYear;
+  const displayYears = dashboard.displayYears;
   const profileFacts = [
     { label: "CIK", subLabel: "CIK", value: company.cik ?? "—" },
     {
@@ -522,23 +464,6 @@ export default async function CompanyPage({ params }: Props) {
     },
   ];
 
-  const cards = [
-    { label: "营收", value: formatMoney(rev == null ? null : String(rev)), hint: latestYear ? `Revenue · FY ${latestYear}` : "Revenue" },
-    { label: "毛利率", value: pct(grossMargin), hint: "Gross Profit / Revenue" },
-    { label: "净利率", value: pct(netMargin), hint: "Net Income / Revenue" },
-    { label: "净资产收益率", value: pct(roe), hint: "ROE · Net Income / Equity" },
-    { label: "资产负债比", value: pct(debtToAssets), hint: "Liabilities / Assets" },
-    { label: "5年营收复合增长", value: pct(rev5y), hint: "Revenue CAGR · Latest 5 FY" },
-    {
-      label: "营收同比",
-      value:
-        revYoY == null || !Number.isFinite(revYoY)
-          ? "—"
-          : `${(((revYoY - 1) * 100)).toFixed(1)}%`,
-      hint: priorYear ? `Revenue · ${latestYear} vs ${priorYear}` : "Revenue YoY",
-    },
-    { label: "摊薄每股收益", value: latest?.items.EPSDiluted ?? "—", hint: latestYear ? `EPS Diluted · FY ${latestYear}` : "EPS Diluted" },
-  ];
   const moat: MoatMock = analysis?.moat
     ? (analysis.moat as unknown as MoatMock)
     : getMoatMock(company.canonicalName, company.ticker);
@@ -621,24 +546,21 @@ export default async function CompanyPage({ params }: Props) {
 
         <section className="company-section">
           <div className="company-section-head">
-            <h2>财务看板</h2>
+            <h2>财务分析</h2>
             <span>{latestYear ? `Based on FY ${latestYear} 10-K` : "暂无可计算数据"}</span>
           </div>
           <div className="company-kpi-grid">
-            {cards.map((card) => (
-              <article className="company-kpi-card" key={card.label}>
+            {dashboard.cards.map((card) => (
+              <article className="company-kpi-card" key={card.key}>
                 <p>{card.label}</p>
                 <strong>{card.value}</strong>
-                <span>{card.hint || " "}</span>
+                <span>{card.hint}</span>
               </article>
             ))}
           </div>
-        </section>
-
-        <section className="company-section">
-          <div className="company-section-head">
-            <h2>关键指标</h2>
-            <span>{displayYears.length ? "最近 5 年对比" : "暂无数据"}</span>
+          <div className="company-financial-trend-head">
+            <h3>5 年趋势证据</h3>
+            <span>{displayYears.length ? `FY ${displayYears[displayYears.length - 1]}–FY ${displayYears[0]}` : "暂无数据"}</span>
           </div>
           {displayYears.length ? (
             <div className="company-table-wrap">
@@ -658,22 +580,15 @@ export default async function CompanyPage({ params }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {LINE_ITEMS.map((line) => (
+                  {dashboard.rows.map((line) => (
                     <tr key={line.key}>
                       <td>
                         <span className="company-table-label">{line.zhLabel}</span>
                         <span className="company-table-sub">{line.enLabel}</span>
                       </td>
-                      {displayYears.map((year) => {
-                        const items = getItems(financials, year);
-                        return (
-                        <td key={`${line.key}-${year}`}>
-                          {line.key.startsWith("EPS")
-                            ? (items?.[line.key] ?? "—")
-                            : formatMoney(items?.[line.key] ?? null)}
-                        </td>
-                        );
-                      })}
+                      {displayYears.map((year) => (
+                        <td key={`${line.key}-${year}`}>{line.values[year] ?? "—"}</td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
@@ -682,6 +597,23 @@ export default async function CompanyPage({ params }: Props) {
           ) : (
             <p className="company-empty">暂无 10-K 年报结构化数据。可先运行 `import:10k` 脚本。</p>
           )}
+          {dashboard.longTermTrends.length ? (
+            <div className="company-long-term-block" aria-label="长期趋势摘要">
+              <div className="company-financial-trend-head">
+                <h3>长期复合增长</h3>
+                <span>Compound annual growth</span>
+              </div>
+              <div className="company-long-term-trends">
+                {dashboard.longTermTrends.map((trend) => (
+                  <article key={trend.key}>
+                    <span>{trend.label}</span>
+                    <strong>{trend.value}</strong>
+                    <small>{trend.hint}</small>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </section>
 
         <section className="company-section">

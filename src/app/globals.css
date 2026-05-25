@@ -5699,6 +5699,55 @@ body.layout-no-header {
   color: #64748b;
 }
 
+.company-long-term-trends {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.7rem;
+}
+
+.company-long-term-trends article {
+  border: 1px solid #dbe5f0;
+  background: #f8fbff;
+  border-radius: 10px;
+  padding: 0.58rem 0.68rem;
+}
+
+.company-long-term-trends span,
+.company-long-term-trends small {
+  display: block;
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.company-long-term-trends strong {
+  display: block;
+  margin: 0.18rem 0;
+  font-size: 0.92rem;
+  color: var(--company-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.company-financial-trend-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin: 0.95rem 0 0.55rem;
+}
+
+.company-financial-trend-head h3 {
+  margin: 0;
+  font-size: 0.86rem;
+  letter-spacing: -0.01em;
+  color: var(--company-text);
+}
+
+.company-financial-trend-head span {
+  font-size: 0.7rem;
+  color: var(--company-text-secondary);
+}
+
 .company-split {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -6205,7 +6254,8 @@ body.layout-no-header {
     grid-template-columns: 1fr;
   }
 
-  .company-kpi-grid {
+  .company-kpi-grid,
+  .company-long-term-trends {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -6264,7 +6314,8 @@ body.layout-no-header {
     grid-template-columns: 94px 1fr;
   }
 
-  .company-kpi-grid {
+  .company-kpi-grid,
+  .company-long-term-trends {
     grid-template-columns: 1fr;
   }
 

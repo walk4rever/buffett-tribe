@@ -2,7 +2,23 @@
 
 # 巴菲特部落 · Buffett Tribe — 产品设计文档
 
-> 最后更新：2026-05-22（v0.35.6）
+> 最后更新：2026-05-23（v0.35.20）
+
+---
+
+## 文档治理
+
+本仓库文档按“内部决策”和“外部展示”分层，避免产品、技术、设计判断散落到多个文件。
+
+| 文件 | 角色 | 维护原则 |
+|------|------|----------|
+| `PRODUCT.md` | 内部唯一产品/技术/设计决策源 | 产品定位、路线图、架构原则、数据口径、设计系统、实施计划都收口到这里 |
+| `README.md` | 外部展示与快速开始 | 保持简洁，面向用户/开发者介绍产品、运行方式和技术栈，不承载内部规划 |
+| `CHANGELOG.md` | 发布记录 | 只记录已经发布的用户可见变化和重要修复 |
+| `TODOS.md` | 过渡文件 | 不再新增产品/技术/设计规划；历史内容逐步迁入 `PRODUCT.md` 后可归档 |
+| `APPLE-DESIGN.md` | 设计参考资料 | 可保留为参考，但设计决策和项目落地规范应摘要进 `PRODUCT.md` |
+
+原则：以后讨论“要做什么、为什么做、怎么做、数据从哪里来、设计口径是什么”，默认更新 `PRODUCT.md`；对外只更新 `README.md` 和 `CHANGELOG.md`。
 
 ---
 
@@ -294,7 +310,25 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.35.5）
+## 当前实现状态（v0.35.20）
+
+### v0.35.20 变更
+
+- **Master 最新持仓图可点击**：左侧 Top10 横向图的公司名链接到对应 company 页面，并保持与持仓明细一致的紧凑视觉样式。
+- **最新持仓图“其他”口径修正**：从第 11 名以后实际持仓占比求和，不再用 `100% - Top10` 吸收四舍五入误差。
+- **关键案例名称纠偏**：大师关键案例公司名优先使用最新持仓主数据元信息，修正 EWBC 显示为“华美银行”。
+
+### v0.35.19 变更
+
+- **全站 Header 改版**：桌面端 logo 靠左、登录靠右、三位大师入口居中；移动端保留三位大师入口在第二行。
+
+### v0.35.18 变更
+
+- **公司页持仓活动修正**：重新建仓的股票只与紧邻上一期 13F 比较，避免 Buffett DAL 这类多年后重新买入被误判为减仓。
+
+### v0.35.17 变更
+
+- **PDF 阅读器导航增强**：精简工具栏、持久化 fit width/fit height、页码跳转、缩略图/目录侧栏、目录跟随高亮、返回资料库链接。
 
 ### v0.35.6 变更
 
@@ -328,6 +362,150 @@ Apple HIG 精简风格：
 | Company Brain 写回 | 🟡 部分实现 |
 | Fact Fetch Pipeline | 🟡 已有批处理脚本，持续补齐 |
 | 持仓数据更新 | 🟡 以季度批处理为主 |
+
+---
+
+## 公司页财务看板：truth-of-source 设计
+
+公司页财务看板要以 SEC 10-K / 20-F / 40-F 的 XBRL 原始事实为事实来源，不把推导值伪装成申报值。目标是专业、可解释、可追溯。
+
+### 当前状态
+
+- 页面数据来自数据库 `Financial` 表，通过 `src/lib/company-data.ts#getCompanyFinancials()` 读取。
+- 导入链路为 `scripts/pipeline-10k.ts` -> `scripts/import-10k-from-13f.ts` -> `scripts/import-10k-xbrl.ts`。
+- 数据源优先级：SEC CompanyFacts API -> filing-level inline XBRL fallback。
+- 当前 `Financial.lineItem` 已覆盖通用公司常用项目：`Revenue`、`GrossProfit`、`OperatingIncome`、`NetIncome`、`OperatingCashFlow`、`TotalAssets`、`TotalLiabilities`、`ShareholdersEquity`、`EPSBasic`、`EPSDiluted`。
+- `—` 不等于全部“没有数据”：可能是导入映射未覆盖、行业不适用、历史不足，或可由已有项目推导但当前尚未推导。
+
+### 分层原则
+
+```text
+Raw facts 原始事实
+  ↓
+Normalized statement items 标准化财务项
+  ↓
+Derived metrics 派生指标 / 看板指标
+```
+
+1. **Raw facts**：SEC 原始 XBRL fact，例如 `us-gaap:NetIncomeLoss`、`us-gaap:InterestAndDividendIncomeOperating`。
+2. **Normalized items**：项目统一口径，例如 `Revenue`、`NetIncome`、`TotalAssets`、`InterestIncome`。
+3. **Derived metrics**：明确公式的派生指标，例如 `GrossMargin = GrossProfit / Revenue`、`ROE = NetIncome / AverageEquity`。
+
+任何派生指标都必须能说明：公式、输入项目、期间、来源文件、置信度。
+
+### 数据口径规则
+
+- 原始申报值优先于派生值。
+- 派生值不能覆盖原始申报值，必须标记为 `derived`。
+- 行业不适用的指标应显示为“不适用”或切换为行业专属指标，而不是显示 `—`。
+- 如果可从同一期已报告项目稳健推导，例如 `TotalLiabilities = TotalAssets - ShareholdersEquity`，可以派生，但要标记公式。
+- ROE / ROA 优先使用平均资产或平均权益；如果历史不足只能用期末值，必须降级置信度或注明。
+- 5 年 CAGR 只有在历史期数足够时显示；历史不足不是数据错误。
+
+### 行业感知看板
+
+通用工业/科技/消费公司：
+
+- 营收
+- 毛利率
+- 营业利润率
+- 净利率
+- ROE
+- 经营现金流
+- 5 年营收 CAGR
+- 摊薄 EPS
+
+银行：
+
+- 总收入或净收入（按银行口径）
+- 净利润
+- ROE
+- ROA
+- 资产负债比
+- 非息收入占比
+- 效率比率
+- 摊薄 EPS
+
+银行优先补充的 XBRL 标签：
+
+- `InterestAndDividendIncomeOperating`
+- `InterestIncomeOperating`
+- `InterestExpense`
+- `NoninterestIncome`
+- `NoninterestExpense`
+- `ProvisionForLoanLeaseAndOtherLosses`
+- `IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest`
+
+保险后续单独建模板，优先考虑保费收入、投资收益、承保利润/Combined Ratio、投资资产、股东权益、ROE、EPS。
+
+### 建议实现路线
+
+#### Phase 1：页面层专业化
+
+- 新增财务指标构建函数，例如 `buildCompanyFinancialDashboard(company, financials)`。
+- 根据 SIC / sector / industry 选择 `general`、`bank`、`insurance`、`financial` 模板。
+- 页面不再硬编码一套 `cards` 适配所有行业。
+- `—` 的内部状态区分为：`missing`、`not_applicable`、`not_enough_history`、`derived_low_confidence`。
+- 看板卡片保留简洁展示，但 hover / hint 说明公式和来源口径。
+
+#### Phase 2：扩展 SEC XBRL 映射
+
+- 把 `scripts/import-10k-xbrl.ts` 的 line item 映射配置化，按行业选择 mapping rules。
+- 补银行、保险、金融服务常见标签。
+- 重新跑重点持仓公司 2020 至最新 FY 的导入。
+- 扩展 `check:financial:integrity`，从“是否有 FY 数据”升级为“按行业检查核心指标覆盖率”。
+
+#### Phase 3：派生指标层
+
+短期可先在页面/lib 层纯函数计算，不急于建表。中长期新增派生指标记录：
+
+```text
+FinancialMetric
+- entityId
+- metric
+- value
+- unit
+- periodEnd
+- fiscalYear
+- formula
+- inputItemIds
+- sourceType: reported | derived
+- confidence
+- qualityNotes
+```
+
+#### Phase 4：原始事实层与血缘
+
+如果要做到可审计，新增原始事实表：
+
+```text
+FinancialFact
+- entityId
+- sourceId
+- taxonomy
+- concept
+- value
+- unit
+- periodType
+- startDate
+- endDate
+- fiscalYear
+- fiscalPeriod
+- accession
+- filedAt
+- contextId
+- segmentJson
+- rawJson
+```
+
+页面上的每个数字最终都应该能解释：来自哪个 10-K、哪个 XBRL tag、哪个期间、是否派生、公式是什么。
+
+### 用户体验原则
+
+- 看板优先显示“对这个行业有意义”的指标，不为了填满而填满。
+- 不适用的指标不要以错误感很强的 `—` 呈现。
+- 来源解释默认收起，用户需要时可展开。
+- 专业性来自“有口径、有来源、有置信度”，不是指标越多越好。
 
 ---
 
