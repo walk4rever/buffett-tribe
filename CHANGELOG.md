@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.35.23] - 2026-05-23
+
+### Added
+- Prisma schema 扩展 truth-of-source 层，新增三张表支持 10-K 完整数据入库：
+  - `FinancialFact`：原始 XBRL 事实层，保留所有 us-gaap/ifrs/dei/srt concepts 的原始数值、时间维度、context/unit、原始 JSON。
+  - `FilingSection`：文本章节层，支持 Item 1 Business / 1A Risk Factors / 7 MD&A / 8 Notes / Exhibits 等完整文本。
+  - `FilingAttachment`：附件层，记录 Exhibits 序列号、描述、文档类型、URL。
+- `Financial` 派生层保留并增强：新增 `sourceFactIds` / `mappingRule` / `confidence` 字段，支持追溯原始事实。
+- `ExtSource` 增强关系：新增 `facts` / `sections` / `attachments` 关联。
+
 ## [v0.35.22] - 2026-05-23
 
 ### Added

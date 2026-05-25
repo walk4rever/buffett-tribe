@@ -187,6 +187,9 @@ model Entity {
 
   mentions           Mention[]
   financials         Financial[]
+  facts              FinancialFact[]
+  filingSections     FilingSection[]
+  filingAttachments  FilingAttachment[]
   holdingsAsHolder   Holding[]        @relation("HolderEntity")
   holdingsAsSecurity Holding[]        @relation("SecurityEntity")
   securitiesAsCompany Security[]      @relation("SecurityCompany")
@@ -233,12 +236,15 @@ model ExtSource {
   periodQuarter Int? // 1–4 — quarter of the reporting period
   filedAt       DateTime? // SEC EDGAR accepted date
   filerEntityId String?
-  metadata      Json?
+  metadata      Json? // 扩展：完整的 SEC filing 元数据（accession、form、fileNumber、filmNumber、size、isXBRL、primaryDocument、acceptanceDateTime、act 等）
   createdAt     DateTime  @default(now())
 
-  filer      Entity?     @relation(fields: [filerEntityId], references: [id], onDelete: SetNull)
-  financials Financial[]
-  holdings   Holding[]
+  filer       Entity?            @relation(fields: [filerEntityId], references: [id], onDelete: SetNull)
+  financials  Financial[]
+  holdings    Holding[]
+  facts       FinancialFact[]
+  sections    FilingSection[]
+  attachments FilingAttachment[]
 
   @@index([kind, ts])
   @@index([filerEntityId])
@@ -263,22 +269,109 @@ model Mention {
 }
 
 model Financial {
-  id         String   @id @default(cuid())
-  entityId   String
-  sourceId   String
-  periodEnd  DateTime
-  periodType String // 'FY' | 'Q1' | 'Q2' | 'Q3' | 'Q4'
-  lineItem   String // 'Revenue' | 'NetIncome' | 'FreeCashFlow' | 'EPSDiluted' | 'TotalAssets' | 'OperatingCashFlow'
-  value      Decimal?
-  unit       String?
-  rawXbrlTag String?
-  createdAt  DateTime @default(now())
+  id            String   @id @default(cuid())
+  entityId      String
+  sourceId      String
+  periodEnd     DateTime
+  periodType    String // 'FY' | 'Q1' | 'Q2' | 'Q3' | 'Q4'
+  lineItem      String // 'Revenue' | 'NetIncome' | 'FreeCashFlow' | 'EPSDiluted' | 'TotalAssets' | 'OperatingCashFlow'
+  value         Decimal?
+  unit          String?
+  rawXbrlTag    String?
+  sourceFactIds String[] @default([]) // 关联哪些 FinancialFact 参与计算
+  mappingRule   String?   // 如 "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax"
+  confidence    Float     @default(1)   // 1 = 直接映射，0.5 = 多事实聚合/推断
+  createdAt     DateTime @default(now())
 
   entity Entity    @relation(fields: [entityId], references: [id], onDelete: Cascade)
   source ExtSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
   @@unique([entityId, periodEnd, periodType, lineItem])
   @@index([entityId, periodEnd])
+}
+
+// ============================================================================
+// Truth of Source — raw 10-K data layer
+// All XBRL facts, filing text sections, and attachments preserved as-is.
+// ============================================================================
+
+model FinancialFact {
+  id             String   @id @default(cuid())
+  entityId       String
+  sourceId       String   // 关联 ExtSource
+
+  // XBRL 身份
+  taxonomy       String   // "us-gaap" | "ifrs-full" | "dei" | "srt"
+  concept        String   // 原始 concept 名
+
+  // 数值
+  value          Decimal?
+  valueRaw       String   // 原始字符串，保留精度
+
+  // 单位
+  unit           String   // "USD" | "USD/shares" | "shares" | "pure"
+  unitRef        String?  // 原始 unitRef
+
+  // 时间维度（XBRL context）
+  periodType     String   // "duration" | "instant"
+  startDate      DateTime? // duration 类型有 startDate
+  endDate        DateTime  // duration endDate 或 instant date
+
+  // SEC 档案信息
+  form           String   // "10-K" | "10-K/A"
+  accession      String
+  filedAt        DateTime?
+
+  // 原始数据完整保留
+  rawFactJson    Json     // 原始 fact JSON
+  rawContextJson Json     // 原始 context JSON
+
+  createdAt      DateTime @default(now())
+
+  entity Entity    @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  source ExtSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([entityId, concept, endDate])
+  @@index([entityId, endDate])
+  @@index([sourceId])
+}
+
+model FilingSection {
+  id          String   @id @default(cuid())
+  entityId    String
+  sourceId    String   // 关联 ExtSource
+
+  section     String   // "item_1_business" | "item_1a_risk_factors" | "item_2_properties" | "item_3_legal" | "item_7_mda" | "item_7a_market_risk" | "item_8_notes" | "exhibits"
+  content     String   // 提取的纯文本 / Markdown（清洗后的可读文本）
+  rawHtml     String?  // 原始 HTML 片段（保留用于精确溯源和重新提取）
+
+  extractedAt DateTime @default(now())
+
+  entity Entity    @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  source ExtSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, section])
+  @@index([entityId, section])
+}
+
+model FilingAttachment {
+  id           String   @id @default(cuid())
+  entityId     String
+  sourceId     String   // 关联 ExtSource（主 10-K）
+
+  sequence     String   // "1" | "2" | "3.1" | "10.1"
+  description  String   // "Restated Articles of Incorporation"
+  documentType String   // "EX-3.1" | "EX-10.1" | "EX-21"
+  documentName String   // 文件名
+  url          String   // SEC 附件 URL
+
+  createdAt    DateTime @default(now())
+
+  entity Entity    @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  source ExtSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId])
+  @@index([entityId])
 }
 
 model Holding {
