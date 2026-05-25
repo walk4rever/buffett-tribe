@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.35.26] - 2026-05-23
+
+### Changed
+- **BRK-B Master/Company 分离**：
+  - Master entity 保留 `tribeId='buffett'` 和 `MasterProfile`，专用于投资人格。
+  - 新建 `type=company` BRK-B entity（CIK=1067983），接收所有 10-K 数据。
+  - 迁移 11 条 ExtSources(10k)、15,073 FinancialFacts、35 Financials、79 FilingSections、CompanyAnalysis 到公司 entity。
+  - 44 条 Holdings（as security）迁移到公司 entity。
+  - **补全 BRK-A Security 记录**（CUSIP=084670108, titleOfClass=Class A），与 BRK-B 共享同一 Company entity。
+- **补跑 7 家公司 10-K 数据**：BMY、PNC、TEVA、UAL、MTB、SYF、GOLD。
+  - 每家公司写入 4-5 年 10-K 的完整 XBRL facts（12K-28K facts/公司）。
+  - 更新对应 Security 记录的 `companyEntityId`，消除 7 条 null 值。
+- 剩余 8 条 Security 无 companyEntityId（已退市/合并/ETF），保持 null 为合理状态。
+
 ## [v0.35.25] - 2026-05-23
 
 ### Fixed
