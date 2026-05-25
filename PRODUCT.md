@@ -2,7 +2,7 @@
 
 # 巴菲特部落 · Buffett Tribe — 产品设计文档
 
-> 最后更新：2026-05-23（v0.35.20）
+> 最后更新：2026-05-25（v0.35.28）
 
 ---
 
@@ -310,7 +310,19 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.35.20）
+## 当前实现状态（v0.35.28）
+
+### v0.35.28 变更
+
+- **Entity / Security 架构重构完成**：移除 `type='security'` 的冗余 Entity 层，统一通过 `Security` 表管理证券。
+  - `Holding.securityEntityId` 列删除，`Holding.securityId` 改为 required（非空）。
+  - `Security.entityId` 列删除，Security 只通过 `companyEntityId` 关联 Company Entity。
+  - `Holding` 的 relation 从 `securityProfile` 改名为 `security`，`onDelete: SetNull` 改为 `Cascade`。
+  - `import-13f.ts` 不再创建 `type=security` Entity，不再写入已删除字段。
+  - 删除 5 个旧迁移脚本：`backfill-security-table`、`migrate-company-securities`、`cleanup-duplicate-security-entities`、`cleanup-duplicate-security-profiles`、`cleanup-duplicate-company-entities`。
+  - 清理 139 个遗留的 `type=security` Entity。
+  - 新增 migration `20260525000100_remove_security_entity`。
+  - `scratch/` 和 `scripts/` 排除在 tsconfig 编译外，避免草稿脚本影响 build。
 
 ### v0.35.20 变更
 

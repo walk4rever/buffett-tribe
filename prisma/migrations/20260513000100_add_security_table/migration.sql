@@ -15,11 +15,11 @@ CREATE TABLE IF NOT EXISTS "Security" (
 );
 
 ALTER TABLE "Security"
-  ADD CONSTRAINT IF NOT EXISTS "Security_entityId_fkey"
+  ADD CONSTRAINT "Security_entityId_fkey"
   FOREIGN KEY ("entityId") REFERENCES "Entity"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 ALTER TABLE "Security"
-  ADD CONSTRAINT IF NOT EXISTS "Security_companyEntityId_fkey"
+  ADD CONSTRAINT "Security_companyEntityId_fkey"
   FOREIGN KEY ("companyEntityId") REFERENCES "Entity"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 CREATE INDEX IF NOT EXISTS "Security_ticker_idx" ON "Security"("ticker");
@@ -29,5 +29,5 @@ ALTER TABLE "Holding" ADD COLUMN IF NOT EXISTS "securityId" TEXT;
 CREATE INDEX IF NOT EXISTS "Holding_securityId_asOfDate_idx" ON "Holding"("securityId", "asOfDate");
 
 ALTER TABLE "Holding"
-  ADD CONSTRAINT IF NOT EXISTS "Holding_securityId_fkey"
+  ADD CONSTRAINT "Holding_securityId_fkey"
   FOREIGN KEY ("securityId") REFERENCES "Security"("id") ON DELETE SET NULL ON UPDATE CASCADE;
