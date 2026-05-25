@@ -103,13 +103,14 @@ function buildPieSeries(
 function getHoldingDisplay(security: {
   ticker: string | null;
   metadata: unknown;
-  company?: { canonicalName: string } | null;
+  company?: { canonicalName: string; metadata?: unknown } | null;
 }) {
   const meta = (security.metadata ?? {}) as { cusip?: string; nameZh?: string; nameEnShort?: string };
+  const companyMeta = (security.company?.metadata ?? {}) as { nameZh?: string };
   const code = security.ticker ?? meta.cusip ?? "-";
   const canonicalName = security.company?.canonicalName ?? "-";
   const en = meta.nameEnShort ?? canonicalName;
-  const zh = meta.nameZh ?? en;
+  const zh = meta.nameZh ?? companyMeta.nameZh ?? en;
   return { code, zh, en };
 }
 
