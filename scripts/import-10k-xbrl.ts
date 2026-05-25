@@ -543,30 +543,36 @@ async function batchUpsertFinancialFactsFromInline(
 }
 
 async function upsertCompanyEntity(cik: string, ticker: string, title: string, profile: SecCompanyProfile) {
+  // 1. Find by CIK (any type)
   const byCik = await db.entity.findFirst({
     where: { cik },
     select: { id: true, metadata: true, type: true, cik: true, sector: true },
   });
-  const cikOwnedByCompany = byCik?.type === "company";
-  const byTicker = byCik
-    ? byCik.type === "company"
-      ? null
-      : await db.entity.findFirst({
-        where: {
-          type: "company",
-          ticker: { equals: ticker, mode: "insensitive" },
-        },
-        select: { id: true, metadata: true, cik: true, sector: true },
-      })
-    : await db.entity.findFirst({
+
+  let target = byCik;
+
+  // 2. If no CIK match, find by ticker
+  if (!target) {
+    // Prefer type=company
+    target = await db.entity.findFirst({
       where: {
         type: "company",
         ticker: { equals: ticker, mode: "insensitive" },
       },
       select: { id: true, metadata: true, cik: true, sector: true },
     });
+    // Fallback to any type (handles legacy type=security entities)
+    if (!target) {
+      target = await db.entity.findFirst({
+        where: {
+          ticker: { equals: ticker, mode: "insensitive" },
+        },
+        select: { id: true, metadata: true, cik: true, sector: true },
+      });
+    }
+  }
 
-  const target = cikOwnedByCompany ? byCik : byTicker;
+  const cikOwnedByTarget = target?.id === byCik?.id;
   const existingMeta = (target?.metadata as Record<string, unknown> | null) ?? {};
   const dbNameMap = await db.companyNameMap.findUnique({
     where: { keyType_key: { keyType: "ticker", key: ticker.toUpperCase() } },
@@ -612,10 +618,12 @@ async function upsertCompanyEntity(cik: string, ticker: string, title: string, p
   const sector = mapSectorFromSic(profile.sic, profile.sicDescription) ?? target?.sector ?? null;
 
   if (target) {
-    const canSetCik = byCik == null || (byCik.type === "company" && byCik.id === target.id);
+    const canSetCik = byCik == null || byCik.id === target.id;
+    const needsTypeUpgrade = target.type !== "company";
     return db.entity.update({
       where: { id: target.id },
       data: {
+        type: needsTypeUpgrade ? "company" : target.type,
         canonicalName: title,
         cik: canSetCik ? cik : target.cik,
         ticker,

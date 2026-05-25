@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.35.27] - 2026-05-23
+
+### Fixed
+- `scripts/import-13f.ts` 核心逻辑重写：
+  - 不再创建 `type=security` 的 Entity。
+  - 按 CUSIP 查找/复用 Security 记录；按 ticker 查找/复用 `type=company` Entity；都找不到则新建 `type=company` + Security。
+  - Holding 的 `securityEntityId` 指向 company entity，`securityId` 指向 Security 记录。
+  - `upsertFilerEntity` 改为按 `tribeId` 查找（不再按 CIK），避免与 company entity 的 CIK unique 约束冲突。
+- `scripts/import-10k-xbrl.ts` 的 `upsertCompanyEntity()`：
+  - 按 ticker 查找兼容所有 type（包括存量 `type=security`），找到非 company 时自动升级为 `type=company`。
+
+### Added
+- `docs/handoff-entity-security-refactor.md`：完整的四阶段架构重构方案文档。
+
 ## [v0.35.26] - 2026-05-23
 
 ### Changed

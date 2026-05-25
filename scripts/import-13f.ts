@@ -17,9 +17,8 @@ const zhByIssuerDb = new Map<string, string>();
 const tickerByIssuerDb = new Map<string, string>();
 const tickerByCusipDb = new Map<string, string>();
 
-const entityByCusip = new Map<string, { id: string; backfilled: boolean }>();
 const companyByTickerCache = new Map<string, string>();
-const securityIdByEntityId = new Map<string, string>();
+const securityByCusip = new Map<string, string>();
 const CUSIP_TICKER_OVERRIDES: Record<string, string> = {
   // Alphabet Class C should map to GOOG (Class A is GOOGL).
   "02079K107": "GOOG",
@@ -32,11 +31,11 @@ const CUSIP_TICKER_OVERRIDES: Record<string, string> = {
 };
 
 type SecuritySnapshot = {
-  entityId: string;
+  securityId: string;
+  companyEntityId: string;
   ticker: string | null;
   cusip: string;
   titleOfClass: string;
-  companyEntityId: string | null;
   metadata: Record<string, unknown>;
 };
 
@@ -319,17 +318,7 @@ function infer13fValueUsdScale(entries: InfoTableEntry[]) {
 }
 
 async function seedEntityCache() {
-  const entities = await db.entity.findMany({
-    where: { type: "security" },
-    select: { id: true, metadata: true },
-  });
-  for (const e of entities) {
-    const meta = e.metadata as Record<string, unknown> | null;
-    if (meta?.cusip && typeof meta.cusip === "string") {
-      entityByCusip.set(meta.cusip, { id: e.id, backfilled: true });
-    }
-  }
-
+  // Cache company entities by ticker
   const companies = await db.entity.findMany({
     where: { type: { in: ["company", "master"] }, ticker: { not: null } },
     select: { id: true, ticker: true, type: true, cik: true },
@@ -344,14 +333,18 @@ async function seedEntityCache() {
     if (ticker && !companyByTickerCache.has(ticker)) companyByTickerCache.set(ticker, c.id);
   }
 
+  // Cache securities by cusip
   const securityRows = await db.security.findMany({
-    select: { id: true, entityId: true },
+    select: { id: true, cusip: true, companyEntityId: true, ticker: true },
   });
   for (const s of securityRows) {
-    securityIdByEntityId.set(s.entityId, s.id);
+    if (s.cusip) securityByCusip.set(s.cusip, s.id);
+    if (s.companyEntityId && s.ticker && !companyByTickerCache.has(s.ticker.toUpperCase())) {
+      companyByTickerCache.set(s.ticker.toUpperCase(), s.companyEntityId);
+    }
   }
 
-  console.log(`  Entity cache seeded: ${entityByCusip.size} security entities by cusip`);
+  console.log(`  Entity cache seeded: ${securityByCusip.size} securities by cusip`);
 
   const dbMaps = await db.companyNameMap.findMany({
     where: { keyType: { in: ["ticker", "issuer", "cusip"] } },
@@ -374,15 +367,25 @@ async function seedEntityCache() {
 }
 
 async function upsertFilerEntity(filer: (typeof FILERS)[number]) {
-  return db.entity.upsert({
-    where: { cik: filer.cik },
-    create: {
+  // Master entities are identified by tribeId (not CIK, which may belong to the company entity).
+  const existing = await db.entity.findFirst({
+    where: { tribeId: filer.tribeId },
+    select: { id: true },
+  });
+
+  if (existing) {
+    return db.entity.update({
+      where: { id: existing.id },
+      data: { type: "master", canonicalName: filer.name },
+    });
+  }
+
+  return db.entity.create({
+    data: {
       type: "master",
       canonicalName: filer.name,
-      cik: filer.cik,
       tribeId: filer.tribeId,
     },
-    update: { type: "master", tribeId: filer.tribeId, canonicalName: filer.name },
   });
 }
 
@@ -392,149 +395,148 @@ async function upsertSecurityEntity(entry: InfoTableEntry): Promise<SecuritySnap
     ...baseResolved,
     ticker: resolveTickerWithCusipOverride(entry.cusip, baseResolved.ticker),
   };
-  const maybeCompanyId = (resolved.ticker ? companyByTickerCache.get(resolved.ticker) : undefined) ?? null;
 
-  const cached = entityByCusip.get(entry.cusip);
-  if (cached) {
-    if (!cached.backfilled) {
-      const row = await db.entity.findUnique({
-        where: { id: cached.id },
-        select: { metadata: true, canonicalName: true },
-      });
-      if (row) {
-        const meta = (row.metadata as Record<string, unknown> | null) ?? {};
-        const names = resolveNamesDbFirst(row.canonicalName || entry.nameOfIssuer, typeof meta.nameZh === "string" ? meta.nameZh : null);
-        const nextMeta = {
-          ...meta,
+  // 1. Check cusip cache
+  const cachedSecId = securityByCusip.get(entry.cusip);
+  if (cachedSecId) {
+    const sec = await db.security.findUnique({ where: { id: cachedSecId } });
+    if (sec) {
+      // Backfill companyEntityId if missing
+      if (!sec.companyEntityId && resolved.ticker) {
+        const companyId = companyByTickerCache.get(resolved.ticker);
+        if (companyId) {
+          await db.security.update({ where: { id: sec.id }, data: { companyEntityId: companyId } });
+          sec.companyEntityId = companyId;
+        }
+      }
+      return {
+        securityId: sec.id,
+        companyEntityId: sec.companyEntityId ?? "",
+        ticker: sec.ticker ?? resolved.ticker,
+        cusip: entry.cusip,
+        titleOfClass: sec.titleOfClass ?? entry.titleOfClass,
+        metadata: (sec.metadata as Record<string, unknown>) ?? {},
+      };
+    }
+  }
+
+  // 2. Find existing security by cusip
+  const existingSec = await db.security.findFirst({ where: { cusip: entry.cusip } });
+  if (existingSec) {
+    securityByCusip.set(entry.cusip, existingSec.id);
+    // Backfill companyEntityId if missing
+    if (!existingSec.companyEntityId && resolved.ticker) {
+      const companyId = companyByTickerCache.get(resolved.ticker);
+      if (companyId) {
+        await db.security.update({ where: { id: existingSec.id }, data: { companyEntityId: companyId } });
+        existingSec.companyEntityId = companyId;
+      }
+    }
+    return {
+      securityId: existingSec.id,
+      companyEntityId: existingSec.companyEntityId ?? "",
+      ticker: existingSec.ticker ?? resolved.ticker,
+      cusip: entry.cusip,
+      titleOfClass: existingSec.titleOfClass ?? entry.titleOfClass,
+      metadata: (existingSec.metadata as Record<string, unknown>) ?? {},
+    };
+  }
+
+  // 3. Resolve company entity by ticker
+  let companyId = resolved.ticker ? companyByTickerCache.get(resolved.ticker) : null;
+
+  if (!companyId && resolved.ticker) {
+    const company = await db.entity.findFirst({
+      where: { type: "company", ticker: { equals: resolved.ticker, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (company) {
+      companyId = company.id;
+      companyByTickerCache.set(resolved.ticker, company.id);
+    }
+  }
+
+  // 4. Create company entity if not found
+  if (!companyId) {
+    const company = await db.entity.create({
+      data: {
+        type: "company",
+        canonicalName: entry.nameOfIssuer,
+        ticker: resolved.ticker,
+        metadata: {
           cusip: entry.cusip,
           titleOfClass: entry.titleOfClass,
-          nameZh: names.nameZh,
-          nameEnShort: names.nameEnShort,
-          companyEntityId: maybeCompanyId ?? (typeof meta.companyEntityId === "string" ? meta.companyEntityId : null),
-        };
-        await db.entity.update({
-          where: { id: cached.id },
-          data: {
-            canonicalName: entry.nameOfIssuer,
-            ticker: names.ticker,
-            metadata: nextMeta,
-          },
-        });
-      }
-      cached.backfilled = true;
-      entityByCusip.set(entry.cusip, cached);
-    }
-
-    return {
-      entityId: cached.id,
-      ticker: resolved.ticker,
-      cusip: entry.cusip,
-      titleOfClass: entry.titleOfClass,
-      companyEntityId: maybeCompanyId,
-      metadata: {
-        cusip: entry.cusip,
-        titleOfClass: entry.titleOfClass,
-        nameZh: resolved.nameZh,
-        nameEnShort: resolved.nameEnShort,
-        companyEntityId: maybeCompanyId,
-      },
-    };
-  }
-
-  const existing = await db.entity.findFirst({
-    where: { type: "security", metadata: { path: ["cusip"], equals: entry.cusip } },
-    select: { id: true, metadata: true, canonicalName: true },
-  });
-
-  if (existing) {
-    const meta = (existing.metadata as Record<string, unknown> | null) ?? {};
-    const names = resolveNamesDbFirst(existing.canonicalName || entry.nameOfIssuer, typeof meta.nameZh === "string" ? meta.nameZh : null);
-    const nextMeta = {
-      ...meta,
-      cusip: entry.cusip,
-      titleOfClass: entry.titleOfClass,
-      nameZh: names.nameZh,
-      nameEnShort: names.nameEnShort,
-      companyEntityId: maybeCompanyId ?? (typeof meta.companyEntityId === "string" ? meta.companyEntityId : null),
-    };
-
-    await db.entity.update({
-      where: { id: existing.id },
-      data: {
-        canonicalName: entry.nameOfIssuer,
-        ticker: names.ticker,
-        metadata: nextMeta,
+          nameZh: resolved.nameZh,
+          nameEnShort: resolved.nameEnShort,
+          source: "import-13f",
+        },
       },
     });
+    companyId = company.id;
+    if (resolved.ticker) companyByTickerCache.set(resolved.ticker, company.id);
+  }
 
-    entityByCusip.set(entry.cusip, { id: existing.id, backfilled: true });
+  // 5. Check if a security already exists for this company entity
+  const existingByEntity = await db.security.findFirst({
+    where: { entityId: companyId },
+  });
+  if (existingByEntity) {
+    // Update it with this cusip if missing
+    if (!existingByEntity.cusip) {
+      await db.security.update({
+        where: { id: existingByEntity.id },
+        data: { cusip: entry.cusip, titleOfClass: entry.titleOfClass },
+      });
+    }
+    securityByCusip.set(entry.cusip, existingByEntity.id);
     return {
-      entityId: existing.id,
-      ticker: names.ticker,
+      securityId: existingByEntity.id,
+      companyEntityId: companyId,
+      ticker: resolved.ticker,
       cusip: entry.cusip,
-      titleOfClass: entry.titleOfClass,
-      companyEntityId: (nextMeta.companyEntityId as string | null) ?? null,
-      metadata: nextMeta,
+      titleOfClass: existingByEntity.titleOfClass ?? entry.titleOfClass,
+      metadata: (existingByEntity.metadata as Record<string, unknown>) ?? {
+        nameZh: resolved.nameZh,
+        nameEnShort: resolved.nameEnShort,
+        source: "import-13f",
+      },
     };
   }
 
-  const created = await db.entity.create({
+  // 6. Create security record
+  const newSec = await db.security.create({
     data: {
-      type: "security",
-      canonicalName: entry.nameOfIssuer,
+      entityId: companyId,
+      companyEntityId: companyId,
       ticker: resolved.ticker,
+      cusip: entry.cusip,
+      titleOfClass: entry.titleOfClass,
       metadata: {
-        cusip: entry.cusip,
-        titleOfClass: entry.titleOfClass,
         nameZh: resolved.nameZh,
         nameEnShort: resolved.nameEnShort,
-        companyEntityId: maybeCompanyId,
+        source: "import-13f",
       },
     },
-  }).catch(async () => {
-    const found = await db.entity.findFirst({ where: { metadata: { path: ["cusip"], equals: entry.cusip } } });
-    if (!found) throw new Error(`Entity not found after conflict: ${entry.cusip}`);
-    return found;
   });
+  securityByCusip.set(entry.cusip, newSec.id);
 
-  entityByCusip.set(entry.cusip, { id: created.id, backfilled: true });
   return {
-    entityId: created.id,
+    securityId: newSec.id,
+    companyEntityId: companyId,
     ticker: resolved.ticker,
     cusip: entry.cusip,
     titleOfClass: entry.titleOfClass,
-    companyEntityId: maybeCompanyId,
     metadata: {
-      cusip: entry.cusip,
-      titleOfClass: entry.titleOfClass,
       nameZh: resolved.nameZh,
       nameEnShort: resolved.nameEnShort,
-      companyEntityId: maybeCompanyId,
+      source: "import-13f",
     },
   };
 }
 
-async function ensureSecurityProfilesBulk(snapshots: SecuritySnapshot[]) {
-  const missing = snapshots.filter((s) => !securityIdByEntityId.has(s.entityId));
-  if (missing.length) {
-    await db.security.createMany({
-      data: missing.map((s) => ({
-        entityId: s.entityId,
-        companyEntityId: s.companyEntityId,
-        ticker: s.ticker,
-        cusip: s.cusip,
-        titleOfClass: s.titleOfClass,
-        metadata: s.metadata,
-      })),
-      skipDuplicates: true,
-    });
-  }
-
-  const rows = await db.security.findMany({
-    where: { entityId: { in: snapshots.map((s) => s.entityId) } },
-    select: { id: true, entityId: true },
-  });
-  for (const r of rows) securityIdByEntityId.set(r.entityId, r.id);
+async function ensureSecurityProfilesBulk(_snapshots: SecuritySnapshot[]) {
+  // No-op: Security records are already created/updated in upsertSecurityEntity.
+  // This function is kept for backward compatibility during the migration.
 }
 
 async function importFiling(
@@ -592,15 +594,14 @@ async function importFiling(
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
     const snapshot = snapshots[i];
-    const securityId = securityIdByEntityId.get(snapshot.entityId) ?? null;
     const percentOfPortfolio = totalValue > BigInt(0)
       ? Number((entry.value * BigInt(10000)) / totalValue) / 100
       : 0;
 
     prepared.push({
       holderEntityId: filerEntityId,
-      securityEntityId: snapshot.entityId,
-      securityId,
+      securityEntityId: snapshot.companyEntityId,
+      securityId: snapshot.securityId,
       sourceId: extSource.id,
       asOfDate,
       shares: entry.shares,
@@ -609,32 +610,27 @@ async function importFiling(
     });
   }
 
-  const securityIds = prepared.map((p) => p.securityId).filter((x): x is string => Boolean(x));
-  const securityEntityIds = prepared.map((p) => p.securityEntityId);
+  const securityIds = prepared.map((p) => p.securityId);
 
   const existingHoldings = await db.holding.findMany({
     where: {
       holderEntityId: filerEntityId,
       asOfDate,
-      OR: [
-        { securityId: { in: securityIds } },
-        { securityEntityId: { in: securityEntityIds } },
-      ],
+      securityId: { in: securityIds },
     },
     select: { id: true, securityId: true, securityEntityId: true },
   });
 
   const existingByKey = new Map<string, { id: string }>();
   for (const row of existingHoldings) {
-    existingByKey.set(row.securityId ?? row.securityEntityId, { id: row.id });
+    existingByKey.set(row.securityId, { id: row.id });
   }
 
   const toCreate: typeof prepared = [];
   const toUpdate: Array<{ id: string; row: typeof prepared[number] }> = [];
 
   for (const row of prepared) {
-    const key = row.securityId ?? row.securityEntityId;
-    const existing = existingByKey.get(key);
+    const existing = existingByKey.get(row.securityId);
     if (existing) {
       toUpdate.push({ id: existing.id, row });
     } else {
@@ -654,7 +650,6 @@ async function importFiling(
       db.holding.update({
         where: { id: item.id },
         data: {
-          securityEntityId: item.row.securityEntityId,
           securityId: item.row.securityId,
           sourceId: item.row.sourceId,
           shares: item.row.shares,
