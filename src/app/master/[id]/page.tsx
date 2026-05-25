@@ -40,6 +40,7 @@ type PieDatum = {
   zh: string;
   en: string;
   code: string;
+  href: string | null;
   pct: number;
   color: string;
 };
@@ -72,15 +73,17 @@ function buildPieSeries(
     const key = companyEntityId ? `cmp:${companyEntityId}` : `sec:${h.securityEntityId}`;
     const pct = Math.max(0, h.percentOfPortfolio ?? 0);
     const securityTicker = getHoldingTicker(h)?.toUpperCase() ?? null;
+    const href = getHoldingCompanyPath(h);
     const existing = merged.get(key);
     if (existing) {
       if (securityTicker) existing.tickers.add(securityTicker);
-      merged.set(key, { ...existing, pct: existing.pct + pct });
+      merged.set(key, { ...existing, href: existing.href ?? href, pct: existing.pct + pct });
     } else {
       merged.set(key, {
         zh: d.zh,
         en: d.en,
         code: d.code,
+        href,
         pct,
         color: PIE_COLORS[colorIdx++ % PIE_COLORS.length],
         tickers: new Set(securityTicker ? [securityTicker] : []),
@@ -91,13 +94,13 @@ function buildPieSeries(
     .map((x) => {
       const tickerList = [...x.tickers.values()].sort();
       const code = tickerList.length === 0 ? "-" : tickerList.join(", ");
-      return { zh: x.zh, en: x.en, code, pct: x.pct, color: x.color };
+      return { zh: x.zh, en: x.en, code, href: x.href, pct: x.pct, color: x.color };
     })
     .sort((a, b) => b.pct - a.pct);
   const top = aggregated.slice(0, 10);
-  const topPct = top.reduce((sum, x) => sum + x.pct, 0);
-  const otherPct = Math.max(0, 100 - topPct);
-  return [...top, { zh: "其他", en: "Others", code: "-", pct: otherPct, color: "#e5e7eb" }] as PieDatum[];
+  const rest = aggregated.slice(10);
+  const otherPct = rest.reduce((sum, x) => sum + x.pct, 0);
+  return [...top, { zh: "其他", en: "Others", code: "-", href: null, pct: otherPct, color: "#e5e7eb" }] as PieDatum[];
 }
 
 function getHoldingDisplay(security: {
@@ -238,6 +241,13 @@ export default async function PersonHubPage({ params }: Props) {
     ? await getHoldingsByQuarter(id, latest.year, latest.quarter)
     : [];
   const pieData = buildPieSeries(fullHoldings);
+  const holdingNameByTicker = new Map(
+    fullHoldings.flatMap((h) => {
+      const ticker = getHoldingTicker(h)?.toUpperCase();
+      if (!ticker) return [];
+      return [[ticker, getHoldingDisplay(h.security).zh] as const];
+    }),
+  );
   const prevHoldings = changeSet.base
     ? await getHoldingsByQuarter(id, changeSet.base.year, changeSet.base.quarter)
     : [];
@@ -399,7 +409,7 @@ export default async function PersonHubPage({ params }: Props) {
                     <div className="person-case-body">
                       <div className="person-case-header">
                         <span className="person-case-ticker">{c.ticker}</span>
-                        <span className="person-case-name">{c.nameZh}</span>
+                        <span className="person-case-name">{holdingNameByTicker.get(c.ticker.toUpperCase()) ?? c.nameZh}</span>
                         <span className="person-case-year">{c.entryYear}年建仓</span>
                         {c.stillHolding && <span className="person-case-badge">持仓中</span>}
                       </div>
@@ -512,12 +522,23 @@ export default async function PersonHubPage({ params }: Props) {
                         <div key={`${seg.zh}-${seg.code}-${idx}`} className="person-bar-row">
                           <div className="person-bar-head">
                             <span className="person-bar-name">
-                              <CompanyDisplayName
-                                zhName={seg.zh}
-                                enName={seg.en}
-                                ticker={seg.code === "-" ? null : seg.code}
-                                compact
-                              />
+                              {seg.href ? (
+                                <Link href={seg.href} className="person-bar-company-link">
+                                  <CompanyDisplayName
+                                    zhName={seg.zh}
+                                    enName={seg.en}
+                                    ticker={seg.code === "-" ? null : seg.code}
+                                    compact
+                                  />
+                                </Link>
+                              ) : (
+                                <CompanyDisplayName
+                                  zhName={seg.zh}
+                                  enName={seg.en}
+                                  ticker={seg.code === "-" ? null : seg.code}
+                                  compact
+                                />
+                              )}
                             </span>
                             <span className="person-bar-pct">{seg.pct.toFixed(1)}%</span>
                           </div>

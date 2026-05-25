@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.35.20] - 2026-05-23
+
+### Changed
+- Latest holdings chart company names now link to company detail pages while preserving the existing compact visual style.
+- Latest holdings chart now calculates "Other" from actual remaining holdings instead of rounding against 100%.
+
+### Fixed
+- Master profile case names now prefer current holdings metadata, correcting EWBC to display as 华美银行 on Li Lu's page.
+
 ## [v0.35.19] - 2026-05-23
 
 ### Changed
