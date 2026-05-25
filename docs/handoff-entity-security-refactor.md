@@ -60,13 +60,13 @@ Filer（13F 提交方）
 
 | 文件 | 改动内容 |
 |---|---|
-| `src/lib/master-data.ts` | `getHoldingsByQuarter`：去掉 `security` (Entity) include，只用 `securityProfile`；`keyOf` 去掉 `?? securityEntityId`；`exits` 类型改 `securityId` |
-| `src/lib/company-data.ts` | `getSecurityIdsForCompany`：去掉 `legacyEntityIds` 和 `entityId` 查询；`getRecentHolders`：简化 `OR` 查询条件；`rowTicker` 去掉 `securityEntityId` fallback |
-| `src/app/master/[id]/page.tsx` | `holdingKey` 简化；去掉 `companyEntityId ?? sec:` 分支 |
+| `src/lib/master-data.ts` | `getHoldingsByQuarter`：去掉 `security` (Entity) include，只用 `securityProfile`；`normalized` map 去掉 `?? row.security` fallback；`keyOf` 去掉 `?? securityEntityId`；`exits` 类型字段改为 `securityId` |
+| `src/lib/company-data.ts` | `getSecurityIdsForCompany`：去掉 `legacyEntityIds` 和 `entityId` 查询；`getRecentHolders`：简化 `OR` 查询条件；`rowTicker` 和 `securityId` 赋值去掉 `securityEntityId` fallback |
+| `src/app/master/[id]/page.tsx` | `holdingKey` 简化；去掉 `companyEntityId ?? sec:` 分支；`getHoldingTicker` / `getHoldingCompanyPath` 去掉 `securityEntityId` 分支 |
 | `src/app/master/[id]/holdings/page.tsx` | 同上 |
 | `src/lib/home-signals.ts` | 如有 `securityEntityId` 引用，改为 `securityId` |
 | `scripts/generate-portfolio-insight.ts` | `keyOf` 改 `securityId` |
-| `scripts/run-company-analysis.ts` | 查询条件简化 |
+| `scripts/run-company-analysis.ts` | 查询条件去掉 `securityEntityId: { in: legacyIds }` |
 
 **验证**：`npm run lint && npm run build`，所有页面功能正常。
 
@@ -78,9 +78,9 @@ Filer（13F 提交方）
 
 | 文件 | 改动 |
 |---|---|
-| `scripts/import-13f.ts` | `prepared` 中去掉 `securityEntityId` 字段；`importFiling` 查询条件只查 `securityId` |
+| `scripts/import-13f.ts` | `prepared` 中去掉 `securityEntityId` 字段；`importFiling` 查询条件只查 `securityId`；`upsertSecurityEntity` 中 Security 的查找/创建逻辑从 `entityId` 改为 `companyEntityId`（步骤 5/6） |
 
-**验证**：跑一次 `import-13f.ts`（如 Buffett 2025Q4），确认不产生新的 `securityEntityId` 数据。
+**验证**：跑一次 `import-13f.ts`（如 Buffett 2025Q4），确认不产生新的 `securityEntityId` 数据，且 Security 的 `entityId` 字段也不再被写入。
 
 ---
 
@@ -128,6 +128,21 @@ model Holding {
 }
 ```
 
+**阶段一/二遗漏的修改点（实地扫描后补充）**：
+
+以下引用在阶段一/二中也需要同步清理，handoff 初版未完整覆盖：
+
+| 位置 | 内容 | 阶段 |
+|---|---|---|
+| `src/lib/master-data.ts:209` | `exits` 类型字段 `securityEntityId` → `securityId` | 阶段一 |
+| `src/lib/master-data.ts:256` | `exits.map` 返回 `securityEntityId` → `securityId` | 阶段一 |
+| `src/lib/company-data.ts:253` | `getRecentHolders` OR 查询仍查 `securityEntityId` | 阶段一 |
+| `src/lib/company-data.ts:342` | `securityId: row.securityId ?? row.securityEntityId` 去掉 fallback | 阶段一 |
+| `scripts/run-company-analysis.ts:112` | `{ securityEntityId: { in: legacyIds } }` 查询条件 | 阶段一 |
+| `scripts/generate-portfolio-insight.ts:154` | `keyOf` 用 `securityEntityId` → `securityId` | 阶段一 |
+| `scripts/import-13f.ts:~472` | `existingByEntity = db.security.findFirst({ where: { entityId: companyId } })` | 阶段二 |
+| `scripts/import-13f.ts:~488` | `db.security.create({ data: { entityId: companyId, ... } })` 写入 `entityId` | 阶段二 |
+
 **同时修改 `securityProfile` → `security` 的 include 改名**：
 - `src/lib/master-data.ts`
 - `src/lib/company-data.ts`
@@ -135,6 +150,22 @@ model Holding {
 - `src/app/master/[id]/holdings/page.tsx`
 - `scripts/generate-portfolio-insight.ts`
 - `scripts/run-company-analysis.ts`
+- `scripts/import-13f.ts`（如查询中使用了 `securityProfile` relation）
+
+**前置验证（必须先执行）**：
+```bash
+npx tsx -e "
+const { PrismaClient } = require('@prisma/client');
+const db = new PrismaClient();
+(async () => {
+  const n = await db.holding.count({ where: { securityId: null } });
+  if (n > 0) throw new Error(n + ' holdings have null securityId');
+  console.log('OK: all holdings have securityId');
+  await db.\$disconnect();
+})();
+"
+```
+`securityId` 必须 100% 填充，否则 migrate 将因 `String? → String` 的非空约束而失败。
 
 **运行命令**：
 ```bash
@@ -188,7 +219,8 @@ DELETE FROM "Entity" WHERE type = 'security';
 1. **阶段一和阶段三分开**：先改代码、验证功能正常，再改 schema，避免同时动两边。
 2. **`securityProfile` 改名为 `security`**：建议阶段三时一起改，代码可读性更好。
 3. **旧脚本在阶段三后删除**：schema 稳定后再清理，避免误删。
-4. **`Holding.securityEntityId` 遗留数据（1354 条）**：等阶段三 schema 变更时自然清除，无需提前手动更新。
+4. **`Holding.securityEntityId` 遗留数据**：阶段三 schema 删除列时自然清除，无需提前手动更新。
+5. **阶段三前必须验证 `securityId` 全量填充**：`Holding.securityId` 从 `String?` 改为 `String` 是非空约束，任何 `null` 都会导致 migrate 失败。阶段一完成后必须跑前置验证命令确认。
 
 ## 当前代码状态
 
@@ -198,3 +230,13 @@ DELETE FROM "Entity" WHERE type = 'security';
 
 尚未执行的 schema 变更：
 - `prisma/schema.prisma` — 仍需阶段三的 migrate
+
+### 附：实地验证快照（截至 handoff 编写时）
+
+| 指标 | 数值 |
+|---|---|
+| Holding 总数 | 1,516 |
+| `securityId` 为 null | **0** |
+| `type='security'` Entity 数 | **139** |
+
+`securityId` 已 100% 填充，阶段三的非空约束迁移前提已满足。
