@@ -39,7 +39,6 @@ export async function getHoldingsByQuarter(tribeId: string, year: number, quarte
         source: { is: { periodYear: year, periodQuarter: quarter, kind: "13f" } },
       },
       include: {
-        security: true,
         securityProfile: {
           include: {
             entity: true,
@@ -56,7 +55,7 @@ export async function getHoldingsByQuarter(tribeId: string, year: number, quarte
       orderBy: { percentOfPortfolio: "desc" },
     });
     const normalized = rows.map((row) => {
-      const securityEntity = row.securityProfile?.entity ?? row.security;
+      const securityEntity = row.securityProfile!.entity!;
       return {
         ...row,
         security: securityEntity,
@@ -66,7 +65,7 @@ export async function getHoldingsByQuarter(tribeId: string, year: number, quarte
     // Defensive dedupe: historical imports may contain duplicates that share the same security profile.
     const deduped = new Map<string, typeof normalized[number]>();
     for (const row of normalized) {
-      const key = row.securityId ?? row.securityEntityId;
+      const key = row.securityId!;
       const prev = deduped.get(key);
       if (!prev) {
         deduped.set(key, row);
@@ -206,7 +205,7 @@ export type HoldingChangeSet = {
   adds: Array<{ row: HoldingRow; delta: number }>;
   trims: Array<{ row: HoldingRow; delta: number }>;
   newPositions: HoldingRow[];
-  exits: Array<{ securityEntityId: string; ticker: string | null; name: string; prevPct: number }>;
+  exits: Array<{ securityId: string; ticker: string | null; name: string; prevPct: number }>;
 };
 
 export async function getLatestHoldingChangeSet(tribeId: string): Promise<HoldingChangeSet> {
@@ -229,7 +228,7 @@ export async function getLatestHoldingChangeSet(tribeId: string): Promise<Holdin
   const baseRows = base ? await getHoldingsByQuarter(tribeId, base.year, base.quarter) : [];
 
   const top = latestRows.slice(0, 10);
-  const keyOf = (r: HoldingRow) => r.securityId ?? r.securityEntityId;
+  const keyOf = (r: HoldingRow) => r.securityId;
   const baseById = new Map(baseRows.map((r) => [keyOf(r), r] as const));
   const latestById = new Map(latestRows.map((r) => [keyOf(r), r] as const));
 
@@ -253,7 +252,7 @@ export async function getLatestHoldingChangeSet(tribeId: string): Promise<Holdin
   const exits = baseRows
     .filter((r) => !latestById.has(keyOf(r)))
     .map((r) => ({
-      securityEntityId: r.securityEntityId,
+      securityId: r.securityId!,
       ticker: r.security.ticker,
       name: r.security.canonicalName,
       prevPct: r.percentOfPortfolio ?? 0,

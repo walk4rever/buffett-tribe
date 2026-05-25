@@ -70,7 +70,7 @@ function buildPieSeries(
     const companyEntityId =
       h.securityProfile?.companyEntityId ??
       (typeof meta.companyEntityId === "string" ? meta.companyEntityId : null);
-    const key = companyEntityId ? `cmp:${companyEntityId}` : `sec:${h.securityEntityId}`;
+    const key = companyEntityId ? `cmp:${companyEntityId}` : `sec:${h.securityId}`;
     const pct = Math.max(0, h.percentOfPortfolio ?? 0);
     const securityTicker = getHoldingTicker(h)?.toUpperCase() ?? null;
     const href = getHoldingCompanyPath(h);
@@ -116,7 +116,7 @@ function getHoldingDisplay(security: {
 }
 
 function getHoldingTicker(h: Awaited<ReturnType<typeof getHoldingsByQuarter>>[number]) {
-  return h.security.ticker ?? h.securityProfile?.ticker ?? h.securityProfile?.company?.ticker ?? null;
+  return h.securityProfile?.ticker ?? h.securityProfile?.company?.ticker ?? null;
 }
 
 function getHoldingCompanyPath(h: Awaited<ReturnType<typeof getHoldingsByQuarter>>[number]) {
@@ -251,7 +251,7 @@ export default async function PersonHubPage({ params }: Props) {
   const prevHoldings = changeSet.base
     ? await getHoldingsByQuarter(id, changeSet.base.year, changeSet.base.quarter)
     : [];
-  const holdingKey = (h: { securityId: string | null; securityEntityId: string }) => h.securityId ?? h.securityEntityId;
+  const holdingKey = (h: { securityId: string | null }) => h.securityId!;
   const prevBySecurityId = new Map(prevHoldings.map((h) => [holdingKey(h), h] as const));
   const currentKeySet = new Set(fullHoldings.map((h) => holdingKey(h)));
   const soldOutRows = prevHoldings.filter((h) => !currentKeySet.has(holdingKey(h)));

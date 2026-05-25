@@ -1,1 +1,2 @@
 {"type":"config","name":"Entity/Security架构重构四阶段全执行","metricName":"build_time_s","metricUnit":"s","bestDirection":"lower"}
+{"run":1,"commit":"9a607fb","metric":44.9,"metrics":{},"status":"keep","description":"Baseline build before refactoring","timestamp":1779719922321,"segment":0,"confidence":null,"asi":{"hypothesis":"Baseline to verify build passes before any changes"}}

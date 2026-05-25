@@ -118,7 +118,7 @@ async function main() {
       const companyEntityId =
         h.securityProfile?.companyEntityId ??
         (typeof meta.companyEntityId === "string" ? meta.companyEntityId : null);
-      const key = companyEntityId ?? `sec:${h.securityId ?? h.securityEntityId}`;
+      const key = companyEntityId ?? `sec:${h.securityId}`;
       const prev = deduped.get(key);
       if (!prev || (h.percentOfPortfolio ?? 0) > (prev.percentOfPortfolio ?? 0)) {
         deduped.set(key, h);

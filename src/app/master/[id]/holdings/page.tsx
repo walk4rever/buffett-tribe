@@ -34,7 +34,7 @@ function formatSignedPct(diffPct: number | null) {
 }
 
 function getHoldingTicker(h: Awaited<ReturnType<typeof getHoldingsByQuarter>>[number]) {
-  return h.security.ticker ?? h.securityProfile?.ticker ?? h.securityProfile?.company?.ticker ?? null;
+  return h.securityProfile?.ticker ?? h.securityProfile?.company?.ticker ?? null;
 }
 
 function getHoldingCompanyPath(h: Awaited<ReturnType<typeof getHoldingsByQuarter>>[number]) {
@@ -60,7 +60,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
   const prevHoldings = prevQuarter
     ? await getHoldingsByQuarter(id, prevQuarter.year, prevQuarter.quarter)
     : [];
-  const holdingKey = (h: { securityId: string | null; securityEntityId: string }) => h.securityId ?? h.securityEntityId;
+  const holdingKey = (h: { securityId: string | null }) => h.securityId!;
   const prevBySecurityId = new Map(prevHoldings.map((h) => [holdingKey(h), h] as const));
   const currentKeySet = new Set(holdings.map((h) => holdingKey(h)));
   const soldOutRows = prevHoldings.filter((h) => !currentKeySet.has(holdingKey(h)));

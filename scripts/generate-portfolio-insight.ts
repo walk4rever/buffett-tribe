@@ -117,16 +117,22 @@ async function getHoldingsByQuarter(tribeId: string, year: number, quarter: numb
       holder: { is: { tribeId } },
       source: { is: { periodYear: year, periodQuarter: quarter, kind: "13f" } },
     },
-    include: { security: { select: { ticker: true, canonicalName: true, metadata: true } } },
+    include: {
+      securityProfile: {
+        include: {
+          company: { select: { canonicalName: true } },
+        },
+      },
+    },
     orderBy: { percentOfPortfolio: "desc" },
   });
   return rows;
 }
 
-function getSecurityNameParts(security: { ticker: string | null; canonicalName: string; metadata: unknown }) {
-  const meta = (security.metadata ?? {}) as { nameZh?: string; nameEnShort?: string };
-  const ticker = security.ticker ?? null;
-  const nameZh = meta.nameZh?.trim() || meta.nameEnShort?.trim() || security.canonicalName;
+function getSecurityNameParts(row: (Awaited<ReturnType<typeof getHoldingsByQuarter>>)[number]) {
+  const meta = (row.securityProfile?.metadata ?? {}) as { nameZh?: string; nameEnShort?: string };
+  const ticker = row.securityProfile?.ticker ?? null;
+  const nameZh = meta.nameZh?.trim() || meta.nameEnShort?.trim() || row.securityProfile?.company?.canonicalName ?? "";
   return { ticker, nameZh };
 }
 
@@ -151,7 +157,7 @@ async function buildChangeSet(tribeId: string, targetQuarter?: QuarterPoint) {
   const baseRows = base ? await getHoldingsByQuarter(tribeId, base.year, base.quarter) : [];
 
   const top = latestRows.slice(0, 10);
-  const keyOf = (r: (typeof latestRows)[number]) => r.securityEntityId;
+  const keyOf = (r: (typeof latestRows)[number]) => r.securityId;
   const baseById = new Map(baseRows.map((r) => [keyOf(r), r] as const));
 
   const adds: Array<{ ticker: string | null; nameZh: string; nowPct: number; deltaPct: number }> = [];
@@ -162,7 +168,7 @@ async function buildChangeSet(tribeId: string, targetQuarter?: QuarterPoint) {
   for (const row of latestRows) {
     const prev = baseById.get(keyOf(row));
     const nowPct = row.percentOfPortfolio ?? 0;
-    const { ticker, nameZh } = getSecurityNameParts(row.security);
+    const { ticker, nameZh } = getSecurityNameParts(row);
 
     if (!prev) {
       newPositions.push({ ticker, nameZh, nowPct });
@@ -176,7 +182,7 @@ async function buildChangeSet(tribeId: string, targetQuarter?: QuarterPoint) {
 
   for (const row of baseRows) {
     if (!latestRows.find((r) => keyOf(r) === keyOf(row))) {
-      const { ticker, nameZh } = getSecurityNameParts(row.security);
+      const { ticker, nameZh } = getSecurityNameParts(row);
       exits.push({
         ticker,
         nameZh,

@@ -157,7 +157,7 @@ async function getSecurityIdsForCompany(entityId: string) {
     where: { id: entityId },
     select: { id: true, ticker: true, canonicalName: true },
   });
-  if (!base) return { profileIds: [] as string[], legacyEntityIds: [entityId] };
+  if (!base) return { profileIds: [] as string[] };
 
   const familyCompanyIds = await getEntityFamilyIds(entityId);
   const ticker = normalizeTicker(base.ticker);
@@ -178,18 +178,11 @@ async function getSecurityIdsForCompany(entityId: string) {
           : []),
       ],
     },
-    select: { id: true, entityId: true },
+    select: { id: true },
   });
 
-  const profileIds = new Set<string>();
-  const legacyEntityIds = new Set<string>(familyCompanyIds);
-  for (const s of securityProfiles) {
-    profileIds.add(s.id);
-    legacyEntityIds.add(s.entityId);
-  }
   return {
-    profileIds: [...profileIds],
-    legacyEntityIds: [...legacyEntityIds],
+    profileIds: securityProfiles.map((s) => s.id),
   };
 }
 
@@ -248,10 +241,7 @@ export async function getRecentHolders(entityId: string, limit = 20) {
   const securityScope = await getSecurityIdsForCompany(entityId);
   const rows = await db.holding.findMany({
     where: {
-      OR: [
-        { securityId: { in: securityScope.profileIds } },
-        { securityEntityId: { in: securityScope.legacyEntityIds } },
-      ],
+      securityId: { in: securityScope.profileIds },
     },
     orderBy: [
       { holderEntityId: "asc" },
@@ -260,7 +250,6 @@ export async function getRecentHolders(entityId: string, limit = 20) {
     ],
     include: {
       holder: { select: { id: true, canonicalName: true, tribeId: true } },
-      security: { select: { ticker: true } },
       securityProfile: { select: { ticker: true } },
       source: { select: { periodYear: true, periodQuarter: true } },
     },
@@ -304,7 +293,7 @@ export async function getRecentHolders(entityId: string, limit = 20) {
   // Group by (holder, ticker). The same ticker can have multiple Security rows from historical imports;
   // company pages should show one row per master × ticker, not one row per internal security profile.
   const rowTicker = (r: (typeof rows)[number]) =>
-    normalizeTicker(r.securityProfile?.ticker ?? r.security.ticker) ?? r.securityId ?? r.securityEntityId;
+    normalizeTicker(r.securityProfile?.ticker) ?? r.securityId;
   const pairKey = (r: (typeof rows)[number]) => `${r.holder.id}|${rowTicker(r)}`;
 
   const pairs = new Map<
@@ -339,7 +328,7 @@ export async function getRecentHolders(entityId: string, limit = 20) {
         holderId: row.holder.id,
         holderName: row.holder.canonicalName,
         tribeId: row.holder.tribeId,
-        securityId: row.securityId ?? row.securityEntityId,
+        securityId: row.securityId!,
         ticker: rowTicker(row),
         current: {
           asOfDate: row.asOfDate,

@@ -94,23 +94,9 @@ async function fetchHolders(entityId: string, limit = 10) {
   });
   const profileIds = securityScope.map((s) => s.id);
 
-  const legacyEntities = await db.entity.findMany({
-    where: {
-      OR: [
-        { id: entityId },
-        { ticker: { equals: (await db.entity.findUnique({ where: { id: entityId }, select: { ticker: true } }))?.ticker ?? undefined, mode: "insensitive" } },
-      ],
-    },
-    select: { id: true },
-  });
-  const legacyIds = legacyEntities.map((e) => e.id);
-
   const rows = await db.holding.findMany({
     where: {
-      OR: [
-        { securityId: { in: profileIds } },
-        { securityEntityId: { in: legacyIds } },
-      ],
+      securityId: { in: profileIds },
     },
     orderBy: [{ holderEntityId: "asc" }, { asOfDate: "desc" }, { valueUsd: "desc" }],
     include: {
