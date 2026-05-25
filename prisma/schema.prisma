@@ -195,6 +195,7 @@ model Entity {
   relationsAsSrc     EntityRelation[] @relation("RelationSrc")
   relationsAsDst     EntityRelation[] @relation("RelationDst")
   analyses           CompanyAnalysis[]
+  businessCanvas     BusinessCanvas?
   profile            MasterProfile?
 
   @@index([type])
@@ -359,6 +360,18 @@ model CompanyAnalysis {
   narrative Json     // { overview: {title, content}, business: {title, content} }
   moat      Json     // { summary: {type, strength, durability, allocation, thesis}, dimensions: [...], notes: [...] }
   source    String   @default("claude")
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+}
+
+model BusinessCanvas {
+  id        String   @id @default(cuid())
+  entityId  String   @unique
+  canvas    Json     // { customerSegments, valuePropositions, channels, customerRelationships, revenueStreams, keyResources, keyActivities, keyPartnerships, costStructure }
+  source    String   @default("llm")
   version   Int      @default(1)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.35.22] - 2026-05-23
+
+### Added
+- 公司页新增商业画布（Business Model Canvas）：9 格经典布局，带 Lucide 图标，中英文标题折行。
+- 商业画布支持动态加载：数据库有数据则显示真实画布，无数据则显示"构建中"占位。
+- 新增 `BusinessCanvas` Prisma 模型与种子脚本，已入库 AAPL / KO / MCO 三家真实画布数据。
+- 新增 `scripts/generate-business-canvas.ts`，支持用 LLM 基于公司财务数据生成商业画布。
+
+### Changed
+- "业务概览"与"商业画布"合并为同一"商业分析"区域，去掉无意义的英文副标题。
+- 商业画布采用 5 列经典 BMC 桌面布局，成本结构与收入来源底部并排，分界线对齐价值主张中线。
+- 财务分析区域标题精简：去掉 "Compound annual growth" / "Business Model Canvas" 等装饰性英文。
+
 ## [v0.35.21] - 2026-05-23
 
 ### Changed

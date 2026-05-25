@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CompanyDisplayName } from "@/components/CompanyDisplayName";
+import { CompanyBusinessCanvas } from "@/components/CompanyBusinessCanvas";
 import { SiteNav } from "@/components/SiteNav";
 import { getTribeMember } from "@/lib/tribe";
 import {
   formatMoney,
+  getBusinessCanvas,
   getCompanyAnalysis,
   getCompanyByCik,
   getCompanyFinancials,
@@ -418,11 +420,12 @@ export default async function CompanyPage({ params }: Props) {
   const company = await getCompanyByCik(rawCik.trim());
   if (!company) notFound();
 
-  const [financials, holders, securities, analysis] = await Promise.all([
+  const [financials, holders, securities, analysis, businessCanvas] = await Promise.all([
     getCompanyFinancials(company.id, 5),
     getRecentHolders(company.id, 30),
     getCompanySecurities(company.id),
     getCompanyAnalysis(company.id),
+    getBusinessCanvas(company.id),
   ]);
 
   const listedSecurities = securities.length
@@ -536,12 +539,25 @@ export default async function CompanyPage({ params }: Props) {
 
         <section className="company-section">
           <div className="company-section-head">
-            <h2>业务概览</h2>
-            <span>Business Overview</span>
+            <h2>商业分析</h2>
+          </div>
+          <div className="company-financial-trend-head">
+            <h3>业务概览</h3>
           </div>
           <div className="company-text-card">
             <p>{companyNarrative.business.content}</p>
           </div>
+          <div className="company-financial-trend-head">
+            <h3>商业画布{businessCanvas ? "" : "（构建中）"}</h3>
+          </div>
+          {businessCanvas ? (
+            <CompanyBusinessCanvas data={businessCanvas} />
+          ) : (
+            <div className="company-canvas-placeholder">
+              <p>商业画布数据正在构建中。</p>
+              <span>可结合上方业务概览与下方财务分析了解这家公司。</span>
+            </div>
+          )}
         </section>
 
         <section className="company-section">
@@ -560,7 +576,7 @@ export default async function CompanyPage({ params }: Props) {
           </div>
           <div className="company-financial-trend-head">
             <h3>5 年趋势证据</h3>
-            <span>{displayYears.length ? `FY ${displayYears[displayYears.length - 1]}–FY ${displayYears[0]}` : "暂无数据"}</span>
+            <span>{displayYears.length ? `${displayYears[displayYears.length - 1]}–${displayYears[0]}` : ""}</span>
           </div>
           {displayYears.length ? (
             <div className="company-table-wrap">
@@ -601,7 +617,6 @@ export default async function CompanyPage({ params }: Props) {
             <div className="company-long-term-block" aria-label="长期趋势摘要">
               <div className="company-financial-trend-head">
                 <h3>长期复合增长</h3>
-                <span>Compound annual growth</span>
               </div>
               <div className="company-long-term-trends">
                 {dashboard.longTermTrends.map((trend) => (

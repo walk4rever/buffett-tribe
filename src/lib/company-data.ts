@@ -3,6 +3,7 @@ import { formatUsdInYi } from "@/lib/currency";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
 import { normalizeTicker } from "@/lib/ticker";
 import { Prisma } from "@prisma/client";
+import type { BusinessCanvasData } from "@/components/CompanyBusinessCanvas";
 
 export async function getCompanyByCik(cikRaw: string) {
   const cik = String(Number(cikRaw.replace(/\D/g, "")));
@@ -442,4 +443,12 @@ export async function getCompanyAnalysis(entityId: string) {
     select: { narrative: true, moat: true, source: true, version: true },
   });
   return row ?? null;
+}
+
+export async function getBusinessCanvas(entityId: string) {
+  const row = await db.businessCanvas.findUnique({
+    where: { entityId },
+    select: { canvas: true },
+  });
+  return (row?.canvas as BusinessCanvasData | undefined) ?? null;
 }
