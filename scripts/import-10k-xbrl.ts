@@ -30,6 +30,7 @@ const HEADERS = {
 };
 
 type QuarterFact = {
+  start?: string;
   end?: string;
   filed?: string;
   val?: number;
@@ -399,6 +400,148 @@ function decimalFromNumber(value: number) {
   return value.toString();
 }
 
+async function batchUpsertFinancialFactsFromApi(
+  entityId: string,
+  sourceId: string,
+  facts: Awaited<ReturnType<typeof getCompanyFacts>>,
+  filing: { accession: string; filedAt: string; reportDate: string; form: string },
+) {
+  const allTaxonomies = facts.facts ?? {};
+  const records: Array<{
+    entityId: string;
+    sourceId: string;
+    taxonomy: string;
+    concept: string;
+    value: string | null;
+    valueRaw: string;
+    unit: string;
+    unitRef: string | null;
+    periodType: string;
+    startDate: Date | null;
+    endDate: Date;
+    form: string;
+    accession: string;
+    filedAt: Date;
+    rawFactJson: unknown;
+    rawContextJson: unknown;
+  }> = [];
+
+  for (const [taxonomy, concepts] of Object.entries(allTaxonomies)) {
+    for (const [concept, conceptData] of Object.entries(concepts)) {
+      const units = (conceptData as Record<string, unknown>)?.units as Record<string, QuarterFact[]> | undefined;
+      if (!units) continue;
+
+      for (const [unit, rows] of Object.entries(units)) {
+        if (!Array.isArray(rows)) continue;
+        for (const row of rows) {
+          if (row.val == null || typeof row.val !== "number") continue;
+          if (!ANNUAL_FORMS.has(row.form ?? filing.form)) continue;
+
+          const periodType = row.start ? "duration" : "instant";
+          const startDate = row.start ? new Date(row.start) : null;
+          const endDate = new Date(row.end ?? filing.reportDate);
+
+          records.push({
+            entityId,
+            sourceId,
+            taxonomy,
+            concept,
+            value: decimalFromNumber(row.val),
+            valueRaw: String(row.val),
+            unit: unit.toUpperCase(),
+            unitRef: null,
+            periodType,
+            startDate,
+            endDate,
+            form: row.form ?? filing.form,
+            accession: filing.accession,
+            filedAt: row.filed ? new Date(row.filed) : new Date(filing.filedAt),
+            rawFactJson: row,
+            rawContextJson: { start: row.start, end: row.end },
+          });
+        }
+      }
+    }
+  }
+
+  if (records.length) {
+    await db.financialFact.createMany({ data: records, skipDuplicates: true });
+  }
+  return records.length;
+}
+
+async function batchUpsertFinancialFactsFromInline(
+  entityId: string,
+  sourceId: string,
+  doc: InlineXbrlDocument,
+  filing: { accession: string; filedAt: string; reportDate: string; form: string },
+) {
+  const records: Array<{
+    entityId: string;
+    sourceId: string;
+    taxonomy: string;
+    concept: string;
+    value: string | null;
+    valueRaw: string;
+    unit: string;
+    unitRef: string | null;
+    periodType: string;
+    startDate: Date | null;
+    endDate: Date;
+    form: string;
+    accession: string;
+    filedAt: Date;
+    rawFactJson: unknown;
+    rawContextJson: unknown;
+  }> = [];
+
+  const targetFy = new Date(filing.reportDate).getUTCFullYear();
+
+  for (const fact of doc.facts) {
+    if (fact.value == null) continue;
+
+    const context = doc.contexts.get(fact.contextRef);
+    if (!context) continue;
+
+    const tag = fact.name.includes(":") ? fact.name.split(":").at(-1) ?? fact.name : fact.name;
+    const taxonomy = fact.name.includes(":") ? fact.name.split(":")[0] ?? "us-gaap" : "us-gaap";
+    const unit = normalizeInlineUnitRef(fact.unitRef) ?? "pure";
+    const endDate = context.endDate
+      ? new Date(context.endDate)
+      : context.instant
+        ? new Date(context.instant)
+        : new Date(filing.reportDate);
+    const startDate = context.startDate ? new Date(context.startDate) : null;
+
+    // 只存目标 FY 的数据（避免把 Q1-Q3 的也混进来）
+    if (endDate.getUTCFullYear() !== targetFy) continue;
+
+    records.push({
+      entityId,
+      sourceId,
+      taxonomy,
+      concept: tag,
+      value: decimalFromNumber(fact.value),
+      valueRaw: String(fact.value),
+      unit: unit.toUpperCase(),
+      unitRef: fact.unitRef,
+      periodType: context.periodType,
+      startDate,
+      endDate,
+      form: filing.form,
+      accession: filing.accession,
+      filedAt: new Date(filing.filedAt),
+      rawFactJson: { name: fact.name, contextRef: fact.contextRef, unitRef: fact.unitRef, value: fact.value },
+      rawContextJson: { id: context.id, periodType: context.periodType, startDate: context.startDate, instant: context.instant, endDate: context.endDate },
+    });
+  }
+
+  if (records.length) {
+    await db.financialFact.createMany({ data: records, skipDuplicates: true });
+  }
+  return records.length;
+}
+
 async function upsertCompanyEntity(cik: string, ticker: string, title: string, profile: SecCompanyProfile) {
   const byCik = await db.entity.findFirst({
     where: { cik },
@@ -585,7 +728,26 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
 
   for (const filing of targetFilings) {
     const extSource = await upsertExtSource(companyEntity.id, cik, filing);
-    let inlineDoc: InlineXbrlDocument | null = null;
+
+    // 1. Write all XBRL facts from CompanyFacts API
+    const apiFactCount = await batchUpsertFinancialFactsFromApi(
+      companyEntity.id,
+      extSource.id,
+      facts,
+      filing,
+    );
+
+    // 2. Download HTML and write all Inline XBRL facts
+    const html = await fetchFilingHtml(cik, filing);
+    const inlineDoc = parseInlineXbrlDocument(html);
+    const inlineFactCount = await batchUpsertFinancialFactsFromInline(
+      companyEntity.id,
+      extSource.id,
+      inlineDoc,
+      filing,
+    );
+
+    // 3. Continue existing LINE_ITEMS logic (derived layer)
     let upserted = 0;
     let missing = 0;
     let fallbackUsed = 0;
@@ -603,7 +765,6 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
       let unit = item.unitCandidates[0];
 
       if (value == null) {
-        inlineDoc ??= parseInlineXbrlDocument(await fetchFilingHtml(cik, filing));
         const inlineFact = pickInlineFactWithUnit(
           inlineDoc,
           item.tagsUsGaap,
@@ -652,7 +813,7 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
     }
 
     console.log(
-      `  ${filing.reportDate} (${filing.accession}) -> upserted ${upserted}, missing ${missing}, fallback ${fallbackUsed}`,
+      `  ${filing.reportDate} (${filing.accession}) -> facts(API ${apiFactCount}, Inline ${inlineFactCount}), derived ${upserted}, missing ${missing}, fallback ${fallbackUsed}`,
     );
   }
 }

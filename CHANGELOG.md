@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.35.24] - 2026-05-23
+
+### Added
+- `scripts/import-10k-xbrl.ts` 改造：导入时同时写入所有 XBRL facts 到 `FinancialFact` 原始事实层。
+  - CompanyFacts API 返回的全部 us-gaap/ifrs concepts 批量入库。
+  - Inline XBRL 解析补充事实，增量入库。
+  - 派生层 `Financial` 表继续保留，不受影响。
+- 新增 `scripts/extract-10k-sections.ts`：从 `ExtSource.url` 下载 10-K HTML，提取文本章节。
+  - 支持提取 Item 1 Business / 1A Risk Factors / 7 MD&A / 7A Market Risk / 8 Notes 等。
+  - 自动跳过已提取的章节，支持并发控制和 `--ticker` / `--limit` 参数。
+  - 已验证 AAPL 6 年 10-K，成功提取 42 个章节。
+
+### Changed
+- `FinancialFact` 表增加唯一约束 `(sourceId, concept, endDate, unit)`，支持 upsert 去重。
+
 ## [v0.35.23] - 2026-05-23
 
 ### Added

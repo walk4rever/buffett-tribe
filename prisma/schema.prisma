@@ -331,6 +331,7 @@ model FinancialFact {
   entity Entity    @relation(fields: [entityId], references: [id], onDelete: Cascade)
   source ExtSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
+  @@unique([sourceId, concept, endDate, unit])
   @@index([entityId, concept, endDate])
   @@index([entityId, endDate])
   @@index([sourceId])
