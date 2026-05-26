@@ -10,7 +10,7 @@
  *   tsx scripts/generate-portfolio-insight.ts --all                [--dry-run]
  */
 
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import "dotenv/config";
 
 const db = new PrismaClient();
@@ -18,6 +18,10 @@ const db = new PrismaClient();
 const AI_API_KEY = process.env.AI_API_KEY;
 const AI_API_BASE_URL = process.env.AI_API_BASE_URL;
 const AI_MODEL = process.env.AI_MODEL;
+
+function toJsonValue(value: unknown): Prisma.InputJsonValue {
+  return value as Prisma.InputJsonValue;
+}
 
 // ---------------------------------------------------------------------------
 // CLI helpers
@@ -118,9 +122,9 @@ async function getHoldingsByQuarter(tribeId: string, year: number, quarter: numb
       source: { is: { periodYear: year, periodQuarter: quarter, kind: "13f" } },
     },
     include: {
-      securityProfile: {
+      security: {
         include: {
-          company: { select: { canonicalName: true } },
+          company: { select: { canonicalName: true, ticker: true } },
         },
       },
     },
@@ -130,9 +134,11 @@ async function getHoldingsByQuarter(tribeId: string, year: number, quarter: numb
 }
 
 function getSecurityNameParts(row: (Awaited<ReturnType<typeof getHoldingsByQuarter>>)[number]) {
-  const meta = (row.securityProfile?.metadata ?? {}) as { nameZh?: string; nameEnShort?: string };
-  const ticker = row.securityProfile?.ticker ?? null;
-  const nameZh = meta.nameZh?.trim() || meta.nameEnShort?.trim() || row.securityProfile?.company?.canonicalName ?? "";
+  const meta = ((row.security.metadata && typeof row.security.metadata === "object" && !Array.isArray(row.security.metadata))
+    ? row.security.metadata
+    : {}) as { nameZh?: string; nameEnShort?: string };
+  const ticker = row.security.ticker ?? row.security.company?.ticker ?? null;
+  const nameZh = meta.nameZh?.trim() || meta.nameEnShort?.trim() || row.security.company?.canonicalName || row.security.titleOfClass || "";
   return { ticker, nameZh };
 }
 
@@ -315,7 +321,7 @@ function buildPrompt(
   const topList = changeSet.top
     .slice(0, 5)
     .map((h, i) => {
-      const { ticker, nameZh } = getSecurityNameParts(h.security);
+      const { ticker, nameZh } = getSecurityNameParts(h);
       return `${i + 1}. ${formatDisplayName(nameZh, ticker)} (${formatPct(h.percentOfPortfolio ?? 0)})`;
     })
     .join("；");
@@ -433,13 +439,20 @@ async function upsertInsight(
   await db.portfolioInsight.upsert({
     where: { masterId_year_quarter: { masterId, year, quarter } },
     update: {
-      structured,
+      structured: structured ? toJsonValue(structured) : Prisma.JsonNull,
       narrative,
       source: AI_MODEL ?? "deepseek",
       generatedAt: new Date(),
       version: { increment: 1 },
     },
-    create: { masterId, year, quarter, structured, narrative, source: AI_MODEL ?? "deepseek" },
+    create: {
+      masterId,
+      year,
+      quarter,
+      structured: structured ? toJsonValue(structured) : Prisma.JsonNull,
+      narrative,
+      source: AI_MODEL ?? "deepseek",
+    },
   });
 
   console.log(`  ✓ Upserted to DB (${narrative.length} chars)`);
@@ -479,6 +492,19 @@ async function generateFor(masterId: string, dryRun: boolean, targetQuarter?: Qu
   // 3. Build prompt and call AI
   const prompt = buildPrompt(name, quarter, changeSet, profile);
   console.log(`  Prompt: ${prompt.length} chars`);
+
+  if (dryRun) {
+    console.log(`  DRY-RUN: prompt preview:\n${prompt.slice(0, 800)}...\n`);
+    await upsertInsight(
+      masterId,
+      changeSet.latest.year,
+      changeSet.latest.quarter,
+      structured,
+      "[dry-run] narrative preview skipped",
+      true,
+    );
+    return;
+  }
 
   try {
     const narrative = await callAI(prompt);

@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS "EntityRelation";
+DROP TABLE IF EXISTS "Mention";

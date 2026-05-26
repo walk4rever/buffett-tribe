@@ -10,7 +10,7 @@
  * Defaults:
  *   --years 5 (if --from/--to not provided)
  */
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { hasChineseText, issuerKey, normalizeEnglishName } from "../src/lib/company-name-map";
 import { translateCompanyNameToZh, upsertNameMapEntries } from "./lib/company-name-zh";
 import {
@@ -20,6 +20,7 @@ import {
   pickCompanyProfile,
   type SecCompanyProfile,
 } from "./lib/sec-company-profile";
+import { extractTargetSections } from "./lib/extract-10k-sections";
 
 const db = new PrismaClient();
 
@@ -275,6 +276,135 @@ async function fetchFilingHtml(cik: string, filing: { accession: string; primary
   return res.text();
 }
 
+type FilingIndexFile = {
+  sequence: string;
+  description: string;
+  documentName: string;
+  documentType: string;
+  url: string;
+};
+
+/**
+ * Parse the SEC EDGAR filing index page (`{accession}-index.htm`) to extract the
+ * "Document Format Files" table. This is the only SEC endpoint that exposes the
+ * structured (Seq, Description, Type) fields per exhibit.
+ */
+async function fetchFilingIndexFiles(
+  cik: string,
+  accession: string,
+): Promise<FilingIndexFile[]> {
+  const accnoPath = accession.replace(/-/g, "");
+  const indexUrl = `https://www.sec.gov/Archives/edgar/data/${cik}/${accnoPath}/${accession}-index.htm`;
+  const res = await fetch(indexUrl, { headers: HEADERS });
+  if (!res.ok) {
+    throw new Error(`Filing index fetch failed for ${accession}: ${res.status}`);
+  }
+  const html = await res.text();
+
+  // Grab the first `<table class="tableFile" ... summary="Document Format Files">`.
+  // SEC also emits a second `tableFile` for "Data Files" (XBRL/zip) which we skip.
+  const tableMatch = html.match(
+    /<table[^>]*class="tableFile"[^>]*summary="Document Format Files"[^>]*>([\s\S]*?)<\/table>/i,
+  );
+  if (!tableMatch) return [];
+
+  const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  const cellRe = /<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi;
+  const results: FilingIndexFile[] = [];
+  let rowMatch: RegExpExecArray | null;
+
+  while ((rowMatch = rowRe.exec(tableMatch[1]))) {
+    const cells: string[] = [];
+    let cellMatch: RegExpExecArray | null;
+    const rowBody = rowMatch[1];
+    cellRe.lastIndex = 0;
+    while ((cellMatch = cellRe.exec(rowBody))) {
+      const text = cellMatch[1]
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      cells.push(text);
+    }
+    if (cells.length < 4) continue; // header row or malformed
+    const [seq, desc, doc, docType] = cells;
+    if (!seq || !/^\d+$/.test(seq)) continue; // skip header
+
+    // Document cell may contain trailing "iXBRL" tag — strip it.
+    const documentName = doc.replace(/\s*iXBRL\s*$/i, "").trim();
+    if (!documentName) continue;
+
+    results.push({
+      sequence: seq,
+      description: desc || docType || documentName,
+      documentName,
+      documentType: docType || "",
+      url: `https://www.sec.gov/Archives/edgar/data/${cik}/${accnoPath}/${documentName}`,
+    });
+  }
+
+  return results;
+}
+
+async function upsertFilingSectionsFromHtml(
+  entityId: string,
+  sourceId: string,
+  html: string,
+) {
+  const sections = extractTargetSections(html);
+  const keys = Object.keys(sections);
+  if (!keys.length) return 0;
+
+  for (const [section, content] of Object.entries(sections)) {
+    await db.filingSection.upsert({
+      where: { sourceId_section: { sourceId, section } },
+      update: { content, extractedAt: new Date() },
+      create: {
+        entityId,
+        sourceId,
+        section,
+        content,
+        rawHtml: null, // source.url is the truth; storing raw HTML here would balloon DB size
+        extractedAt: new Date(),
+      },
+    });
+  }
+  return keys.length;
+}
+
+async function upsertFilingAttachments(
+  entityId: string,
+  sourceId: string,
+  cik: string,
+  accession: string,
+) {
+  let files: FilingIndexFile[];
+  try {
+    files = await fetchFilingIndexFiles(cik, accession);
+  } catch (err) {
+    console.warn(`  attachments: index fetch failed for ${accession}: ${err instanceof Error ? err.message : err}`);
+    return 0;
+  }
+  if (!files.length) return 0;
+
+  // Wipe + re-insert per (sourceId) to keep the set canonical and ordered by sequence.
+  // FilingAttachment has no natural unique key beyond `id`, so naive createMany would
+  // produce duplicates on re-runs.
+  await db.filingAttachment.deleteMany({ where: { sourceId } });
+  await db.filingAttachment.createMany({
+    data: files.map((f) => ({
+      entityId,
+      sourceId,
+      sequence: f.sequence,
+      description: f.description,
+      documentType: f.documentType,
+      documentName: f.documentName,
+      url: f.url,
+    })),
+  });
+  return files.length;
+}
+
 function parseAttrMap(source: string) {
   const attrs = new Map<string, string>();
   const attrRe = /([A-Za-z_:][\w:.-]*)="([^"]*)"/g;
@@ -400,6 +530,10 @@ function decimalFromNumber(value: number) {
   return value.toString();
 }
 
+function toJsonValue(value: unknown): Prisma.InputJsonValue {
+  return value as Prisma.InputJsonValue;
+}
+
 async function batchUpsertFinancialFactsFromApi(
   entityId: string,
   sourceId: string,
@@ -422,8 +556,8 @@ async function batchUpsertFinancialFactsFromApi(
     form: string;
     accession: string;
     filedAt: Date;
-    rawFactJson: unknown;
-    rawContextJson: unknown;
+    rawFactJson: Prisma.InputJsonValue;
+    rawContextJson: Prisma.InputJsonValue;
   }> = [];
 
   for (const [taxonomy, concepts] of Object.entries(allTaxonomies)) {
@@ -456,8 +590,8 @@ async function batchUpsertFinancialFactsFromApi(
             form: row.form ?? filing.form,
             accession: filing.accession,
             filedAt: row.filed ? new Date(row.filed) : new Date(filing.filedAt),
-            rawFactJson: row,
-            rawContextJson: { start: row.start, end: row.end },
+            rawFactJson: toJsonValue(row),
+            rawContextJson: toJsonValue({ start: row.start, end: row.end }),
           });
         }
       }
@@ -491,8 +625,8 @@ async function batchUpsertFinancialFactsFromInline(
     form: string;
     accession: string;
     filedAt: Date;
-    rawFactJson: unknown;
-    rawContextJson: unknown;
+    rawFactJson: Prisma.InputJsonValue;
+    rawContextJson: Prisma.InputJsonValue;
   }> = [];
 
   const targetFy = new Date(filing.reportDate).getUTCFullYear();
@@ -531,8 +665,8 @@ async function batchUpsertFinancialFactsFromInline(
       form: filing.form,
       accession: filing.accession,
       filedAt: new Date(filing.filedAt),
-      rawFactJson: { name: fact.name, contextRef: fact.contextRef, unitRef: fact.unitRef, value: fact.value },
-      rawContextJson: { id: context.id, periodType: context.periodType, startDate: context.startDate, instant: context.instant, endDate: context.endDate },
+      rawFactJson: toJsonValue({ name: fact.name, contextRef: fact.contextRef, unitRef: fact.unitRef, value: fact.value }),
+      rawContextJson: toJsonValue({ id: context.id, periodType: context.periodType, startDate: context.startDate, instant: context.instant, endDate: context.endDate }),
     });
   }
 
@@ -559,7 +693,7 @@ async function upsertCompanyEntity(cik: string, ticker: string, title: string, p
         type: "company",
         ticker: { equals: ticker, mode: "insensitive" },
       },
-      select: { id: true, metadata: true, cik: true, sector: true },
+      select: { id: true, metadata: true, type: true, cik: true, sector: true },
     });
     // Fallback to any type (handles legacy type=security entities)
     if (!target) {
@@ -567,12 +701,11 @@ async function upsertCompanyEntity(cik: string, ticker: string, title: string, p
         where: {
           ticker: { equals: ticker, mode: "insensitive" },
         },
-        select: { id: true, metadata: true, cik: true, sector: true },
+        select: { id: true, metadata: true, type: true, cik: true, sector: true },
       });
     }
   }
 
-  const cikOwnedByTarget = target?.id === byCik?.id;
   const existingMeta = (target?.metadata as Record<string, unknown> | null) ?? {};
   const dbNameMap = await db.companyNameMap.findUnique({
     where: { keyType_key: { keyType: "ticker", key: ticker.toUpperCase() } },
@@ -755,7 +888,22 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
       filing,
     );
 
-    // 3. Continue existing LINE_ITEMS logic (derived layer)
+    // 3. Extract FilingSection text (Item 1/1A/2/3/7/7A/8 …) from the same HTML
+    const sectionCount = await upsertFilingSectionsFromHtml(
+      companyEntity.id,
+      extSource.id,
+      html,
+    );
+
+    // 4. Register FilingAttachment rows (exhibits) from the SEC filing index page
+    const attachmentCount = await upsertFilingAttachments(
+      companyEntity.id,
+      extSource.id,
+      cik,
+      filing.accession,
+    );
+
+    // 5. Continue existing LINE_ITEMS logic (derived layer)
     let upserted = 0;
     let missing = 0;
     let fallbackUsed = 0;
@@ -821,7 +969,7 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
     }
 
     console.log(
-      `  ${filing.reportDate} (${filing.accession}) -> facts(API ${apiFactCount}, Inline ${inlineFactCount}), derived ${upserted}, missing ${missing}, fallback ${fallbackUsed}`,
+      `  ${filing.reportDate} (${filing.accession}) -> facts(API ${apiFactCount}, Inline ${inlineFactCount}), sections ${sectionCount}, attachments ${attachmentCount}, derived ${upserted}, missing ${missing}, fallback ${fallbackUsed}`,
     );
   }
 }

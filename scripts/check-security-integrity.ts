@@ -13,9 +13,10 @@ async function main() {
       id: true,
       cusip: true,
       ticker: true,
+      titleOfClass: true,
+      metadata: true,
       companyEntityId: true,
-      entity: { select: { canonicalName: true, ticker: true } },
-      company: { select: { ticker: true } },
+      company: { select: { canonicalName: true, ticker: true } },
       holdings: { select: { id: true } },
     },
   });
@@ -32,10 +33,17 @@ async function main() {
     .slice(0, 30)
     .map((s) => ({
       securityId: s.id,
-      issuer: s.entity.canonicalName,
+      issuer:
+        s.company?.canonicalName ??
+        ((s.metadata && typeof s.metadata === "object" && !Array.isArray(s.metadata))
+          ? ((s.metadata as { nameEnShort?: string; nameZh?: string }).nameEnShort ??
+             (s.metadata as { nameEnShort?: string; nameZh?: string }).nameZh ??
+             null)
+          : null) ??
+        s.titleOfClass ??
+        null,
       cusip: s.cusip,
       ticker: s.ticker,
-      entityTicker: s.entity.ticker,
       companyTicker: s.company?.ticker ?? null,
       companyEntityId: s.companyEntityId,
       holdingsCount: s.holdings.length,

@@ -20,17 +20,14 @@ async function main() {
       source: { kind: "13f", periodYear: { gte: fromYear } },
     },
     select: {
-      securityProfile: {
-        select: {
-          companyEntityId: true,
-          company: { select: { id: true, canonicalName: true, ticker: true } },
-        },
-      },
       security: {
         select: {
-          canonicalName: true,
+          id: true,
           ticker: true,
+          titleOfClass: true,
           metadata: true,
+          companyEntityId: true,
+          company: { select: { id: true, canonicalName: true, ticker: true } },
         },
       },
     },
@@ -40,9 +37,15 @@ async function main() {
   const unresolved: Array<{ issuer: string; ticker: string | null }> = [];
 
   for (const h of holdings) {
-    const company = h.securityProfile?.company;
-    if (!company || !h.securityProfile?.companyEntityId) {
-      unresolved.push({ issuer: h.security.canonicalName, ticker: h.security.ticker });
+    const company = h.security.company;
+    if (!company || !h.security.companyEntityId) {
+      const meta = (h.security.metadata && typeof h.security.metadata === "object" && !Array.isArray(h.security.metadata))
+        ? (h.security.metadata as { nameEnShort?: string; nameZh?: string })
+        : {};
+      unresolved.push({
+        issuer: meta.nameEnShort ?? meta.nameZh ?? h.security.titleOfClass ?? h.security.ticker ?? h.security.id,
+        ticker: h.security.ticker,
+      });
       continue;
     }
     const key = company.id;
@@ -52,14 +55,24 @@ async function main() {
   }
 
   const companies = [...byCompany.values()];
-  let hasFY = 0;
-  const missingFY: Array<{ companyId: string; name: string; ticker: string | null; refs: number }> = [];
-
-  for (const c of companies) {
-    const cnt = await db.financial.count({ where: { entityId: c.id, periodType: "FY" } });
-    if (cnt > 0) hasFY += 1;
-    else missingFY.push({ companyId: c.id, name: c.name, ticker: c.ticker, refs: c.refs });
-  }
+  const companyIds = companies.map((c) => c.id);
+  const financialRows = companyIds.length
+    ? await db.financial.findMany({
+        where: {
+          entityId: { in: companyIds },
+          periodType: "FY",
+        },
+        select: { entityId: true },
+      })
+    : [];
+  const companyIdsWithFY = new Set(financialRows.map((row) => row.entityId));
+  const hasFY = companies.filter((c) => companyIdsWithFY.has(c.id)).length;
+  const missingFY = companies.filter((c) => !companyIdsWithFY.has(c.id)).map((c) => ({
+    companyId: c.id,
+    name: c.name,
+    ticker: c.ticker,
+    refs: c.refs,
+  }));
 
   missingFY.sort((a, b) => b.refs - a.refs);
 

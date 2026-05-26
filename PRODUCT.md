@@ -2,7 +2,7 @@
 
 # 巴菲特部落 · Buffett Tribe — 产品设计文档
 
-> 最后更新：2026-05-25（v0.35.28）
+> 最后更新：2026-05-26（v0.36.0）
 
 ---
 
@@ -323,6 +323,10 @@ Apple HIG 精简风格：
   - 清理 139 个遗留的 `type=security` Entity。
   - 新增 migration `20260525000100_remove_security_entity`。
   - `scratch/` 和 `scripts/` 排除在 tsconfig 编译外，避免草稿脚本影响 build。
+- **关系抽取表下线**：删除未接入运行面的 `Mention` 与 `EntityRelation` 表。
+  - Postgres 不再保留一套未使用的关系层。
+  - 图谱查询与关系检索统一以 Neo4j 为准。
+  - 新增 migration `20260526000100_drop_mention_entity_relation`。
 
 ### v0.35.20 变更
 
@@ -535,27 +539,23 @@ FinancialFact
 ### 回填与修复
 
 - `npm run backfill:security:company-links`：把 security 重新挂到正确 company
-- `npm run backfill:security:table`：修正 security 表历史数据
 - `npm run backfill:company:profiles`：补公司 profile 元数据
 - `npm run backfill:names`：补中文名 / 英文短名
 - `npm run sync:company-name-map`：让 `company_name_map` 跟实体数据对齐
-- `npm run cleanup:duplicate-companies`：清理重复 company 实体
-- `npm run generate:master-profile`：补大师主页 profile
-- `npm run generate:portfolio-insight`：生成持仓洞察
 - `npm run generate:home-signals`：生成首页 3 条信号快照
 
 ### 巡检
 
 - `npm run check:security:integrity`：检查 security 关联完整性
 - `npm run check:financial:integrity`：检查财务数据完整性
-- `npm run check:latest-holdings:coverage`：检查三位投资者最新季持仓公司的 5 年财务与 analysis 覆盖
-- `npm run check:latest-holdings:coverage:json`：机器可读 JSON 输出
 - `npm run check:db`：数据库健康检查
 - `scripts/check-all-company-financials.ts`：全量公司财务巡检
 
 ### 自动补齐
 
-- `npm run fix:latest-holdings:coverage`：按巡检结果自动补齐缺口
+- `npm run generate:master-profile`：生成并入库大师主页画像 `MasterProfile`
+- `npm run generate:portfolio-insight`：生成并入库季度持仓点评 `PortfolioInsight`
+- `npm run generate:business-canvas`：批量生成并入库公司商业画布
 - `scripts/run-company-analysis.ts`：批量生成并入库 company analysis
 - `scripts/import-10k-xbrl.ts`：现在支持 `companyfacts + filing-level inline XBRL fallback`
 
@@ -579,8 +579,9 @@ FinancialFact
 
 - `npm run import:13f`
 - `npm run import:10k -- --ticker TME --from 2025 --to 2025`
-- `npm run check:latest-holdings:coverage`
-- `npm run fix:latest-holdings:coverage`
+- `npm run generate:master-profile -- --master buffett`
+- `npm run generate:portfolio-insight -- --master buffett`
+- `npm run generate:business-canvas -- --company AAPL --force`
 - `npm run generate:home-signals`
 - `node --env-file=.env.local ./node_modules/.bin/tsx scripts/run-company-analysis.ts --all`
 
@@ -588,7 +589,6 @@ FinancialFact
 
 - `npm run backfill:security:company-links`
 - `npm run sync:company-name-map`
-- `npm run cleanup:duplicate-companies`
 - `npm run backfill:company:profiles`
 - `npm run backfill:names`
 
@@ -602,6 +602,7 @@ FinancialFact
 ### 规则
 
 - 先查缺口，再补数据，再做手工修正
-- 12F / 10-K / analysis 的批处理都优先脚本化
+- 13F / 10-K / master profile / portfolio insight / analysis / business canvas 的批处理都优先脚本化
 - 数据源优先级：`companyfacts` -> filing-level inline XBRL -> 手工修复
 - 首页信号由脚本产出快照，页面只读快照，不在页面里现算
+- 主入口脚本编号总览见 [scripts/README.md](/Users/rafael/R129/buffett-tribe/scripts/README.md)

@@ -87,8 +87,6 @@ model Chunk {
   createdAt        DateTime                 @default(now())
   updatedAt        DateTime                 @updatedAt
   source           Source                   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  mentions         Mention[]
-  relationEvidence EntityRelation[]
 
   @@unique([sourceId, order])
 }
@@ -185,7 +183,6 @@ model Entity {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  mentions           Mention[]
   financials         Financial[]
   facts              FinancialFact[]
   filingSections     FilingSection[]
@@ -193,8 +190,6 @@ model Entity {
   holdingsAsHolder   Holding[]        @relation("HolderEntity")
   securitiesAsCompany Security[]      @relation("SecurityCompany")
   extSourcesAsFiler  ExtSource[]
-  relationsAsSrc     EntityRelation[] @relation("RelationSrc")
-  relationsAsDst     EntityRelation[] @relation("RelationDst")
   analyses           CompanyAnalysis[]
   businessCanvas     BusinessCanvas?
   profile            MasterProfile?
@@ -244,24 +239,6 @@ model ExtSource {
 
   @@index([kind, ts])
   @@index([filerEntityId])
-}
-
-model Mention {
-  id             String    @id @default(cuid())
-  entityId       String
-  chunkId        String
-  ts             DateTime?
-  sentiment      String? // 'bullish' | 'neutral' | 'cautious' | 'critical'
-  sentimentScore Float? // -1.0 ~ 1.0
-  span           String?
-  metadata       Json?
-  createdAt      DateTime  @default(now())
-
-  entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
-  chunk  Chunk  @relation(fields: [chunkId], references: [id], onDelete: Cascade)
-
-  @@index([entityId, ts])
-  @@index([chunkId])
 }
 
 model Financial {
@@ -392,25 +369,6 @@ model Holding {
   @@unique([holderEntityId, securityId, asOfDate])
   @@index([securityId, asOfDate])
   @@index([holderEntityId, asOfDate])
-}
-
-model EntityRelation {
-  id              String    @id @default(cuid())
-  srcEntityId     String
-  dstEntityId     String
-  type            String // 'owns' | 'manages' | 'mentions' | 'related_to'
-  ts              DateTime?
-  evidenceChunkId String?
-  confidence      Float?
-  metadata        Json?
-  createdAt       DateTime  @default(now())
-
-  src           Entity @relation("RelationSrc", fields: [srcEntityId], references: [id], onDelete: Cascade)
-  dst           Entity @relation("RelationDst", fields: [dstEntityId], references: [id], onDelete: Cascade)
-  evidenceChunk Chunk? @relation(fields: [evidenceChunkId], references: [id], onDelete: SetNull)
-
-  @@index([srcEntityId, type])
-  @@index([dstEntityId, type])
 }
 
 model CompanyNameMap {

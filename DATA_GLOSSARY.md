@@ -1,7 +1,7 @@
 # Buffett Tribe 数据缩写字典（简版）
 
 > 适用范围：本项目的 13F / 10-K / XBRL 数据导入与展示。  
-> 更新时间：2026-05-19
+> 更新时间：2026-05-26
 
 ## 1) 证券与主体标识
 
@@ -43,9 +43,11 @@
 
 - `AAPL` 是 **Ticker**，不是 `CUSIP`。  
 - `CUSIP` 通常是 9 位字母数字组合；`Ticker` 通常是 1-5 位交易代码。  
-- 同一公司可能存在多个证券代码/类别（例如不同 share class），分析时应优先用项目内 `securityEntityId` 去重。
+- 同一公司可能存在多个证券代码/类别（例如不同 share class），分析时应优先用项目内 `securityId` 去重，而不是只看 `ticker`。
 
 ## 6) 备注（项目实现口径）
 
-- 本项目 13F 导入与增量对比的工程主键建议使用 `securityEntityId`，`ticker` 主要用于展示。  
-- 原因：部分新入库证券在早期阶段可能尚未映射出 ticker，但已具备 issuer/cusip 信息。
+- 本项目 13F 导入与增量对比的工程主键建议使用 `Holding.securityId`，`ticker` 主要用于展示。  
+- `Security` 通过 `companyEntityId` 关联公司实体；同一公司可有多个 `Security`（如不同 share class）。  
+- 原因：`ticker` 可能缺失、变更或存在多类别映射；`securityId` 才是项目内稳定的证券主键。
+- 文本关系抽取当前不再落到 Postgres 表；`Mention` 和 `EntityRelation` 已移除，关系检索统一走 Neo4j 图谱链路。

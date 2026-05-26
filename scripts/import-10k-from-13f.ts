@@ -81,12 +81,12 @@ async function getTickersFrom13f(investors: string[]): Promise<{ tickers: string
       },
     },
     select: {
-      security: { select: { ticker: true, canonicalName: true } },
-      securityProfile: {
+      security: {
         select: {
           ticker: true,
           cusip: true,
-          company: { select: { ticker: true } },
+          titleOfClass: true,
+          company: { select: { ticker: true, canonicalName: true } },
         },
       },
     },
@@ -96,16 +96,18 @@ async function getTickersFrom13f(investors: string[]): Promise<{ tickers: string
   const unresolvedByIssuer = new Map<string, { issuer: string; cusip: string | null }>();
   for (const r of rows) {
     const t = (
-      r.securityProfile?.ticker ??
-      r.securityProfile?.company?.ticker ??
       r.security?.ticker ??
+      r.security?.company?.ticker ??
       ""
     ).trim().toUpperCase();
     if (!t) {
-      const issuer = r.security?.canonicalName?.trim() || "UNKNOWN_ISSUER";
+      const issuer =
+        r.security?.company?.canonicalName?.trim() ||
+        r.security?.titleOfClass?.trim() ||
+        "UNKNOWN_ISSUER";
       unresolvedByIssuer.set(issuer, {
         issuer,
-        cusip: r.securityProfile?.cusip ?? null,
+        cusip: r.security?.cusip ?? null,
       });
       continue;
     }

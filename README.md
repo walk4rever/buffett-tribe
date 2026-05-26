@@ -54,6 +54,8 @@ npm run dev
 
 访问 `http://localhost:3000`
 
+脚本主入口编号总览见 [scripts/README.md](/Users/rafael/R129/buffett-tribe/scripts/README.md)。
+
 ---
 
 ## 技术栈
@@ -90,4 +92,12 @@ src/
 
 ## 当前状态
 
-Canvas UI、对话、大师原文阅读已实现。Company Brain 写回、Fact Fetch Pipeline、`/company` 页面为下一阶段开发目标。
+当前运行面已经覆盖：
+
+- `/master` 大师主页、资料阅读、最新持仓
+- `/company/[cik]` 公司页，读取真实财务、持仓、公司分析和商业画布
+- `/idea` 对话研究室
+- 13F / 10-K 批处理导入
+- `MasterProfile` / `PortfolioInsight` / `BusinessCanvas` / `HomeSignalSnapshot` 生成脚本
+
+更完整的产品与数据说明见 [PRODUCT.md](/Users/rafael/R129/buffett-tribe/PRODUCT.md)。

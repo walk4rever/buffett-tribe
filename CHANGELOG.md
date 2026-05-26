@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.36.0] - 2026-05-26
+
+### Changed
+- 文档口径统一到当前运行面：
+  - 新增 [scripts/README.md](/Users/rafael/R129/buffett-tribe/scripts/README.md) 作为主入口脚本编号总览。
+  - `PRODUCT.md` 补充 `generate:master-profile`、`generate:portfolio-insight`、`generate:business-canvas` 的正式运行口径。
+  - `README.md` 更新当前状态，明确公司页、批处理导入和生成脚本已接入运行面。
+- `scripts/generate-business-canvas.ts` 从实验脚本升级为正式入库脚本，并挂入 `package.json`。
+- `scripts/generate-master-profile.ts`、`scripts/generate-portfolio-insight.ts` 恢复为正式主入口，并重新纳入 `typecheck:scripts`。
+
+### Fixed
+- `scripts/generate-portfolio-insight.ts` 的 `--dry-run` 不再实际调用 AI，只输出 prompt 预览和 would-upsert 信息。
+
+### Removed
+- 删除未接入运行面的 Postgres 关系表：`Mention`、`EntityRelation`。
+- 删除历史种子脚本：`scripts/seed-business-canvas.ts`。
+
 ## [v0.35.27] - 2026-05-23
 
 ### Fixed

@@ -533,7 +533,7 @@ async function upsertSecurityEntity(entry: InfoTableEntry): Promise<SecuritySnap
   };
 }
 
-async function ensureSecurityProfilesBulk(_snapshots: SecuritySnapshot[]) {
+async function ensureSecurityProfilesBulk() {
   // No-op: Security records are already created/updated in upsertSecurityEntity.
   // This function is kept for backward compatibility during the migration.
 }
@@ -573,7 +573,7 @@ async function importFiling(
 
   const prepared: Array<{
     holderEntityId: string;
-    securityId: string | null;
+    securityId: string;
     sourceId: string;
     asOfDate: Date;
     shares: bigint;

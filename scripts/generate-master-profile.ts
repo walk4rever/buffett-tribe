@@ -9,13 +9,17 @@
  *   tsx scripts/generate-master-profile.ts --all                [--dry-run]
  */
 
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();
 
 const AI_API_KEY = process.env.AI_API_KEY;
 const AI_API_BASE_URL = process.env.AI_API_BASE_URL;
 const AI_MODEL = process.env.AI_MODEL;
+
+function toJsonValue(value: unknown): Prisma.InputJsonValue {
+  return value as Prisma.InputJsonValue;
+}
 
 // ---------------------------------------------------------------------------
 // CLI helpers
@@ -62,18 +66,29 @@ async function queryHoldings(entityId: string, year: number, quarter: number) {
       source: { is: { periodYear: year, periodQuarter: quarter, kind: "13f" } },
     },
     include: {
-      securityProfile: { include: { company: true } },
-      security: { select: { canonicalName: true, ticker: true, sector: true } },
+      security: {
+        include: {
+          company: {
+            select: {
+              canonicalName: true,
+              ticker: true,
+              sector: true,
+            },
+          },
+        },
+      },
     },
     orderBy: { percentOfPortfolio: "desc" },
   });
 
   return rows.map((r) => {
-    const companyEntity = r.securityProfile?.company;
-    const securityEntity = r.securityProfile?.entity ?? r.security;
+    const companyEntity = r.security.company;
+    const meta = ((r.security.metadata && typeof r.security.metadata === "object" && !Array.isArray(r.security.metadata))
+      ? r.security.metadata
+      : {}) as { nameZh?: string; nameEnShort?: string };
     return {
-      ticker: companyEntity?.ticker ?? securityEntity?.ticker ?? null,
-      name: securityEntity?.canonicalName ?? "Unknown",
+      ticker: r.security.ticker ?? companyEntity?.ticker ?? null,
+      name: meta.nameEnShort?.trim() || meta.nameZh?.trim() || companyEntity?.canonicalName || r.security.titleOfClass || "Unknown",
       pct: r.percentOfPortfolio ?? 0,
       sector: companyEntity?.sector ?? null,
       valueUsd: r.valueUsd,
@@ -377,23 +392,28 @@ async function main() {
         where: { entityId: entity.id },
         create: {
           entityId: entity.id,
-          profile: result,
+          profile: toJsonValue(result),
           source: AI_MODEL ?? "unknown",
           version: 1,
           generatedAt: new Date(),
         },
         update: {
-          profile: result,
+          profile: toJsonValue(result),
           source: AI_MODEL ?? "unknown",
           version: { increment: 1 },
           generatedAt: new Date(),
         },
       });
 
+      const profile = result as {
+        intro?: unknown;
+        framework?: unknown[];
+        flagshipCases?: unknown[];
+      };
       console.log(`  ✓ Profile saved (v${(await db.masterProfile.findUnique({ where: { entityId: entity.id }, select: { version: true } }))?.version ?? 0})`);
-      console.log(`    intro: ${String((result as Record<string, unknown>).intro).length} chars`);
-      console.log(`    framework: ${(result as Record<string, unknown>).framework instanceof Array ? (result as Record<string, unknown>).framework.length : 0} items`);
-      console.log(`    flagshipCases: ${(result as Record<string, unknown>).flagshipCases instanceof Array ? (result as Record<string, unknown>).flagshipCases.length : 0} cases`);
+      console.log(`    intro: ${String(profile.intro).length} chars`);
+      console.log(`    framework: ${Array.isArray(profile.framework) ? profile.framework.length : 0} items`);
+      console.log(`    flagshipCases: ${Array.isArray(profile.flagshipCases) ? profile.flagshipCases.length : 0} cases`);
     } catch (err) {
       console.error(`  ✗ Failed:`, err instanceof Error ? err.message : String(err));
     }

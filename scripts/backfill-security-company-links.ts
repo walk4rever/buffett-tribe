@@ -15,7 +15,7 @@
  *   npm run backfill:security:company-links -- --dry-run
  *   npm run backfill:security:company-links -- --strict
  */
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { hasChineseText, issuerKey, normalizeEnglishName } from "../src/lib/company-name-map";
 import { normalizeTicker } from "../src/lib/ticker";
 import { translateCompanyNameToZh, upsertNameMapEntries } from "./lib/company-name-zh";
@@ -80,6 +80,10 @@ function issuerMatchKey(name: string): string {
 function asObj(v: unknown): Record<string, unknown> {
   if (!v || typeof v !== "object" || Array.isArray(v)) return {};
   return v as Record<string, unknown>;
+}
+
+function toJsonObject(value: Record<string, unknown>): Prisma.InputJsonValue {
+  return value as Prisma.InputJsonValue;
 }
 
 function scoreCompanyCandidate(input: { type?: string; cik?: string | null }) {
@@ -149,12 +153,12 @@ async function main() {
   const rows = await db.security.findMany({
     select: {
       id: true,
-      entityId: true,
       ticker: true,
       cusip: true,
+      titleOfClass: true,
       companyEntityId: true,
       metadata: true,
-      entity: { select: { canonicalName: true, ticker: true, metadata: true } },
+      company: { select: { id: true, canonicalName: true, ticker: true, metadata: true } },
     },
   });
 
@@ -168,17 +172,26 @@ async function main() {
   for (const row of rows) {
     const normalizedCusip = row.cusip ? normalizeCusip(row.cusip) : null;
     const secMeta = asObj(row.metadata);
-    const entMeta = asObj(row.entity.metadata);
-    const existingCompanyId = row.companyEntityId ?? (typeof secMeta.companyEntityId === "string" ? secMeta.companyEntityId : null) ?? (typeof entMeta.companyEntityId === "string" ? entMeta.companyEntityId : null);
+    const companyMeta = asObj(row.company?.metadata);
+    const existingCompanyId =
+      row.companyEntityId ??
+      (typeof secMeta.companyEntityId === "string" ? secMeta.companyEntityId : null) ??
+      (typeof companyMeta.companyEntityId === "string" ? companyMeta.companyEntityId : null);
 
-    const issuer = row.entity.canonicalName;
+    const issuer =
+      row.company?.canonicalName ??
+      (typeof secMeta.nameEnShort === "string" ? secMeta.nameEnShort : null) ??
+      (typeof secMeta.nameZh === "string" ? secMeta.nameZh : null) ??
+      row.titleOfClass ??
+      row.ticker ??
+      normalizedCusip ??
+      "UNKNOWN";
     const issuerK = issuerKey(issuer);
 
     const rawTickerCandidates = [
       row.ticker,
-      row.entity.ticker,
       typeof secMeta.ticker === "string" ? secMeta.ticker : null,
-      typeof entMeta.ticker === "string" ? entMeta.ticker : null,
+      row.company?.ticker ?? null,
       normalizedCusip ? tickerByCusip.get(normalizedCusip) ?? null : null,
       normalizedCusip ? CUSIP_TICKER_OVERRIDES[normalizedCusip] ?? null : null,
       tickerByIssuer.get(issuerK) ?? null,
@@ -259,10 +272,9 @@ async function main() {
     }
 
     const willUpdateTicker = resolvedTicker && (row.ticker ?? null) !== resolvedTicker;
-    const willUpdateEntityTicker = resolvedTicker && (row.entity.ticker ?? null) !== resolvedTicker;
     const willLinkCompany = companyId && row.companyEntityId !== companyId;
     const willNormalizeCusip = normalizedCusip != null && normalizedCusip !== row.cusip;
-    const hasAnyChange = Boolean(willUpdateTicker || willUpdateEntityTicker || willLinkCompany || willNormalizeCusip);
+    const hasAnyChange = Boolean(willUpdateTicker || willLinkCompany || willNormalizeCusip);
 
     if (!hasAnyChange) {
       kept++;
@@ -279,18 +291,14 @@ async function main() {
     if (dryRun || !hasAnyChange) continue;
 
     const nextSecMeta = { ...secMeta };
-    const nextEntMeta = { ...entMeta };
     if (normalizedCusip) {
       nextSecMeta.cusip = normalizedCusip;
-      nextEntMeta.cusip = normalizedCusip;
     }
     if (companyId) {
       nextSecMeta.companyEntityId = companyId;
-      nextEntMeta.companyEntityId = companyId;
     }
     if (resolvedTicker) {
       nextSecMeta.ticker = resolvedTicker;
-      nextEntMeta.ticker = resolvedTicker;
     }
 
     await db.security.update({
@@ -299,15 +307,7 @@ async function main() {
         cusip: normalizedCusip ?? row.cusip,
         ticker: resolvedTicker ?? row.ticker,
         companyEntityId: companyId ?? row.companyEntityId,
-        metadata: nextSecMeta,
-      },
-    });
-
-    await db.entity.update({
-      where: { id: row.entityId },
-      data: {
-        ticker: resolvedTicker ?? row.entity.ticker,
-        metadata: nextEntMeta,
+        metadata: toJsonObject(nextSecMeta),
       },
     });
   }
