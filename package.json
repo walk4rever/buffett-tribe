@@ -1,6 +1,6 @@
 {
   "name": "buffett-tribe",
-  "version": "0.36.0",
+  "version": "0.36.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -23,6 +23,8 @@
     "import:10k:from13f": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-10k-from-13f.ts",
     "pipeline:10k": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/pipeline-10k.ts",
     "data:10k": "npm run pipeline:10k --",
+    "import:stock-prices:yf": "sh -c 'PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python; exec \"$PY\" scripts/fetch-stock-prices-yf.py \"$@\"' sh",
+    "import:company-stock-prices:yf": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-company-stock-prices-yf.ts",
     "backfill:security:company-links": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-security-company-links.ts",
     "backfill:security:company-links:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-security-company-links.ts --dry-run",
     "backfill:company:profiles": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-profiles.ts",
@@ -68,6 +70,7 @@
     "framer-motion": "^12.38.0",
     "html2canvas": "^1.4.1",
     "langfuse": "^3.38.20",
+    "lightweight-charts": "^5.2.0",
     "lucide-react": "^1.16.0",
     "neo4j-driver": "^6.0.1",
     "next": "16.1.6",

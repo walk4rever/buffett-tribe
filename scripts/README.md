@@ -155,7 +155,50 @@ node --env-file=.env.local ./node_modules/.bin/tsx scripts/run-company-analysis.
 - 命令：`npm run neo4j:smoke`
 - 作用：Neo4j 联通性 smoke test。
 
-## 14. 当前推荐顺序
+## 14. 价格历史导入入口
+
+- 文件：[fetch-stock-prices-yf.py](/Users/rafael/R129/buffett-tribe/scripts/fetch-stock-prices-yf.py)
+- 命令：`npm run import:stock-prices:yf`
+- 作用：用 `yfinance` 拉取日线历史并生成 Yahoo chart JSON，必要时再写入 `StockPrice`。
+
+常用示例：
+
+```bash
+npm run import:stock-prices:yf -- --ticker AAPL --start 2025-05-23 --end 2026-05-26 --import-db
+```
+
+批量和断点续跑：
+
+```bash
+npm run import:stock-prices:yf -- --tickers AAPL,MSFT,GOOGL --start 2020-01-01 --end 2026-05-26 --import-db
+```
+
+本地准备：
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install yfinance
+```
+
+说明：
+
+- 脚本会默认写入 checkpoint，成功的 ticker 下次会自动跳过。
+- 如需忽略 checkpoint 重新跑一遍，追加 `--fresh`。
+- 如需遇到单个 ticker 失败就立刻停止，追加 `--fail-fast`。
+
+全量 company 批处理入口：
+
+- 文件：[import-company-stock-prices-yf.ts](/Users/rafael/R129/buffett-tribe/scripts/import-company-stock-prices-yf.ts)
+- 命令：`npm run import:company-stock-prices:yf`
+- 作用：自动从 `entity` 表读取所有 company ticker，按批调用 `yfinance` 导入脚本。
+
+常用示例：
+
+```bash
+npm run import:company-stock-prices:yf -- --batch-size 10 --start 2020-01-01
+```
+
+## 15. 当前推荐顺序
 
 最常见的运行顺序是：
 
@@ -166,7 +209,7 @@ node --env-file=.env.local ./node_modules/.bin/tsx scripts/run-company-analysis.
 5. `06` / `07` / `08` / `09` 生成页面内容
 6. `10` 生成首页快照
 
-## 15. 非主入口
+## 16. 非主入口
 
 下面这些不应被当成当前主入口：
 

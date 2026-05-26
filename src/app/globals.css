@@ -5475,7 +5475,7 @@ body.layout-no-header {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(150px, 0.58fr) minmax(260px, 0.85fr) minmax(300px, 0.9fr);
+  grid-template-columns: minmax(150px, 0.55fr) minmax(260px, 0.85fr) minmax(300px, 0.9fr);
   gap: 0.8rem;
   align-items: start;
 }
@@ -5572,7 +5572,7 @@ body.layout-no-header {
 }
 
 .company-profile-card {
-  align-self: center;
+  align-self: start;
   border: 1px solid rgba(148, 163, 184, 0.22);
   background: rgba(255, 255, 255, 0.78);
   border-radius: 12px;
@@ -5580,6 +5580,293 @@ body.layout-no-header {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+}
+
+/* ── Price chart ── */
+.company-price-section {
+  padding: 0.85rem 1.1rem 0.75rem;
+}
+
+.company-price-section .stock-price-chart {
+  max-width: 100%;
+}
+
+.stock-price-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.stock-price-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stock-price-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  justify-self: start;
+}
+
+.stock-price-ticker-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  padding: 0.1rem 0 0.05rem;
+  justify-self: center;
+}
+
+.legend-item {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--company-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.legend-item::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.legend-item.ma5::before { background: #f59e0b; }
+.legend-item.ma10::before { background: #8b5cf6; }
+.legend-item.ma20::before { background: #06b6d4; }
+.legend-item.ma60::before { background: #6b7280; }
+
+.stock-price-body {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.stock-price-last {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.2rem;
+  min-width: 72px;
+  padding: 0.25rem 0.5rem;
+  flex-shrink: 0;
+}
+
+.stock-price-last-value {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--company-text);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-price-last-value.up {
+  color: #ef4444;
+}
+
+.stock-price-last-value.down {
+  color: #22c55e;
+}
+
+.stock-price-last-change {
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-price-last-change.up {
+  color: #ef4444;
+}
+
+.stock-price-last-change.down {
+  color: #22c55e;
+}
+
+.stock-price-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.2rem 0;
+  font-size: 0.72rem;
+  color: var(--company-text-secondary);
+}
+
+.stock-price-info .info-time {
+  font-weight: 500;
+  color: var(--company-text);
+  min-width: 72px;
+}
+
+.stock-price-info .info-ohlc {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.stock-price-info .info-label {
+  font-size: 0.68rem;
+  color: var(--company-text-secondary);
+}
+
+.stock-price-info .info-ohlc span.up,
+.stock-price-info .info-change.up {
+  color: #ef4444;
+}
+
+.stock-price-info .info-ohlc span.down,
+.stock-price-info .info-change.down {
+  color: #22c55e;
+}
+
+.stock-price-info .info-change {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-price-info .info-vol {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.stock-price-current {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--company-text);
+  letter-spacing: -0.01em;
+}
+
+.stock-price-change {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+}
+
+.stock-price-change--up {
+  color: var(--up);
+  background: var(--up-bg);
+}
+
+.stock-price-change--down {
+  color: var(--dn);
+  background: var(--dn-bg);
+}
+
+.stock-price-ranges {
+  display: flex;
+  gap: 0.15rem;
+  justify-self: end;
+}
+
+.stock-price-ticker-tab {
+  background: rgba(0, 0, 0, 0.035);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+  padding: 0.24rem 0.7rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--company-text-secondary);
+  cursor: pointer;
+  transition: all 0.12s;
+  font-family: var(--font-sans);
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.stock-price-ticker-tab:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--company-text);
+}
+
+.stock-price-ticker-tab.active {
+  background: var(--company-accent);
+  border-color: var(--company-accent);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+  transform: translateY(-1px);
+}
+
+.stock-price-ticker-tab.active:hover {
+  background: var(--company-accent);
+  color: #fff;
+}
+
+.stock-price-ticker-tab:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (max-width: 720px) {
+  .stock-price-header {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .stock-price-legend,
+  .stock-price-ticker-tabs,
+  .stock-price-ranges {
+    justify-self: center;
+  }
+}
+
+.stock-price-range-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--company-text-secondary);
+  cursor: pointer;
+  transition: all 0.12s;
+  font-family: var(--font-sans);
+}
+
+.stock-price-range-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--company-text);
+}
+
+.stock-price-range-btn.active {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(37, 99, 235, 0.25);
+  color: var(--company-accent);
+}
+
+.stock-price-range-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.stock-price-canvas {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.stock-price-error {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--dn);
+  padding: 0.2rem 0;
+}
+
+.stock-price-placeholder {
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: var(--company-text-secondary);
 }
 
 .company-profile-grid {

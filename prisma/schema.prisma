@@ -451,3 +451,19 @@ model HomeSignalSnapshot {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
+
+model StockPrice {
+  id            String   @id @default(cuid())
+  ticker        String
+  date          DateTime @db.Date
+  open          Decimal? @db.Decimal(18, 6)
+  high          Decimal? @db.Decimal(18, 6)
+  low           Decimal? @db.Decimal(18, 6)
+  close         Decimal  @db.Decimal(18, 6)
+  volume        BigInt?
+  adjustedClose Decimal? @db.Decimal(18, 6)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([ticker, date])
+}

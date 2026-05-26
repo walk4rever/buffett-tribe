@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CompanyDisplayName } from "@/components/CompanyDisplayName";
 import { CompanyBusinessCanvas } from "@/components/CompanyBusinessCanvas";
 import { SiteNav } from "@/components/SiteNav";
+import db from "@/lib/prisma";
 import { getTribeMember } from "@/lib/tribe";
 import {
   formatMoney,
@@ -13,6 +14,8 @@ import {
   getCompanySecurities,
   getRecentHolders,
 } from "@/lib/company-data";
+
+import { StockPriceChartLazy } from "@/components/StockPriceChartLazy";
 import { buildCompanyFinancialDashboard } from "@/lib/company-financial-dashboard";
 import { formatShares } from "@/lib/master-data";
 
@@ -98,6 +101,15 @@ function formatSecurityLabel(security: {
   const classLetter = shareClassMatch?.[1]?.toUpperCase() ?? titleClassMatch?.[1]?.toUpperCase() ?? null;
   const label = classLetter ? `Class ${classLetter}` : null;
   return label ? `${ticker} · ${label}` : ticker;
+}
+
+function normalizeTicker(value: string | null | undefined) {
+  const ticker = value?.trim().toUpperCase() ?? "";
+  return ticker || null;
+}
+
+function uniqueTickers(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.map(normalizeTicker).filter((ticker): ticker is string => Boolean(ticker))));
 }
 
 function buildRadarPoints(count: number, radius: number, center: number) {
@@ -428,6 +440,21 @@ export default async function CompanyPage({ params }: Props) {
     getBusinessCanvas(company.id),
   ]);
 
+  const priceTickers = uniqueTickers([
+    company.ticker,
+    ...securities.map((security) => security.ticker),
+  ]);
+
+  const priceTickerCounts = await Promise.all(
+    priceTickers.map(async (ticker) => ({
+      ticker,
+      count: await db.stockPrice.count({ where: { ticker } }),
+    }))
+  );
+  const availablePriceTickers = priceTickerCounts
+    .filter(({ count }) => count > 0)
+    .map(({ ticker }) => ticker);
+
   const listedSecurities = securities.length
     ? securities.map(formatSecurityLabel)
     : [company.ticker ?? "—"];
@@ -536,6 +563,12 @@ export default async function CompanyPage({ params }: Props) {
             </aside>
           </div>
         </section>
+
+        {availablePriceTickers.length > 0 && (
+          <section className="company-section company-price-section">
+            <StockPriceChartLazy tickers={availablePriceTickers} />
+          </section>
+        )}
 
         <section className="company-section">
           <div className="company-section-head">
