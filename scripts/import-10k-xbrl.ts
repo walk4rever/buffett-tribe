@@ -21,14 +21,17 @@ import {
   type SecCompanyProfile,
 } from "./lib/sec-company-profile";
 import { extractTargetSections } from "./lib/extract-10k-sections";
+import {
+  archiveFilingArtifact,
+  fetchFilingIndexFiles,
+  fetchSecBuffer,
+  fetchSecText,
+  SEC_HEADERS,
+} from "./lib/filing-archive";
 
 const db = new PrismaClient();
 
 const SEC_WWW = "https://www.sec.gov";
-const HEADERS = {
-  "User-Agent": "buffett-tribe research walkklaw@gmail.com",
-  Accept: "application/json, text/xml, */*",
-};
 
 type QuarterFact = {
   start?: string;
@@ -191,7 +194,7 @@ function parseArgs(args: string[]) {
 }
 
 async function getTickerCikMap() {
-  const res = await fetch(`${SEC_WWW}/files/company_tickers.json`, { headers: HEADERS });
+  const res = await fetch(`${SEC_WWW}/files/company_tickers.json`, { headers: SEC_HEADERS });
   if (!res.ok) {
     throw new Error(`Ticker map fetch failed: ${res.status}`);
   }
@@ -205,7 +208,7 @@ async function getTickerCikMap() {
 
 async function getCompanyFacts(cik: string) {
   const padded = cik.padStart(10, "0");
-  const res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${padded}.json`, { headers: HEADERS });
+  const res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${padded}.json`, { headers: SEC_HEADERS });
   if (!res.ok) throw new Error(`CompanyFacts fetch failed for CIK ${cik}`);
   return res.json() as Promise<{
     facts?: {
@@ -264,88 +267,6 @@ function findBestFactValue(
   return candidates[0].val;
 }
 
-async function fetchFilingHtml(cik: string, filing: { accession: string; primaryDocument: string }) {
-  const accnoPath = filing.accession.replace(/-/g, "");
-  const res = await fetch(
-    `https://www.sec.gov/Archives/edgar/data/${cik}/${accnoPath}/${filing.primaryDocument}`,
-    { headers: HEADERS },
-  );
-  if (!res.ok) {
-    throw new Error(`Filing HTML fetch failed for ${filing.accession}: ${res.status}`);
-  }
-  return res.text();
-}
-
-type FilingIndexFile = {
-  sequence: string;
-  description: string;
-  documentName: string;
-  documentType: string;
-  url: string;
-};
-
-/**
- * Parse the SEC EDGAR filing index page (`{accession}-index.htm`) to extract the
- * "Document Format Files" table. This is the only SEC endpoint that exposes the
- * structured (Seq, Description, Type) fields per exhibit.
- */
-async function fetchFilingIndexFiles(
-  cik: string,
-  accession: string,
-): Promise<FilingIndexFile[]> {
-  const accnoPath = accession.replace(/-/g, "");
-  const indexUrl = `https://www.sec.gov/Archives/edgar/data/${cik}/${accnoPath}/${accession}-index.htm`;
-  const res = await fetch(indexUrl, { headers: HEADERS });
-  if (!res.ok) {
-    throw new Error(`Filing index fetch failed for ${accession}: ${res.status}`);
-  }
-  const html = await res.text();
-
-  // Grab the first `<table class="tableFile" ... summary="Document Format Files">`.
-  // SEC also emits a second `tableFile` for "Data Files" (XBRL/zip) which we skip.
-  const tableMatch = html.match(
-    /<table[^>]*class="tableFile"[^>]*summary="Document Format Files"[^>]*>([\s\S]*?)<\/table>/i,
-  );
-  if (!tableMatch) return [];
-
-  const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-  const cellRe = /<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi;
-  const results: FilingIndexFile[] = [];
-  let rowMatch: RegExpExecArray | null;
-
-  while ((rowMatch = rowRe.exec(tableMatch[1]))) {
-    const cells: string[] = [];
-    let cellMatch: RegExpExecArray | null;
-    const rowBody = rowMatch[1];
-    cellRe.lastIndex = 0;
-    while ((cellMatch = cellRe.exec(rowBody))) {
-      const text = cellMatch[1]
-        .replace(/<[^>]+>/g, " ")
-        .replace(/&nbsp;/gi, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-      cells.push(text);
-    }
-    if (cells.length < 4) continue; // header row or malformed
-    const [seq, desc, doc, docType] = cells;
-    if (!seq || !/^\d+$/.test(seq)) continue; // skip header
-
-    // Document cell may contain trailing "iXBRL" tag — strip it.
-    const documentName = doc.replace(/\s*iXBRL\s*$/i, "").trim();
-    if (!documentName) continue;
-
-    results.push({
-      sequence: seq,
-      description: desc || docType || documentName,
-      documentName,
-      documentType: docType || "",
-      url: `https://www.sec.gov/Archives/edgar/data/${cik}/${accnoPath}/${documentName}`,
-    });
-  }
-
-  return results;
-}
-
 async function upsertFilingSectionsFromHtml(
   entityId: string,
   sourceId: string,
@@ -375,16 +296,8 @@ async function upsertFilingSectionsFromHtml(
 async function upsertFilingAttachments(
   entityId: string,
   sourceId: string,
-  cik: string,
-  accession: string,
+  files: Awaited<ReturnType<typeof fetchFilingIndexFiles>>["files"],
 ) {
-  let files: FilingIndexFile[];
-  try {
-    files = await fetchFilingIndexFiles(cik, accession);
-  } catch (err) {
-    console.warn(`  attachments: index fetch failed for ${accession}: ${err instanceof Error ? err.message : err}`);
-    return 0;
-  }
   if (!files.length) return 0;
 
   // Wipe + re-insert per (sourceId) to keep the set canonical and ordered by sequence.
@@ -403,6 +316,86 @@ async function upsertFilingAttachments(
     })),
   });
   return files.length;
+}
+
+async function archiveFilingArtifacts(params: {
+  entityId: string;
+  sourceId: string;
+  cik: string;
+  accession: string;
+  primaryDocument: string;
+  filingUrlBase: string;
+  primaryHtml: string;
+  indexHtml: string;
+  indexFiles: Awaited<ReturnType<typeof fetchFilingIndexFiles>>["files"];
+}) {
+  const { entityId, sourceId, cik, accession, primaryDocument, filingUrlBase, primaryHtml, indexHtml, indexFiles } = params;
+  const primaryUrl = `${filingUrlBase}/${primaryDocument}`;
+  const indexUrl = `${filingUrlBase}/${accession}-index.htm`;
+  const artifacts = [];
+
+  artifacts.push(
+    archiveFilingArtifact(db, {
+      sourceId,
+      kind: "primary_html",
+      cik,
+      accession,
+      originalName: primaryDocument,
+      contentType: "text/html; charset=utf-8",
+      body: Buffer.from(primaryHtml, "utf8"),
+      sourceUrl: primaryUrl,
+      metadata: {
+        entityId,
+        documentType: "primary",
+        accession,
+      },
+    }),
+  );
+
+  artifacts.push(
+    archiveFilingArtifact(db, {
+      sourceId,
+      kind: "index_html",
+      cik,
+      accession,
+      originalName: `${accession}-index.htm`,
+      contentType: "text/html; charset=utf-8",
+      body: Buffer.from(indexHtml, "utf8"),
+      sourceUrl: indexUrl,
+      metadata: {
+        entityId,
+        documentType: "index",
+        accession,
+      },
+    }),
+  );
+
+  for (const file of indexFiles) {
+    const kind = file.category === "data_file" ? "data_file" : "attachment";
+    const { buffer, contentType } = await fetchSecBuffer(file.url);
+    artifacts.push(
+      archiveFilingArtifact(db, {
+        sourceId,
+        kind,
+        cik,
+        accession,
+        originalName: file.documentName,
+        contentType,
+        body: buffer,
+        sourceUrl: file.url,
+        metadata: {
+          entityId,
+          sequence: file.sequence,
+          description: file.description,
+          documentType: file.documentType,
+          category: file.category,
+          accession,
+        },
+      }),
+    );
+  }
+
+  return Promise.all(artifacts);
 }
 
 function parseAttrMap(source: string) {
@@ -869,6 +862,8 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
 
   for (const filing of targetFilings) {
     const extSource = await upsertExtSource(companyEntity.id, cik, filing);
+    const accnoPath = filing.accession.replace(/-/g, "");
+    const filingUrlBase = `https://www.sec.gov/Archives/edgar/data/${cik}/${accnoPath}`;
 
     // 1. Write all XBRL facts from CompanyFacts API
     const apiFactCount = await batchUpsertFinancialFactsFromApi(
@@ -878,8 +873,8 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
       filing,
     );
 
-    // 2. Download HTML and write all Inline XBRL facts
-    const html = await fetchFilingHtml(cik, filing);
+    // 2. Download raw filing HTML once and reuse it for extraction + archival
+    const html = await fetchSecText(`${filingUrlBase}/${filing.primaryDocument}`);
     const inlineDoc = parseInlineXbrlDocument(html);
     const inlineFactCount = await batchUpsertFinancialFactsFromInline(
       companyEntity.id,
@@ -895,13 +890,24 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
       html,
     );
 
-    // 4. Register FilingAttachment rows (exhibits) from the SEC filing index page
+    // 4. Download index page once, register attachment rows, and archive all listed files
+    const { html: indexHtml, files: indexFiles } = await fetchFilingIndexFiles(cik, filing.accession);
     const attachmentCount = await upsertFilingAttachments(
       companyEntity.id,
       extSource.id,
-      cik,
-      filing.accession,
+      indexFiles.filter((file) => file.category === "attachment"),
     );
+    await archiveFilingArtifacts({
+      entityId: companyEntity.id,
+      sourceId: extSource.id,
+      cik,
+      accession: filing.accession,
+      primaryDocument: filing.primaryDocument,
+      filingUrlBase,
+      primaryHtml: html,
+      indexHtml,
+      indexFiles,
+    });
 
     // 5. Continue existing LINE_ITEMS logic (derived layer)
     let upserted = 0;

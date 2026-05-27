@@ -236,6 +236,7 @@ model ExtSource {
   facts       FinancialFact[]
   sections    FilingSection[]
   attachments FilingAttachment[]
+  artifacts   FilingArtifact[]
 
   @@index([kind, ts])
   @@index([filerEntityId])
@@ -346,6 +347,27 @@ model FilingAttachment {
 
   @@index([sourceId])
   @@index([entityId])
+}
+
+model FilingArtifact {
+  id           String   @id @default(cuid())
+  sourceId     String
+  kind         String   // primary_html | index_html | attachment | data_file
+  objectKey    String   @unique
+  contentType  String
+  sizeBytes    BigInt
+  sha256       String
+  originalName String?
+  sourceUrl    String?
+  publicUrl    String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  source ExtSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId, kind])
+  @@index([sha256])
 }
 
 model Holding {

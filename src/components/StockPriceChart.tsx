@@ -10,6 +10,7 @@ import {
   HistogramSeries,
   ColorType,
   CrosshairMode,
+  type SeriesOptionsMap,
 } from "lightweight-charts";
 
 type PricePoint = {
@@ -36,6 +37,30 @@ type OHLCVInfo = {
   close: number;
   volume: number | null;
   changePct: number | null;
+};
+
+type CandleSeriesData = {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+};
+
+type VolumeSeriesData = {
+  value: number;
+};
+
+type ChartPane = {
+  addSeries: (seriesType: typeof HistogramSeries, options: Record<string, unknown>) => ISeriesApi<"Histogram">;
+  setStretchFactor: (factor: number) => void;
+  priceScale: (side: "right") => {
+    applyOptions: (options: { scaleMargins?: { top?: number; bottom?: number }; borderVisible?: boolean }) => void;
+  };
+};
+
+type ChartWithPane = IChartApi & {
+  addPane: () => ChartPane;
 };
 
 const DIMENSION_OPTIONS = [
@@ -118,6 +143,14 @@ function formatVolume(v: number): string {
   if (v >= 1e8) return (v / 1e8).toFixed(1) + "亿";
   if (v >= 1e4) return (v / 1e4).toFixed(1) + "万";
   return String(Math.round(v));
+}
+
+function getSeriesPoint<TPoint, TSeries extends keyof SeriesOptionsMap>(
+  seriesData: unknown,
+  series: ISeriesApi<TSeries>,
+) {
+  if (!(seriesData instanceof Map)) return undefined;
+  return seriesData.get(series) as TPoint | undefined;
 }
 
 export function StockPriceChart({ tickers }: { tickers: string[] }) {
@@ -330,7 +363,7 @@ export function StockPriceChartInner({ tickers }: { tickers: string[] }) {
       });
 
       // Volume pane — separate from main price chart
-      const volumePane = (chart as any).addPane();
+      const volumePane = (chart as ChartWithPane).addPane();
       const volume = volumePane.addSeries(HistogramSeries, {
         priceFormat: { type: "volume" },
         priceLineVisible: false,
@@ -349,19 +382,13 @@ export function StockPriceChartInner({ tickers }: { tickers: string[] }) {
           setHoverInfo(null);
           return;
         }
-        const c = (param.seriesData as Map<any, any>).get(candleRef.current) as {
-          time: string;
-          open: number;
-          high: number;
-          low: number;
-          close: number;
-        } | undefined;
+        const c = getSeriesPoint<CandleSeriesData, "Candlestick">(param.seriesData, candleRef.current);
         if (!c) {
           setHoverInfo(null);
           return;
         }
         const v = volumeRef.current
-          ? ((param.seriesData as Map<any, any>).get(volumeRef.current) as { value?: number } | undefined)
+          ? getSeriesPoint<VolumeSeriesData, "Histogram">(param.seriesData, volumeRef.current)
           : undefined;
 
         // find prev close for change%
@@ -436,7 +463,7 @@ export function StockPriceChartInner({ tickers }: { tickers: string[] }) {
     volumeRef.current?.setData(volData);
 
     chartRef.current?.timeScale().fitContent();
-  }, [rawData, dimension]);
+  }, [rawData.length, candleData, ma5Data, ma10Data, ma20Data, ma60Data, volData, dimension]);
 
   return (
     <div className="stock-price-chart">

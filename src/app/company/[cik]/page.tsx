@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CompanyDisplayName } from "@/components/CompanyDisplayName";
 import { CompanyBusinessCanvas } from "@/components/CompanyBusinessCanvas";
+import { CompanySectionTabs } from "@/components/CompanySectionTabs";
 import { SiteNav } from "@/components/SiteNav";
 import db from "@/lib/prisma";
 import { getTribeMember } from "@/lib/tribe";
@@ -155,6 +156,20 @@ function formatSignedPct(diffPct: number | null) {
   if (diffPct == null || !Number.isFinite(diffPct)) return "—";
   const sign = diffPct > 0 ? "+" : "";
   return `${sign}${diffPct.toFixed(1)}%`;
+}
+
+function formatFilingDate(date: Date | null) {
+  if (!date) return "—";
+  return date.toISOString().slice(0, 10);
+}
+
+function formatFileSize(bytes: bigint | null) {
+  if (bytes == null) return "—";
+  const value = Number(bytes);
+  if (!Number.isFinite(value) || value < 0) return "—";
+  if (value >= 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(2)} MB`;
+  if (value >= 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${value} B`;
 }
 
 function buildCompanyNarrative(params: {
@@ -432,12 +447,52 @@ export default async function CompanyPage({ params }: Props) {
   const company = await getCompanyByCik(rawCik.trim());
   if (!company) notFound();
 
-  const [financials, holders, securities, analysis, businessCanvas] = await Promise.all([
+  const [financials, holders, securities, analysis, businessCanvas, referenceFilings] = await Promise.all([
     getCompanyFinancials(company.id, 5),
     getRecentHolders(company.id, 30),
     getCompanySecurities(company.id),
     getCompanyAnalysis(company.id),
     getBusinessCanvas(company.id),
+    db.extSource.findMany({
+      where: {
+        filerEntityId: company.id,
+        kind: { in: ["10k", "20f", "40f"] },
+      },
+      orderBy: [{ periodYear: "desc" }, { periodQuarter: "desc" }, { ts: "desc" }],
+      take: 12,
+      select: {
+        id: true,
+        kind: true,
+        url: true,
+        ts: true,
+        filedAt: true,
+        periodYear: true,
+        periodQuarter: true,
+        metadata: true,
+        attachments: {
+          select: {
+            sequence: true,
+            description: true,
+            documentType: true,
+            documentName: true,
+            url: true,
+          },
+          orderBy: [{ sequence: "asc" }],
+        },
+        artifacts: {
+          select: {
+            kind: true,
+            objectKey: true,
+            contentType: true,
+            sizeBytes: true,
+            originalName: true,
+            sourceUrl: true,
+            publicUrl: true,
+          },
+          orderBy: [{ kind: "asc" }, { createdAt: "asc" }],
+        },
+      },
+    }),
   ]);
 
   const priceTickers = uniqueTickers([
@@ -524,6 +579,7 @@ export default async function CompanyPage({ params }: Props) {
     radarCenter,
   );
   const radarRings = [0.25, 0.5, 0.75, 1];
+  const referenceArtifactCount = referenceFilings.reduce((sum, filing) => sum + filing.artifacts.length, 0);
 
   return (
     <div className="company-page">
@@ -561,265 +617,6 @@ export default async function CompanyPage({ params }: Props) {
                 ))}
               </dl>
             </aside>
-          </div>
-        </section>
-
-        {availablePriceTickers.length > 0 && (
-          <section className="company-section company-price-section">
-            <StockPriceChartLazy tickers={availablePriceTickers} />
-          </section>
-        )}
-
-        <section className="company-section">
-          <div className="company-section-head">
-            <h2>商业分析</h2>
-          </div>
-          <div className="company-financial-trend-head">
-            <h3>业务概览</h3>
-          </div>
-          <div className="company-text-card">
-            <p>{companyNarrative.business.content}</p>
-          </div>
-          <div className="company-financial-trend-head">
-            <h3>商业画布{businessCanvas ? "" : "（构建中）"}</h3>
-          </div>
-          {businessCanvas ? (
-            <CompanyBusinessCanvas data={businessCanvas} />
-          ) : (
-            <div className="company-canvas-placeholder">
-              <p>商业画布数据正在构建中。</p>
-              <span>可结合上方业务概览与下方财务分析了解这家公司。</span>
-            </div>
-          )}
-        </section>
-
-        <section className="company-section">
-          <div className="company-section-head">
-            <h2>财务分析</h2>
-            <span>{latestYear ? `Based on FY ${latestYear} 10-K` : "暂无可计算数据"}</span>
-          </div>
-          <div className="company-kpi-grid">
-            {dashboard.cards.map((card) => (
-              <article className="company-kpi-card" key={card.key}>
-                <p>{card.label}</p>
-                <strong>{card.value}</strong>
-                <span>{card.hint}</span>
-              </article>
-            ))}
-          </div>
-          <div className="company-financial-trend-head">
-            <h3>5 年趋势证据</h3>
-            <span>{displayYears.length ? `${displayYears[displayYears.length - 1]}–${displayYears[0]}` : ""}</span>
-          </div>
-          {displayYears.length ? (
-            <div className="company-table-wrap">
-              <table className="company-table">
-                <thead>
-                  <tr>
-                    <th>
-                      <span className="company-table-label">指标</span>
-                      <span className="company-table-sub">Metric</span>
-                    </th>
-                    {displayYears.map((year) => (
-                      <th key={year}>
-                        <span className="company-table-label">FY {year}</span>
-                        <span className="company-table-sub">{formatFiscalDate(getFiscalDate(financials, year))}</span>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {dashboard.rows.map((line) => (
-                    <tr key={line.key}>
-                      <td>
-                        <span className="company-table-label">{line.zhLabel}</span>
-                        <span className="company-table-sub">{line.enLabel}</span>
-                      </td>
-                      {displayYears.map((year) => (
-                        <td key={`${line.key}-${year}`}>{line.values[year] ?? "—"}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="company-empty">暂无 10-K 年报结构化数据。可先运行 `import:10k` 脚本。</p>
-          )}
-          {dashboard.longTermTrends.length ? (
-            <div className="company-long-term-block" aria-label="长期趋势摘要">
-              <div className="company-financial-trend-head">
-                <h3>长期复合增长</h3>
-              </div>
-              <div className="company-long-term-trends">
-                {dashboard.longTermTrends.map((trend) => (
-                  <article key={trend.key}>
-                    <span>{trend.label}</span>
-                    <strong>{trend.value}</strong>
-                    <small>{trend.hint}</small>
-                  </article>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </section>
-
-        <section className="company-section">
-          <div className="company-section-head">
-            <h2>价值分析</h2>
-          </div>
-          <div className="company-value-layout">
-            <div className="company-radar-card">
-              <div className="company-radar-head">
-                <h3>十维评分</h3>
-                <p>10 Point Radar</p>
-              </div>
-              <svg viewBox="0 0 336 336" className="company-radar-svg" aria-label="价值分析十维蜘蛛图">
-                {radarRings.map((ring) => {
-                  const ringPoints = radarPoints
-                    .map((point) => {
-                      const x = radarCenter + (point.x - radarCenter) * ring;
-                      const y = radarCenter + (point.y - radarCenter) * ring;
-                      return `${x},${y}`;
-                    })
-                    .join(" ");
-                  return <polygon key={ring} points={ringPoints} className="company-radar-ring" />;
-                })}
-                {radarPoints.map((point, index) => (
-                  <line
-                    key={moat.dimensions[index].key}
-                    x1={radarCenter}
-                    y1={radarCenter}
-                    x2={point.x}
-                    y2={point.y}
-                    className="company-radar-axis"
-                  />
-                ))}
-                <polygon points={radarPolygon} className="company-radar-area" />
-                {radarPoints.map((point, index) => {
-                  const ratio = moat.dimensions[index].score / 10;
-                  const x = radarCenter + (point.x - radarCenter) * ratio;
-                  const y = radarCenter + (point.y - radarCenter) * ratio;
-                  const scoreDx = x >= radarCenter ? 8 : -8;
-                  const scoreDy = y >= radarCenter ? 4 : -6;
-                  return (
-                    <g key={`${moat.dimensions[index].key}-dot`}>
-                      <circle cx={x} cy={y} r="3.2" className="company-radar-dot" />
-                      <text
-                        x={x + scoreDx}
-                        y={y + scoreDy}
-                        textAnchor={x >= radarCenter ? "start" : "end"}
-                        className="company-radar-score"
-                      >
-                        {moat.dimensions[index].score}
-                      </text>
-                    </g>
-                  );
-                })}
-                {radarPoints.map((point, index) => (
-                  <g key={`${moat.dimensions[index].key}-label`}>
-                    <text x={point.labelX} y={point.labelY} textAnchor={point.anchor} className="company-radar-label">
-                      <tspan className="company-radar-index">{circledIndex(index)}</tspan>
-                      <tspan dx="3">{moat.dimensions[index].zhLabel}</tspan>
-                    </text>
-                  </g>
-                ))}
-              </svg>
-            </div>
-
-            <div className="company-value-side">
-              <div className="company-moat-summary-grid">
-                <article className="company-moat-kicker">
-                  <span>价值类型</span>
-                  <strong>{moat.summary.type}</strong>
-                  <small>Value Type</small>
-                </article>
-                <article className="company-moat-kicker">
-                  <span>护城河强度</span>
-                  <strong>{moat.summary.strength}</strong>
-                  <small>Strength</small>
-                </article>
-                <article className="company-moat-kicker">
-                  <span>持续性</span>
-                  <strong>{moat.summary.durability}</strong>
-                  <small>Durability</small>
-                </article>
-                <article className="company-moat-kicker">
-                  <span>资本配置</span>
-                  <strong>{moat.summary.allocation}</strong>
-                  <small>Capital Allocation</small>
-                </article>
-              </div>
-              <p className="company-moat-thesis">{moat.summary.thesis}</p>
-
-              <div className="company-value-highlights">
-                <article className="company-value-note-block">
-                  <h3>最强三项</h3>
-                  <p>Top Strengths</p>
-                  <ul>
-                    {strongestDimensions.map((dimension) => (
-                      <li key={dimension.key}>
-                        <span>
-                          <span className="company-value-index">{circledIndex(moat.dimensions.findIndex((item) => item.key === dimension.key))}</span>
-                          {" "}
-                          {dimension.zhLabel}
-                        </span>
-                        <strong>{dimension.score}</strong>
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-                <article className="company-value-note-block">
-                  <h3>相对短板</h3>
-                  <p>Weak Spots</p>
-                  <ul>
-                    {weakestDimensions.map((dimension) => (
-                      <li key={dimension.key}>
-                        <span>
-                          <span className="company-value-index">{circledIndex(moat.dimensions.findIndex((item) => item.key === dimension.key))}</span>
-                          {" "}
-                          {dimension.zhLabel}
-                        </span>
-                        <strong>{dimension.score}</strong>
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              </div>
-            </div>
-          </div>
-
-          <div className="company-value-table">
-            {moat.dimensions.map((dimension) => (
-              <article key={dimension.key} className="company-value-row">
-                <div className="company-value-row-head">
-                  <div>
-                    <h3>
-                      <span className="company-value-index">{circledIndex(moat.dimensions.findIndex((item) => item.key === dimension.key))}</span>
-                      {" "}
-                      {dimension.zhLabel}
-                    </h3>
-                    <p>{dimension.enLabel}</p>
-                  </div>
-                  <div className="company-value-row-score" aria-label={`${dimension.zhLabel} ${dimension.score} / 10`}>
-                    <strong>{dimension.score}</strong>
-                    <span>/ 10</span>
-                  </div>
-                </div>
-                <p className="company-value-row-verdict">{dimension.verdict}</p>
-                <p className="company-value-row-evidence">{dimension.evidence}</p>
-              </article>
-            ))}
-          </div>
-
-          <div className="company-moat-notes">
-            {moat.notes.map((note) => (
-              <article key={note.label} className="company-moat-note">
-                <h3>{note.label}</h3>
-                <p className="company-moat-note-en">{note.enLabel}</p>
-                <p className="company-moat-note-value">{note.value}</p>
-              </article>
-            ))}
           </div>
         </section>
 
@@ -917,6 +714,421 @@ export default async function CompanyPage({ params }: Props) {
             <p className="company-empty">暂无该公司的持仓记录。</p>
           )}
         </section>
+
+        <CompanySectionTabs
+          tabs={[
+            { id: "business", label: "业务分析" },
+            { id: "financial", label: "财务分析" },
+            { id: "value", label: "价值分析" },
+            { id: "management", label: "管理分析", note: "构建中" },
+            { id: "valuation", label: "估值分析", note: "构建中" },
+            { id: "references", label: "参考资料" },
+          ]}
+        >
+          <section className="company-section" data-tab-panel="business">
+            <div className="company-financial-trend-head">
+              <h3>业务概览</h3>
+            </div>
+            <div className="company-text-card">
+              <p>{companyNarrative.business.content}</p>
+            </div>
+            <div className="company-financial-trend-head">
+              <h3>业务画布{businessCanvas ? "" : "（构建中）"}</h3>
+            </div>
+            {businessCanvas ? (
+              <CompanyBusinessCanvas data={businessCanvas} />
+            ) : (
+              <div className="company-canvas-placeholder">
+                <p>商业画布数据正在构建中。</p>
+                <span>可结合上方业务概览与下方财务分析了解这家公司。</span>
+              </div>
+            )}
+          </section>
+
+          <section className="company-section" data-tab-panel="financial">
+            <div className="company-kpi-grid">
+              {dashboard.cards.map((card) => (
+                <article className="company-kpi-card" key={card.key}>
+                  <p>{card.label}</p>
+                  <strong>{card.value}</strong>
+                  <span>{card.hint}</span>
+                </article>
+              ))}
+            </div>
+            <div className="company-financial-trend-head">
+              <h3>5 年趋势证据</h3>
+              <span>{displayYears.length ? `${displayYears[displayYears.length - 1]}–${displayYears[0]}` : ""}</span>
+            </div>
+            {displayYears.length ? (
+              <div className="company-table-wrap">
+                <table className="company-table">
+                  <thead>
+                    <tr>
+                      <th>
+                        <span className="company-table-label">指标</span>
+                        <span className="company-table-sub">Metric</span>
+                      </th>
+                      {displayYears.map((year) => (
+                        <th key={year}>
+                          <span className="company-table-label">FY {year}</span>
+                          <span className="company-table-sub">{formatFiscalDate(getFiscalDate(financials, year))}</span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashboard.rows.map((line) => (
+                      <tr key={line.key}>
+                        <td>
+                          <span className="company-table-label">{line.zhLabel}</span>
+                          <span className="company-table-sub">{line.enLabel}</span>
+                        </td>
+                        {displayYears.map((year) => (
+                          <td key={`${line.key}-${year}`}>{line.values[year] ?? "—"}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="company-empty">暂无 10-K 年报结构化数据。可先运行 `import:10k` 脚本。</p>
+            )}
+            {dashboard.longTermTrends.length ? (
+              <div className="company-long-term-block" aria-label="长期趋势摘要">
+                <div className="company-financial-trend-head">
+                  <h3>长期复合增长</h3>
+                </div>
+                <div className="company-long-term-trends">
+                  {dashboard.longTermTrends.map((trend) => (
+                    <article key={trend.key}>
+                      <span>{trend.label}</span>
+                      <strong>{trend.value}</strong>
+                      <small>{trend.hint}</small>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="company-section" data-tab-panel="value">
+            <div className="company-value-layout">
+              <div className="company-radar-card">
+                <div className="company-radar-head">
+                  <h3>十维评分</h3>
+                  <p>10 Point Radar</p>
+                </div>
+                <svg viewBox="0 0 336 336" className="company-radar-svg" aria-label="价值分析十维蜘蛛图">
+                  {radarRings.map((ring) => {
+                    const ringPoints = radarPoints
+                      .map((point) => {
+                        const x = radarCenter + (point.x - radarCenter) * ring;
+                        const y = radarCenter + (point.y - radarCenter) * ring;
+                        return `${x},${y}`;
+                      })
+                      .join(" ");
+                    return <polygon key={ring} points={ringPoints} className="company-radar-ring" />;
+                  })}
+                  {radarPoints.map((point, index) => (
+                    <line
+                      key={moat.dimensions[index].key}
+                      x1={radarCenter}
+                      y1={radarCenter}
+                      x2={point.x}
+                      y2={point.y}
+                      className="company-radar-axis"
+                    />
+                  ))}
+                  <polygon points={radarPolygon} className="company-radar-area" />
+                  {radarPoints.map((point, index) => {
+                    const ratio = moat.dimensions[index].score / 10;
+                    const x = radarCenter + (point.x - radarCenter) * ratio;
+                    const y = radarCenter + (point.y - radarCenter) * ratio;
+                    const scoreDx = x >= radarCenter ? 8 : -8;
+                    const scoreDy = y >= radarCenter ? 4 : -6;
+                    return (
+                      <g key={`${moat.dimensions[index].key}-dot`}>
+                        <circle cx={x} cy={y} r="3.2" className="company-radar-dot" />
+                        <text
+                          x={x + scoreDx}
+                          y={y + scoreDy}
+                          textAnchor={x >= radarCenter ? "start" : "end"}
+                          className="company-radar-score"
+                        >
+                          {moat.dimensions[index].score}
+                        </text>
+                      </g>
+                    );
+                  })}
+                  {radarPoints.map((point, index) => (
+                    <g key={`${moat.dimensions[index].key}-label`}>
+                      <text x={point.labelX} y={point.labelY} textAnchor={point.anchor} className="company-radar-label">
+                        <tspan className="company-radar-index">{circledIndex(index)}</tspan>
+                        <tspan dx="3">{moat.dimensions[index].zhLabel}</tspan>
+                      </text>
+                    </g>
+                  ))}
+                </svg>
+              </div>
+
+              <div className="company-value-side">
+                <div className="company-moat-summary-grid">
+                  <article className="company-moat-kicker">
+                    <span>价值类型</span>
+                    <strong>{moat.summary.type}</strong>
+                    <small>Value Type</small>
+                  </article>
+                  <article className="company-moat-kicker">
+                    <span>护城河强度</span>
+                    <strong>{moat.summary.strength}</strong>
+                    <small>Strength</small>
+                  </article>
+                  <article className="company-moat-kicker">
+                    <span>持续性</span>
+                    <strong>{moat.summary.durability}</strong>
+                    <small>Durability</small>
+                  </article>
+                  <article className="company-moat-kicker">
+                    <span>资本配置</span>
+                    <strong>{moat.summary.allocation}</strong>
+                    <small>Capital Allocation</small>
+                  </article>
+                </div>
+                <p className="company-moat-thesis">{moat.summary.thesis}</p>
+
+                <div className="company-value-highlights">
+                  <article className="company-value-note-block">
+                    <h3>最强三项</h3>
+                    <p>Top Strengths</p>
+                    <ul>
+                      {strongestDimensions.map((dimension) => (
+                        <li key={dimension.key}>
+                          <span>
+                            <span className="company-value-index">{circledIndex(moat.dimensions.findIndex((item) => item.key === dimension.key))}</span>
+                            {" "}
+                            {dimension.zhLabel}
+                          </span>
+                          <strong>{dimension.score}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
+                  <article className="company-value-note-block">
+                    <h3>相对短板</h3>
+                    <p>Weak Spots</p>
+                    <ul>
+                      {weakestDimensions.map((dimension) => (
+                        <li key={dimension.key}>
+                          <span>
+                            <span className="company-value-index">{circledIndex(moat.dimensions.findIndex((item) => item.key === dimension.key))}</span>
+                            {" "}
+                            {dimension.zhLabel}
+                          </span>
+                          <strong>{dimension.score}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
+                </div>
+              </div>
+            </div>
+
+            <div className="company-value-table">
+              {moat.dimensions.map((dimension) => (
+                <article key={dimension.key} className="company-value-row">
+                  <div className="company-value-row-head">
+                    <div>
+                      <h3>
+                        <span className="company-value-index">{circledIndex(moat.dimensions.findIndex((item) => item.key === dimension.key))}</span>
+                        {" "}
+                        {dimension.zhLabel}
+                      </h3>
+                      <p>{dimension.enLabel}</p>
+                    </div>
+                    <div className="company-value-row-score" aria-label={`${dimension.zhLabel} ${dimension.score} / 10`}>
+                      <strong>{dimension.score}</strong>
+                      <span>/ 10</span>
+                    </div>
+                  </div>
+                  <p className="company-value-row-verdict">{dimension.verdict}</p>
+                  <p className="company-value-row-evidence">{dimension.evidence}</p>
+                </article>
+              ))}
+            </div>
+
+            <div className="company-moat-notes">
+              {moat.notes.map((note) => (
+                <article key={note.label} className="company-moat-note">
+                  <h3>{note.label}</h3>
+                  <p className="company-moat-note-en">{note.enLabel}</p>
+                  <p className="company-moat-note-value">{note.value}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="company-section" data-tab-panel="management">
+            <div className="company-placeholder-grid">
+              <article className="company-placeholder-card">
+                <h3>管理层与董事会</h3>
+                <p>后续可接入 CEO、CFO、董事会结构、任职履历与关键股权激励信息。</p>
+              </article>
+              <article className="company-placeholder-card">
+                <h3>资本配置</h3>
+                <p>后续可补充回购、并购、分红、投资回报率与管理层执行纪律的长期跟踪。</p>
+              </article>
+              <article className="company-placeholder-card">
+                <h3>组织与文化</h3>
+                <p>后续可接入管理层访谈、股东信、10-K 讨论区和公司治理相关证据。</p>
+              </article>
+            </div>
+          </section>
+
+          <section className="company-section" data-tab-panel="valuation">
+            {availablePriceTickers.length > 0 ? (
+              <section className="company-price-section company-price-section--embedded">
+                <div className="company-price-embed-head">
+                  <h3>价格历史</h3>
+                  <span>估值参考</span>
+                </div>
+                <StockPriceChartLazy tickers={availablePriceTickers} />
+              </section>
+            ) : null}
+            <div className="company-placeholder-grid">
+              <article className="company-placeholder-card">
+                <h3>倍数估值</h3>
+                <p>后续可展示 PE、EV/EBIT、P/FCF、PS 等历史区间与行业对比。</p>
+              </article>
+              <article className="company-placeholder-card">
+                <h3>现金流模型</h3>
+                <p>后续可接入 DCF、增长假设、资本回报和安全边际区间。</p>
+              </article>
+              <article className="company-placeholder-card">
+                <h3>估值判断</h3>
+                <p>后续可把价格历史、财务趋势和管理分析合成一个统一的估值结论。</p>
+              </article>
+            </div>
+          </section>
+
+          <section className="company-section" data-tab-panel="references">
+            <div className="company-financial-trend-head">
+              <h3>参考资料</h3>
+              <span>{referenceFilings.length ? `${referenceFilings.length} 份 filing · ${referenceArtifactCount} 个原始文件` : "暂无原始资料"}</span>
+            </div>
+            {referenceFilings.length ? (
+              <div className="company-reference-list">
+                {referenceFilings.map((filing) => {
+                  const meta = normalizeMeta(filing.metadata);
+                  const form = typeof meta.form === "string" && meta.form.trim() ? meta.form.trim() : filing.kind.toUpperCase();
+                  const periodLabel = filing.periodYear
+                    ? `${filing.periodYear}${filing.periodQuarter ? ` Q${filing.periodQuarter}` : ""}`
+                    : "—";
+                  const filedLabel = formatFilingDate(filing.filedAt ?? filing.ts);
+                  const primaryArtifact = filing.artifacts.find((artifact) => artifact.kind === "primary_html") ?? null;
+                  const indexArtifact = filing.artifacts.find((artifact) => artifact.kind === "index_html") ?? null;
+                  const attachments = filing.artifacts.filter((artifact) => artifact.kind === "attachment");
+                  const dataFiles = filing.artifacts.filter((artifact) => artifact.kind === "data_file");
+
+                  return (
+                    <article key={filing.id} className="company-reference-card">
+                      <div className="company-reference-card-head">
+                        <div>
+                          <h3>
+                            {periodLabel} · {form}
+                          </h3>
+                          <p>
+                            Filed {filedLabel}
+                            {filing.ts ? ` · Report date ${formatFilingDate(filing.ts)}` : ""}
+                          </p>
+                        </div>
+                        <div className="company-reference-card-meta">
+                          <span>{filing.artifacts.length} files</span>
+                        </div>
+                      </div>
+
+                      <div className="company-reference-links">
+                        {filing.url ? (
+                          <a href={filing.url} target="_blank" rel="noreferrer">
+                            SEC filing
+                          </a>
+                        ) : null}
+                        {primaryArtifact?.publicUrl ? (
+                          <a href={primaryArtifact.publicUrl} target="_blank" rel="noreferrer">
+                            Primary HTML
+                          </a>
+                        ) : null}
+                        {indexArtifact?.publicUrl ? (
+                          <a href={indexArtifact.publicUrl} target="_blank" rel="noreferrer">
+                            Index page
+                          </a>
+                        ) : null}
+                      </div>
+
+                      <div className="company-reference-artifact-grid">
+                        <article className="company-reference-mini">
+                          <span>原始 HTML</span>
+                          <strong>{primaryArtifact ? primaryArtifact.originalName ?? "—" : "—"}</strong>
+                          <small>{primaryArtifact ? formatFileSize(primaryArtifact.sizeBytes) : "—"}</small>
+                        </article>
+                        <article className="company-reference-mini">
+                          <span>索引页</span>
+                          <strong>{indexArtifact ? indexArtifact.originalName ?? "—" : "—"}</strong>
+                          <small>{indexArtifact ? formatFileSize(indexArtifact.sizeBytes) : "—"}</small>
+                        </article>
+                        <article className="company-reference-mini">
+                          <span>附件</span>
+                          <strong>{attachments.length}</strong>
+                          <small>{dataFiles.length ? `${dataFiles.length} 个 data files` : "无 data files"}</small>
+                        </article>
+                      </div>
+
+                      {(attachments.length || dataFiles.length) ? (
+                        <details className="company-reference-details">
+                          <summary>查看原始文件</summary>
+                          <div className="company-reference-file-groups">
+                            {attachments.length ? (
+                              <div className="company-reference-file-group">
+                                <p>Attachments</p>
+                                <ul>
+                                  {attachments.map((artifact) => (
+                                    <li key={artifact.objectKey}>
+                                      <a href={artifact.publicUrl ?? artifact.sourceUrl ?? "#"} target="_blank" rel="noreferrer">
+                                        {artifact.originalName ?? artifact.objectKey.split("/").pop() ?? "attachment"}
+                                      </a>
+                                      <span>{formatFileSize(artifact.sizeBytes)}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
+                            {dataFiles.length ? (
+                              <div className="company-reference-file-group">
+                                <p>Data Files</p>
+                                <ul>
+                                  {dataFiles.map((artifact) => (
+                                    <li key={artifact.objectKey}>
+                                      <a href={artifact.publicUrl ?? artifact.sourceUrl ?? "#"} target="_blank" rel="noreferrer">
+                                        {artifact.originalName ?? artifact.objectKey.split("/").pop() ?? "data file"}
+                                      </a>
+                                      <span>{formatFileSize(artifact.sizeBytes)}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ) : null}
+                          </div>
+                        </details>
+                      ) : null}
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="company-empty">暂无 10-K 归档资料。可先运行 `import:10k` 脚本。</p>
+            )}
+          </section>
+        </CompanySectionTabs>
       </div>
     </div>
   );

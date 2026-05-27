@@ -25,7 +25,13 @@
 
 - 文件：[import-10k-xbrl.ts](/Users/rafael/R129/buffett-tribe/scripts/import-10k-xbrl.ts)
 - 命令：`npm run import:10k`
-- 作用：按 ticker / 年份导入 10-K、20-F、40-F 财务数据。
+- 作用：按 ticker / 年份导入 10-K、20-F、40-F 财务数据，并把原始 filing HTML、index page、exhibits 与 data files 归档到 R2 的 `FilingArtifact`。
+
+补充：
+
+- 归档层通过 `scripts/lib/filing-archive.ts` 统一管理
+- 原始工件会按 `cik / accession / kind` 生成稳定的 R2 key
+- 这条入口可以重复跑，artifact 会按固定 key 覆盖写入，不会重复建脏数据
 
 - 文件：[import-10k-from-13f.ts](/Users/rafael/R129/buffett-tribe/scripts/import-10k-from-13f.ts)
 - 命令：`npm run import:10k:from13f`
