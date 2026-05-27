@@ -10,16 +10,23 @@ import {
   Users,
 } from "lucide-react";
 
+export type CanvasEntry = {
+  text: string;
+  evidence?: string[];
+  sources?: string[];
+  confidence?: number;
+};
+
 export type BusinessCanvasData = {
-  customerSegments: string[];
-  valuePropositions: string[];
-  channels: string[];
-  customerRelationships: string[];
-  revenueStreams: string[];
-  keyResources: string[];
-  keyActivities: string[];
-  keyPartnerships: string[];
-  costStructure: string[];
+  customerSegments: Array<string | CanvasEntry>;
+  valuePropositions: Array<string | CanvasEntry>;
+  channels: Array<string | CanvasEntry>;
+  customerRelationships: Array<string | CanvasEntry>;
+  revenueStreams: Array<string | CanvasEntry>;
+  keyResources: Array<string | CanvasEntry>;
+  keyActivities: Array<string | CanvasEntry>;
+  keyPartnerships: Array<string | CanvasEntry>;
+  costStructure: Array<string | CanvasEntry>;
 };
 
 const labels: Record<
@@ -43,10 +50,21 @@ function CanvasCell({
   area,
 }: {
   label: { zh: string; en: string; icon: React.ElementType };
-  items: string[];
+  items: Array<string | CanvasEntry>;
   area: string;
 }) {
   const Icon = label.icon;
+  const normalizedItems = items.map((item) =>
+    typeof item === "string"
+      ? { text: item }
+      : {
+          text: item.text,
+          evidence: item.evidence ?? [],
+          sources: item.sources ?? [],
+          confidence: item.confidence,
+        }
+  );
+
   return (
     <div className={`bmc-cell bmc-cell--${area}`}>
       <div className="bmc-cell-head">
@@ -57,8 +75,10 @@ function CanvasCell({
         <span>{label.en}</span>
       </div>
       <ul>
-        {items.map((item, i) => (
-          <li key={i}>{item}</li>
+        {normalizedItems.map((item, i) => (
+          <li key={i} className="bmc-item">
+            <div className="bmc-item-text">{item.text}</div>
+          </li>
         ))}
       </ul>
     </div>
@@ -247,15 +267,15 @@ const canvasByTicker: Record<string, BusinessCanvasData> = {
 export function getMockBusinessCanvas(ticker: string): BusinessCanvasData {
   return (
     canvasByTicker[ticker.toUpperCase()] ?? {
-      customerSegments: ["待补充"],
-      valuePropositions: ["待补充"],
-      channels: ["待补充"],
-      customerRelationships: ["待补充"],
-      revenueStreams: ["待补充"],
-      keyResources: ["待补充"],
-      keyActivities: ["待补充"],
-      keyPartnerships: ["待补充"],
-      costStructure: ["待补充"],
+      customerSegments: [{ text: "待补充" }],
+      valuePropositions: [{ text: "待补充" }],
+      channels: [{ text: "待补充" }],
+      customerRelationships: [{ text: "待补充" }],
+      revenueStreams: [{ text: "待补充" }],
+      keyResources: [{ text: "待补充" }],
+      keyActivities: [{ text: "待补充" }],
+      keyPartnerships: [{ text: "待补充" }],
+      costStructure: [{ text: "待补充" }],
     }
   );
 }

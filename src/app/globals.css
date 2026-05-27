@@ -6439,6 +6439,67 @@ body.layout-no-header {
   margin-bottom: 0.12rem;
 }
 
+.bmc-item {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.bmc-item-text {
+  color: #334155;
+}
+
+.bmc-item-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+
+.bmc-item-evidence-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.16rem 0.38rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  color: #1d4ed8;
+  font-size: 0.62rem;
+  line-height: 1.35;
+}
+
+.bmc-item-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  color: #64748b;
+  font-size: 0.6rem;
+}
+
+.bmc-item-source-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.34rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+  color: #475569;
+}
+
+.bmc-item-confidence {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: fit-content;
+  padding: 0.12rem 0.38rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.05);
+  color: #475569;
+  font-size: 0.6rem;
+}
+
+.bmc-item-confidence strong {
+  font-size: 0.62rem;
+  color: #0f172a;
+}
+
 .bmc-cell--partners  { grid-column: 1 / span 2;  grid-row: 1 / span 2; }
 .bmc-cell--activities { grid-column: 3 / span 2;  grid-row: 1; }
 .bmc-cell--props      { grid-column: 5 / span 2;  grid-row: 1 / span 2; }

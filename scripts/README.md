@@ -66,7 +66,7 @@
 - 文件：[generate-business-canvas.ts](/Users/rafael/R129/buffett-tribe/scripts/generate-business-canvas.ts)
 - 命令：`npm run generate:business-canvas`
 - 命令：`npm run generate:business-canvas:dry`
-- 作用：生成并入库 `BusinessCanvas`。
+- 作用：生成并入库 `BusinessCanvas`，当前输出包含 `text / evidence / sources / confidence` 的证据化条目。
 
 常用示例：
 

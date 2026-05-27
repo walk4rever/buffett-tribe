@@ -60,6 +60,7 @@ tests/evals/history/mvp_benchmark_30_results_*.json
 tests/evals/history/mvp_benchmark_30_summary_*.json
 
 # Local agent/IDE artifacts
+/.cache/
 /.agent/
 /.agents/
 /.claude/
