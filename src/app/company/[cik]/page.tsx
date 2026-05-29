@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { CompanyDisplayName } from "@/components/CompanyDisplayName";
 import { CompanyBusinessCanvas } from "@/components/CompanyBusinessCanvas";
 import { CompanySectionTabs } from "@/components/CompanySectionTabs";
@@ -13,6 +13,8 @@ import {
   getCompanyByCik,
   getCompanyFinancials,
   getCompanySecurities,
+  formatCompanyCikSlug,
+  formatCompanyCikUrl,
   getRecentHolders,
 } from "@/lib/company-data";
 
@@ -24,6 +26,7 @@ export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ cik: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }
 
 type YearItems = { year: number; periodEnd: Date; items: Record<string, string> };
@@ -161,15 +164,6 @@ function formatSignedPct(diffPct: number | null) {
 function formatFilingDate(date: Date | null) {
   if (!date) return "—";
   return date.toISOString().slice(0, 10);
-}
-
-function formatFileSize(bytes: bigint | null) {
-  if (bytes == null) return "—";
-  const value = Number(bytes);
-  if (!Number.isFinite(value) || value < 0) return "—";
-  if (value >= 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(2)} MB`;
-  if (value >= 1024) return `${(value / 1024).toFixed(1)} KB`;
-  return `${value} B`;
 }
 
 function buildCompanyNarrative(params: {
@@ -442,9 +436,14 @@ function getMoatMock(companyName: string, ticker: string | null): MoatMock {
   };
 }
 
-export default async function CompanyPage({ params }: Props) {
+export default async function CompanyPage({ params, searchParams }: Props) {
   const { cik: rawCik } = await params;
-  const company = await getCompanyByCik(rawCik.trim());
+  const { tab: rawTab } = await searchParams;
+  const canonicalSlug = formatCompanyCikSlug(rawCik.trim());
+  if (!canonicalSlug) notFound();
+  if (rawCik.trim() !== canonicalSlug) redirect(`/company/${canonicalSlug}`);
+
+  const company = await getCompanyByCik(canonicalSlug);
   if (!company) notFound();
 
   const [financials, holders, securities, analysis, businessCanvas, referenceFilings] = await Promise.all([
@@ -580,6 +579,7 @@ export default async function CompanyPage({ params }: Props) {
   );
   const radarRings = [0.25, 0.5, 0.75, 1];
   const referenceArtifactCount = referenceFilings.reduce((sum, filing) => sum + filing.artifacts.length, 0);
+  const initialTabId = typeof rawTab === "string" ? rawTab.trim() : "";
 
   return (
     <div className="company-page">
@@ -724,6 +724,7 @@ export default async function CompanyPage({ params }: Props) {
             { id: "valuation", label: "估值分析", note: "构建中" },
             { id: "references", label: "参考资料" },
           ]}
+          initialTabId={initialTabId}
         >
           <section className="company-section" data-tab-panel="business">
             <div className="company-financial-trend-head">
@@ -1025,11 +1026,6 @@ export default async function CompanyPage({ params }: Props) {
                     ? `${filing.periodYear}${filing.periodQuarter ? ` Q${filing.periodQuarter}` : ""}`
                     : "—";
                   const filedLabel = formatFilingDate(filing.filedAt ?? filing.ts);
-                  const primaryArtifact = filing.artifacts.find((artifact) => artifact.kind === "primary_html") ?? null;
-                  const indexArtifact = filing.artifacts.find((artifact) => artifact.kind === "index_html") ?? null;
-                  const attachments = filing.artifacts.filter((artifact) => artifact.kind === "attachment");
-                  const dataFiles = filing.artifacts.filter((artifact) => artifact.kind === "data_file");
-
                   return (
                     <article key={filing.id} className="company-reference-card">
                       <div className="company-reference-card-head">
@@ -1039,87 +1035,23 @@ export default async function CompanyPage({ params }: Props) {
                           </h3>
                           <p>
                             Filed {filedLabel}
-                            {filing.ts ? ` · Report date ${formatFilingDate(filing.ts)}` : ""}
+                            {filing.ts ? ` · Report date ${formatFilingDate(filing.ts)}` : ""} · {filing.artifacts.length} files
                           </p>
-                        </div>
-                        <div className="company-reference-card-meta">
-                          <span>{filing.artifacts.length} files</span>
                         </div>
                       </div>
 
                       <div className="company-reference-links">
+                        {filing.periodYear ? (
+                          <Link className="company-reference-links-primary" href={`${formatCompanyCikUrl(company.cik) ?? `/company/${company.cik ?? ""}`}/annual-report/${filing.periodYear}`}>
+                            阅读年报
+                          </Link>
+                        ) : null}
                         {filing.url ? (
                           <a href={filing.url} target="_blank" rel="noreferrer">
-                            SEC filing
-                          </a>
-                        ) : null}
-                        {primaryArtifact?.publicUrl ? (
-                          <a href={primaryArtifact.publicUrl} target="_blank" rel="noreferrer">
-                            Primary HTML
-                          </a>
-                        ) : null}
-                        {indexArtifact?.publicUrl ? (
-                          <a href={indexArtifact.publicUrl} target="_blank" rel="noreferrer">
-                            Index page
+                            SEC 原文
                           </a>
                         ) : null}
                       </div>
-
-                      <div className="company-reference-artifact-grid">
-                        <article className="company-reference-mini">
-                          <span>原始 HTML</span>
-                          <strong>{primaryArtifact ? primaryArtifact.originalName ?? "—" : "—"}</strong>
-                          <small>{primaryArtifact ? formatFileSize(primaryArtifact.sizeBytes) : "—"}</small>
-                        </article>
-                        <article className="company-reference-mini">
-                          <span>索引页</span>
-                          <strong>{indexArtifact ? indexArtifact.originalName ?? "—" : "—"}</strong>
-                          <small>{indexArtifact ? formatFileSize(indexArtifact.sizeBytes) : "—"}</small>
-                        </article>
-                        <article className="company-reference-mini">
-                          <span>附件</span>
-                          <strong>{attachments.length}</strong>
-                          <small>{dataFiles.length ? `${dataFiles.length} 个 data files` : "无 data files"}</small>
-                        </article>
-                      </div>
-
-                      {(attachments.length || dataFiles.length) ? (
-                        <details className="company-reference-details">
-                          <summary>查看原始文件</summary>
-                          <div className="company-reference-file-groups">
-                            {attachments.length ? (
-                              <div className="company-reference-file-group">
-                                <p>Attachments</p>
-                                <ul>
-                                  {attachments.map((artifact) => (
-                                    <li key={artifact.objectKey}>
-                                      <a href={artifact.publicUrl ?? artifact.sourceUrl ?? "#"} target="_blank" rel="noreferrer">
-                                        {artifact.originalName ?? artifact.objectKey.split("/").pop() ?? "attachment"}
-                                      </a>
-                                      <span>{formatFileSize(artifact.sizeBytes)}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            ) : null}
-                            {dataFiles.length ? (
-                              <div className="company-reference-file-group">
-                                <p>Data Files</p>
-                                <ul>
-                                  {dataFiles.map((artifact) => (
-                                    <li key={artifact.objectKey}>
-                                      <a href={artifact.publicUrl ?? artifact.sourceUrl ?? "#"} target="_blank" rel="noreferrer">
-                                        {artifact.originalName ?? artifact.objectKey.split("/").pop() ?? "data file"}
-                                      </a>
-                                      <span>{formatFileSize(artifact.sizeBytes)}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            ) : null}
-                          </div>
-                        </details>
-                      ) : null}
                     </article>
                   );
                 })}

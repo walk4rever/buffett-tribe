@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AAPL FY2025 10-K Sankey Prototype</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07111f;
+      --bg2: #0a1628;
+      --panel: rgba(10, 20, 36, 0.82);
+      --panel-border: rgba(144, 174, 255, 0.14);
+      --text: #ecf3ff;
+      --muted: #8ea2c8;
+      --accent: #7fb6ff;
+      --accent-2: #89f0c2;
+      --accent-3: #ffca7a;
+      --cost: #ff9e8e;
+      --profit: #82d4ff;
+      --income: #8eecb1;
+      --equity: #f0c878;
+      --shadow: 0 28px 80px rgba(0, 0, 0, 0.35);
+      --radius: 22px;
+      --radius-sm: 16px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background:
+      radial-gradient(circle at 20% 10%, rgba(127, 182, 255, 0.22), transparent 32%),
+      radial-gradient(circle at 80% 0%, rgba(137, 240, 194, 0.12), transparent 30%),
+      linear-gradient(180deg, var(--bg), var(--bg2)); color: var(--text); }
+    body { padding: 32px; }
+
+    .shell { max-width: 1480px; margin: 0 auto; }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.35fr 0.65fr;
+      gap: 18px;
+      margin-bottom: 18px;
+      align-items: stretch;
+    }
+    .title-card, .meta-card, .chart-card, .note-card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+    .title-card { padding: 24px 26px; }
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+    h1 { margin: 0; font-size: clamp(30px, 4vw, 46px); line-height: 1.04; letter-spacing: -0.04em; }
+    .subtitle {
+      margin: 14px 0 0;
+      color: var(--muted);
+      max-width: 62ch;
+      line-height: 1.65;
+      font-size: 15px;
+    }
+    .meta-card {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      padding: 18px;
+    }
+    .metric {
+      border-radius: 18px;
+      padding: 14px 14px 12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .metric .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; }
+    .metric .value { margin-top: 8px; font-size: 24px; font-weight: 700; letter-spacing: -0.04em; }
+    .metric .hint { margin-top: 6px; color: #a7b9d7; font-size: 12px; line-height: 1.45; }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+    }
+    .chart-card {
+      padding: 18px 18px 20px;
+    }
+    .chart-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .chart-head h2 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: -0.03em;
+    }
+    .chart-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+      max-width: 80ch;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(127, 182, 255, 0.12);
+      border: 1px solid rgba(127, 182, 255, 0.18);
+      color: #d8e7ff;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .svg-wrap {
+      width: 100%;
+      overflow: hidden;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    svg { display: block; width: 100%; height: auto; }
+    .note-card {
+      margin-top: 18px;
+      padding: 18px 20px;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 13px;
+    }
+    .note-card strong { color: var(--text); }
+    .foot {
+      margin-top: 12px;
+      color: #7b8eaf;
+      font-size: 12px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.07);
+      color: #d8e7ff;
+      font-size: 12px;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; }
+
+    @media (max-width: 1080px) {
+      body { padding: 18px; }
+      .hero { grid-template-columns: 1fr; }
+      .meta-card { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 720px) {
+      .meta-card { grid-template-columns: 1fr; }
+      .chart-head { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="title-card">
+        <div class="eyebrow">AAPL · FY2025 10-K · Sankey Prototype</div>
+        <h1>用苹果真实财报数字画一张可实现的桑基图</h1>
+        <p class="subtitle">
+          这不是产品收入拆分图。Apple 的 10-K 结构化数据里没有公开到产品线级别的营收数字，所以这里先画“财务流向”：
+          收入如何经过成本、毛利、运营费用，最后落到营业利润与净利润；再用资产负债表补一张结构图。
+        </p>
+        <div class="legend">
+          <span><i class="dot" style="background: var(--profit)"></i>利润桥</span>
+          <span><i class="dot" style="background: var(--cost)"></i>成本流</span>
+          <span><i class="dot" style="background: var(--income)"></i>收益流</span>
+          <span><i class="dot" style="background: var(--equity)"></i>资产结构</span>
+        </div>
+      </div>
+      <div class="meta-card">
+        <div class="metric">
+          <div class="label">Revenue</div>
+          <div class="value">$416.2B</div>
+          <div class="hint">FY2025 归并收入</div>
+        </div>
+        <div class="metric">
+          <div class="label">Gross Profit</div>
+          <div class="value">$195.2B</div>
+          <div class="hint">毛利率 46.9%</div>
+        </div>
+        <div class="metric">
+          <div class="label">Operating Income</div>
+          <div class="value">$133.1B</div>
+          <div class="hint">运营费用约 $62.2B</div>
+        </div>
+        <div class="metric">
+          <div class="label">Net Income</div>
+          <div class="value">$112.0B</div>
+          <div class="hint">税费与非营业项约 $21.0B</div>
+        </div>
+      </div>
+    </section>
+
+    <main class="grid">
+      <section class="chart-card">
+        <div class="chart-head">
+          <div>
+            <h2>Income Statement Bridge</h2>
+            <p>收入 → 销售成本 → 毛利 → 运营费用 → 营业利润 → 其他项目与税费 → 净利润。所有数值均来自 Apple FY2025 10-K 归并财务事实，缺口部分为严格残差，不做业务猜测。</p>
+          </div>
+          <div class="badge">FY2025 · USD bn · actual facts</div>
+        </div>
+        <div class="svg-wrap">
+          <svg id="income-chart" viewBox="0 0 1360 520" preserveAspectRatio="xMidYMid meet" aria-label="Income statement sankey"></svg>
+        </div>
+      </section>
+
+      <section class="chart-card">
+        <div class="chart-head">
+          <div>
+            <h2>Balance Sheet Structure</h2>
+            <p>资产 = 负债 + 股东权益。这个图可以稳定从 10-K 的实际数据直接画出，适合作为 company 页里的“结构图”补充。</p>
+          </div>
+          <div class="badge">FY2025 · USD bn · exact balance</div>
+        </div>
+        <div class="svg-wrap">
+          <svg id="balance-chart" viewBox="0 0 1360 280" preserveAspectRatio="xMidYMid meet" aria-label="Balance sheet sankey"></svg>
+        </div>
+      </section>
+
+      <section class="note-card">
+        <strong>建议：</strong>
+        如果你后续要把这个塞进 company 页，最合理的产品形态不是“一张超大桑基图”，而是“收入桥 / 利润桥 / 资产结构”三块分开展示。
+        对 Apple 来说，产品线级别的收入拆分并不在结构化事实里，所以不应在图里硬画 iPhone / Mac / iPad 的精确流量。
+        只有在补充了分部收入或更细粒度披露后，才适合再做产品级桑基图。
+        <div class="foot">数据源：Apple FY2025 10-K 结构化财务 facts，页面为本地静态原型，可直接放入 public/preview 下浏览。</div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
+    const fmt2 = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+    const moneyBn = (v) => `$${fmt.format(v / 1e9)}B`;
+
+    const charts = {
+      income: {
+        nodes: [
+          { id: "revenue", label: "Revenue", value: 416.161, column: 0, color: "#7fb6ff" },
+          { id: "cogs", label: "Cost of revenue", value: 220.96, column: 1, color: "#ff9e8e" },
+          { id: "gross", label: "Gross profit", value: 195.201, column: 1, color: "#82d4ff" },
+          { id: "opex", label: "Operating expenses", value: 62.151, column: 2, color: "#ffca7a" },
+          { id: "opinc", label: "Operating income", value: 133.05, column: 2, color: "#8eecb1" },
+          { id: "other", label: "Other items & taxes", value: 21.04, column: 3, color: "#b2c5ff" },
+          { id: "net", label: "Net income", value: 112.01, column: 3, color: "#89f0c2" },
+        ],
+        links: [
+          { source: "revenue", target: "cogs", value: 220.96 },
+          { source: "revenue", target: "gross", value: 195.201 },
+          { source: "gross", target: "opex", value: 62.151 },
+          { source: "gross", target: "opinc", value: 133.05 },
+          { source: "opinc", target: "other", value: 21.04 },
+          { source: "opinc", target: "net", value: 112.01 },
+        ],
+        width: 1360,
+        height: 520,
+      },
+      balance: {
+        nodes: [
+          { id: "assets", label: "Total assets", value: 359.241, column: 0, color: "#7fb6ff" },
+          { id: "liab", label: "Total liabilities", value: 285.508, column: 1, color: "#ff9e8e" },
+          { id: "equity", label: "Shareholders' equity", value: 73.733, column: 1, color: "#f0c878" },
+        ],
+        links: [
+          { source: "assets", target: "liab", value: 285.508 },
+          { source: "assets", target: "equity", value: 73.733 },
+        ],
+        width: 1360,
+        height: 280,
+      }
+    };
+
+    function renderSankey(svg, chart) {
+      const width = chart.width;
+      const height = chart.height;
+      const margin = { top: 28, right: 36, bottom: 28, left: 36 };
+      const innerWidth = width - margin.left - margin.right;
+      const innerHeight = height - margin.top - margin.bottom;
+      const columns = Math.max(...chart.nodes.map((n) => n.column)) + 1;
+      const nodeW = 220;
+      const columnNodes = Array.from({ length: columns }, () => []);
+      chart.nodes.forEach((node) => columnNodes[node.column].push(node));
+
+      const sums = columnNodes.map((nodes) => nodes.reduce((acc, n) => acc + n.value, 0));
+      const maxSum = Math.max(...sums);
+      const nodePad = 16;
+      const scale = Math.min(1, (innerHeight - (Math.max(...columnNodes.map((nodes) => Math.max(0, nodes.length - 1))) * nodePad)) / maxSum);
+
+      const layout = new Map();
+      columnNodes.forEach((nodes, col) => {
+        const totalHeight = nodes.reduce((acc, n) => acc + n.value * scale, 0) + Math.max(0, nodes.length - 1) * nodePad;
+        let y = margin.top + (innerHeight - totalHeight) / 2;
+        nodes.forEach((node) => {
+          const h = Math.max(16, node.value * scale);
+          const x = columns === 1
+            ? margin.left + (innerWidth - nodeW) / 2
+            : margin.left + col * ((innerWidth - nodeW) / (columns - 1));
+          layout.set(node.id, {
+            ...node,
+            x,
+            y,
+            w: nodeW,
+            h,
+            outOffset: 0,
+            inOffset: 0,
+          });
+          y += h + nodePad;
+        });
+      });
+
+      const linkGroups = {};
+      chart.links.forEach((link) => {
+        if (!linkGroups[link.source]) linkGroups[link.source] = [];
+        linkGroups[link.source].push(link);
+      });
+
+      const ns = "http://www.w3.org/2000/svg";
+      svg.innerHTML = "";
+      const defs = document.createElementNS(ns, "defs");
+      defs.innerHTML = `
+        <linearGradient id="${svg.id}-flow" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#7fb6ff" stop-opacity="0.55" />
+          <stop offset="100%" stop-color="#89f0c2" stop-opacity="0.55" />
+        </linearGradient>
+        <filter id="${svg.id}-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feColorMatrix in="blur" type="matrix"
+            values="1 0 0 0 0
+                    0 1 0 0 0
+                    0 0 1 0 0
+                    0 0 0 12 -4" />
+        </filter>
+      `;
+      svg.appendChild(defs);
+
+      const bg = document.createElementNS(ns, "rect");
+      bg.setAttribute("x", "0");
+      bg.setAttribute("y", "0");
+      bg.setAttribute("width", width);
+      bg.setAttribute("height", height);
+      bg.setAttribute("fill", "transparent");
+      svg.appendChild(bg);
+
+      const linkLayer = document.createElementNS(ns, "g");
+      const nodeLayer = document.createElementNS(ns, "g");
+      const labelLayer = document.createElementNS(ns, "g");
+      svg.appendChild(linkLayer);
+      svg.appendChild(nodeLayer);
+      svg.appendChild(labelLayer);
+
+      chart.links.forEach((link) => {
+        const source = layout.get(link.source);
+        const target = layout.get(link.target);
+        if (!source || !target) return;
+        const thickness = Math.max(2, link.value * scale);
+        const sourceY = source.y + source.outOffset + thickness / 2;
+        const targetY = target.y + target.inOffset + thickness / 2;
+        source.outOffset += thickness;
+        target.inOffset += thickness;
+
+        const x1 = source.x + source.w;
+        const x2 = target.x;
+        const c1 = x1 + Math.max(70, (x2 - x1) * 0.42);
+        const c2 = x2 - Math.max(70, (x2 - x1) * 0.42);
+        const path = document.createElementNS(ns, "path");
+        path.setAttribute("d", `M ${x1} ${sourceY} C ${c1} ${sourceY}, ${c2} ${targetY}, ${x2} ${targetY}`);
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", `url(#${svg.id}-flow)`);
+        path.setAttribute("stroke-width", thickness);
+        path.setAttribute("stroke-linecap", "round");
+        path.setAttribute("opacity", "0.9");
+        path.setAttribute("filter", `url(#${svg.id}-glow)`);
+        linkLayer.appendChild(path);
+      });
+
+      chart.nodes.forEach((node) => {
+        const n = layout.get(node.id);
+        const g = document.createElementNS(ns, "g");
+        g.setAttribute("transform", `translate(${n.x}, ${n.y})`);
+
+        const rect = document.createElementNS(ns, "rect");
+        rect.setAttribute("width", n.w);
+        rect.setAttribute("height", n.h);
+        rect.setAttribute("rx", "18");
+        rect.setAttribute("fill", `url(#${svg.id}-${node.id})`);
+        rect.setAttribute("stroke", "rgba(255,255,255,0.14)");
+        rect.setAttribute("stroke-width", "1");
+        g.appendChild(rect);
+
+        const fill = document.createElementNS(ns, "defs");
+        fill.innerHTML = `
+          <linearGradient id="${svg.id}-${node.id}" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="${node.color}" stop-opacity="0.95" />
+            <stop offset="100%" stop-color="#0b1220" stop-opacity="0.75" />
+          </linearGradient>
+        `;
+        defs.appendChild(fill.firstElementChild);
+
+        const label = document.createElementNS(ns, "text");
+        label.setAttribute("x", "16");
+        label.setAttribute("y", "26");
+        label.setAttribute("fill", "#eff5ff");
+        label.setAttribute("font-size", "14");
+        label.setAttribute("font-weight", "700");
+        label.textContent = node.label;
+        g.appendChild(label);
+
+        const value = document.createElementNS(ns, "text");
+        value.setAttribute("x", "16");
+        value.setAttribute("y", "48");
+        value.setAttribute("fill", "#dce8ff");
+        value.setAttribute("font-size", "22");
+        value.setAttribute("font-weight", "800");
+        value.textContent = moneyBn(node.value * 1e9);
+        g.appendChild(value);
+
+        const pct = document.createElementNS(ns, "text");
+        pct.setAttribute("x", "16");
+        pct.setAttribute("y", "70");
+        pct.setAttribute("fill", "#a7b9d7");
+        pct.setAttribute("font-size", "12");
+        pct.textContent = `${fmt2.format(node.value)}B`;
+        g.appendChild(pct);
+
+        nodeLayer.appendChild(g);
+      });
+
+      // Labels for links
+      chart.links.forEach((link) => {
+        const source = layout.get(link.source);
+        const target = layout.get(link.target);
+        if (!source || !target) return;
+        const x = (source.x + source.w + target.x) / 2;
+        const y = (source.y + target.y) / 2;
+        const label = document.createElementNS(ns, "text");
+        label.setAttribute("x", x.toString());
+        label.setAttribute("y", (y - 8).toString());
+        label.setAttribute("text-anchor", "middle");
+        label.setAttribute("fill", "#dbe7ff");
+        label.setAttribute("font-size", "12");
+        label.setAttribute("font-weight", "700");
+        label.textContent = moneyBn(link.value * 1e9);
+        labelLayer.appendChild(label);
+
+        const sub = document.createElementNS(ns, "text");
+        sub.setAttribute("x", x.toString());
+        sub.setAttribute("y", (y + 10).toString());
+        sub.setAttribute("text-anchor", "middle");
+        sub.setAttribute("fill", "#91a6cb");
+        sub.setAttribute("font-size", "11");
+        sub.textContent = `${fmt2.format(link.value)}B`;
+        labelLayer.appendChild(sub);
+      });
+    }
+
+    renderSankey(document.getElementById("income-chart"), charts.income);
+    renderSankey(document.getElementById("balance-chart"), charts.balance);
+  </script>
+</body>
+</html>

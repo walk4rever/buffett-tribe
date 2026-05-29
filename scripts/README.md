@@ -27,6 +27,12 @@
 - 命令：`npm run import:10k`
 - 作用：按 ticker / 年份导入 10-K、20-F、40-F 财务数据，并把原始 filing HTML、index page、exhibits 与 data files 归档到 R2 的 `FilingArtifact`。
 
+全量入口：
+
+- 文件：[import-all-10k-xbrl.ts](/Users/rafael/R129/buffett-tribe/scripts/import-all-10k-xbrl.ts)
+- 命令：`npm run import:10k:all`
+- 作用：按公司批量导入 2020 到最新的 10-K / 20-F / 40-F 年报，带 `.cache` checkpoint，可中断续跑。
+
 补充：
 
 - 归档层通过 `scripts/lib/filing-archive.ts` 统一管理

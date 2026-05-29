@@ -12,10 +12,12 @@ export type CompanySectionTab = {
 type CompanySectionTabsProps = {
   tabs: CompanySectionTab[];
   children: ReactNode;
+  initialTabId?: string;
 };
 
-export function CompanySectionTabs({ tabs, children }: CompanySectionTabsProps) {
-  const [activeTab, setActiveTab] = useState(tabs[0]?.id ?? "");
+export function CompanySectionTabs({ tabs, children, initialTabId }: CompanySectionTabsProps) {
+  const initialActiveTab = tabs.some((tab) => tab.id === initialTabId) ? initialTabId ?? tabs[0]?.id ?? "" : tabs[0]?.id ?? "";
+  const [activeTab, setActiveTab] = useState(initialActiveTab);
 
   const panels = Children.toArray(children).filter(isValidElement) as Array<ReactElement<{ "data-tab-panel"?: string }>>;
   const activePanel = panels.find((panel) => panel.props["data-tab-panel"] === activeTab) ?? panels[0] ?? null;

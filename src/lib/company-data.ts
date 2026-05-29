@@ -5,9 +5,50 @@ import { normalizeTicker } from "@/lib/ticker";
 import { Prisma } from "@prisma/client";
 import type { BusinessCanvasData } from "@/components/CompanyBusinessCanvas";
 
+export function normalizeCompanyCik(cikRaw: string | null | undefined) {
+  const digits = String(cikRaw ?? "").replace(/\D/g, "");
+  if (!digits) return null;
+  const normalized = String(Number(digits));
+  if (!normalized || normalized === "0" || Number.isNaN(Number(normalized))) return null;
+  return normalized;
+}
+
+export function formatCompanyCikSlug(cikRaw: string | null | undefined) {
+  const cik = normalizeCompanyCik(cikRaw);
+  if (!cik) return null;
+  return `CIK${cik.padStart(10, "0")}`;
+}
+
+export function formatCompanyCikUrl(cikRaw: string | null | undefined) {
+  const slug = formatCompanyCikSlug(cikRaw);
+  return slug ? `/company/${slug}` : null;
+}
+
+function logDbFallback(scope: string, err: unknown) {
+  const message = err instanceof Error ? err.message : String(err);
+  if (process.env.DEBUG_DB_FALLBACK === "1") {
+    console.warn(`[company-data:${scope}] DB query failed, fallback to empty result: ${message}`);
+  }
+}
+
+function isConnectionClosedError(err: unknown) {
+  const message = err instanceof Error ? err.message : String(err);
+  return /server has closed the connection|connection.*closed|P1017/i.test(message);
+}
+
+async function retryOnce<T>(fn: () => Promise<T>) {
+  try {
+    return await fn();
+  } catch (err) {
+    if (!isConnectionClosedError(err)) throw err;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    return await fn();
+  }
+}
+
 export async function getCompanyByCik(cikRaw: string) {
-  const cik = String(Number(cikRaw.replace(/\D/g, "")));
-  if (!cik || cik === "0" || Number.isNaN(Number(cik))) return null;
+  const cik = normalizeCompanyCik(cikRaw);
+  if (!cik) return null;
 
   const entity = await db.entity.findUnique({
     where: { cik },
@@ -438,4 +479,131 @@ export async function getBusinessCanvas(entityId: string) {
     select: { canvas: true },
   });
   return (row?.canvas as BusinessCanvasData | undefined) ?? null;
+}
+
+export type CompanyAnnualFilingSection = {
+  section: string;
+  content: string;
+};
+
+export type CompanyAnnualFilingArtifact = {
+  kind: string;
+  objectKey: string;
+  contentType: string;
+  sizeBytes: bigint;
+  originalName: string | null;
+  sourceUrl: string | null;
+  publicUrl: string | null;
+};
+
+export type CompanyAnnualFiling = {
+  id: string;
+  kind: string;
+  periodYear: number | null;
+  periodQuarter: number | null;
+  ts: Date | null;
+  filedAt: Date | null;
+  url: string | null;
+  metadata: Prisma.JsonValue | null;
+  sections: CompanyAnnualFilingSection[];
+  attachments: Array<{
+    sequence: string;
+    description: string;
+    documentType: string;
+    documentName: string;
+    url: string;
+  }>;
+  artifacts: CompanyAnnualFilingArtifact[];
+};
+
+const COMPANY_ANNUAL_FILING_SELECT = {
+  id: true,
+  kind: true,
+  url: true,
+  ts: true,
+  filedAt: true,
+  periodYear: true,
+  periodQuarter: true,
+  metadata: true,
+  sections: {
+    select: {
+      section: true,
+      content: true,
+    },
+    orderBy: [{ section: "asc" }],
+  },
+  attachments: {
+    select: {
+      sequence: true,
+      description: true,
+      documentType: true,
+      documentName: true,
+      url: true,
+    },
+    orderBy: [{ sequence: "asc" }],
+  },
+  artifacts: {
+    select: {
+      kind: true,
+      objectKey: true,
+      contentType: true,
+      sizeBytes: true,
+      originalName: true,
+      sourceUrl: true,
+      publicUrl: true,
+    },
+    orderBy: [{ kind: "asc" }, { createdAt: "asc" }],
+  },
+} satisfies Prisma.ExtSourceSelect;
+
+export async function getCompanyAnnualFilings(entityId: string, limit = 12) {
+  try {
+    const rows = await db.extSource.findMany({
+      where: {
+        filerEntityId: entityId,
+        kind: { in: ["10k", "20f", "40f"] },
+      },
+      orderBy: [{ periodYear: "desc" }, { periodQuarter: "desc" }, { ts: "desc" }],
+      take: limit,
+      select: COMPANY_ANNUAL_FILING_SELECT,
+    });
+
+    return rows as CompanyAnnualFiling[];
+  } catch (err) {
+    logDbFallback("getCompanyAnnualFilings", err);
+    return [];
+  }
+}
+
+export async function getCompanyAnnualFiling(entityId: string, year?: number | null) {
+  try {
+    return await retryOnce(async () => {
+      if (year != null && !Number.isNaN(year)) {
+        const filing = await db.extSource.findFirst({
+          where: {
+            filerEntityId: entityId,
+            kind: { in: ["10k", "20f", "40f"] },
+            periodYear: year,
+          },
+          orderBy: [{ periodQuarter: "desc" }, { ts: "desc" }],
+          select: COMPANY_ANNUAL_FILING_SELECT,
+        });
+        if (filing) return filing as CompanyAnnualFiling;
+      }
+
+      const latest = await db.extSource.findFirst({
+        where: {
+          filerEntityId: entityId,
+          kind: { in: ["10k", "20f", "40f"] },
+        },
+        orderBy: [{ periodYear: "desc" }, { periodQuarter: "desc" }, { ts: "desc" }],
+        select: COMPANY_ANNUAL_FILING_SELECT,
+      });
+
+      return (latest as CompanyAnnualFiling | null) ?? null;
+    });
+  } catch (err) {
+    logDbFallback("getCompanyAnnualFiling", err);
+    return null;
+  }
 }
