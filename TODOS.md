@@ -119,3 +119,16 @@
 - [ ] 虚拟人 API 效果评估
 - [ ] 声音克隆合规性
 - [ ] PostHog Cloud 中国可达性测试
+
+---
+
+## 🧹 数据清洗 / Schema
+
+- [x] `ExtSource` 同一份 SEC filing 被重复 ingest 已根治（2026-05-31）：
+  - 一次性迁移脚本：`scripts/dedupe-ext-source-filings.ts`（合并 53 个重复组 / 删除 92 行 loser / reparent 76 sections + 9 financials / 修正 63 行 kind 不一致）
+  - Schema 变更：`ExtSource` 加 `accessionNumber String?` 列 + `@@unique([filerEntityId, accessionNumber])`
+  - Migration：`prisma/migrations/20260601000100_ext_source_accession_unique/`，含 backfill（兼容 metadata.accessionNumber / accession / accno 三种字段名）
+  - Ingest 修复：`scripts/import-10k-xbrl.ts` 和 `scripts/import-13f.ts` 去重键改为 `(filerEntityId, accessionNumber)`，同时写入新列
+  - 40-F检查结果：40-F 本身没有重复问题（0 duplicate groups），但帬带一起纳入唯一约束 → 以后不可能再重复
+  - 前端保留 `dedupeReferenceFilings` 作为 defense-in-depth，但实际已不会触发
+

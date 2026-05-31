@@ -23,9 +23,9 @@ export default async function AnnualReportPage({ params }: Props) {
   if (!filing) notFound();
 
   return (
-    <div className="company-page">
+    <div className="pdf-reader-page">
       <SiteNav />
-      <div className="company-wrap">
+      <main className="pdf-reader-shell">
         <FilingReader
           company={{
             name: company.canonicalName,
@@ -34,7 +34,7 @@ export default async function AnnualReportPage({ params }: Props) {
           }}
           filing={filing}
         />
-      </div>
+      </main>
     </div>
   );
 }

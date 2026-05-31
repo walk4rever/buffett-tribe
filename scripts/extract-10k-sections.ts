@@ -1,14 +1,16 @@
 /**
- * Extract 10-K text sections (Business, MD&A, Risk Factors, Notes) from SEC EDGAR HTML.
+ * Extract annual filing text sections from SEC EDGAR HTML.
  *
  * Usage:
- *   npx tsx scripts/extract-10k-sections.ts              # all pending
+ *   npx tsx scripts/extract-10k-sections.ts               # all pending
  *   npx tsx scripts/extract-10k-sections.ts --ticker AAPL # single ticker
+ *   npx tsx scripts/extract-10k-sections.ts --source-id <ID> # single filing
  *   npx tsx scripts/extract-10k-sections.ts --limit 50    # batch limit
  */
 
 import prisma from "../src/lib/prisma";
-import { TARGET_SECTIONS, extractTargetSections } from "./lib/extract-10k-sections";
+import { extractTargetSections } from "./lib/extract-10k-sections";
+import { buildAnnualReportToc } from "../src/lib/annual-report-html";
 
 const HEADERS = {
   "User-Agent": "buffett-tribe research walkklaw@gmail.com",
@@ -18,20 +20,12 @@ const HEADERS = {
 const CONCURRENCY = 3;
 const REQUEST_DELAY_MS = 300;
 
-async function processSource(source: { id: string; url: string; filerEntityId: string | null }) {
+async function processSource(source: { id: string; url: string; filerEntityId: string | null; metadata: unknown; kind: string }) {
   if (!source.url || !source.filerEntityId) return { sections: 0, skipped: true };
 
-  // Check which sections already exist
-  const existing = await prisma.filingSection.findMany({
-    where: { sourceId: source.id },
-    select: { section: true },
-  });
-  const existingSet = new Set(existing.map((e) => e.section));
-  const neededSections = TARGET_SECTIONS.filter((t) => !existingSet.has(t.key));
-  if (neededSections.length === 0) return { sections: 0, skipped: true };
-
   try {
-    const res = await fetch(source.url, { headers: HEADERS, signal: AbortSignal.timeout(30000) });
+    const timeoutMs = source.kind === "20f" || source.kind === "40f" ? 120000 : 30000;
+    const res = await fetch(source.url, { headers: HEADERS, signal: AbortSignal.timeout(timeoutMs) });
     if (!res.ok) {
       console.warn(`  HTTP ${res.status} for ${source.url}`);
       return { sections: 0, skipped: false };
@@ -43,26 +37,54 @@ async function processSource(source: { id: string; url: string; filerEntityId: s
       return { sections: 0, skipped: false };
     }
 
-    const sections = extractTargetSections(html);
+    const sections = extractTargetSections(html, source.url, source.kind as "10k" | "20f" | "40f");
+    const tocJson = buildAnnualReportToc(html);
     let upserted = 0;
+    const keys = Object.keys(sections);
 
-    for (const [key, content] of Object.entries(sections)) {
+    if (keys.length) {
+      await prisma.filingSection.deleteMany({
+        where: {
+          sourceId: source.id,
+          section: { notIn: keys },
+        },
+      });
+    }
+
+    for (const [key, extracted] of Object.entries(sections)) {
       await prisma.filingSection.upsert({
         where: { sourceId_section: { sourceId: source.id, section: key } },
         update: {
-          content,
+          content: extracted.content,
+          rawHtml: extracted.rawHtml,
+          outlineJson: extracted.outline,
+          blocksJson: extracted.blocks,
           extractedAt: new Date(),
         },
         create: {
           entityId: source.filerEntityId,
           sourceId: source.id,
           section: key,
-          content,
-          rawHtml: null, // Do not store raw HTML to save space; source.url is the truth
+          content: extracted.content,
+          rawHtml: extracted.rawHtml,
+          outlineJson: extracted.outline,
+          blocksJson: extracted.blocks,
           extractedAt: new Date(),
         },
       });
       upserted++;
+    }
+
+    if (tocJson.length) {
+      await prisma.extSource.update({
+        where: { id: source.id },
+        data: {
+          metadata: {
+            ...(source.metadata && typeof source.metadata === "object" && !Array.isArray(source.metadata) ? source.metadata : {}),
+            tocJson,
+          },
+        },
+      });
     }
 
     return { sections: upserted, skipped: false };
@@ -75,6 +97,7 @@ async function processSource(source: { id: string; url: string; filerEntityId: s
 async function main() {
   const args = process.argv.slice(2);
   const tickerArg = args.find((_, i) => args[i - 1] === "--ticker");
+  const sourceIdArg = args.find((_, i) => args[i - 1] === "--source-id");
   const limitArg = args.find((_, i) => args[i - 1] === "--limit");
   const limit = limitArg ? parseInt(limitArg, 10) : undefined;
 
@@ -84,7 +107,9 @@ async function main() {
     url: { not: null },
   };
 
-  if (tickerArg) {
+  if (sourceIdArg) {
+    where.id = sourceIdArg;
+  } else if (tickerArg) {
     const companies = await prisma.entity.findMany({
       where: { ticker: { equals: tickerArg, mode: "insensitive" } },
       select: { id: true },
@@ -93,12 +118,12 @@ async function main() {
     where.filerEntityId = { in: companies.map((c) => c.id) };
   }
 
-  const sources = await prisma.extSource.findMany({
-    where,
-    orderBy: [{ filerEntityId: "asc" }, { periodYear: "desc" }],
-    take: limit,
-    select: { id: true, url: true, filerEntityId: true, periodYear: true, kind: true },
-  });
+    const sources = await prisma.extSource.findMany({
+      where,
+      orderBy: [{ filerEntityId: "asc" }, { periodYear: "desc" }],
+      take: limit,
+      select: { id: true, url: true, filerEntityId: true, periodYear: true, kind: true, metadata: true },
+    });
 
   console.log(`Found ${sources.length} filings to process`);
 

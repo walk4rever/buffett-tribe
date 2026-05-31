@@ -28,6 +28,7 @@ import {
   fetchSecText,
   SEC_HEADERS,
 } from "./lib/filing-archive";
+import { buildAnnualReportToc } from "../src/lib/annual-report-html";
 
 const db = new PrismaClient();
 
@@ -271,21 +272,38 @@ async function upsertFilingSectionsFromHtml(
   entityId: string,
   sourceId: string,
   html: string,
+  filingKind: "10k" | "20f" | "40f",
+  sourceUrl?: string,
 ) {
-  const sections = extractTargetSections(html);
+  const sections = extractTargetSections(html, sourceUrl, filingKind);
   const keys = Object.keys(sections);
   if (!keys.length) return 0;
 
-  for (const [section, content] of Object.entries(sections)) {
+  await db.filingSection.deleteMany({
+    where: {
+      sourceId,
+      section: { notIn: keys },
+    },
+  });
+
+  for (const [section, extracted] of Object.entries(sections)) {
     await db.filingSection.upsert({
       where: { sourceId_section: { sourceId, section } },
-      update: { content, extractedAt: new Date() },
+      update: {
+        content: extracted.content,
+        rawHtml: extracted.rawHtml,
+        outlineJson: extracted.outline as Prisma.InputJsonValue,
+        blocksJson: extracted.blocks as Prisma.InputJsonValue,
+        extractedAt: new Date(),
+      },
       create: {
         entityId,
         sourceId,
         section,
-        content,
-        rawHtml: null, // source.url is the truth; storing raw HTML here would balloon DB size
+        content: extracted.content,
+        rawHtml: extracted.rawHtml,
+        outlineJson: extracted.outline as Prisma.InputJsonValue,
+        blocksJson: extracted.blocks as Prisma.InputJsonValue,
         extractedAt: new Date(),
       },
     });
@@ -794,22 +812,20 @@ async function upsertExtSource(
   const year = new Date(filing.reportDate).getUTCFullYear();
   const quarter = Math.ceil((new Date(filing.reportDate).getUTCMonth() + 1) / 3);
   const accnoPath = filing.accession.replace(/-/g, "");
+  const kind = filing.form.startsWith("20-F") ? "20f" : filing.form.startsWith("40-F") ? "40f" : "10k";
 
+  // Dedupe key is (filerEntityId, accessionNumber). The DB also enforces this
+  // via a unique index, so even concurrent runs can't double-insert.
   const existing = await db.extSource.findFirst({
-    where: {
-      kind: filing.form.startsWith("20-F") ? "20f" : filing.form.startsWith("40-F") ? "40f" : "10k",
-      filerEntityId: entityId,
-      periodYear: year,
-      periodQuarter: quarter,
-      filedAt: new Date(filing.filedAt),
-    },
+    where: { filerEntityId: entityId, accessionNumber: filing.accession },
   });
   if (existing) return existing;
 
   return db.extSource.create({
     data: {
-      kind: filing.form.startsWith("20-F") ? "20f" : filing.form.startsWith("40-F") ? "40f" : "10k",
+      kind,
       filerEntityId: entityId,
+      accessionNumber: filing.accession,
       periodYear: year,
       periodQuarter: quarter,
       ts: new Date(filing.reportDate),
@@ -875,6 +891,7 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
 
     // 2. Download raw filing HTML once and reuse it for extraction + archival
     const html = await fetchSecText(`${filingUrlBase}/${filing.primaryDocument}`);
+    const tocJson = buildAnnualReportToc(html);
     const inlineDoc = parseInlineXbrlDocument(html);
     const inlineFactCount = await batchUpsertFinancialFactsFromInline(
       companyEntity.id,
@@ -888,6 +905,8 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
       companyEntity.id,
       extSource.id,
       html,
+      extSource.kind as "10k" | "20f" | "40f",
+      `${filingUrlBase}/${filing.primaryDocument}`,
     );
 
     // 4. Download index page once, register attachment rows, and archive all listed files
@@ -907,6 +926,16 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
       primaryHtml: html,
       indexHtml,
       indexFiles,
+    });
+
+    await db.extSource.update({
+      where: { id: extSource.id },
+      data: {
+        metadata: {
+          ...(extSource.metadata as Record<string, unknown>),
+          tocJson,
+        },
+      },
     });
 
     // 5. Continue existing LINE_ITEMS logic (derived layer)

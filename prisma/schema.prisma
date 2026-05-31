@@ -227,6 +227,7 @@ model ExtSource {
   periodQuarter Int? // 1–4 — quarter of the reporting period
   filedAt       DateTime? // SEC EDGAR accepted date
   filerEntityId String?
+  accessionNumber String? // SEC accession number, promoted out of metadata so we can enforce uniqueness per filer
   metadata      Json? // 扩展：完整的 SEC filing 元数据（accession、form、fileNumber、filmNumber、size、isXBRL、primaryDocument、acceptanceDateTime、act 等）
   createdAt     DateTime  @default(now())
 
@@ -238,6 +239,7 @@ model ExtSource {
   attachments FilingAttachment[]
   artifacts   FilingArtifact[]
 
+  @@unique([filerEntityId, accessionNumber], name: "ExtSource_filer_accession_unique")
   @@index([kind, ts])
   @@index([filerEntityId])
 }
@@ -319,6 +321,8 @@ model FilingSection {
   section     String   // "item_1_business" | "item_1a_risk_factors" | "item_2_properties" | "item_3_legal" | "item_7_mda" | "item_7a_market_risk" | "item_8_notes" | "exhibits"
   content     String   // 提取的纯文本 / Markdown（清洗后的可读文本）
   rawHtml     String?  // 原始 HTML 片段（保留用于精确溯源和重新提取）
+  outlineJson Json?    // 目录树 / 标题层级
+  blocksJson  Json?    // 结构化正文块（heading / paragraph / list / table / note）
 
   extractedAt DateTime @default(now())
 

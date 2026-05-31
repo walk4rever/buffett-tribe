@@ -553,7 +553,7 @@ async function importFiling(
   const valueUsdScale = BigInt(infer13fValueUsdScale(entries));
 
   const existingSource = await db.extSource.findFirst({
-    where: { filerEntityId, periodYear: year, periodQuarter: quarter, kind: "13f" },
+    where: { filerEntityId, accessionNumber: accno },
   });
 
   const extSource = existingSource ?? await db.extSource.create({
@@ -565,7 +565,8 @@ async function importFiling(
       periodQuarter: quarter,
       filedAt: new Date(filedAt),
       filerEntityId,
-      metadata: { accno, cik },
+      accessionNumber: accno,
+      metadata: { accno, accession: accno, cik },
     },
   });
 

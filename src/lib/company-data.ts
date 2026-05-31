@@ -227,18 +227,20 @@ async function getSecurityIdsForCompany(entityId: string) {
 
 export async function getCompanyFinancials(entityId: string, limit = 8) {
   const familyIds = await getEntityFamilyIds(entityId);
-  const rows = await db.financial.findMany({
-    where: { entityId: { in: familyIds }, periodType: "FY" },
-    orderBy: [{ periodEnd: "desc" }, { lineItem: "asc" }],
-    select: {
-      id: true,
-      periodEnd: true,
-      lineItem: true,
-      value: true,
-      unit: true,
-    },
-    take: 400,
-  });
+  const rows = await retryOnce(async () =>
+    db.financial.findMany({
+      where: { entityId: { in: familyIds }, periodType: "FY" },
+      orderBy: [{ periodEnd: "desc" }, { lineItem: "asc" }],
+      select: {
+        id: true,
+        periodEnd: true,
+        lineItem: true,
+        value: true,
+        unit: true,
+      },
+      take: 400,
+    }),
+  );
 
   const byYear = new Map<number, { periodEnd: Date; items: Record<string, string> }>();
   for (const row of rows) {
@@ -278,22 +280,24 @@ export type HolderRow = {
 
 export async function getRecentHolders(entityId: string, limit = 20) {
   const securityScope = await getSecurityIdsForCompany(entityId);
-  const rows = await db.holding.findMany({
-    where: {
-      securityId: { in: securityScope.profileIds },
-    },
-    orderBy: [
-      { holderEntityId: "asc" },
-      { asOfDate: "desc" },
-      { securityId: "asc" },
-    ],
-    include: {
-      holder: { select: { id: true, canonicalName: true, tribeId: true } },
-      security: { select: { ticker: true } },
-      source: { select: { periodYear: true, periodQuarter: true } },
-    },
-    take: 1000,
-  });
+  const rows = await retryOnce(async () =>
+    db.holding.findMany({
+      where: {
+        securityId: { in: securityScope.profileIds },
+      },
+      orderBy: [
+        { holderEntityId: "asc" },
+        { asOfDate: "desc" },
+        { securityId: "asc" },
+      ],
+      include: {
+        holder: { select: { id: true, canonicalName: true, tribeId: true } },
+        security: { select: { ticker: true } },
+        source: { select: { periodYear: true, periodQuarter: true } },
+      },
+      take: 1000,
+    }),
+  );
 
   if (!rows.length) {
     return { holders: [] as HolderRow[] };
@@ -473,6 +477,198 @@ export async function getCompanyAnalysis(entityId: string) {
   return row ?? null;
 }
 
+export type CompanyReferenceFiling = {
+  id: string;
+  kind: string;
+  url: string | null;
+  ts: Date | null;
+  filedAt: Date | null;
+  periodYear: number | null;
+  periodQuarter: number | null;
+  metadata: Prisma.JsonValue;
+  attachments: Array<{
+    sequence: string;
+    description: string;
+    documentType: string;
+    documentName: string;
+    url: string;
+  }>;
+  artifacts: Array<{
+    kind: string;
+    objectKey: string;
+    contentType: string;
+    sizeBytes: bigint;
+    originalName: string | null;
+    sourceUrl: string | null;
+    publicUrl: string | null;
+  }>;
+};
+
+// Defense-in-depth: ExtSource now has a unique index on (filerEntityId, accessionNumber),
+// so the database itself rejects duplicate ingest. This frontend dedup is kept as a safety net
+// in case some legacy row slips through with a NULL accessionNumber, or future schema work
+// temporarily drops the constraint. Pair with scripts/dedupe-ext-source-filings.ts for a
+// one-shot cleanup if duplicates ever reappear.
+//
+// Same SEC filing can appear multiple times in ext_source: legacy importers
+// wrote `kind=10k` for foreign filers that are actually 20-F, and there is no
+// unique constraint on (filerEntityId, accessionNumber) yet. Collapse rows by
+// accessionNumber (falling back to period+filedAt+url when accession is missing)
+// and prefer the row whose kind matches the metadata.form (20f > 40f > 10k by
+// default, since 10k is the legacy fallback). Merge attachments/artifacts so
+// we don't lose files attached to the duplicate row.
+function dedupeReferenceFilings(rows: CompanyReferenceFiling[]): CompanyReferenceFiling[] {
+  const kindRank: Record<string, number> = { "20f": 0, "40f": 1, "10k": 2 };
+  const dedupKey = (row: CompanyReferenceFiling) => {
+    const meta = (row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+      ? (row.metadata as Record<string, unknown>)
+      : {}) as Record<string, unknown>;
+    const accession =
+      (typeof meta.accessionNumber === "string" && meta.accessionNumber) ||
+      (typeof meta.accession === "string" && meta.accession) ||
+      null;
+    if (accession) return `acc:${accession}`;
+    const period = `${row.periodYear ?? ""}-${row.periodQuarter ?? ""}`;
+    const filed = row.filedAt?.toISOString() ?? row.ts?.toISOString() ?? "";
+    return `fb:${period}|${filed}|${row.url ?? ""}`;
+  };
+
+  const preferredKindFromMeta = (row: CompanyReferenceFiling) => {
+    const meta = (row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+      ? (row.metadata as Record<string, unknown>)
+      : {}) as Record<string, unknown>;
+    const form = typeof meta.form === "string" ? meta.form.trim().toLowerCase().replace(/[-/]/g, "") : "";
+    if (form === "20f" || form === "40f" || form === "10k") return form;
+    return null;
+  };
+
+  const groups = new Map<string, CompanyReferenceFiling[]>();
+  for (const row of rows) {
+    const key = dedupKey(row);
+    const bucket = groups.get(key);
+    if (bucket) bucket.push(row);
+    else groups.set(key, [row]);
+  }
+
+  const dedupAttachments = (items: CompanyReferenceFiling["attachments"]) => {
+    const seen = new Set<string>();
+    const out: CompanyReferenceFiling["attachments"] = [];
+    for (const a of items) {
+      const k = `${a.sequence}|${a.documentName}|${a.url}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(a);
+    }
+    return out;
+  };
+  const dedupArtifacts = (items: CompanyReferenceFiling["artifacts"]) => {
+    const seen = new Set<string>();
+    const out: CompanyReferenceFiling["artifacts"] = [];
+    for (const a of items) {
+      const k = `${a.kind}|${a.objectKey}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(a);
+    }
+    return out;
+  };
+
+  const merged: CompanyReferenceFiling[] = [];
+  for (const bucket of groups.values()) {
+    const sorted = [...bucket].sort((a, b) => {
+      const aPreferred = preferredKindFromMeta(a);
+      const bPreferred = preferredKindFromMeta(b);
+      const aMatches = aPreferred && a.kind === aPreferred ? 0 : 1;
+      const bMatches = bPreferred && b.kind === bPreferred ? 0 : 1;
+      if (aMatches !== bMatches) return aMatches - bMatches;
+      const aRank = kindRank[a.kind] ?? 99;
+      const bRank = kindRank[b.kind] ?? 99;
+      if (aRank !== bRank) return aRank - bRank;
+      // Tie-breaker: more attachments/artifacts wins, then most recent createdAt-ish proxy (id desc).
+      const aFiles = a.attachments.length + a.artifacts.length;
+      const bFiles = b.attachments.length + b.artifacts.length;
+      if (aFiles !== bFiles) return bFiles - aFiles;
+      return b.id.localeCompare(a.id);
+    });
+    const winner = sorted[0];
+    const allAttachments = sorted.flatMap((r) => r.attachments);
+    const allArtifacts = sorted.flatMap((r) => r.artifacts);
+    merged.push({
+      ...winner,
+      attachments: dedupAttachments(allAttachments),
+      artifacts: dedupArtifacts(allArtifacts),
+    });
+  }
+
+  merged.sort((a, b) => {
+    const ay = a.periodYear ?? -Infinity;
+    const by = b.periodYear ?? -Infinity;
+    if (ay !== by) return by - ay;
+    const aq = a.periodQuarter ?? -Infinity;
+    const bq = b.periodQuarter ?? -Infinity;
+    if (aq !== bq) return bq - aq;
+    const at = (a.filedAt ?? a.ts)?.getTime() ?? 0;
+    const bt = (b.filedAt ?? b.ts)?.getTime() ?? 0;
+    return bt - at;
+  });
+
+  return merged;
+}
+
+export async function getCompanyReferenceFilings(entityId: string, limit = 12): Promise<CompanyReferenceFiling[]> {
+  try {
+    // Fetch more than `limit` because we deduplicate below — the same filing
+    // (same accessionNumber) can have multiple rows with different `kind`
+    // (legacy import wrote 10k for foreign filers that are actually 20-F).
+    const rows = await retryOnce(async () =>
+      db.extSource.findMany({
+        where: {
+          filerEntityId: entityId,
+          kind: { in: ["10k", "20f", "40f"] },
+        },
+        orderBy: [{ periodYear: "desc" }, { periodQuarter: "desc" }, { ts: "desc" }],
+        take: limit * 4,
+        select: {
+          id: true,
+          kind: true,
+          url: true,
+          ts: true,
+          filedAt: true,
+          periodYear: true,
+          periodQuarter: true,
+          metadata: true,
+          attachments: {
+            select: {
+              sequence: true,
+              description: true,
+              documentType: true,
+              documentName: true,
+              url: true,
+            },
+            orderBy: [{ sequence: "asc" }],
+          },
+          artifacts: {
+            select: {
+              kind: true,
+              objectKey: true,
+              contentType: true,
+              sizeBytes: true,
+              originalName: true,
+              sourceUrl: true,
+              publicUrl: true,
+            },
+            orderBy: [{ kind: "asc" }, { createdAt: "asc" }],
+          },
+        },
+      }),
+    );
+    return dedupeReferenceFilings(rows as CompanyReferenceFiling[]).slice(0, limit);
+  } catch (err) {
+    logDbFallback("getCompanyReferenceFilings", err);
+    return [];
+  }
+}
+
 export async function getBusinessCanvas(entityId: string) {
   const row = await db.businessCanvas.findUnique({
     where: { entityId },
@@ -484,7 +680,51 @@ export async function getBusinessCanvas(entityId: string) {
 export type CompanyAnnualFilingSection = {
   section: string;
   content: string;
+  rawHtml: string | null;
+  outlineJson: Prisma.JsonValue | null;
+  blocksJson: Prisma.JsonValue | null;
 };
+
+export type CompanyAnnualFilingOutlineNode = {
+  title: string;
+  level: number;
+  anchor: string | null;
+  children: CompanyAnnualFilingOutlineNode[];
+};
+
+export type CompanyAnnualFilingBlock =
+  | {
+      id: string;
+      type: "heading";
+      text: string;
+      level: number;
+      sourceTag: string;
+    }
+  | {
+      id: string;
+      type: "paragraph";
+      text: string;
+    }
+  | {
+      id: string;
+      type: "list";
+      ordered: boolean;
+      items: string[];
+      text: string;
+    }
+  | {
+      id: string;
+      type: "table";
+      caption: string | null;
+      headers: string[];
+      rows: string[][];
+      text: string;
+    }
+  | {
+      id: string;
+      type: "note";
+      text: string;
+    };
 
 export type CompanyAnnualFilingArtifact = {
   kind: string;
@@ -529,6 +769,9 @@ const COMPANY_ANNUAL_FILING_SELECT = {
     select: {
       section: true,
       content: true,
+      rawHtml: true,
+      outlineJson: true,
+      blocksJson: true,
     },
     orderBy: [{ section: "asc" }],
   },

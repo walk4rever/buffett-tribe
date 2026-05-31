@@ -16,6 +16,7 @@ import {
   formatCompanyCikSlug,
   formatCompanyCikUrl,
   getRecentHolders,
+  getCompanyReferenceFilings,
 } from "@/lib/company-data";
 
 import { StockPriceChartLazy } from "@/components/StockPriceChartLazy";
@@ -452,46 +453,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     getCompanySecurities(company.id),
     getCompanyAnalysis(company.id),
     getBusinessCanvas(company.id),
-    db.extSource.findMany({
-      where: {
-        filerEntityId: company.id,
-        kind: { in: ["10k", "20f", "40f"] },
-      },
-      orderBy: [{ periodYear: "desc" }, { periodQuarter: "desc" }, { ts: "desc" }],
-      take: 12,
-      select: {
-        id: true,
-        kind: true,
-        url: true,
-        ts: true,
-        filedAt: true,
-        periodYear: true,
-        periodQuarter: true,
-        metadata: true,
-        attachments: {
-          select: {
-            sequence: true,
-            description: true,
-            documentType: true,
-            documentName: true,
-            url: true,
-          },
-          orderBy: [{ sequence: "asc" }],
-        },
-        artifacts: {
-          select: {
-            kind: true,
-            objectKey: true,
-            contentType: true,
-            sizeBytes: true,
-            originalName: true,
-            sourceUrl: true,
-            publicUrl: true,
-          },
-          orderBy: [{ kind: "asc" }, { createdAt: "asc" }],
-        },
-      },
-    }),
+    getCompanyReferenceFilings(company.id, 12),
   ]);
 
   const priceTickers = uniqueTickers([
