@@ -6763,8 +6763,23 @@ body.layout-no-header {
 }
 
 .filing-reader-nav-item--missing {
-  cursor: default;
-  opacity: 0.42;
+  opacity: 0.58;
+}
+
+.filing-reader-nav-item--missing .filing-reader-nav-item-kicker {
+  background: rgba(148, 163, 184, 0.16);
+  color: #7a8797;
+}
+
+.filing-reader-nav-item--missing .filing-reader-nav-zh,
+.filing-reader-nav-item--missing .filing-reader-nav-en {
+  color: #7a8797;
+}
+
+.filing-reader-nav-item--missing.filing-reader-nav-item--active {
+  opacity: 1;
+  background: rgba(31, 41, 55, 0.82);
+  border-color: rgba(31, 41, 55, 0.82);
 }
 
 .filing-reader-linkpill {
@@ -6923,6 +6938,10 @@ body.layout-no-header {
   border-top: 1px solid rgba(15, 23, 42, 0.08);
 }
 
+.filing-reader-section--missing .filing-reader-section-body {
+  border-top-style: dashed;
+}
+
 .filing-reader-section-body p {
   margin: 0;
 }
@@ -7062,6 +7081,10 @@ body.layout-no-header {
 
 .filing-reader-empty-paragraph {
   color: #94a3b8;
+}
+
+.filing-reader-missing {
+  min-height: 0.25rem;
 }
 
 .filing-reader-inline-heading {

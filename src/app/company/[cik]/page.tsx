@@ -684,7 +684,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
             { id: "value", label: "价值分析" },
             { id: "management", label: "管理分析", note: "构建中" },
             { id: "valuation", label: "估值分析", note: "构建中" },
-            { id: "references", label: "参考资料" },
+            { id: "references", label: "年度报告" },
           ]}
           initialTabId={initialTabId}
         >
@@ -976,7 +976,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
 
           <section className="company-section" data-tab-panel="references">
             <div className="company-financial-trend-head">
-              <h3>参考资料</h3>
+              <h3>年度报告</h3>
               <span>{referenceFilings.length ? `${referenceFilings.length} 份 filing · ${referenceArtifactCount} 个原始文件` : "暂无原始资料"}</span>
             </div>
             {referenceFilings.length ? (

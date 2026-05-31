@@ -11,6 +11,7 @@
  *   --years 5 (if --from/--to not provided)
  */
 import { Prisma, PrismaClient } from "@prisma/client";
+import * as cheerio from "cheerio";
 import { hasChineseText, issuerKey, normalizeEnglishName } from "../src/lib/company-name-map";
 import { translateCompanyNameToZh, upsertNameMapEntries } from "./lib/company-name-zh";
 import {
@@ -20,7 +21,7 @@ import {
   pickCompanyProfile,
   type SecCompanyProfile,
 } from "./lib/sec-company-profile";
-import { extractTargetSections } from "./lib/extract-10k-sections";
+import { extractTargetSections, normalizeHtmlToText } from "./lib/extract-10k-sections";
 import {
   archiveFilingArtifact,
   fetchFilingIndexFiles,
@@ -309,6 +310,126 @@ async function upsertFilingSectionsFromHtml(
     });
   }
   return keys.length;
+}
+
+function resolveRelativeUrls(html: string, sourceUrl: string): string {
+  try {
+    const base = new URL(sourceUrl);
+    return html.replace(/(src|href)=['"]([^'"]+)['"]/g, (match, attr, url) => {
+      if (/^(https?:|data:|#|mailto:|javascript:)/i.test(url)) return match;
+      return `${attr}="${new URL(url, base).href}"`;
+    });
+  } catch {
+    return html;
+  }
+}
+
+function extractBodyHtml(html: string, sourceUrl: string) {
+  const $ = cheerio.load(html);
+  $("script,style,head,noscript,ix\\:hidden,ix\\:header").remove();
+  const bodyHtml = $("body").html() ?? $.root().html() ?? html;
+  return resolveRelativeUrls(bodyHtml, sourceUrl);
+}
+
+function normalizeComparableText(text: string) {
+  return text
+    .replace(/\u00a0/g, " ")
+    .replace(/[’‘]/g, "'")
+    .replace(/&rsquo;|&#8217;/gi, "'")
+    .replace(/&amp;/gi, "&")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function classify40FAttachment(text: string, file: Awaited<ReturnType<typeof fetchFilingIndexFiles>>["files"][number]) {
+  const haystack = normalizeComparableText(`${file.documentName} ${file.description} ${file.documentType} ${text.slice(0, 20000)}`);
+  const sections = new Set<string>();
+
+  if (haystack.includes("annual information form") || /\baif\b/i.test(file.documentName)) {
+    sections.add("annual_information_form");
+  }
+
+  const hasMda =
+    haystack.includes("management's discussion and analysis") ||
+    haystack.includes("management&#8217;s discussion and analysis") ||
+    haystack.includes("management discussion and analysis") ||
+    /\bmd&a\b/i.test(file.documentName) ||
+    /\bmd&a\b/i.test(file.description);
+  if (hasMda) sections.add("management_discussion_and_analysis");
+
+  const hasFinancialStatements =
+    haystack.includes("consolidated financial statements") ||
+    haystack.includes("audited annual financial statements") ||
+    haystack.includes("management's statement of responsibility for financial reporting") ||
+    haystack.includes("management&#8217;s statement of responsibility for financial reporting") ||
+    haystack.includes("report of independent registered public accounting firm");
+  if (hasFinancialStatements && !haystack.includes("consent of independent registered public accounting firm")) {
+    sections.add("audited_annual_financial_statements");
+  }
+
+  if (haystack.includes("disclosure controls and procedures")) sections.add("disclosure_controls_procedures");
+  if (haystack.includes("internal control over financial reporting")) sections.add("management_internal_control_report");
+  if (haystack.includes("audit committee financial expert")) sections.add("audit_committee_financial_expert");
+  if (haystack.includes("code of ethics")) sections.add("code_of_ethics");
+  if (haystack.includes("principal accountant fees and services")) sections.add("principal_accountant_fees_services");
+  if (haystack.includes("certification") && /^EX-99/i.test(file.documentType)) sections.add("certifications");
+
+  return [...sections];
+}
+
+async function upsert40FAttachmentSections(
+  entityId: string,
+  sourceId: string,
+  files: Awaited<ReturnType<typeof fetchFilingIndexFiles>>["files"],
+) {
+  const htmlAttachments = files.filter((file) => {
+    if (file.category !== "attachment") return false;
+    if (!/^EX-99/i.test(file.documentType)) return false;
+    return /\.(html?|xhtml)$/i.test(file.documentName);
+  });
+
+  let upserted = 0;
+  const seenSections = new Set<string>();
+
+  for (const file of htmlAttachments) {
+    const html = await fetchSecText(file.url);
+    const text = normalizeHtmlToText(html);
+    const sections = classify40FAttachment(text, file).filter((section) => !seenSections.has(section));
+    if (!sections.length) continue;
+
+    const rawHtml = extractBodyHtml(html, file.url);
+    const content = text.trim();
+    if (!content) continue;
+
+    for (const section of sections) {
+      await db.filingSection.upsert({
+        where: { sourceId_section: { sourceId, section } },
+        update: {
+          content,
+          rawHtml,
+          outlineJson: Prisma.JsonNull,
+          blocksJson: Prisma.JsonNull,
+          extractedAt: new Date(),
+        },
+        create: {
+          entityId,
+          sourceId,
+          section,
+          content,
+          rawHtml,
+          outlineJson: Prisma.JsonNull,
+          blocksJson: Prisma.JsonNull,
+          extractedAt: new Date(),
+        },
+      });
+      seenSections.add(section);
+      upserted++;
+    }
+  }
+
+  return upserted;
 }
 
 async function upsertFilingAttachments(
@@ -911,6 +1032,10 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
 
     // 4. Download index page once, register attachment rows, and archive all listed files
     const { html: indexHtml, files: indexFiles } = await fetchFilingIndexFiles(cik, filing.accession);
+    const attachmentSectionCount =
+      extSource.kind === "40f"
+        ? await upsert40FAttachmentSections(companyEntity.id, extSource.id, indexFiles)
+        : 0;
     const attachmentCount = await upsertFilingAttachments(
       companyEntity.id,
       extSource.id,
@@ -1004,7 +1129,7 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
     }
 
     console.log(
-      `  ${filing.reportDate} (${filing.accession}) -> facts(API ${apiFactCount}, Inline ${inlineFactCount}), sections ${sectionCount}, attachments ${attachmentCount}, derived ${upserted}, missing ${missing}, fallback ${fallbackUsed}`,
+      `  ${filing.reportDate} (${filing.accession}) -> facts(API ${apiFactCount}, Inline ${inlineFactCount}), sections ${sectionCount}+${attachmentSectionCount}, attachments ${attachmentCount}, derived ${upserted}, missing ${missing}, fallback ${fallbackUsed}`,
     );
   }
 }

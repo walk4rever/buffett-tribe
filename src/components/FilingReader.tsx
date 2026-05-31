@@ -26,6 +26,17 @@ type FilingTemplate = {
   groups: { part: string; label: { zh: string; en: string }; items: string[] }[];
 };
 
+type StructuredFilingSection = CompanyAnnualFiling["sections"][number] & {
+  blocks: CompanyAnnualFilingBlock[];
+  outline: CompanyAnnualFilingOutlineNode[];
+};
+
+type ReaderSection = {
+  section: string;
+  standard: boolean;
+  data: StructuredFilingSection | null;
+};
+
 const SECTION_ORDER_10K = [
   "item_1_business",
   "item_1a_risk_factors",
@@ -645,15 +656,36 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
     });
   }, [sortedSections]);
 
-  const visibleSectionKeys = useMemo(() => new Set(structuredSections.map((section) => section.section)), [structuredSections]);
+  const structuredBySection = useMemo(() => {
+    return new Map(structuredSections.map((section) => [section.section, section]));
+  }, [structuredSections]);
+
+  const extractedStandardSectionCount = useMemo(() => {
+    return filingTemplate.order.filter((section) => structuredBySection.has(section)).length;
+  }, [filingTemplate.order, structuredBySection]);
+
+  const readerSections = useMemo<ReaderSection[]>(() => {
+    const standardSections = filingTemplate.order.map((section) => ({
+      section,
+      standard: true,
+      data: structuredBySection.get(section) ?? null,
+    }));
+    const configured = new Set(filingTemplate.order);
+    const additionalSections = structuredSections
+      .filter((section) => !configured.has(section.section))
+      .map((section) => ({
+        section: section.section,
+        standard: false,
+        data: section,
+      }));
+    return [...standardSections, ...additionalSections];
+  }, [filingTemplate.order, structuredBySection, structuredSections]);
 
   const navGroups = useMemo(() => {
-    const groups = filingTemplate.groups
-      .map((group) => ({
-        ...group,
-        items: group.items.filter((item) => visibleSectionKeys.has(item)),
-      }))
-      .filter((group) => group.items.length > 0);
+    const groups = filingTemplate.groups.map((group) => ({
+      ...group,
+      items: group.items,
+    }));
 
     const configured = new Set(filingTemplate.groups.flatMap((group) => group.items));
     const additionalItems = structuredSections
@@ -669,20 +701,20 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
     }
 
     return groups;
-  }, [filingTemplate.groups, structuredSections, visibleSectionKeys]);
+  }, [filingTemplate.groups, structuredSections]);
 
   const currentSection = useMemo(() => {
-    if (!sortedSections.length) return null;
-    if (activeSection && sortedSections.some((section) => section.section === activeSection)) {
+    if (!readerSections.length) return null;
+    if (activeSection && readerSections.some((section) => section.section === activeSection)) {
       return activeSection;
     }
-    return sortedSections[0].section;
-  }, [activeSection, sortedSections]);
+    return readerSections[0].section;
+  }, [activeSection, readerSections]);
 
   const currentSectionData = useMemo(() => {
     if (!currentSection) return null;
-    return structuredSections.find((section) => section.section === currentSection) ?? null;
-  }, [currentSection, structuredSections]);
+    return structuredBySection.get(currentSection) ?? null;
+  }, [currentSection, structuredBySection]);
 
   const reportLabel = `${filing.periodYear ?? "—"}${filing.periodQuarter ? ` Q${filing.periodQuarter}` : ""}`;
   const companyUrl = formatCompanyCikUrl(company.cik) ?? `/company/${company.cik ?? ""}`;
@@ -712,7 +744,7 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
   const hiddenFileCount = Math.max(0, supplementalFiles.length - visibleFiles.length);
 
   useEffect(() => {
-    if (!contentRef.current || !sortedSections.length) return;
+    if (!contentRef.current || !readerSections.length) return;
 
     const container = contentRef.current;
     const sectionElements = Array.from(container.querySelectorAll<HTMLElement>("[data-section]"));
@@ -752,7 +784,7 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
       window.removeEventListener("resize", onScroll);
       if (raf) window.cancelAnimationFrame(raf);
     };
-  }, [sortedSections]);
+  }, [readerSections]);
 
   const jumpToSection = (section: string) => {
     const el = document.getElementById(`filing-section-${section}`);
@@ -806,7 +838,7 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
           >
             {sidebarOpen ? <PanelLeftClose size={16} /> : <Menu size={16} />}
           </button>
-          <Link href={referencesUrl} className="filing-reader-back" aria-label="返回参考资料">
+          <Link href={referencesUrl} className="filing-reader-back" aria-label="返回年度报告">
             <ChevronLeft size={15} />
           </Link>
           <div className="filing-reader-bar-copy">
@@ -844,11 +876,12 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
                   const label = getSectionLabel(key, filingTemplate.labels);
                   const kicker = getSectionKicker(key, filingTemplate.itemNumbers);
                   const active = currentSection === key;
+                  const missing = !structuredBySection.has(key);
                   return (
                     <div key={key} className="filing-reader-nav-section">
                       <button
                         type="button"
-                        className={`filing-reader-nav-item${active ? " filing-reader-nav-item--active" : ""}`}
+                        className={`filing-reader-nav-item${active ? " filing-reader-nav-item--active" : ""}${missing ? " filing-reader-nav-item--missing" : ""}`}
                         onClick={() => jumpToSection(key)}
                         title={`${label.zh} / ${label.en}`}
                       >
@@ -879,26 +912,30 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
                 <span>{reportLabel}</span>
               </h1>
               <div className="filing-reader-hero-meta">
-                <span>{structuredSections.length} sections</span>
+                <span>{extractedStandardSectionCount}/{filingTemplate.order.length} standard sections extracted</span>
+                {structuredSections.length > extractedStandardSectionCount ? (
+                  <span>{structuredSections.length - extractedStandardSectionCount} additional extracted</span>
+                ) : null}
                 {supplementalFiles.length ? <span>{supplementalFiles.length} files</span> : null}
               </div>
             </div>
           </section>
 
-          {structuredSections.map((section) => {
-            const label = getSectionLabel(section.section, filingTemplate.labels);
-            const blocks = section.blocks;
-            const kicker = getSectionKicker(section.section, filingTemplate.itemNumbers);
+          {readerSections.map((readerSection) => {
+            const section = readerSection.data;
+            const label = getSectionLabel(readerSection.section, filingTemplate.labels);
+            const blocks = section?.blocks ?? [];
+            const kicker = getSectionKicker(readerSection.section, filingTemplate.itemNumbers);
             const displayBlocks =
               blocks.length && blocks[0].type === "heading" && isSectionHeadingBlock(blocks[0].text)
                 ? blocks.slice(1)
                 : blocks;
             return (
               <article
-                key={section.section}
-                id={`filing-section-${section.section}`}
-                className="filing-reader-section"
-                data-section={section.section}
+                key={readerSection.section}
+                id={`filing-section-${readerSection.section}`}
+                className={`filing-reader-section${section ? "" : " filing-reader-section--missing"}`}
+                data-section={readerSection.section}
               >
                 <div className="filing-reader-section-head">
                   <div>
@@ -908,7 +945,7 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
                   </div>
                 </div>
                 <div className="filing-reader-section-body">
-                  {section.rawHtml ? (
+                  {section?.rawHtml ? (
                     <div
                       className="filing-reader-html"
                       dangerouslySetInnerHTML={{ __html: section.rawHtml }}
@@ -916,13 +953,15 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
                   ) : displayBlocks.length ? (
                     displayBlocks.map((block, blockIndex) => (
                       <div
-                        key={block.id || `${section.section}-${blockIndex}`}
+                        key={block.id || `${readerSection.section}-${blockIndex}`}
                         id={block.id}
                         className={`filing-reader-block filing-reader-block--${block.type}`}
                       >
                         {renderBlock(block)}
                       </div>
                     ))
+                  ) : !section ? (
+                    <div className="filing-reader-missing" aria-hidden="true" />
                   ) : (
                     renderLegacyTextContent(section.content)
                   )}

@@ -818,30 +818,50 @@ export async function getCompanyAnnualFilings(entityId: string, limit = 12) {
   }
 }
 
+function isAmendedAnnualFiling(filing: CompanyAnnualFiling) {
+  const meta = filing.metadata && typeof filing.metadata === "object" && !Array.isArray(filing.metadata)
+    ? (filing.metadata as Record<string, unknown>)
+    : {};
+  const form = typeof meta.form === "string" ? meta.form.trim().toUpperCase() : "";
+  return form.endsWith("/A");
+}
+
+function pickPreferredAnnualFiling(rows: CompanyAnnualFiling[]) {
+  if (!rows.length) return null;
+  const fullReport = rows.find((row) => !isAmendedAnnualFiling(row));
+  return fullReport ?? rows[0];
+}
+
 export async function getCompanyAnnualFiling(entityId: string, year?: number | null) {
   try {
     return await retryOnce(async () => {
       if (year != null && !Number.isNaN(year)) {
-        const filing = await db.extSource.findFirst({
+        const filings = await db.extSource.findMany({
           where: {
             filerEntityId: entityId,
             kind: { in: ["10k", "20f", "40f"] },
             periodYear: year,
           },
-          orderBy: [{ periodQuarter: "desc" }, { ts: "desc" }],
+          orderBy: [{ periodQuarter: "desc" }, { ts: "desc" }, { filedAt: "asc" }],
           select: COMPANY_ANNUAL_FILING_SELECT,
         });
+        const filing = pickPreferredAnnualFiling(filings as CompanyAnnualFiling[]);
         if (filing) return filing as CompanyAnnualFiling;
       }
 
-      const latest = await db.extSource.findFirst({
+      const latestRows = await db.extSource.findMany({
         where: {
           filerEntityId: entityId,
           kind: { in: ["10k", "20f", "40f"] },
         },
         orderBy: [{ periodYear: "desc" }, { periodQuarter: "desc" }, { ts: "desc" }],
+        take: 8,
         select: COMPANY_ANNUAL_FILING_SELECT,
       });
+      const latestYear = latestRows[0]?.periodYear ?? null;
+      const latest = pickPreferredAnnualFiling(
+        (latestYear == null ? latestRows : latestRows.filter((row) => row.periodYear === latestYear)) as CompanyAnnualFiling[],
+      );
 
       return (latest as CompanyAnnualFiling | null) ?? null;
     });
