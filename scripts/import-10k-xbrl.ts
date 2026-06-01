@@ -343,38 +343,58 @@ function normalizeComparableText(text: string) {
     .toLowerCase();
 }
 
+const ATTACHMENT_DERIVED_40F_SECTIONS = [
+  "annual_information_form",
+  "audited_annual_financial_statements",
+  "management_discussion_and_analysis",
+  "disclosure_controls_procedures",
+  "management_internal_control_report",
+  "auditor_attestation_internal_control",
+  "changes_internal_control",
+  "audit_committee_financial_expert",
+  "code_of_ethics",
+  "principal_accountant_fees_services",
+  "certifications",
+  "exhibits",
+];
+
+function startsWithAny(value: string, patterns: RegExp[]) {
+  return patterns.some((pattern) => pattern.test(value));
+}
+
 function classify40FAttachment(text: string, file: Awaited<ReturnType<typeof fetchFilingIndexFiles>>["files"][number]) {
-  const haystack = normalizeComparableText(`${file.documentName} ${file.description} ${file.documentType} ${text.slice(0, 20000)}`);
+  const fileLabel = normalizeComparableText(`${file.documentName} ${file.description} ${file.documentType}`);
+  const lead = normalizeComparableText(text.slice(0, 4000));
+  const haystack = `${fileLabel} ${lead}`;
   const sections = new Set<string>();
 
-  if (haystack.includes("annual information form") || /\baif\b/i.test(file.documentName)) {
+  if (/\baif\b/i.test(file.documentName) || startsWithAny(lead, [/^(ex-\d+\.\d+\s+)?\d*\s*.*annual information form\b/])) {
     sections.add("annual_information_form");
   }
 
-  const hasMda =
-    haystack.includes("management's discussion and analysis") ||
-    haystack.includes("management&#8217;s discussion and analysis") ||
-    haystack.includes("management discussion and analysis") ||
+  if (
     /\bmd&a\b/i.test(file.documentName) ||
-    /\bmd&a\b/i.test(file.description);
-  if (hasMda) sections.add("management_discussion_and_analysis");
+    /\bmd&a\b/i.test(file.description) ||
+    startsWithAny(lead, [/^(ex-\d+\.\d+\s+)?\d*\s*.*management'?s discussion and analysis\b/])
+  ) {
+    sections.add("management_discussion_and_analysis");
+  }
 
-  const hasFinancialStatements =
-    haystack.includes("consolidated financial statements") ||
-    haystack.includes("audited annual financial statements") ||
-    haystack.includes("management's statement of responsibility for financial reporting") ||
-    haystack.includes("management&#8217;s statement of responsibility for financial reporting") ||
-    haystack.includes("report of independent registered public accounting firm");
-  if (hasFinancialStatements && !haystack.includes("consent of independent registered public accounting firm")) {
+  if (
+    !haystack.includes("consent of independent registered public accounting firm") &&
+    startsWithAny(lead, [
+      /^(ex-\d+\.\d+\s+)?\d*\s*.*management'?s statement of responsibility for financial reporting\b/,
+      /^(ex-\d+\.\d+\s+)?\d*\s*.*audited annual financial statements\b/,
+      /^(ex-\d+\.\d+\s+)?\d*\s*.*consolidated financial statements\b/,
+      /^(ex-\d+\.\d+\s+)?\d*\s*.*report of independent registered public accounting firm\b/,
+    ])
+  ) {
     sections.add("audited_annual_financial_statements");
   }
 
-  if (haystack.includes("disclosure controls and procedures")) sections.add("disclosure_controls_procedures");
-  if (haystack.includes("internal control over financial reporting")) sections.add("management_internal_control_report");
-  if (haystack.includes("audit committee financial expert")) sections.add("audit_committee_financial_expert");
-  if (haystack.includes("code of ethics")) sections.add("code_of_ethics");
-  if (haystack.includes("principal accountant fees and services")) sections.add("principal_accountant_fees_services");
-  if (haystack.includes("certification") && /^EX-99/i.test(file.documentType)) sections.add("certifications");
+  if (/^EX-99/i.test(file.documentType) && startsWithAny(lead, [/^(ex-\d+\.\d+\s+)?\d*\s*.*certification\b/])) {
+    sections.add("certifications");
+  }
 
   return [...sections];
 }
@@ -428,6 +448,15 @@ async function upsert40FAttachmentSections(
       upserted++;
     }
   }
+
+  await db.filingSection.deleteMany({
+    where: {
+      sourceId,
+      section: {
+        in: ATTACHMENT_DERIVED_40F_SECTIONS.filter((section) => !seenSections.has(section)),
+      },
+    },
+  });
 
   return upserted;
 }
