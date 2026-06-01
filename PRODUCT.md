@@ -2,7 +2,7 @@
 
 # 巴菲特部落 · Buffett Tribe — 产品设计文档
 
-> 最后更新：2026-05-26（v0.36.0）
+> 最后更新：2026-06-01（v0.36.8）
 
 ---
 
@@ -15,10 +15,25 @@
 | `PRODUCT.md` | 内部唯一产品/技术/设计决策源 | 产品定位、路线图、架构原则、数据口径、设计系统、实施计划都收口到这里 |
 | `README.md` | 外部展示与快速开始 | 保持简洁，面向用户/开发者介绍产品、运行方式和技术栈，不承载内部规划 |
 | `CHANGELOG.md` | 发布记录 | 只记录已经发布的用户可见变化和重要修复 |
-| `TODOS.md` | 过渡文件 | 不再新增产品/技术/设计规划；历史内容逐步迁入 `PRODUCT.md` 后可归档 |
 | `APPLE-DESIGN.md` | 设计参考资料 | 可保留为参考，但设计决策和项目落地规范应摘要进 `PRODUCT.md` |
 
-原则：以后讨论“要做什么、为什么做、怎么做、数据从哪里来、设计口径是什么”，默认更新 `PRODUCT.md`；对外只更新 `README.md` 和 `CHANGELOG.md`。
+原则：以后讨论“要做什么、为什么做、怎么做、数据从哪里来、设计口径是什么”，默认更新 `PRODUCT.md`；对外只更新 `README.md` 和 `CHANGELOG.md`。`NEXT.md` / `TODOS.md` / `DATA_GLOSSARY.md` 的内容已经合并进本文档，不再作为单独入口维护。
+
+---
+
+## 目录
+
+1. [产品定位](#产品定位)
+2. [产品体验与核心页面](#产品体验与核心页面)
+3. [文档系统路线图](#文档系统路线图)
+4. [公司覆盖模型](#公司覆盖模型冷热演进)
+5. [公司研究闭环路线图](#公司研究闭环路线图)
+6. [设计与技术基线](#设计与技术基线)
+7. [当前实现状态](#当前实现状态v0367)
+8. [数据字典与工程口径](#数据字典与工程口径)
+9. [公司页财务看板](#公司页财务看板truth-of-source-设计)
+10. [数据与脚本](#数据与脚本)
+11. [运维速查表](#运维速查表)
 
 ---
 
@@ -33,7 +48,7 @@
 
 ---
 
-## 三个核心页面
+## 产品体验与核心页面
 
 ```
 /master   大师         巴菲特、李录、段永平的信件、演讲、持仓
@@ -47,16 +62,16 @@
 
 ### /company — 公司
 
-任意一家公司的研究画布。Canvas 用五维框架结构化呈现：
+任意一家公司的研究画布。当前页面已经从早期 Canvas 形态演进为公司研究工作台，用 6 个 tab 结构化呈现：
 
 | Tab | 内容 |
 |-----|------|
-| 概览 | 公司名、股票代码、市场、商业模式 |
-| 财务 | 核心财务指标（营收、毛利率、ROIC 等）+ 趋势 |
-| 好生意 | 护城河 · 可理解性 · 持久性 — 结论 + 支持/反方证据 + 置信度 |
-| 好管理 | 资本分配 · 诚信 · 股东利益一致 |
-| 好价格 | 内在价值 · 安全边际 · 赔率 |
-| 研判 | 当前投资决策状态 + 参考来源 + 待验证问题 |
+| 业务分析 | 业务概览 + 商业画布 |
+| 财务分析 | 行业感知核心财务指标 + 5 年趋势 |
+| 价值分析 | 十维评分、护城河摘要、强弱项 |
+| 管理分析 | 当前为占位，后续接管理层、资本配置、治理证据 |
+| 估值分析 | 当前为占位 + 价格历史图，后续接估值模型 |
+| 年度报告 | 10-K / 20-F / 40-F 年报列表与阅读入口 |
 
 Canvas 的数据来自两个渠道：
 - 结构化事实层（财务数据，来自 EDGAR / 市场数据 API）
@@ -76,7 +91,11 @@ Canvas 的数据来自两个渠道：
 
 ---
 
-## 下一步：问答 / 逐字稿结构层
+## 文档系统路线图
+
+公司财报、大师资料、问答录、PDF、Markdown、访谈和逐字稿最终都应该落到同一套 Document System，而不是按页面和文件类型继续分裂。这个路线图分三层推进：先把特殊结构识别出来，再把原文阅读能力跑稳，最后统一成可复用的文档对象。
+
+### 问答 / 逐字稿结构层
 
 我们现在已经有了年会 PDF 和初步提取出的 md，但这类资料的本质不是普通长文，而是“按主题组织的问答/逐字稿索引”。
 
@@ -89,7 +108,7 @@ Canvas 的数据来自两个渠道：
 
 这意味着它不适合只作为普通 `Source -> Chunk` 文本直接吞入。更合理的方向是新增一个通用的结构层，用来承载“对话 / 问答 / 访谈 / 逐字稿”这类内容形态，而不是做成 Buffett 年会专用表。
 
-### 设计原则
+#### 设计原则
 
 - `Source` 继续表示原始资料文件
 - `Chunk` 继续负责全文检索和语义检索
@@ -100,7 +119,7 @@ Canvas 的数据来自两个渠道：
   - 访谈
   - 公开视频字幕 / 逐字稿
 
-### 新表要表达的信息
+#### 新表要表达的信息
 
 - 属于哪个源文档
 - 属于哪个人物 / 活动
@@ -111,42 +130,38 @@ Canvas 的数据来自两个渠道：
 - 时间点或页面位置
 - 原始内容文本
 
-### 下一步建议
+#### 下一步建议
 
 1. 先抽一版通用 schema，优先覆盖 `annual_meeting` 和段永平这类问答材料。
 2. 导入时保留 raw md，另写结构化片段表，不要把元数据继续塞进普通正文。
 3. 页面层再决定怎么展示主题目录、时间锚点和跳转能力。
 
----
-
-## 下一步：PDF 原文阅读层
+### PDF 原文阅读层
 
 未来产品的大头会落在**公司的年度报告**，所以 PDF 阅读不是附属功能，而是底层能力。我们需要先把“原始 PDF 能在 Web 上稳定阅读”这件事跑通，再往上叠加 transcript、章节索引和中文辅助层。
 
-### 设计原则
+#### 设计原则
 
 - 先支持原始 PDF 直读，再做结构化抽取
 - PDF 阅读器负责“看原文”
 - transcript / 逐字稿表负责“主题、说话人、时间点、页码锚点”
 - 这两层可以并行推进，不互相阻塞
 
-### 最小可用目标
+#### 最小可用目标
 
 - 能在 Web 上打开 PDF
 - 能翻页、缩放、适配桌面与手机
 - 能保留浏览器原生的复制 / 选择能力，后续再考虑 `pdf.js`
 - 先用 `Buffett-and-Munger-Unscripted.pdf` 做样例
 
-### 后续扩展方向
+#### 后续扩展方向
 
 - 年度报告 PDF 阅读
 - 章节索引与页码跳转
 - 中文辅助阅读层
 - 与 `TranscriptSegment` / `QAItem` 的联动导航
 
----
-
-## 下一步：统一 Document System
+### 统一 Document System
 
 我们现在面对的不是单一 PDF，而是两大类内容体系：
 
@@ -161,7 +176,7 @@ Canvas 的数据来自两个渠道：
 
 所以下一步不应该继续按“页面类型”拆，而应该统一成一个 **Document System**。
 
-### 分层定义
+#### 分层定义
 
 - `library`：书架和目录，负责找资料
 - `document`：资料对象，负责读原文和看 AI 解读
@@ -169,44 +184,44 @@ Canvas 的数据来自两个渠道：
 - `segment`：结构化片段层，负责理解和跳转
 - `analysis`：AI 解读层，负责摘要、论点、主题、待追问问题
 
-### 核心原则
+#### 核心原则
 
 - 不要让 `library` 承担正文渲染责任
 - 不要把文件路径当成公开路由的核心对象
 - 不要把不同资料类型硬塞进同一种正文展示逻辑
 - 文档对象要统一，渲染方式可以多样
 
-### 两大类文档怎么落地
+#### 两大类文档怎么落地
 
-#### 公司研究文档
+##### 公司研究文档
 
 - 原文 PDF 是 source of truth
 - 自动抽章节和页码锚点
 - 表格单独识别
 - AI 解读按章节进行，而不是整份文件一锅炖
 
-#### 大师资料文档
+##### 大师资料文档
 
 - 股东信、年会、问答录、访谈、书籍、文章都归到 `Document`
 - Markdown 是一种 rendition，PDF 也是一种 rendition
 - 问答录需要额外保留 speaker / topic / timecode / page 这类结构信息
 - AI 解读要按文档类型切换 prompt，而不是一套 prompt 走天下
 
-### 用户路径
+#### 用户路径
 
 1. 先在 `library` 找到资料
 2. 点进去进入 `document`
 3. `document` 左边看原文，右边看目录和 AI 解读
 4. `source` 只作为溯源和原始文件入口，不直接成为主要用户路径
 
-### 目标效果
+#### 目标效果
 
 - 公司财报和大师资料用同一套底层
 - 不会因为文件类型多就越做越乱
 - AI 深度解读可以复用同一套结构化上下文
 - 后续加新资料类型，不需要再发明新页面
 
-### 建议 schema
+#### 建议 schema
 
 先不要急着推翻现有 `Source` / `Chunk`，而是按“逻辑对象”和“物理文件”分层过渡：
 
@@ -227,7 +242,7 @@ Canvas 的数据来自两个渠道：
   - 短期继续承担导入和正文存储
   - 后续再逐步拆成 `DocumentRendition` 或挂到 `Document` 下
 
-### 关系约束
+#### 关系约束
 
 - 一个 `library` 包含多个 `document`
 - 一个 `document` 可以有多个 `rendition`
@@ -235,7 +250,7 @@ Canvas 的数据来自两个渠道：
 - 一个 `document` 可以有多份 `analysis`
 - `segment` 不负责展示整份原文，只负责导航、理解和高亮
 
-### 迁移原则
+#### 迁移原则
 
 1. 先让新文档系统并行出现，不要先做全库重构。
 2. 先把公司财报和段永平问答录接入统一文档对象。
@@ -270,7 +285,132 @@ Cron Job 触发 Fact Fetch Pipeline
 
 ---
 
-## 设计语言
+## 公司研究闭环路线图
+
+下一阶段的核心不是继续堆数据，而是把现有数据变成更强的公司研究体验。优先推进三件互相咬合的能力：
+
+1. `10-K / 20-F / 40-F 年报阅读`
+2. `company 页面 tab 化`
+3. `价格历史图 / 价格上下文`
+
+这三件事的关系是：
+
+- `10-K / 20-F / 40-F` 提供原文与事实层。
+- `tab` 提供结构化阅读路径。
+- `价格图` 提供估值和市场上下文。
+
+### 公司页结构
+
+公司页不再继续纵向堆内容，而是改成：
+
+- 顶部固定概览区
+- 中部主内容 tabs
+- 底部资料与原文入口
+
+顶部概览区只做“快速判断”，不占一个独立 tab。建议包含公司名、ticker、行业、交易所、一句话结论、关键事实卡片、最近更新时间和资料覆盖情况。价格图目前已经落在 `估值分析` tab，后续如果首屏空间允许，再抽出价格小图放到概览区作为快速上下文。
+
+### 公司页 Tab 顺序
+
+| Tab | 内容 |
+|-----|------|
+| 业务分析 | 公司如何赚钱、商业模式、商业画布、护城河、竞争格局 |
+| 财务分析 | 5 年财务趋势、核心财务指标、同比、CAGR、行业 KPI |
+| 价值分析 | 十维评分、护城河类型、最强项、相对短板 |
+| 管理分析 | 资本配置、管理层诚信、长期执行能力、股东利益一致性 |
+| 估值分析 | 价格历史图、当前估值位置、安全边际、情景分析 |
+| 年度报告 | 10-K / 20-F / 40-F 原文、年份切换、标准目录、附件、来源链接 |
+
+### 年报阅读
+
+年报阅读不是资料库功能，而是公司研究功能。用户进入年报阅读，通常是为了核对业务描述、风险因素、MD&A、财务口径，或跳到原文章节追溯细节。
+
+主入口放在：
+
+- `company` 页面
+- 顶部概览区
+- `年度报告` tab
+
+推荐路由结构：
+
+- `/company/[cik]/annual-report`
+- `/company/[cik]/annual-report/[year]`
+
+年报阅读页至少要支持：
+
+- 按年份切换
+- 10-K / 20-F / 40-F 标准目录
+- 右侧展示对应原始内容
+- 页码或章节锚点
+- 附件链接
+- 与财务数据联动跳转
+
+数据前提吃现有库里的 `ExtSource`、`FinancialFact`、`FilingSection`、`FilingAttachment`、`Financial`，不另起一套孤立模型。
+
+### 价格数据
+
+价格图不是交易工具，而是研究上下文：
+
+- 当前价格在历史里处于什么位置
+- 过去一段时间市场怎么重新定价这家公司
+- 价格变化是否和基本面、年报节点、持仓变化有关
+
+当前实现：
+
+- 已有 `StockPrice` 表，以 `(ticker, date)` 唯一约束存储日线 OHLCV。
+- 已有 `/api/price/[ticker]`，支持 `1d / 1w / 1m / 3m / 6m / 1y / 5y / max` 查询。
+- 已有 `StockPriceChart`，使用 `lightweight-charts` 展示 K 线、成交量和均线，支持日 / 月 / 季维度切换。
+- 已有 Yahoo Finance 导入脚本：`npm run import:stock-prices:yf` 与 `npm run import:company-stock-prices:yf`。
+- 公司页会在存在入库价格数据时，在 `估值分析` tab 展示价格历史。
+
+后续目标：
+
+- 优先接外部市场数据 provider，早期可用免费层验证，长期切付费源。
+- 将 `StockPrice` 从 ticker 口径逐步升级到 `securityId` 口径，处理多 share class、换 ticker、跨市场 ticker 冲突。
+- 增加服务端周 / 月 / 年聚合或缓存，避免前端重复聚合大窗口数据。
+- 加财报日 / 10-K / 20-F / 40-F 日 marker。
+- 评估是否把价格小图放到概览区，估值 tab 保留完整图表。
+
+### 实施顺序
+
+#### Phase 1
+
+- 改公司页信息架构。
+- 把业务 / 财务 / 价值 / 管理 / 估值 / 年度报告拆成 tabs。（已完成）
+- 在估值 tab 加入价格图。（已完成）
+- 评估是否在概览区加入价格小图占位。
+
+#### Phase 2
+
+- 做 10-K / 20-F / 40-F 阅读页。
+- 接公司页年度报告入口。
+- 支持年度切换和章节目录。（已完成）
+
+#### Phase 3
+
+- 接市场价格数据。（已完成 Yahoo Finance 导入链路）
+- 落库日线 OHLCV。（已完成 ticker 口径）
+- 做价格图。（已完成日 / 月 / 季 K 线）
+- 加财报日 / 10-K / 20-F / 40-F 日 marker。
+
+#### Phase 4
+
+- 价格图与估值分析联动。
+- 公司页形成完整研究闭环。
+
+### 非目标
+
+短期不建议做的事：
+
+- 再把内容继续堆成超长单页。
+- 把价格图单独做成一个主 tab。
+- 把年报阅读放到大师资料库入口里。
+- 先做全量价格历史再想怎么展示。
+
+---
+
+## 设计与技术基线
+
+### 设计语言
 
 Apple HIG 精简风格：
 - 白色卡面 `#ffffff`，浅灰底 `#f5f5f7`，header/tabbar 用 `#fbfbfd`
@@ -278,24 +418,24 @@ Apple HIG 精简风格：
 - 6 等分 Tab 网格，文字居中，蓝色底线标记激活态
 - 全站单一字体栈：`system-ui, -apple-system, Helvetica Neue`
 
----
-
-## 技术栈
+### 技术栈
 
 | 层 | 选型 |
 |----|------|
 | 前端 | Next.js 16 App Router · TypeScript · React |
 | 样式 | 手写 CSS（globals.css），无 Tailwind |
 | 数据库 | PostgreSQL via Prisma (Supabase) |
-| AI | Claude API（对话 + 分析生成） |
+| AI | OpenAI-compatible Chat API（对话 + 分析生成）· Langfuse 观测 |
 | 持仓数据 | SEC EDGAR 13F-HR |
-| 财务数据 | EDGAR XBRL + 外部市场数据 API |
+| 财务数据 | SEC EDGAR XBRL（CompanyFacts + filing-level inline XBRL fallback） |
+| 原始文件 | Cloudflare R2（PDF、SEC filing HTML、index、附件、data files） |
+| 图谱 | Neo4j（关系检索与检索对比实验） |
+| 市场数据 | Yahoo Finance 导入脚本 + `StockPrice` |
+| 产品分析 | PostHog（前端事件，仍在补齐事件体系） |
 | 认证 | NextAuth.js |
 | 部署 | Vercel |
 
----
-
-## 路由结构
+### 路由结构
 
 ```
 /                   首页（信号流 + 大师入口 + Hero Search）
@@ -303,14 +443,31 @@ Apple HIG 精简风格：
 /master/[id]/library  资料阅读（左侧年份/文章列表，右侧正文）
 /master/[id]/holdings 持仓快照
 /company/[cik]      公司研究画布
+/company/[cik]/annual-report  年度报告默认入口（跳转到最新可读年份）
+/company/[cik]/annual-report/[year]  年度报告阅读
 /idea               对话研究室（左：对话，右：Canvas）
 /login              登录
+/reset-password     重置密码
+/retrieval-compare  检索对比实验页
 /documents/*         PDF 全屏阅读器（年度会议、书籍、演讲、文章）
 ```
 
 ---
 
-## 当前实现状态（v0.35.28）
+## 当前实现状态（v0.36.7）
+
+### v0.36.7 变更
+
+- **40-F 附件章节分类修正**：`scripts/import-10k-xbrl.ts` 不再用整份附件正文做章节分类，避免 AIF / 认证附件中的交叉引用被误判为 MD&A、披露控制或内控报告。
+- **40-F 重导入清理**：重新导入时会清理已经不再匹配的 attachment-derived 章节，避免旧错误章节留在库里。
+- **BN 40-F 验证**：2020-2025 年 40-F 已重跑导入，目录与右侧内容对齐，仅保留 AIF、MD&A、certifications 等实际附件章节。
+
+### v0.36.6 变更
+
+- **年报阅读体验修正**：10-K / 20-F / 40-F 阅读页始终展示标准目录；右侧只展示对应已抽取原文内容，不再显示“未抽取 / 打开 SEC 原文”。
+- **公司页入口改名**：公司页面 `参考资料` tab 改为 `年度报告`。
+- **年度报告优先级**：年报入口优先选择非 amended filing，避免默认落到 `/A` 修正版。
+- **40-F 附件抽取增强**：导入脚本支持从 40-F 的 `EX-99` 附件抽取年报结构化章节。
 
 ### v0.35.28 变更
 
@@ -373,11 +530,144 @@ Apple HIG 精简风格：
 | /idea 对话界面 | ✅ 已上线 |
 | /company/[cik] 公司页 | ✅ 已上线 |
 | Company Canvas（6 Tab UI） | ✅ 已实现 |
+| 年度报告 Tab | ✅ 已上线 |
+| 10-K / 20-F / 40-F 标准目录阅读 | ✅ 已上线 |
+| 价格历史图 | 🟡 已上线 ticker 口径，securityId 与事件 marker 待补 |
+| ChatMessage 对话记录 | ✅ 已实现 |
+| 对话评分 | ✅ 已实现 |
+| PostHog 前端埋点 | 🟡 已接入 provider 与 chat_sent，事件体系待补齐 |
+| 等候名单 | ✅ 已实现 |
+| 数字人 / 语音实验 | 🟡 有 API 与数据模型，入口仍是实验态 |
 | Company Analysis 批量入库 | ✅ 已实现 |
 | Canvas 实时生成（RAG → AI） | 🟡 部分实现，仍在迭代 |
 | Company Brain 写回 | 🟡 部分实现 |
 | Fact Fetch Pipeline | 🟡 已有批处理脚本，持续补齐 |
 | 持仓数据更新 | 🟡 以季度批处理为主 |
+
+### 已完成基础能力
+
+- Prisma Schema（Letter, Chunk + 用户模型）
+- 数据导入：60 封股东信 + 约 30 封合伙人信，1413 chunks
+- 主页年份列表 + 动态信件页 `/letters/[type]/[year]`
+- NextAuth 认证（Credentials）
+- 移动端响应式、暗黑模式持久化、错误边界
+- 对话 API `/api/chat`：混合检索 + RAG + 引用来源 + 每日限额
+- 巴菲特人格 Prompt
+- SSE 流式输出
+- 混合检索：tsvector + pgvector (1024-dim HNSW)
+- 后端主导引用机制
+- ChatMessage 对话记录入库、历史读取、回答后评分
+- PostHog 前端 provider 与 `chat_sent` 事件
+- WaitlistEntry 候补名单 API
+- 阅读页：`contentMd` 直接渲染，中英交替 + 单语过滤
+- 代码清理：删除 Section 及依赖代码
+- Phase A：数据模型重构 Letter → Source（v0.13.0）
+- Phase B：股东大会数据导入（v0.15.0-v0.16.1）
+- Phase C：统一工作区（v0.14.0）
+- Phase R：检索架构 v2（Query Understanding、并行双路检索、融合重排、query-aware 引用摘取、Evidence Plan、检索范围配置、离线评测集）
+- `ExtSource` 同一份 SEC filing 重复 ingest 已根治（2026-05-31）：新增 `accessionNumber` 唯一约束，导入脚本以 `(filerEntityId, accessionNumber)` 去重，历史重复数据已合并清理。
+- `FilingArtifact` 已用于 SEC filing 原始 HTML、index、附件和 data files 的 R2 归档。
+- `StockPrice`、`/api/price/[ticker]`、`StockPriceChart` 与 Yahoo Finance 导入脚本已形成价格数据最小闭环。
+
+### 当前工作队列
+
+目标：完整的对话 + 阅读体验 + 数据追踪 + 支付链路，可以交给种子用户。
+
+#### 收尾任务
+
+- 对话质量验收：准备 30 个测试问题，验证检索召回率和引用命中率（范围：股东信 + 合伙人信）。
+- 移动端体验打磨：阅读页、工作区在手机上的交互细节。
+
+#### 用户数据 + 增长 / 商业化
+
+- 补齐关键事件埋点：`chat_start`、`chat_message`、`source_click`、`annual_report_open`、`price_range_change` 等。
+- PostHog Cloud 中国可达性测试。
+- LemonSqueezy 订阅集成。
+- 订阅状态校验：免费 vs 会员的次数限制。
+- 验证完整的免费到付费转化链路。
+
+#### Post-MVP
+
+- 视频播放页：embed 播放器 + 转录文本。
+- 首页视频分区。
+- 工作区 Canvas 支持视频内容。
+- 公开文章 + 采访资料导入。
+- 多轮对话上下文。
+- 首页对话入口。
+- 对话分享。
+- 主题时间线。
+- 探索页 `/explore`。
+- 热门话题标签。
+- 数字人 / 语音实验产品化：补齐 `/avatar` 当前跳转目标、实时语音房间入口、失败降级和成本控制。
+- 年度背景卡片。
+- SEO 优化。
+- 测试覆盖率目标 >80%。
+
+#### 待调研
+
+- 虚拟人 API 效果评估。
+- 声音克隆合规性。
+
+---
+
+## 数据字典与工程口径
+
+本节是项目内 13F / 10-K / 20-F / 40-F / XBRL / 价格数据导入与展示的统一术语口径。对外术语以 SEC / Investor.gov 等官方定义为准，项目内字段以 `prisma/schema.prisma` 为准。
+
+### 证券与主体标识
+
+| 术语 | 含义 | 示例 | 项目口径 |
+|------|------|------|----------|
+| `Ticker` | 股票交易代码，用于在交易所识别证券 | `AAPL`, `MCO`, `SPGI` | 主要用于展示、搜索和价格数据初期导入，不作为稳定主键 |
+| `CUSIP` | 9 位证券标识码，用于唯一识别多数美加证券 | `037833100` | 存在于 `Security.cusip`，适合 13F 证券归并 |
+| `CIK` | SEC 分配给 EDGAR 申报主体的唯一编号 | `0001067983` | 存在于 `Entity.cik`，用于统一 EDGAR / 13F / company 页面 |
+| `Accession Number` / `accno` | EDGAR 单次申报的唯一受理号 | `0001193125-26-226661` | 存在于 `ExtSource.accessionNumber`，与 `filerEntityId` 组成唯一约束 |
+
+快速辨析：
+
+- `AAPL` 是 `Ticker`，不是 `CUSIP`。
+- `CUSIP` 通常是 9 位字母数字组合；`Ticker` 通常是 1-5 位交易代码。
+- 同一公司可能存在多个证券代码或多个 share class，分析和去重时应优先用项目内 `securityId`，不要只看 `ticker`。
+
+### 报表与数据来源
+
+| 术语 | 含义 | 项目用途 |
+|------|------|----------|
+| `13F-HR` | 机构投资管理人季度持仓申报表 | 生成大师持仓、持仓变化、组合权重 |
+| `10-K` | 美国上市公司年度报告 | 年报阅读、XBRL 财务事实、章节抽取 |
+| `20-F` | 外国私人发行人年度报告 | 年报阅读、XBRL 财务事实、章节抽取 |
+| `40-F` | 加拿大公司等外国私人发行人年度报告 | 年报阅读，重点依赖 `EX-99` 附件抽取 AIF / MD&A 等章节 |
+| `XBRL` | 结构化财报标记语言 | `FinancialFact` 原始事实层和 `Financial` 标准化项目 |
+| `EDGAR` | SEC 披露系统 | filing discovery、submissions、companyfacts、原文归档 |
+
+### 时间字段
+
+| 字段 | 含义 | 示例 | 所属模型 |
+|------|------|------|----------|
+| `asOfDate` | 持仓生效报告日，通常对应报告期末 | `2026-03-31` | `Holding.asOfDate` |
+| `filedAt` | 向 SEC 实际提交日期 | `2026-05-15` | `ExtSource.filedAt` / `FinancialFact.filedAt` |
+| `periodYear` | 报告期年份 | `2026` | `ExtSource.periodYear` |
+| `periodQuarter` | 报告期季度 | `1` | `ExtSource.periodQuarter` |
+| `FY` / `Q1..Q4` | 财报周期类型 | `FY`, `Q1` | `Financial.periodType` |
+| `date` | 价格数据交易日 | `2026-05-29` | `StockPrice.date` |
+
+### 数值字段
+
+| 字段 | 含义 | 示例 | 所属模型 |
+|------|------|------|----------|
+| `shares` | 持股数量 | `1200000` | `Holding.shares` |
+| `valueUsd` | 持仓市值，美元 | `350000000` | `Holding.valueUsd` |
+| `percentOfPortfolio` | 该标的占组合比例 | `12.4` | `Holding.percentOfPortfolio` |
+| `value` / `valueRaw` | XBRL 事实数值与原始字符串 | `391035000000` | `FinancialFact` |
+| `open/high/low/close/volume` | 日线价格 OHLCV | `open=190.1` | `StockPrice` |
+
+### 稳定主键原则
+
+- 13F 导入与增量对比的工程主键使用 `Holding.securityId`；`ticker` 主要用于展示和价格图早期查询。
+- `Security` 通过 `companyEntityId` 关联公司实体；同一公司可以有多个 `Security`。
+- `ExtSource` 对 SEC filing 使用 `(filerEntityId, accessionNumber)` 去重，避免同一份 filing 重复入库。
+- 文本关系抽取当前不再落到 Postgres 表；`Mention` 和 `EntityRelation` 已移除，关系检索统一走 Neo4j 图谱链路。
+- 原始 filing 文件通过 `FilingArtifact` 归档到 R2，结构化事实和章节通过 `FinancialFact` / `FilingSection` 保留可追溯数据。
 
 ---
 
@@ -532,7 +822,9 @@ FinancialFact
 ### 导入
 
 - `npm run import:13f` / `npm run import:13f:range`：导入 13F 持仓
-- `npm run import:10k`：按 ticker / 年份导入 10-K、20-F 财务数据
+- `npm run import:10k`：按 ticker / 年份导入 10-K、20-F、40-F 财务数据
+- `npm run import:stock-prices:yf`：按 ticker 从 Yahoo Finance 拉取日线价格，可选择写入 `StockPrice`
+- `npm run import:company-stock-prices:yf`：按公司批量补齐价格数据
 - `npm run import:10k:from13f`：从 13F 持仓反推需要补齐的公司财务
 - `npm run pipeline:13f` / `npm run pipeline:10k`：完整流水线封装
 
@@ -557,13 +849,14 @@ FinancialFact
 - `npm run generate:portfolio-insight`：生成并入库季度持仓点评 `PortfolioInsight`
 - `npm run generate:business-canvas`：批量生成并入库公司商业画布
 - `scripts/run-company-analysis.ts`：批量生成并入库 company analysis
-- `scripts/import-10k-xbrl.ts`：现在支持 `companyfacts + filing-level inline XBRL fallback`
+- `scripts/import-10k-xbrl.ts`：现在支持 `companyfacts + filing-level inline XBRL fallback`，并归档 SEC 原始文件到 `FilingArtifact`
 
 ### 实验与基准
 
 - `scripts/eval-*.ts`：检索与 MVP 评测
 - `scripts/neo4j-*.ts`：图谱抽取、导入、演练
 - `scripts/bench-live-asr-*.ts` / `scripts/test-volc-asr.mjs`：语音链路实验
+- `/api/asr/*`、`/api/tts`、`/api/digital-human/jobs/*`：语音与数字人实验 API
 
 ### 维护原则
 
@@ -579,6 +872,8 @@ FinancialFact
 
 - `npm run import:13f`
 - `npm run import:10k -- --ticker TME --from 2025 --to 2025`
+- `npm run import:stock-prices:yf -- --ticker AAPL --start 2020-01-01 --import-db`
+- `npm run import:company-stock-prices:yf -- --batch-size 10 --start 2020-01-01`
 - `npm run generate:master-profile -- --master buffett`
 - `npm run generate:portfolio-insight -- --master buffett`
 - `npm run generate:business-canvas -- --company AAPL --force`
