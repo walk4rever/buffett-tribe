@@ -699,7 +699,13 @@ export default async function CompanyPage({ params, searchParams }: Props) {
               <h3>业务画布{businessCanvas ? "" : "（构建中）"}</h3>
             </div>
             {businessCanvas ? (
-              <CompanyBusinessCanvas data={businessCanvas} />
+              <CompanyBusinessCanvas
+                data={businessCanvas.canvas}
+                meta={{
+                  versionSeq: businessCanvas.versionSeq,
+                  generatedAt: businessCanvas.generatedAt,
+                }}
+              />
             ) : (
               <div className="company-canvas-placeholder">
                 <p>商业画布数据正在构建中。</p>

@@ -196,7 +196,7 @@ async function getSecurityIdsForCompany(entityId: string) {
     where: { id: entityId },
     select: { id: true, ticker: true, canonicalName: true },
   });
-  if (!base) return { profileIds: [] as string[] };
+  if (!base) return { profileIds: [] as string[], fallbackTicker: null as string | null };
 
   const familyCompanyIds = await getEntityFamilyIds(entityId);
   const ticker = normalizeTicker(base.ticker);
@@ -222,6 +222,7 @@ async function getSecurityIdsForCompany(entityId: string) {
 
   return {
     profileIds: securityProfiles.map((s) => s.id),
+    fallbackTicker: ticker,
   };
 }
 
@@ -336,7 +337,7 @@ export async function getRecentHolders(entityId: string, limit = 20) {
   // Group by (holder, ticker). The same ticker can have multiple Security rows from historical imports;
   // company pages should show one row per master × ticker, not one row per internal security profile.
   const rowTicker = (r: (typeof rows)[number]) =>
-    normalizeTicker(r.security?.ticker) ?? r.securityId;
+    normalizeTicker(r.security?.ticker) ?? securityScope.fallbackTicker;
   const pairKey = (r: (typeof rows)[number]) => `${r.holder.id}|${rowTicker(r)}`;
 
   const pairs = new Map<
@@ -672,9 +673,15 @@ export async function getCompanyReferenceFilings(entityId: string, limit = 12): 
 export async function getBusinessCanvas(entityId: string) {
   const row = await db.businessCanvas.findUnique({
     where: { entityId },
-    select: { canvas: true },
+    select: { canvas: true, versionSeq: true, generatedAt: true },
   });
-  return (row?.canvas as BusinessCanvasData | undefined) ?? null;
+  if (!row) return null;
+
+  return {
+    canvas: row.canvas as BusinessCanvasData,
+    versionSeq: row.versionSeq,
+    generatedAt: row.generatedAt,
+  };
 }
 
 export type CompanyAnnualFilingSection = {

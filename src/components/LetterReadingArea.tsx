@@ -228,49 +228,51 @@ export function LetterReadingArea({ year, contentMd, sourceType = "shareholder" 
 
   return (
     <>
-      {/* Sticky bar */}
+      {/* Toolbar */}
       <div className="letter-bar">
-        <span className="letter-bar-title">
-          {year} {{ shareholder: "致股东信", partnership: "致合伙人信", annual_meeting: "股东大会", article: "文章", interview: "采访" }[sourceType] ?? sourceType}
-        </span>
+        <div className="letter-bar-heading">
+          <span className="letter-bar-title">
+            {year} {{ shareholder: "致股东信", partnership: "致合伙人信", annual_meeting: "股东大会", article: "文章", interview: "采访" }[sourceType] ?? sourceType}
+          </span>
+        </div>
 
-        <div className="reader-controls">
+        <div className="letter-bar-controls">
           {/* Font size */}
-          <div className="reader-ctrl-group" title="字体大小">
+          <div className="letter-bar-ctrl-group" title="字体大小">
             <button
-              className="reader-ctrl-btn"
+              className="letter-bar-ctrl-btn"
               onClick={() => changeFontIdx(fontIdx - 1)}
               disabled={fontIdx === 0}
               aria-label="缩小字体"
             >
-              A<sup>−</sup>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h6M4 12h6M4 17h6"/><path d="m14 9-3 9M17 9l-3 9"/></svg>
             </button>
-            <span className="reader-ctrl-val" suppressHydrationWarning>{FONT_SIZES[fontIdx]}px</span>
+            <span className="letter-bar-ctrl-val" suppressHydrationWarning>{FONT_SIZES[fontIdx]}px</span>
             <button
-              className="reader-ctrl-btn"
+              className="letter-bar-ctrl-btn"
               onClick={() => changeFontIdx(fontIdx + 1)}
               disabled={fontIdx === FONT_SIZES.length - 1}
               aria-label="放大字体"
             >
-              A<sup>+</sup>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h6M4 12h6M4 17h6"/><path d="m14 9-3 9M17 9l-3 9M15 7h6M18 4v6"/></svg>
             </button>
           </div>
 
-          <div className="reader-ctrl-sep" />
+          <span className="letter-bar-divider" />
 
           {/* Line height */}
-          <div className="reader-ctrl-group" title="行间距">
+          <div className="letter-bar-ctrl-group" title="行间距">
             <button
-              className="reader-ctrl-btn"
+              className="letter-bar-ctrl-btn"
               onClick={() => changeLineIdx(lineIdx - 1)}
               disabled={lineIdx === 0}
               aria-label="减小行距"
             >
               <LineHeightIcon tight />
             </button>
-            <span className="reader-ctrl-val" suppressHydrationWarning>{LINE_HEIGHTS[lineIdx].toFixed(1)}</span>
+            <span className="letter-bar-ctrl-val" suppressHydrationWarning>{LINE_HEIGHTS[lineIdx].toFixed(1)}</span>
             <button
-              className="reader-ctrl-btn"
+              className="letter-bar-ctrl-btn"
               onClick={() => changeLineIdx(lineIdx + 1)}
               disabled={lineIdx === LINE_HEIGHTS.length - 1}
               aria-label="增大行距"

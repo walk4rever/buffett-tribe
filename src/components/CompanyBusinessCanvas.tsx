@@ -29,6 +29,11 @@ export type BusinessCanvasData = {
   costStructure: Array<string | CanvasEntry>;
 };
 
+export type BusinessCanvasMeta = {
+  versionSeq: number;
+  generatedAt: Date | string;
+};
+
 const labels: Record<
   keyof BusinessCanvasData,
   { zh: string; en: string; icon: React.ElementType }
@@ -85,18 +90,48 @@ function CanvasCell({
   );
 }
 
-export function CompanyBusinessCanvas({ data }: { data: BusinessCanvasData }) {
+function formatGeneratedAt(value: Date | string) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+export function CompanyBusinessCanvas({
+  data,
+  meta,
+}: {
+  data: BusinessCanvasData;
+  meta?: BusinessCanvasMeta;
+}) {
+  const generatedAt = meta ? formatGeneratedAt(meta.generatedAt) : "";
+
   return (
-    <div className="bmc-grid">
-      <CanvasCell label={labels.keyPartnerships} items={data.keyPartnerships} area="partners" />
-      <CanvasCell label={labels.keyActivities} items={data.keyActivities} area="activities" />
-      <CanvasCell label={labels.valuePropositions} items={data.valuePropositions} area="props" />
-      <CanvasCell label={labels.customerRelationships} items={data.customerRelationships} area="relations" />
-      <CanvasCell label={labels.customerSegments} items={data.customerSegments} area="segments" />
-      <CanvasCell label={labels.keyResources} items={data.keyResources} area="resources" />
-      <CanvasCell label={labels.channels} items={data.channels} area="channels" />
-      <CanvasCell label={labels.costStructure} items={data.costStructure} area="cost" />
-      <CanvasCell label={labels.revenueStreams} items={data.revenueStreams} area="revenue" />
+    <div className="bmc-wrap">
+      {meta ? (
+        <div className="bmc-meta">
+          <span>V{meta.versionSeq}</span>
+          {generatedAt ? <time dateTime={new Date(meta.generatedAt).toISOString()}>{generatedAt}</time> : null}
+        </div>
+      ) : null}
+      <div className="bmc-grid">
+        <CanvasCell label={labels.keyPartnerships} items={data.keyPartnerships} area="partners" />
+        <CanvasCell label={labels.keyActivities} items={data.keyActivities} area="activities" />
+        <CanvasCell label={labels.valuePropositions} items={data.valuePropositions} area="props" />
+        <CanvasCell label={labels.customerRelationships} items={data.customerRelationships} area="relations" />
+        <CanvasCell label={labels.customerSegments} items={data.customerSegments} area="segments" />
+        <CanvasCell label={labels.keyResources} items={data.keyResources} area="resources" />
+        <CanvasCell label={labels.channels} items={data.channels} area="channels" />
+        <CanvasCell label={labels.costStructure} items={data.costStructure} area="cost" />
+        <CanvasCell label={labels.revenueStreams} items={data.revenueStreams} area="revenue" />
+      </div>
     </div>
   );
 }

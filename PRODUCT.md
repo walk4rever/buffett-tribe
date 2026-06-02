@@ -338,6 +338,20 @@ Cron Job 触发 Fact Fetch Pipeline
 年报阅读页至少要支持：
 
 - 按年份切换
+
+### 待办：13F 历史证券承接页
+
+当前 13F 历史持仓中仍存在少量 `Security.ticker = null` 且 `companyEntityId = null` 的证券记录。它们有 CUSIP、issuer/titleOfClass 和真实持仓事实，但未被解析成标准 company entity，因此无法进入公司页。
+
+产品口径：只要出现在大师历史持仓里，就应该有可访问页面，不能只停留在表格文本里，也不能在 UI 中泄露内部 `securityId`。
+
+后续处理：
+
+- 可解析为运营公司的历史证券，补齐 company shell，并标记 `status: acquired / delisted / private`、`historicalTicker`、`cusip`。
+- ETF / Trust / fund 类证券不要强行进入普通公司页，应承接到 fund/security 页面。
+- 大师持仓表证券展示优先级统一为 `security.ticker -> company.ticker -> historicalTicker -> issuer short name -> cusip`，永远不显示内部 id。
+- 新增 `/security/[id]` 或等价承接页，用于无法归并到标准 company 的历史证券。
+- 将 orphan security 巡检纳入 `check:security:integrity`，并通过脚本化 backfill 修复，不手工改库。
 - 10-K / 20-F / 40-F 标准目录
 - 右侧展示对应原始内容
 - 页码或章节锚点

@@ -16,6 +16,7 @@ import { Prisma } from "@prisma/client";
 const AI_API_KEY = process.env.AI_API_KEY;
 const AI_API_BASE_URL = process.env.AI_API_BASE_URL;
 const AI_MODEL = process.env.AI_MODEL;
+const PROMPT_VERSION = "business-canvas-v1";
 
 type CanvasPayload = {
   customerSegments: CanvasEntry[];
@@ -449,10 +450,11 @@ async function main() {
 
     const existing = await prisma.businessCanvas.findUnique({
       where: { entityId: company.id },
-      select: { id: true, updatedAt: true },
+      select: { id: true, updatedAt: true, versionSeq: true },
     });
     if (existing && !force) {
-      console.log(`  SKIP: already has business canvas (updatedAt: ${existing.updatedAt.toISOString()}), use --force to overwrite`);
+      const versionLabel = `V${existing.versionSeq}`;
+      console.log(`  SKIP: already has business canvas (${versionLabel}, updatedAt: ${existing.updatedAt.toISOString()}), use --force to overwrite`);
       continue;
     }
 
@@ -483,23 +485,48 @@ async function main() {
       ]);
       lastModelResponse = content;
       const canvas = parseCanvas(content);
+      const nextVersionSeq = existing ? existing.versionSeq + 1 : 1;
+      const generatedAt = new Date();
+      const source = AI_MODEL ?? "unknown";
 
-      await prisma.businessCanvas.upsert({
-        where: { entityId: company.id },
-        create: {
-          entityId: company.id,
-          canvas: toJsonValue(canvas),
-          source: AI_MODEL ?? "unknown",
-          version: 1,
-        },
-        update: {
-          canvas: toJsonValue(canvas),
-          source: AI_MODEL ?? "unknown",
-          version: { increment: 1 },
-        },
+      await prisma.$transaction(async (tx) => {
+        const current = await tx.businessCanvas.upsert({
+          where: { entityId: company.id },
+          create: {
+            entityId: company.id,
+            canvas: toJsonValue(canvas),
+            source,
+            version: nextVersionSeq,
+            versionSeq: nextVersionSeq,
+            promptVersion: PROMPT_VERSION,
+            generatedAt,
+          },
+          update: {
+            canvas: toJsonValue(canvas),
+            source,
+            version: nextVersionSeq,
+            versionSeq: nextVersionSeq,
+            promptVersion: PROMPT_VERSION,
+            generatedAt,
+          },
+        });
+
+        await tx.businessCanvasVersion.create({
+          data: {
+            businessCanvasId: current.id,
+            entityId: company.id,
+            versionSeq: nextVersionSeq,
+            canvas: toJsonValue(canvas),
+            source,
+            promptVersion: PROMPT_VERSION,
+            generatedAt,
+            filingLabel: filingEvidence?.filingLabel ?? null,
+            filingAccession: filingEvidence?.accession ?? null,
+          },
+        });
       });
 
-      console.log(`  ✓ Saved business canvas (${CANVAS_KEYS.length} sections)`);
+      console.log(`  ✓ Saved business canvas V${nextVersionSeq} (${CANVAS_KEYS.length} sections)`);
     } catch (err) {
       if (err instanceof Error && err.message.includes("JSON")) {
         try {
