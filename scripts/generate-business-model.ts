@@ -14,6 +14,7 @@ import {
   buildFinancialDashboardText,
   buildFinancialHistoryText,
   callJsonLLM,
+  createGeneratedContentVersion,
   disconnectPrisma,
   fetchFinancials,
   fetchLatestFilingEvidence,
@@ -319,6 +320,17 @@ async function main() {
             source,
             version: { increment: 1 },
           },
+        });
+
+        await createGeneratedContentVersion({
+          tx,
+          scopeType: "entity",
+          scopeId: company.id,
+          artifactType: "business_overview",
+          payload: toJsonValue({ business: parsed.businessNarrative }),
+          source,
+          promptVersion: PROMPT_VERSION,
+          generatedAt,
         });
       });
 

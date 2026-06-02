@@ -5,9 +5,11 @@
  *   npm run import:10k:all
  *   npm run import:10k:all -- --from 2020 --to 2026
  *   npm run import:10k:all -- --limit 10
+ *   npm run import:10k:all -- --concurrency 3 --filing-concurrency 2
  *
  * Notes:
- * - Runs sequentially to avoid SEC throttling.
+ * - Runs sequentially by default to avoid SEC throttling.
+ * - Use --concurrency 2 or 3 for faster catch-up imports.
  * - Uses a checkpoint file in .cache so reruns skip completed companies.
  */
 
@@ -59,7 +61,14 @@ function normalizeTicker(value: string | null | undefined) {
   return ticker || null;
 }
 
-async function runImport(target: ImportTarget, fromYear: number, toYear: number) {
+async function runImport(params: {
+  target: ImportTarget;
+  fromYear: number;
+  toYear: number;
+  archiveConcurrency: number;
+  filingConcurrency: number;
+}) {
+  const { target, fromYear, toYear, archiveConcurrency, filingConcurrency } = params;
   return new Promise<{ code: number }>((resolve) => {
     const child = spawn(
       process.execPath,
@@ -73,6 +82,10 @@ async function runImport(target: ImportTarget, fromYear: number, toYear: number)
         String(fromYear),
         "--to",
         String(toYear),
+        "--archive-concurrency",
+        String(archiveConcurrency),
+        "--filing-concurrency",
+        String(filingConcurrency),
       ],
       {
         cwd: process.cwd(),
@@ -85,6 +98,18 @@ async function runImport(target: ImportTarget, fromYear: number, toYear: number)
     child.stderr.on("data", (chunk) => process.stderr.write(chunk));
     child.on("close", (code) => resolve({ code: code ?? 1 }));
   });
+}
+
+async function runPool<T>(items: T[], concurrency: number, fn: (item: T, index: number) => Promise<void>) {
+  let cursor = 0;
+  const workers = Array.from({ length: Math.max(1, concurrency) }, async () => {
+    while (true) {
+      const index = cursor++;
+      if (index >= items.length) return;
+      await fn(items[index], index);
+    }
+  });
+  await Promise.all(workers);
 }
 
 async function loadCheckpoint(fromYear: number, toYear: number): Promise<Checkpoint> {
@@ -168,37 +193,54 @@ async function main() {
   const toYear = parseYear(getArg("--to"), defaultToYear);
   const limitArg = getArg("--limit");
   const limit = limitArg ? Number.parseInt(limitArg, 10) : undefined;
+  const concurrencyArg = getArg("--concurrency");
+  const concurrency = concurrencyArg ? Number.parseInt(concurrencyArg, 10) : 1;
+  const archiveConcurrencyArg = getArg("--archive-concurrency");
+  const archiveConcurrency = archiveConcurrencyArg ? Number.parseInt(archiveConcurrencyArg, 10) : 4;
+  const filingConcurrencyArg = getArg("--filing-concurrency");
+  const filingConcurrency = filingConcurrencyArg ? Number.parseInt(filingConcurrencyArg, 10) : 1;
   const dryRun = hasFlag("--dry-run");
 
   if (Number.isNaN(limit ?? 0)) {
     throw new Error(`Invalid --limit value: ${limitArg}`);
+  }
+  if (!Number.isFinite(concurrency) || concurrency <= 0) {
+    throw new Error(`Invalid --concurrency value: ${concurrencyArg}`);
+  }
+  if (!Number.isFinite(archiveConcurrency) || archiveConcurrency <= 0) {
+    throw new Error(`Invalid --archive-concurrency value: ${archiveConcurrencyArg}`);
+  }
+  if (!Number.isFinite(filingConcurrency) || filingConcurrency <= 0) {
+    throw new Error(`Invalid --filing-concurrency value: ${filingConcurrencyArg}`);
   }
 
   const checkpoint = await loadCheckpoint(fromYear, toYear);
   const targets = await getTargets(limit);
 
   console.log(`Found ${targets.length} companies to import 10-K data for (${fromYear} -> ${toYear})`);
+  console.log(`Concurrency: ${concurrency}`);
+  console.log(`Child filing concurrency: ${filingConcurrency}; archive concurrency: ${archiveConcurrency}`);
   console.log(`Checkpoint: ${CHECKPOINT_FILE}`);
 
   let completed = 0;
   let skipped = 0;
   let failed = 0;
 
-  for (const target of targets) {
+  await runPool(targets, concurrency, async (target, index) => {
     if (checkpoint.completed[target.cik]) {
       skipped++;
       console.log(`\n[SKIP] ${target.company} (${target.ticker}) already completed`);
-      continue;
+      return;
     }
 
-    console.log(`\n[${completed + skipped + failed + 1}/${targets.length}] ${target.company} (${target.ticker}) [CIK ${target.cik}]`);
+    console.log(`\n[${index + 1}/${targets.length}] ${target.company} (${target.ticker}) [CIK ${target.cik}]`);
 
     if (dryRun) {
       console.log(`  DRY-RUN: would import ${target.ticker} for ${fromYear} -> ${toYear}`);
-      continue;
+      return;
     }
 
-    const res = await runImport(target, fromYear, toYear);
+    const res = await runImport({ target, fromYear, toYear, archiveConcurrency, filingConcurrency });
     if (res.code === 0) {
       completed++;
       checkpoint.completed[target.cik] = {
@@ -220,7 +262,7 @@ async function main() {
       await saveCheckpoint(checkpoint);
       console.log(`  ✗ failed`);
     }
-  }
+  });
 
   console.log(`\nDone. completed=${completed} skipped=${skipped} failed=${failed}`);
 

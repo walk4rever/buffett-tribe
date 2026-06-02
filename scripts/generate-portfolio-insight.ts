@@ -18,9 +18,41 @@ const db = new PrismaClient();
 const AI_API_KEY = process.env.AI_API_KEY;
 const AI_API_BASE_URL = process.env.AI_API_BASE_URL;
 const AI_MODEL = process.env.AI_MODEL;
+const PROMPT_VERSION = "portfolio-insight-v1";
 
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue;
+}
+
+async function createGeneratedContentVersion(params: {
+  tx: Prisma.TransactionClient;
+  scopeType: string;
+  scopeId: string;
+  artifactType: string;
+  payload: Prisma.InputJsonValue;
+  source: string;
+  promptVersion: string;
+}) {
+  const latest = await params.tx.generatedContentVersion.aggregate({
+    where: {
+      scopeType: params.scopeType,
+      scopeId: params.scopeId,
+      artifactType: params.artifactType,
+    },
+    _max: { versionSeq: true },
+  });
+
+  return params.tx.generatedContentVersion.create({
+    data: {
+      scopeType: params.scopeType,
+      scopeId: params.scopeId,
+      artifactType: params.artifactType,
+      versionSeq: (latest._max.versionSeq ?? 0) + 1,
+      payload: params.payload,
+      source: params.source,
+      promptVersion: params.promptVersion,
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -436,23 +468,36 @@ async function upsertInsight(
     return;
   }
 
-  await db.portfolioInsight.upsert({
-    where: { masterId_year_quarter: { masterId, year, quarter } },
-    update: {
-      structured: structured ? toJsonValue(structured) : Prisma.JsonNull,
-      narrative,
-      source: AI_MODEL ?? "deepseek",
-      generatedAt: new Date(),
-      version: { increment: 1 },
-    },
-    create: {
-      masterId,
-      year,
-      quarter,
-      structured: structured ? toJsonValue(structured) : Prisma.JsonNull,
-      narrative,
-      source: AI_MODEL ?? "deepseek",
-    },
+  const source = AI_MODEL ?? "deepseek";
+  await db.$transaction(async (tx) => {
+    await tx.portfolioInsight.upsert({
+      where: { masterId_year_quarter: { masterId, year, quarter } },
+      update: {
+        structured: structured ? toJsonValue(structured) : Prisma.JsonNull,
+        narrative,
+        source,
+        generatedAt: new Date(),
+        version: { increment: 1 },
+      },
+      create: {
+        masterId,
+        year,
+        quarter,
+        structured: structured ? toJsonValue(structured) : Prisma.JsonNull,
+        narrative,
+        source,
+      },
+    });
+
+    await createGeneratedContentVersion({
+      tx,
+      scopeType: "portfolio",
+      scopeId: `${masterId}:${year}Q${quarter}`,
+      artifactType: "portfolio_insight",
+      payload: toJsonValue({ structured, narrative }),
+      source,
+      promptVersion: PROMPT_VERSION,
+    });
   });
 
   console.log(`  ✓ Upserted to DB (${narrative.length} chars)`);

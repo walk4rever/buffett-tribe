@@ -24,6 +24,7 @@ import {
 import { extractTargetSections, normalizeHtmlToText } from "./lib/extract-10k-sections";
 import {
   archiveFilingArtifact,
+  buildFilingArtifactKey,
   fetchFilingIndexFiles,
   fetchSecBuffer,
   fetchSecText,
@@ -39,6 +40,7 @@ type QuarterFact = {
   start?: string;
   end?: string;
   filed?: string;
+  accn?: string;
   val?: number;
   form?: string;
   fy?: number;
@@ -156,6 +158,28 @@ const TICKER_ALIASES: Record<string, string> = {
 const ANNUAL_FORMS = new Set(["10-K", "10-K/A", "20-F", "20-F/A", "40-F", "40-F/A"]);
 const zhByTickerDb = new Map<string, string>();
 
+function parsePositiveInt(value: string | undefined, fallback: number) {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`Invalid positive integer: ${value}`);
+  }
+  return parsed;
+}
+
+function mapLimit<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.max(1, concurrency) }, async () => {
+    while (true) {
+      const index = cursor++;
+      if (index >= items.length) return;
+      results[index] = await fn(items[index]);
+    }
+  });
+  return Promise.all(workers).then(() => results);
+}
+
 function normalizeTicker(ticker: string): string {
   const raw = ticker.trim().toUpperCase();
   return TICKER_ALIASES[raw] ?? raw;
@@ -166,7 +190,11 @@ function parseArgs(args: string[]) {
   const fromArg = args.find((_, i) => args[i - 1] === "--from");
   const toArg = args.find((_, i) => args[i - 1] === "--to");
   const yearsArg = args.find((_, i) => args[i - 1] === "--years");
+  const archiveConcurrencyArg = args.find((_, i) => args[i - 1] === "--archive-concurrency");
+  const filingConcurrencyArg = args.find((_, i) => args[i - 1] === "--filing-concurrency");
   const years = yearsArg ? parseInt(yearsArg, 10) : 5;
+  const archiveConcurrency = parsePositiveInt(archiveConcurrencyArg, 4);
+  const filingConcurrency = parsePositiveInt(filingConcurrencyArg, 1);
 
   if (!ticker) {
     throw new Error("Missing --ticker. Example: --ticker AAPL");
@@ -192,7 +220,7 @@ function parseArgs(args: string[]) {
     fromYear = toYear - years + 1;
   }
 
-  return { ticker, fromYear, toYear };
+  return { ticker, fromYear, toYear, archiveConcurrency, filingConcurrency };
 }
 
 async function getTickerCikMap() {
@@ -496,8 +524,9 @@ async function archiveFilingArtifacts(params: {
   primaryHtml: string;
   indexHtml: string;
   indexFiles: Awaited<ReturnType<typeof fetchFilingIndexFiles>>["files"];
+  concurrency: number;
 }) {
-  const { entityId, sourceId, cik, accession, primaryDocument, filingUrlBase, primaryHtml, indexHtml, indexFiles } = params;
+  const { entityId, sourceId, cik, accession, primaryDocument, filingUrlBase, primaryHtml, indexHtml, indexFiles, concurrency } = params;
   const primaryUrl = `${filingUrlBase}/${primaryDocument}`;
   const indexUrl = `${filingUrlBase}/${accession}-index.htm`;
   const artifacts = [];
@@ -538,32 +567,53 @@ async function archiveFilingArtifacts(params: {
     }),
   );
 
-  for (const file of indexFiles) {
-    const kind = file.category === "data_file" ? "data_file" : "attachment";
-    const { buffer, contentType } = await fetchSecBuffer(file.url);
-    artifacts.push(
-      archiveFilingArtifact(db, {
-        sourceId,
-        kind,
-        cik,
-        accession,
-        originalName: file.documentName,
-        contentType,
-        body: buffer,
-        sourceUrl: file.url,
-        metadata: {
-          entityId,
-          sequence: file.sequence,
-          description: file.description,
-          documentType: file.documentType,
-          category: file.category,
-          accession,
-        },
-      }),
-    );
+  const artifactTargets = indexFiles.map((file) => ({
+    file,
+    kind: file.category === "data_file" ? "data_file" as const : "attachment" as const,
+    objectKey: buildFilingArtifactKey({
+      cik,
+      accession,
+      kind: file.category === "data_file" ? "data_file" : "attachment",
+      originalName: file.documentName,
+    }),
+  }));
+
+  const existingArtifactRows = artifactTargets.length
+    ? await db.filingArtifact.findMany({
+        where: { objectKey: { in: artifactTargets.map((target) => target.objectKey) } },
+        select: { objectKey: true },
+      })
+    : [];
+  const existingArtifactKeys = new Set(existingArtifactRows.map((row) => row.objectKey));
+
+  const missingArtifactTargets = artifactTargets.filter((target) => !existingArtifactKeys.has(target.objectKey));
+  if (existingArtifactKeys.size) {
+    console.log(`  Archive cache: ${existingArtifactKeys.size}/${artifactTargets.length} attachment/data artifacts already uploaded`);
   }
 
-  return Promise.all(artifacts);
+  const attachmentArtifacts = await mapLimit(missingArtifactTargets, concurrency, async ({ file, kind }) => {
+    const { buffer, contentType } = await fetchSecBuffer(file.url);
+    return archiveFilingArtifact(db, {
+      sourceId,
+      kind,
+      cik,
+      accession,
+      originalName: file.documentName,
+      contentType,
+      body: buffer,
+      sourceUrl: file.url,
+      metadata: {
+        entityId,
+        sequence: file.sequence,
+        description: file.description,
+        documentType: file.documentType,
+        category: file.category,
+        accession,
+      },
+    });
+  });
+
+  return Promise.all([...artifacts, ...attachmentArtifacts]);
 }
 
 function parseAttrMap(source: string) {
@@ -720,6 +770,7 @@ async function batchUpsertFinancialFactsFromApi(
     rawFactJson: Prisma.InputJsonValue;
     rawContextJson: Prisma.InputJsonValue;
   }> = [];
+  const targetFy = new Date(filing.reportDate).getUTCFullYear();
 
   for (const [taxonomy, concepts] of Object.entries(allTaxonomies)) {
     for (const [concept, conceptData] of Object.entries(concepts)) {
@@ -731,6 +782,12 @@ async function batchUpsertFinancialFactsFromApi(
         for (const row of rows) {
           if (row.val == null || typeof row.val !== "number") continue;
           if (!ANNUAL_FORMS.has(row.form ?? filing.form)) continue;
+          if (row.accn) {
+            if (row.accn !== filing.accession) continue;
+          } else {
+            const rowEndYear = row.end ? new Date(row.end).getUTCFullYear() : null;
+            if (rowEndYear !== targetFy) continue;
+          }
 
           const periodType = row.start ? "duration" : "instant";
           const startDate = row.start ? new Date(row.start) : null;
@@ -990,7 +1047,7 @@ async function upsertExtSource(
   });
 }
 
-async function import10kForTicker(ticker: string, fromYear: number, toYear: number) {
+async function import10kForTicker(ticker: string, fromYear: number, toYear: number, archiveConcurrency: number, filingConcurrency: number) {
   if (!zhByTickerDb.size) {
     const maps = await db.companyNameMap.findMany({
       where: { keyType: "ticker" },
@@ -1025,8 +1082,9 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
 
   console.log(`Found ${targetFilings.length} annual filings (10-K/20-F/40-F) in ${fromYear}-${toYear}`);
   if (!targetFilings.length) return;
+  console.log(`Filing concurrency: ${filingConcurrency}; archive concurrency: ${archiveConcurrency}`);
 
-  for (const filing of targetFilings) {
+  await mapLimit(targetFilings, filingConcurrency, async (filing) => {
     const extSource = await upsertExtSource(companyEntity.id, cik, filing);
     const accnoPath = filing.accession.replace(/-/g, "");
     const filingUrlBase = `https://www.sec.gov/Archives/edgar/data/${cik}/${accnoPath}`;
@@ -1080,6 +1138,7 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
       primaryHtml: html,
       indexHtml,
       indexFiles,
+      concurrency: archiveConcurrency,
     });
 
     await db.extSource.update({
@@ -1160,12 +1219,12 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
     console.log(
       `  ${filing.reportDate} (${filing.accession}) -> facts(API ${apiFactCount}, Inline ${inlineFactCount}), sections ${sectionCount}+${attachmentSectionCount}, attachments ${attachmentCount}, derived ${upserted}, missing ${missing}, fallback ${fallbackUsed}`,
     );
-  }
+  });
 }
 
 async function main() {
-  const { ticker, fromYear, toYear } = parseArgs(process.argv.slice(2));
-  await import10kForTicker(ticker, fromYear, toYear);
+  const { ticker, fromYear, toYear, archiveConcurrency, filingConcurrency } = parseArgs(process.argv.slice(2));
+  await import10kForTicker(ticker, fromYear, toYear, archiveConcurrency, filingConcurrency);
   console.log("Done.");
 }
 

@@ -13,6 +13,7 @@ import {
   buildFinancialDashboardText,
   buildFinancialHistoryText,
   callJsonLLM,
+  createGeneratedContentVersion,
   disconnectPrisma,
   fetchFinancials,
   fetchLatestFilingEvidence,
@@ -25,6 +26,8 @@ import {
   prisma,
   toJsonValue,
 } from "./lib/company-generation";
+
+const PROMPT_VERSION = "company-profile-v1";
 
 type NarrativeSection = {
   title: string;
@@ -176,20 +179,32 @@ async function main() {
       const narrative = mergeNarrative(existing?.narrative, overview);
       const source = AI_MODEL ?? "unknown";
 
-      await prisma.companyAnalysis.upsert({
-        where: { entityId: company.id },
-        create: {
-          entityId: company.id,
-          narrative: toJsonValue(narrative),
-          moat: toJsonValue(existing?.moat ?? {}),
+      await prisma.$transaction(async (tx) => {
+        await tx.companyAnalysis.upsert({
+          where: { entityId: company.id },
+          create: {
+            entityId: company.id,
+            narrative: toJsonValue(narrative),
+            moat: toJsonValue(existing?.moat ?? {}),
+            source,
+            version: 1,
+          },
+          update: {
+            narrative: toJsonValue(narrative),
+            source,
+            version: { increment: 1 },
+          },
+        });
+
+        await createGeneratedContentVersion({
+          tx,
+          scopeType: "entity",
+          scopeId: company.id,
+          artifactType: "company_profile",
+          payload: toJsonValue({ overview }),
           source,
-          version: 1,
-        },
-        update: {
-          narrative: toJsonValue(narrative),
-          source,
-          version: { increment: 1 },
-        },
+          promptVersion: PROMPT_VERSION,
+        });
       });
 
       console.log("  Saved company profile");

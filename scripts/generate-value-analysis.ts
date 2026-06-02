@@ -12,6 +12,7 @@ import {
   buildFilingEvidenceText,
   buildFinancialHistoryText,
   callJsonLLM,
+  createGeneratedContentVersion,
   disconnectPrisma,
   fetchFinancials,
   fetchHolders,
@@ -26,6 +27,8 @@ import {
   prisma,
   toJsonValue,
 } from "./lib/company-generation";
+
+const PROMPT_VERSION = "value-analysis-v1";
 
 type MoatPayload = {
   summary: Record<string, unknown>;
@@ -208,20 +211,32 @@ async function main() {
       const narrative = existingOrEmptyNarrative(existing?.narrative);
       const source = AI_MODEL ?? "unknown";
 
-      await prisma.companyAnalysis.upsert({
-        where: { entityId: company.id },
-        create: {
-          entityId: company.id,
-          narrative: toJsonValue(narrative),
-          moat: toJsonValue(moat),
+      await prisma.$transaction(async (tx) => {
+        await tx.companyAnalysis.upsert({
+          where: { entityId: company.id },
+          create: {
+            entityId: company.id,
+            narrative: toJsonValue(narrative),
+            moat: toJsonValue(moat),
+            source,
+            version: 1,
+          },
+          update: {
+            moat: toJsonValue(moat),
+            source,
+            version: { increment: 1 },
+          },
+        });
+
+        await createGeneratedContentVersion({
+          tx,
+          scopeType: "entity",
+          scopeId: company.id,
+          artifactType: "value_analysis",
+          payload: toJsonValue({ moat }),
           source,
-          version: 1,
-        },
-        update: {
-          moat: toJsonValue(moat),
-          source,
-          version: { increment: 1 },
-        },
+          promptVersion: PROMPT_VERSION,
+        });
       });
 
       console.log(`  Saved value analysis (dimensions: ${moat.dimensions.length}, notes: ${moat.notes.length})`);

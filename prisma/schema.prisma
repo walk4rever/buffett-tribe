@@ -439,6 +439,23 @@ model CompanyAnalysis {
   entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
 }
 
+model GeneratedContentVersion {
+  id            String   @id @default(cuid())
+  scopeType     String // entity | master | portfolio | other
+  scopeId       String
+  artifactType  String // company_profile | business_overview | value_analysis | master_profile | portfolio_insight
+  versionSeq    Int
+  payload       Json
+  source        String   @default("llm")
+  promptVersion String
+  generatedAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@unique([scopeType, scopeId, artifactType, versionSeq])
+  @@index([scopeType, scopeId, artifactType])
+  @@index([artifactType])
+}
+
 model BusinessCanvas {
   id            String   @id @default(cuid())
   entityId      String   @unique

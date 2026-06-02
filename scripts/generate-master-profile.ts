@@ -16,9 +16,41 @@ const db = new PrismaClient();
 const AI_API_KEY = process.env.AI_API_KEY;
 const AI_API_BASE_URL = process.env.AI_API_BASE_URL;
 const AI_MODEL = process.env.AI_MODEL;
+const PROMPT_VERSION = "master-profile-v1";
 
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue;
+}
+
+async function createGeneratedContentVersion(params: {
+  tx: Prisma.TransactionClient;
+  scopeType: string;
+  scopeId: string;
+  artifactType: string;
+  payload: Prisma.InputJsonValue;
+  source: string;
+  promptVersion: string;
+}) {
+  const latest = await params.tx.generatedContentVersion.aggregate({
+    where: {
+      scopeType: params.scopeType,
+      scopeId: params.scopeId,
+      artifactType: params.artifactType,
+    },
+    _max: { versionSeq: true },
+  });
+
+  return params.tx.generatedContentVersion.create({
+    data: {
+      scopeType: params.scopeType,
+      scopeId: params.scopeId,
+      artifactType: params.artifactType,
+      versionSeq: (latest._max.versionSeq ?? 0) + 1,
+      payload: params.payload,
+      source: params.source,
+      promptVersion: params.promptVersion,
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -388,21 +420,34 @@ async function main() {
       const result = await callAI(prompt);
       validateProfile(result);
 
-      await db.masterProfile.upsert({
-        where: { entityId: entity.id },
-        create: {
-          entityId: entity.id,
-          profile: toJsonValue(result),
-          source: AI_MODEL ?? "unknown",
-          version: 1,
-          generatedAt: new Date(),
-        },
-        update: {
-          profile: toJsonValue(result),
-          source: AI_MODEL ?? "unknown",
-          version: { increment: 1 },
-          generatedAt: new Date(),
-        },
+      const source = AI_MODEL ?? "unknown";
+      await db.$transaction(async (tx) => {
+        await tx.masterProfile.upsert({
+          where: { entityId: entity.id },
+          create: {
+            entityId: entity.id,
+            profile: toJsonValue(result),
+            source,
+            version: 1,
+            generatedAt: new Date(),
+          },
+          update: {
+            profile: toJsonValue(result),
+            source,
+            version: { increment: 1 },
+            generatedAt: new Date(),
+          },
+        });
+
+        await createGeneratedContentVersion({
+          tx,
+          scopeType: "master",
+          scopeId: entity.id,
+          artifactType: "master_profile",
+          payload: toJsonValue(result),
+          source,
+          promptVersion: PROMPT_VERSION,
+        });
       });
 
       const profile = result as {

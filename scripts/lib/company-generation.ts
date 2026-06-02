@@ -386,6 +386,41 @@ export async function callJsonLLM(params: {
   return data.choices?.[0]?.message?.content ?? "";
 }
 
+export async function createGeneratedContentVersion(params: {
+  tx?: Prisma.TransactionClient;
+  scopeType: string;
+  scopeId: string;
+  artifactType: string;
+  payload: Prisma.InputJsonValue;
+  source: string;
+  promptVersion: string;
+  generatedAt?: Date;
+}) {
+  const client = params.tx ?? prisma;
+  const latest = await client.generatedContentVersion.aggregate({
+    where: {
+      scopeType: params.scopeType,
+      scopeId: params.scopeId,
+      artifactType: params.artifactType,
+    },
+    _max: { versionSeq: true },
+  });
+  const versionSeq = (latest._max.versionSeq ?? 0) + 1;
+
+  return client.generatedContentVersion.create({
+    data: {
+      scopeType: params.scopeType,
+      scopeId: params.scopeId,
+      artifactType: params.artifactType,
+      versionSeq,
+      payload: params.payload,
+      source: params.source,
+      promptVersion: params.promptVersion,
+      generatedAt: params.generatedAt ?? new Date(),
+    },
+  });
+}
+
 export function parseJsonObject(raw: string): Record<string, unknown> {
   const jsonText = raw.replace(/^```json\s*/i, "").replace(/\s*```$/i, "").trim();
   const jsonMatch = jsonText.match(/\{[\s\S]*\}/);

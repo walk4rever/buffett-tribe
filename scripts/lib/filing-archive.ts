@@ -147,6 +147,14 @@ export async function archiveFilingArtifact(
     kind: params.kind,
     originalName: params.originalName,
   });
+
+  const existing = await db.filingArtifact.findUnique({
+    where: { objectKey },
+  });
+  if (existing) {
+    return existing;
+  }
+
   const sha256 = crypto.createHash("sha256").update(params.body).digest("hex");
   const publicUrl = await uploadToR2(objectKey, params.body, params.contentType);
 
