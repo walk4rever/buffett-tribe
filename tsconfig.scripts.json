@@ -16,7 +16,6 @@
     "scripts/backfill-13f-value-usd-units.ts",
     "scripts/check-latest-holdings-company-coverage.ts",
     "scripts/fix-latest-holdings-company-coverage.ts",
-    "scripts/extract-10k-sections.ts",
-    "scripts/run-company-analysis.ts"
+    "scripts/extract-10k-sections.ts"
   ]
 }

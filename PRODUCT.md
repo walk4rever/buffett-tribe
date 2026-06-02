@@ -861,8 +861,9 @@ FinancialFact
 
 - `npm run generate:master-profile`：生成并入库大师主页画像 `MasterProfile`
 - `npm run generate:portfolio-insight`：生成并入库季度持仓点评 `PortfolioInsight`
-- `npm run generate:business-canvas`：批量生成并入库公司商业画布
-- `scripts/run-company-analysis.ts`：批量生成并入库 company analysis
+- `npm run generate:company-profile`：批量生成并入库公司基本信息
+- `npm run generate:business-model`：批量生成并入库业务概览与商业画布
+- `npm run generate:value-analysis`：批量生成并入库价值分析
 - `scripts/import-10k-xbrl.ts`：现在支持 `companyfacts + filing-level inline XBRL fallback`，并归档 SEC 原始文件到 `FilingArtifact`
 
 ### 实验与基准
@@ -890,9 +891,10 @@ FinancialFact
 - `npm run import:company-stock-prices:yf -- --batch-size 10 --start 2020-01-01`
 - `npm run generate:master-profile -- --master buffett`
 - `npm run generate:portfolio-insight -- --master buffett`
-- `npm run generate:business-canvas -- --company AAPL --force`
+- `npm run generate:company-profile -- --company AAPL --force`
+- `npm run generate:business-model -- --company AAPL --force`
+- `npm run generate:value-analysis -- --company AAPL --force`
 - `npm run generate:home-signals`
-- `node --env-file=.env.local ./node_modules/.bin/tsx scripts/run-company-analysis.ts --all`
 
 ### 数据修复
 

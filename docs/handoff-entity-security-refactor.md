@@ -66,7 +66,7 @@ Filer（13F 提交方）
 | `src/app/master/[id]/holdings/page.tsx` | 同上 |
 | `src/lib/home-signals.ts` | 如有 `securityEntityId` 引用，改为 `securityId` |
 | `scripts/generate-portfolio-insight.ts` | `keyOf` 改 `securityId` |
-| `scripts/run-company-analysis.ts` | 查询条件去掉 `securityEntityId: { in: legacyIds }` |
+| `scripts/generate-value-analysis.ts` | 查询条件去掉 `securityEntityId: { in: legacyIds }` |
 
 **验证**：`npm run lint && npm run build`，所有页面功能正常。
 
@@ -138,7 +138,7 @@ model Holding {
 | `src/lib/master-data.ts:256` | `exits.map` 返回 `securityEntityId` → `securityId` | 阶段一 |
 | `src/lib/company-data.ts:253` | `getRecentHolders` OR 查询仍查 `securityEntityId` | 阶段一 |
 | `src/lib/company-data.ts:342` | `securityId: row.securityId ?? row.securityEntityId` 去掉 fallback | 阶段一 |
-| `scripts/run-company-analysis.ts:112` | `{ securityEntityId: { in: legacyIds } }` 查询条件 | 阶段一 |
+| `scripts/generate-value-analysis.ts` | `{ securityEntityId: { in: legacyIds } }` 查询条件 | 阶段一 |
 | `scripts/generate-portfolio-insight.ts:154` | `keyOf` 用 `securityEntityId` → `securityId` | 阶段一 |
 | `scripts/import-13f.ts:~472` | `existingByEntity = db.security.findFirst({ where: { entityId: companyId } })` | 阶段二 |
 | `scripts/import-13f.ts:~488` | `db.security.create({ data: { entityId: companyId, ... } })` 写入 `entityId` | 阶段二 |
@@ -149,7 +149,7 @@ model Holding {
 - `src/app/master/[id]/page.tsx`
 - `src/app/master/[id]/holdings/page.tsx`
 - `scripts/generate-portfolio-insight.ts`
-- `scripts/run-company-analysis.ts`
+- `scripts/generate-value-analysis.ts`
 - `scripts/import-13f.ts`（如查询中使用了 `securityProfile` relation）
 
 **前置验证（必须先执行）**：

@@ -588,7 +588,7 @@ async function importFiling(
     snapshots.push(snapshot);
   }
 
-  await ensureSecurityProfilesBulk(snapshots);
+  await ensureSecurityProfilesBulk();
 
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];

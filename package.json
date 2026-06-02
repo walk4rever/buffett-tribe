@@ -1,6 +1,6 @@
 {
   "name": "buffett-tribe",
-  "version": "0.36.9",
+  "version": "0.36.10",
   "private": true,
   "type": "module",
   "scripts": {
@@ -40,8 +40,14 @@
     "generate:master-profile:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-master-profile.ts --dry-run",
     "generate:portfolio-insight": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-portfolio-insight.ts",
     "generate:portfolio-insight:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-portfolio-insight.ts --dry-run",
+    "generate:company-profile": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-company-profile.ts",
+    "generate:company-profile:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-company-profile.ts --dry-run",
+    "generate:business-model": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-business-model.ts",
+    "generate:business-model:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-business-model.ts --dry-run",
     "generate:business-canvas": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-business-canvas.ts",
     "generate:business-canvas:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-business-canvas.ts --dry-run",
+    "generate:value-analysis": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-value-analysis.ts",
+    "generate:value-analysis:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-value-analysis.ts --dry-run",
     "generate:home-signals": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-home-signals.ts",
     "generate:home-signals:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-home-signals.ts --dry-run",
     "check:db": "node --env-file=.env.local ./node_modules/.bin/ts-node --esm --experimentalSpecifierResolution=node scripts/check-db.ts",

@@ -274,9 +274,9 @@ async function main() {
           : null;
       const analysisCommand =
         !analyzedEntityIds.has(linkedCompany.id) && ticker
-          ? `node --env-file=.env.local ./node_modules/.bin/tsx scripts/run-company-analysis.ts --company ${ticker}`
+          ? `npm run generate:value-analysis -- --company ${ticker}`
           : !analyzedEntityIds.has(linkedCompany.id)
-            ? `node --env-file=.env.local ./node_modules/.bin/tsx scripts/run-company-analysis.ts --company \"${linkedCompany.canonicalName}\"`
+            ? `npm run generate:value-analysis -- --company \"${linkedCompany.canonicalName}\"`
             : null;
 
       companies.push({

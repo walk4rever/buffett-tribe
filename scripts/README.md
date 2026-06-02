@@ -67,20 +67,48 @@
 - 文件：[check-all-company-financials.ts](/Users/rafael/R129/buffett-tribe/scripts/check-all-company-financials.ts)
 - 作用：全量公司财务巡检，不在 `package.json` 主入口里。
 
-## 06. 商业画布生成入口
+## 06. 公司基本信息生成入口
 
-- 文件：[generate-business-canvas.ts](/Users/rafael/R129/buffett-tribe/scripts/generate-business-canvas.ts)
-- 命令：`npm run generate:business-canvas`
-- 命令：`npm run generate:business-canvas:dry`
-- 作用：生成并入库 `BusinessCanvas`，当前输出包含 `text / evidence / sources / confidence` 的证据化条目。
+- 文件：[generate-company-profile.ts](/Users/rafael/R129/buffett-tribe/scripts/generate-company-profile.ts)
+- 命令：`npm run generate:company-profile`
+- 命令：`npm run generate:company-profile:dry`
+- 作用：生成并入库 `CompanyAnalysis.narrative.overview`，只负责公司基本信息，不生成业务概览或价值分析。
 
 常用示例：
 
 ```bash
-npm run generate:business-canvas -- --company AAPL --force
+npm run generate:company-profile -- --company AAPL --force
 ```
 
-## 07. 大师画像生成入口
+## 07. 业务模型生成入口
+
+- 文件：[generate-business-model.ts](/Users/rafael/R129/buffett-tribe/scripts/generate-business-model.ts)
+- 命令：`npm run generate:business-model`
+- 命令：`npm run generate:business-model:dry`
+- 命令：`npm run generate:business-canvas`
+- 命令：`npm run generate:business-canvas:dry`
+- 作用：生成并入库 `CompanyAnalysis.narrative.business` 与 `BusinessCanvas`；旧的 `generate:business-canvas` 是兼容入口。
+
+常用示例：
+
+```bash
+npm run generate:business-model -- --company AAPL --force
+```
+
+## 08. 价值分析生成入口
+
+- 文件：[generate-value-analysis.ts](/Users/rafael/R129/buffett-tribe/scripts/generate-value-analysis.ts)
+- 命令：`npm run generate:value-analysis`
+- 命令：`npm run generate:value-analysis:dry`
+- 作用：生成并入库 `CompanyAnalysis.moat`，只负责护城河、资本配置、风险与观察指标等价值分析。
+
+常用示例：
+
+```bash
+npm run generate:value-analysis -- --company AAPL --force
+```
+
+## 09. 大师画像生成入口
 
 - 文件：[generate-master-profile.ts](/Users/rafael/R129/buffett-tribe/scripts/generate-master-profile.ts)
 - 命令：`npm run generate:master-profile`
@@ -93,7 +121,7 @@ npm run generate:business-canvas -- --company AAPL --force
 npm run generate:master-profile -- --master buffett
 ```
 
-## 08. 季度持仓点评入口
+## 10. 季度持仓点评入口
 
 - 文件：[generate-portfolio-insight.ts](/Users/rafael/R129/buffett-tribe/scripts/generate-portfolio-insight.ts)
 - 命令：`npm run generate:portfolio-insight`
@@ -106,23 +134,7 @@ npm run generate:master-profile -- --master buffett
 npm run generate:portfolio-insight -- --master buffett
 ```
 
-## 09. 公司分析生成入口
-
-- 文件：[run-company-analysis.ts](/Users/rafael/R129/buffett-tribe/scripts/run-company-analysis.ts)
-- 作用：生成并入库 `CompanyAnalysis`。
-
-常用示例：
-
-```bash
-node --env-file=.env.local ./node_modules/.bin/tsx scripts/run-company-analysis.ts --all
-```
-
-说明：
-
-- 这个脚本当前仍是主运行面的一部分。
-- 但它还没有挂成 `package.json` 的正式别名。
-
-## 10. 首页信号生成入口
+## 11. 首页信号生成入口
 
 - 文件：[generate-home-signals.ts](/Users/rafael/R129/buffett-tribe/scripts/generate-home-signals.ts)
 - 命令：`npm run generate:home-signals`
