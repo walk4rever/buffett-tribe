@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState, useCallback } from 'react';
-import * as pdfjs from 'pdfjs-dist';
+import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 pdfjs.GlobalWorkerOptions.workerSrc =
-  'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+  'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs';
 
 interface PdfViewerProps {
   url: string;

@@ -2,8 +2,6 @@ import type { ReactElement } from "react";
 import { ImageResponse } from "next/og";
 import { encode } from "uqr";
 
-export const runtime = "edge";
-
 const FALLBACK_QUESTION = `护城河这个概念，你怎么理解？`;
 const FALLBACK_ANSWER = `一家真正伟大的企业，必须有一道持久的\u201c护城河\u201d来保护投资资本获得卓越回报。资本主义的本质就是竞争——任何正在赚取高额回报的\u201c城堡\u201d，都会遭到竞争对手反复进攻。
 
