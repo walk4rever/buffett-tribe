@@ -644,6 +644,9 @@ function parsePageNumber(text: string) {
   const pageMatch = normalized.match(/\bpage\s+(\d{1,3})(?!\d)/i);
   if (pageMatch) return Number(pageMatch[1]);
 
+  const leadingFormPageMatch = normalized.match(/^(\d{1,3})(?!\d).*form\s+20-f/i);
+  if (leadingFormPageMatch) return Number(leadingFormPageMatch[1]);
+
   if (/^united statessecurities and exchange commission/i.test(normalized) && /form 20-f/i.test(normalized)) {
     return 1;
   }
@@ -708,10 +711,43 @@ function isUnavailableReference(text: string) {
 function is20FTocTable(tableText: string) {
   const normalized = normalizeHeadingText(tableText);
   return (
-    normalized.includes("Form 20-F caption") &&
-    normalized.includes("Location in this document") &&
-    normalized.includes("Page")
+    (
+      normalized.includes("Form 20-F caption") ||
+      normalized.includes("Required item in Form 20-F") ||
+      normalized.includes("Cross reference to Form 20-F")
+    ) &&
+    normalized.includes("Item") &&
+    /Page(\(s\))?/i.test(normalized)
   );
+}
+
+function normalize20FItemCell(text: string) {
+  return normalizeHeadingText(text).replace(/\.$/, "").toUpperCase();
+}
+
+function parse20FPageReferences(text: string) {
+  const normalized = normalizeHeadingText(text);
+  if (!normalized || isUnavailableReference(normalized)) return [];
+
+  const pages = new Set<number>();
+  const withoutPrefacePages = normalized.replace(/\bF-\d{1,3}\b/gi, "");
+  const pageRefRe = /(?<![\d.])(\d{1,3})(?![\d.])(?:\s*[-–]\s*(\d{1,3})(?![\d.]))?/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = pageRefRe.exec(withoutPrefacePages))) {
+    const start = Number(match[1]);
+    const end = match[2] ? Number(match[2]) : start;
+    if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+    if (start <= 0 || end <= 0 || start > 500 || end > 500) continue;
+
+    if (end >= start && end - start <= 20) {
+      for (let page = start; page <= end; page++) pages.add(page);
+    } else {
+      pages.add(start);
+    }
+  }
+
+  return [...pages].sort((a, b) => a - b);
 }
 
 function parse20FTocReferences(
@@ -740,29 +776,35 @@ function parse20FTocReferences(
         if (!cells.some(Boolean)) return;
         if (rowIndex === 0 && cells.some((cell) => cell === "Item")) return;
 
-        const [itemCell = "", captionCell = "", locationCell = "", pageCell = ""] = cells;
+        const hasLocationColumn = cells.length >= 4;
+        const [itemCell = "", captionCell = "", rawLocationCell = "", rawPageCell = ""] = cells;
+        const locationCell = hasLocationColumn ? rawLocationCell : "";
+        const pageCell = hasLocationColumn ? rawPageCell : rawLocationCell;
         if (/^part\b/i.test(itemCell)) {
           currentSection = null;
           return;
         }
 
         if (itemCell) {
-          currentSection = sectionsByItem.get(itemCell.toUpperCase()) ?? null;
+          currentSection = sectionsByItem.get(normalize20FItemCell(itemCell)) ?? null;
         }
         if (!currentSection) return;
 
-        const page = pageCell && /^\d{1,3}$/.test(pageCell) ? Number(pageCell) : null;
+        const pages = parse20FPageReferences(pageCell);
         const location = locationCell && !isUnavailableReference(locationCell) ? locationCell : "";
         const caption = captionCell && !isUnavailableReference(captionCell) ? captionCell : "";
-        if (!location && !caption && page === null) return;
+        if (!location && !caption && !pages.length) return;
 
         if (!references.has(currentSection.key)) references.set(currentSection.key, []);
         const items = references.get(currentSection.key)!;
-        const duplicate = items.some(
-          (item) => item.caption === caption && item.location === location && item.page === page
-        );
-        if (!duplicate) {
-          items.push({ caption, location, page });
+        const referencePages = pages.length ? pages : [null];
+        for (const page of referencePages) {
+          const duplicate = items.some(
+            (item) => item.caption === caption && item.location === location && item.page === page
+          );
+          if (!duplicate) {
+            items.push({ caption, location, page });
+          }
         }
       });
   });

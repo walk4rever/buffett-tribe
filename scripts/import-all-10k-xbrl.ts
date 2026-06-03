@@ -67,26 +67,30 @@ async function runImport(params: {
   toYear: number;
   archiveConcurrency: number;
   filingConcurrency: number;
+  skipAttachmentArchive: boolean;
 }) {
-  const { target, fromYear, toYear, archiveConcurrency, filingConcurrency } = params;
+  const { target, fromYear, toYear, archiveConcurrency, filingConcurrency, skipAttachmentArchive } = params;
+  const childArgs = [
+    "--env-file=.env.local",
+    "./node_modules/.bin/tsx",
+    "scripts/import-10k-xbrl.ts",
+    "--ticker",
+    target.ticker,
+    "--from",
+    String(fromYear),
+    "--to",
+    String(toYear),
+    "--archive-concurrency",
+    String(archiveConcurrency),
+    "--filing-concurrency",
+    String(filingConcurrency),
+  ];
+  if (skipAttachmentArchive) childArgs.push("--skip-attachment-archive");
+
   return new Promise<{ code: number }>((resolve) => {
     const child = spawn(
       process.execPath,
-      [
-        "--env-file=.env.local",
-        "./node_modules/.bin/tsx",
-        "scripts/import-10k-xbrl.ts",
-        "--ticker",
-        target.ticker,
-        "--from",
-        String(fromYear),
-        "--to",
-        String(toYear),
-        "--archive-concurrency",
-        String(archiveConcurrency),
-        "--filing-concurrency",
-        String(filingConcurrency),
-      ],
+      childArgs,
       {
         cwd: process.cwd(),
         env: process.env,
@@ -199,6 +203,7 @@ async function main() {
   const archiveConcurrency = archiveConcurrencyArg ? Number.parseInt(archiveConcurrencyArg, 10) : 4;
   const filingConcurrencyArg = getArg("--filing-concurrency");
   const filingConcurrency = filingConcurrencyArg ? Number.parseInt(filingConcurrencyArg, 10) : 1;
+  const skipAttachmentArchive = hasFlag("--skip-attachment-archive");
   const dryRun = hasFlag("--dry-run");
 
   if (Number.isNaN(limit ?? 0)) {
@@ -219,7 +224,9 @@ async function main() {
 
   console.log(`Found ${targets.length} companies to import 10-K data for (${fromYear} -> ${toYear})`);
   console.log(`Concurrency: ${concurrency}`);
-  console.log(`Child filing concurrency: ${filingConcurrency}; archive concurrency: ${archiveConcurrency}`);
+  console.log(
+    `Child filing concurrency: ${filingConcurrency}; archive concurrency: ${archiveConcurrency}; skip attachment archive: ${skipAttachmentArchive}`,
+  );
   console.log(`Checkpoint: ${CHECKPOINT_FILE}`);
 
   let completed = 0;
@@ -240,7 +247,7 @@ async function main() {
       return;
     }
 
-    const res = await runImport({ target, fromYear, toYear, archiveConcurrency, filingConcurrency });
+    const res = await runImport({ target, fromYear, toYear, archiveConcurrency, filingConcurrency, skipAttachmentArchive });
     if (res.code === 0) {
       completed++;
       checkpoint.completed[target.cik] = {

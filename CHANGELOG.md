@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.36.14] - 2026-06-04
+
+### Added
+- `import:10k` 和 `import:10k:all` 增加 `--skip-attachment-archive`，支持先导入 facts/sections/attachment rows，跳过大附件 R2 归档。
+- 年报附件归档阶段增加缓存、缺失数量、单附件开始/完成和耗时日志，便于定位重附件 20-F 的进度。
+
+### Fixed
+- 修复 Diageo 这类 3 列 `Cross reference to Form 20-F` 表无法提取 sections 的问题。
+- 20-F cross-reference parser 支持 `Page(s)`、页码范围和页面页脚形态，避免重附件 20-F 导入完成后 sections 仍为 0。
+
 ## [v0.36.13] - 2026-06-03
 
 ### Added

@@ -171,14 +171,14 @@ function parsePositiveInt(value: string | undefined, fallback: number) {
   return parsed;
 }
 
-function mapLimit<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+function mapLimit<T, R>(items: T[], concurrency: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
   const results = new Array<R>(items.length);
   let cursor = 0;
   const workers = Array.from({ length: Math.max(1, concurrency) }, async () => {
     while (true) {
       const index = cursor++;
       if (index >= items.length) return;
-      results[index] = await fn(items[index]);
+      results[index] = await fn(items[index], index);
     }
   });
   return Promise.all(workers).then(() => results);
@@ -196,6 +196,7 @@ function parseArgs(args: string[]) {
   const yearsArg = args.find((_, i) => args[i - 1] === "--years");
   const archiveConcurrencyArg = args.find((_, i) => args[i - 1] === "--archive-concurrency");
   const filingConcurrencyArg = args.find((_, i) => args[i - 1] === "--filing-concurrency");
+  const skipAttachmentArchive = args.includes("--skip-attachment-archive");
   const years = yearsArg ? parseInt(yearsArg, 10) : 5;
   const archiveConcurrency = parsePositiveInt(archiveConcurrencyArg, 4);
   const filingConcurrency = parsePositiveInt(filingConcurrencyArg, 1);
@@ -224,7 +225,7 @@ function parseArgs(args: string[]) {
     fromYear = toYear - years + 1;
   }
 
-  return { ticker, fromYear, toYear, archiveConcurrency, filingConcurrency };
+  return { ticker, fromYear, toYear, archiveConcurrency, filingConcurrency, skipAttachmentArchive };
 }
 
 async function getTickerCikMap() {
@@ -519,8 +520,21 @@ async function archiveFilingArtifacts(params: {
   indexHtml: string;
   indexFiles: Awaited<ReturnType<typeof fetchFilingIndexFiles>>["files"];
   concurrency: number;
+  skipAttachmentArchive: boolean;
 }) {
-  const { entityId, sourceId, cik, accession, primaryDocument, filingUrlBase, primaryHtml, indexHtml, indexFiles, concurrency } = params;
+  const {
+    entityId,
+    sourceId,
+    cik,
+    accession,
+    primaryDocument,
+    filingUrlBase,
+    primaryHtml,
+    indexHtml,
+    indexFiles,
+    concurrency,
+    skipAttachmentArchive,
+  } = params;
   const primaryUrl = `${filingUrlBase}/${primaryDocument}`;
   const indexUrl = `${filingUrlBase}/${accession}-index.htm`;
   const artifacts = [];
@@ -581,13 +595,28 @@ async function archiveFilingArtifacts(params: {
   const existingArtifactKeys = new Set(existingArtifactRows.map((row) => row.objectKey));
 
   const missingArtifactTargets = artifactTargets.filter((target) => !existingArtifactKeys.has(target.objectKey));
+  console.log(
+    `  Archive attachments/data: total ${artifactTargets.length}, cached ${existingArtifactKeys.size}, missing ${missingArtifactTargets.length}, concurrency ${concurrency}`,
+  );
   if (existingArtifactKeys.size) {
     console.log(`  Archive cache: ${existingArtifactKeys.size}/${artifactTargets.length} attachment/data artifacts already uploaded`);
   }
 
-  const attachmentArtifacts = await mapLimit(missingArtifactTargets, concurrency, async ({ file, kind }) => {
+  if (skipAttachmentArchive) {
+    if (missingArtifactTargets.length) {
+      console.log(`  Archive skipped: ${missingArtifactTargets.length} missing attachment/data artifacts (--skip-attachment-archive)`);
+    }
+    return Promise.all(artifacts);
+  }
+
+  let completed = 0;
+  const startedAt = Date.now();
+  const attachmentArtifacts = await mapLimit(missingArtifactTargets, concurrency, async ({ file, kind }, index) => {
+    const label = `${file.sequence || index + 1} ${file.documentName}`;
+    const oneStartedAt = Date.now();
+    console.log(`  Archive [${index + 1}/${missingArtifactTargets.length}] start ${kind} ${label}`);
     const { buffer, contentType } = await fetchSecBuffer(file.url);
-    return archiveFilingArtifact(db, {
+    const artifact = await archiveFilingArtifact(db, {
       sourceId,
       kind,
       cik,
@@ -605,6 +634,13 @@ async function archiveFilingArtifacts(params: {
         accession,
       },
     });
+    completed++;
+    const elapsed = ((Date.now() - oneStartedAt) / 1000).toFixed(1);
+    const totalElapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
+    console.log(
+      `  Archive [${completed}/${missingArtifactTargets.length}] done ${label} (${buffer.length.toLocaleString()} bytes, ${elapsed}s, total ${totalElapsed}s)`,
+    );
+    return artifact;
   });
 
   return Promise.all([...artifacts, ...attachmentArtifacts]);
@@ -1041,7 +1077,15 @@ async function upsertExtSource(
   });
 }
 
-async function import10kForTicker(ticker: string, fromYear: number, toYear: number, archiveConcurrency: number, filingConcurrency: number) {
+async function import10kForTicker(params: {
+  ticker: string;
+  fromYear: number;
+  toYear: number;
+  archiveConcurrency: number;
+  filingConcurrency: number;
+  skipAttachmentArchive: boolean;
+}) {
+  const { ticker, fromYear, toYear, archiveConcurrency, filingConcurrency, skipAttachmentArchive } = params;
   if (!zhByTickerDb.size) {
     const maps = await db.companyNameMap.findMany({
       where: { keyType: "ticker" },
@@ -1076,7 +1120,9 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
 
   console.log(`Found ${targetFilings.length} annual filings (10-K/20-F/40-F) in ${fromYear}-${toYear}`);
   if (!targetFilings.length) return;
-  console.log(`Filing concurrency: ${filingConcurrency}; archive concurrency: ${archiveConcurrency}`);
+  console.log(
+    `Filing concurrency: ${filingConcurrency}; archive concurrency: ${archiveConcurrency}; skip attachment archive: ${skipAttachmentArchive}`,
+  );
 
   await mapLimit(targetFilings, filingConcurrency, async (filing) => {
     const extSource = await upsertExtSource(companyEntity.id, cik, filing);
@@ -1135,6 +1181,7 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
       indexHtml,
       indexFiles,
       concurrency: archiveConcurrency,
+      skipAttachmentArchive,
     });
 
     await db.extSource.update({
@@ -1219,8 +1266,8 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
 }
 
 async function main() {
-  const { ticker, fromYear, toYear, archiveConcurrency, filingConcurrency } = parseArgs(process.argv.slice(2));
-  await import10kForTicker(ticker, fromYear, toYear, archiveConcurrency, filingConcurrency);
+  const { ticker, fromYear, toYear, archiveConcurrency, filingConcurrency, skipAttachmentArchive } = parseArgs(process.argv.slice(2));
+  await import10kForTicker({ ticker, fromYear, toYear, archiveConcurrency, filingConcurrency, skipAttachmentArchive });
   console.log("Done.");
 }
 
