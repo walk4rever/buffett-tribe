@@ -18,7 +18,7 @@ export type FilingIndexFile = {
 
 type ArchiveArtifactParams = {
   sourceId: string;
-  kind: "primary_html" | "index_html" | "attachment" | "data_file";
+  kind: "primary_html" | "index_html" | "attachment" | "data_file" | "section_text" | "section_blocks" | "section_html";
   cik: string;
   accession: string;
   originalName: string;

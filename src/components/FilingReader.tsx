@@ -31,6 +31,11 @@ type StructuredFilingSection = CompanyAnnualFiling["sections"][number] & {
   outline: CompanyAnnualFilingOutlineNode[];
 };
 
+type HydratedFilingSection = Partial<Pick<
+  CompanyAnnualFiling["sections"][number],
+  "content" | "rawHtml" | "outlineJson" | "blocksJson" | "contentPreview" | "contentTextLength" | "blockCount" | "extractionVersion"
+>>;
+
 type ReaderSection = {
   section: string;
   standard: boolean;
@@ -556,7 +561,11 @@ function renderBlock(block: CompanyAnnualFilingBlock) {
     case "paragraph":
       return <p className="filing-reader-paragraph">{block.text}</p>;
     case "note":
-      return <p className="filing-reader-note">{block.text}</p>;
+      return (
+        <h5 className="filing-reader-block-heading filing-reader-block-heading--note">
+          {block.text}
+        </h5>
+      );
     case "list":
       return block.ordered ? (
         <ol className="filing-reader-list filing-reader-list--ordered">
@@ -643,18 +652,21 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
   const sortedSections = useMemo(() => {
     return sortSections(filing.sections, filingTemplate.order);
   }, [filing.sections, filingTemplate.order]);
+  const [hydratedBySection, setHydratedBySection] = useState<Record<string, HydratedFilingSection>>({});
 
   const structuredSections = useMemo(() => {
     return sortedSections.map((section) => {
-      const blocks = filterBlocks(parseBlocksJson(section.blocksJson));
-      const outline = filterOutlineNodes(parseOutlineJson(section.outlineJson));
+      const hydrated = hydratedBySection[section.section] ?? {};
+      const merged = { ...section, ...hydrated };
+      const blocks = filterBlocks(parseBlocksJson(merged.blocksJson));
+      const outline = filterOutlineNodes(parseOutlineJson(merged.outlineJson));
       return {
-        ...section,
+        ...merged,
         blocks,
         outline,
       };
     });
-  }, [sortedSections]);
+  }, [hydratedBySection, sortedSections]);
 
   const structuredBySection = useMemo(() => {
     return new Map(structuredSections.map((section) => [section.section, section]));
@@ -716,6 +728,36 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
     return structuredBySection.get(currentSection) ?? null;
   }, [currentSection, structuredBySection]);
 
+  useEffect(() => {
+    if (!currentSection || hydratedBySection[currentSection]) return;
+    const section = structuredBySection.get(currentSection);
+    if (!section) return;
+
+    const hasFullText = section.contentTextLength <= section.content.length;
+    const needsText = Boolean(section.textArtifactId && !section.blocks.length && !hasFullText);
+    const needsBlocks = Boolean(section.blocksArtifactId && !section.blocks.length);
+    if (!needsText && !needsBlocks) return;
+
+    const controller = new AbortController();
+    const params = new URLSearchParams({ sourceId: filing.id, section: currentSection });
+
+    fetch(`/api/filing-section?${params.toString()}`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((payload) => {
+        if (!payload || controller.signal.aborted) return;
+        setHydratedBySection((current) => ({
+          ...current,
+          [currentSection]: payload,
+        }));
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        console.warn(`Failed to hydrate filing section ${currentSection}:`, err);
+      });
+
+    return () => controller.abort();
+  }, [currentSection, filing.id, hydratedBySection, structuredBySection]);
+
   const reportLabel = `${filing.periodYear ?? "—"}${filing.periodQuarter ? ` Q${filing.periodQuarter}` : ""}`;
   const companyUrl = formatCompanyCikUrl(company.cik) ?? `/company/${company.cik ?? ""}`;
   const referencesUrl = `${companyUrl}?tab=references`;
@@ -730,6 +772,7 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
     }));
 
     const artifactFiles = filing.artifacts
+      .filter((artifact) => !artifact.kind.startsWith("section_"))
       .filter((artifact) => artifact.publicUrl)
       .map((artifact) => ({
         key: `artifact-${artifact.objectKey}`,
@@ -945,12 +988,7 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
                   </div>
                 </div>
                 <div className="filing-reader-section-body">
-                  {section?.rawHtml ? (
-                    <div
-                      className="filing-reader-html"
-                      dangerouslySetInnerHTML={{ __html: section.rawHtml }}
-                    />
-                  ) : displayBlocks.length ? (
+                  {displayBlocks.length ? (
                     displayBlocks.map((block, blockIndex) => (
                       <div
                         key={block.id || `${readerSection.section}-${blockIndex}`}
@@ -960,6 +998,11 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
                         {renderBlock(block)}
                       </div>
                     ))
+                  ) : section?.rawHtml ? (
+                    <div
+                      className="filing-reader-html"
+                      dangerouslySetInnerHTML={{ __html: section.rawHtml }}
+                    />
                   ) : !section ? (
                     <div className="filing-reader-missing" aria-hidden="true" />
                   ) : (

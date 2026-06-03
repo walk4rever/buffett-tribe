@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.36.13] - 2026-06-03
+
+### Added
+- `FilingSection` 增加 section text / blocks / HTML artifact 引用字段，并新增迁移脚本将旧的大字段内容归档到 `FilingArtifact`。
+- 新增 `/api/filing-section`，支持年报正文按需从 artifact 懒加载完整 section 内容。
+- 新增 table-rendered 10-K item heading 的提取回归测试。
+
+### Changed
+- 10-K 导入和 section 提取流程改为将完整正文、结构化 blocks 和 HTML 片段写入 artifact，数据库保留 preview 和轻量结构。
+- 年报阅读器过滤内部 `section_*` artifacts，并将正文内 note/小标题样式调整为更接近年报正文的层级标题。
+
+### Fixed
+- 改进 10-K item heading 检测，支持 Apple 这类 compact table heading 的章节切分。
+
 ## [v0.36.0] - 2026-05-26
 
 ### Changed

@@ -690,6 +690,13 @@ export type CompanyAnnualFilingSection = {
   rawHtml: string | null;
   outlineJson: Prisma.JsonValue | null;
   blocksJson: Prisma.JsonValue | null;
+  contentPreview: string | null;
+  contentTextLength: number;
+  blockCount: number;
+  extractionVersion: number;
+  textArtifactId: string | null;
+  blocksArtifactId: string | null;
+  htmlArtifactId: string | null;
 };
 
 export type CompanyAnnualFilingOutlineNode = {
@@ -779,6 +786,13 @@ const COMPANY_ANNUAL_FILING_SELECT = {
       rawHtml: true,
       outlineJson: true,
       blocksJson: true,
+      contentPreview: true,
+      contentTextLength: true,
+      blockCount: true,
+      extractionVersion: true,
+      textArtifactId: true,
+      blocksArtifactId: true,
+      htmlArtifactId: true,
     },
     orderBy: [{ section: "asc" }],
   },

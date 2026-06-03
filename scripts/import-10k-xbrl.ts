@@ -30,6 +30,10 @@ import {
   fetchSecText,
   SEC_HEADERS,
 } from "./lib/filing-archive";
+import {
+  buildStoredFilingSectionData,
+  buildStoredTextOnlyFilingSectionData,
+} from "./lib/filing-section-storage";
 import { buildAnnualReportToc } from "../src/lib/annual-report-html";
 
 const db = new PrismaClient();
@@ -300,6 +304,8 @@ function findBestFactValue(
 async function upsertFilingSectionsFromHtml(
   entityId: string,
   sourceId: string,
+  cik: string,
+  accession: string,
   html: string,
   filingKind: "10k" | "20f" | "40f",
   sourceUrl?: string,
@@ -316,25 +322,18 @@ async function upsertFilingSectionsFromHtml(
   });
 
   for (const [section, extracted] of Object.entries(sections)) {
+    const data = await buildStoredFilingSectionData(db, {
+      entityId,
+      sourceId,
+      cik,
+      accession,
+      sourceUrl,
+    }, section, extracted);
+
     await db.filingSection.upsert({
       where: { sourceId_section: { sourceId, section } },
-      update: {
-        content: extracted.content,
-        rawHtml: extracted.rawHtml,
-        outlineJson: extracted.outline as Prisma.InputJsonValue,
-        blocksJson: extracted.blocks as Prisma.InputJsonValue,
-        extractedAt: new Date(),
-      },
-      create: {
-        entityId,
-        sourceId,
-        section,
-        content: extracted.content,
-        rawHtml: extracted.rawHtml,
-        outlineJson: extracted.outline as Prisma.InputJsonValue,
-        blocksJson: extracted.blocks as Prisma.InputJsonValue,
-        extractedAt: new Date(),
-      },
+      update: data,
+      create: data,
     });
   }
   return keys.length;
@@ -430,6 +429,8 @@ function classify40FAttachment(text: string, file: Awaited<ReturnType<typeof fet
 async function upsert40FAttachmentSections(
   entityId: string,
   sourceId: string,
+  cik: string,
+  accession: string,
   files: Awaited<ReturnType<typeof fetchFilingIndexFiles>>["files"],
 ) {
   const htmlAttachments = files.filter((file) => {
@@ -452,25 +453,18 @@ async function upsert40FAttachmentSections(
     if (!content) continue;
 
     for (const section of sections) {
+      const data = await buildStoredTextOnlyFilingSectionData(db, {
+        entityId,
+        sourceId,
+        cik,
+        accession,
+        sourceUrl: file.url,
+      }, section, content, rawHtml);
+
       await db.filingSection.upsert({
         where: { sourceId_section: { sourceId, section } },
-        update: {
-          content,
-          rawHtml,
-          outlineJson: Prisma.JsonNull,
-          blocksJson: Prisma.JsonNull,
-          extractedAt: new Date(),
-        },
-        create: {
-          entityId,
-          sourceId,
-          section,
-          content,
-          rawHtml,
-          outlineJson: Prisma.JsonNull,
-          blocksJson: Prisma.JsonNull,
-          extractedAt: new Date(),
-        },
+        update: data,
+        create: data,
       });
       seenSections.add(section);
       upserted++;
@@ -1112,6 +1106,8 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
     const sectionCount = await upsertFilingSectionsFromHtml(
       companyEntity.id,
       extSource.id,
+      cik,
+      filing.accession,
       html,
       extSource.kind as "10k" | "20f" | "40f",
       `${filingUrlBase}/${filing.primaryDocument}`,
@@ -1121,7 +1117,7 @@ async function import10kForTicker(ticker: string, fromYear: number, toYear: numb
     const { html: indexHtml, files: indexFiles } = await fetchFilingIndexFiles(cik, filing.accession);
     const attachmentSectionCount =
       extSource.kind === "40f"
-        ? await upsert40FAttachmentSections(companyEntity.id, extSource.id, indexFiles)
+        ? await upsert40FAttachmentSections(companyEntity.id, extSource.id, cik, filing.accession, indexFiles)
         : 0;
     const attachmentCount = await upsertFilingAttachments(
       companyEntity.id,

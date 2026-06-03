@@ -299,6 +299,20 @@ function isLikelyHeadingText(text: string) {
   return /^[A-Z][A-Z0-9 ,&()\-/'"]+$/.test(normalized);
 }
 
+function isLikelyItemHeadingTable(text: string) {
+  const normalized = normalizeHeadingText(text);
+  if (!normalized) return false;
+  if (normalized.length > 240) return false;
+  if (!/^item\s+\d+[a-z]?\s*\./i.test(normalized)) return false;
+  if (/\b(table of contents|page)\b/i.test(normalized)) return false;
+
+  // TOC rows often collapse to "Item 1.Business1"; actual inline section
+  // headings usually end with punctuation or a bracketed reserved marker.
+  if (/\d{1,3}$/.test(normalized) && !/[.!?\]]$/.test(normalized)) return false;
+
+  return true;
+}
+
 function guessHeadingLevel(text: string) {
   const normalized = normalizePlainText(text);
   if (/^ITEM\s+\d+[A-Z]?\b/i.test(normalized)) return 2;
@@ -945,7 +959,8 @@ export function extractTargetSections(
 
     const isHeading =
       block.type === "heading" ||
-      (block.type === "paragraph" && isLikelyHeadingText(text));
+      (block.type === "paragraph" && isLikelyHeadingText(text)) ||
+      (block.type === "table" && isLikelyItemHeadingTable(text));
     if (!isHeading) continue;
 
     const target = matchSectionByHeading(text, template);

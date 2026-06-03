@@ -11,6 +11,7 @@
 import prisma from "../src/lib/prisma";
 import { extractTargetSections } from "./lib/extract-10k-sections";
 import { buildAnnualReportToc } from "../src/lib/annual-report-html";
+import { buildStoredFilingSectionData } from "./lib/filing-section-storage";
 
 const HEADERS = {
   "User-Agent": "buffett-tribe research walkklaw@gmail.com",
@@ -20,10 +21,20 @@ const HEADERS = {
 const CONCURRENCY = 3;
 const REQUEST_DELAY_MS = 300;
 
-async function processSource(source: { id: string; url: string; filerEntityId: string | null; metadata: unknown; kind: string }) {
+async function processSource(source: {
+  id: string;
+  url: string;
+  filerEntityId: string | null;
+  metadata: unknown;
+  kind: string;
+  accessionNumber: string | null;
+  filer: { cik: string | null } | null;
+}) {
   if (!source.url || !source.filerEntityId) return { sections: 0, skipped: true };
 
   try {
+    const label = `${source.id} ${source.kind}`;
+    console.log(`  ${label}: fetching ${source.url}`);
     const timeoutMs = source.kind === "20f" || source.kind === "40f" ? 120000 : 30000;
     const res = await fetch(source.url, { headers: HEADERS, signal: AbortSignal.timeout(timeoutMs) });
     if (!res.ok) {
@@ -37,10 +48,12 @@ async function processSource(source: { id: string; url: string; filerEntityId: s
       return { sections: 0, skipped: false };
     }
 
+    console.log(`  ${label}: extracting from ${html.length.toLocaleString()} bytes`);
     const sections = extractTargetSections(html, source.url, source.kind as "10k" | "20f" | "40f");
     const tocJson = buildAnnualReportToc(html);
     let upserted = 0;
     const keys = Object.keys(sections);
+    console.log(`  ${label}: extracted ${keys.length} sections`);
 
     if (keys.length) {
       await prisma.filingSection.deleteMany({
@@ -52,25 +65,21 @@ async function processSource(source: { id: string; url: string; filerEntityId: s
     }
 
     for (const [key, extracted] of Object.entries(sections)) {
+      console.log(
+        `  ${label}: upserting ${key} (${extracted.content.length.toLocaleString()} content chars, ${extracted.rawHtml.length.toLocaleString()} raw chars)`,
+      );
+      const data = await buildStoredFilingSectionData(prisma, {
+        entityId: source.filerEntityId,
+        sourceId: source.id,
+        cik: source.filer?.cik,
+        accession: source.accessionNumber,
+        sourceUrl: source.url,
+      }, key, extracted);
+
       await prisma.filingSection.upsert({
         where: { sourceId_section: { sourceId: source.id, section: key } },
-        update: {
-          content: extracted.content,
-          rawHtml: extracted.rawHtml,
-          outlineJson: extracted.outline,
-          blocksJson: extracted.blocks,
-          extractedAt: new Date(),
-        },
-        create: {
-          entityId: source.filerEntityId,
-          sourceId: source.id,
-          section: key,
-          content: extracted.content,
-          rawHtml: extracted.rawHtml,
-          outlineJson: extracted.outline,
-          blocksJson: extracted.blocks,
-          extractedAt: new Date(),
-        },
+        update: data,
+        create: data,
       });
       upserted++;
     }
@@ -122,7 +131,16 @@ async function main() {
       where,
       orderBy: [{ filerEntityId: "asc" }, { periodYear: "desc" }],
       take: limit,
-      select: { id: true, url: true, filerEntityId: true, periodYear: true, kind: true, metadata: true },
+      select: {
+        id: true,
+        url: true,
+        filerEntityId: true,
+        periodYear: true,
+        kind: true,
+        metadata: true,
+        accessionNumber: true,
+        filer: { select: { cik: true } },
+      },
     });
 
   console.log(`Found ${sources.length} filings to process`);

@@ -7112,13 +7112,12 @@ body.layout-no-header {
 }
 
 .filing-reader-inline-heading {
-  margin: 0;
+  margin: 1.15rem 0 0.25rem;
   color: #0f172a;
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
-  padding-left: 0.72rem;
-  border-left: 2px solid rgba(37, 99, 235, 0.18);
+  line-height: 1.42;
+  letter-spacing: 0;
 }
 
 .filing-reader-block {
@@ -7130,27 +7129,28 @@ body.layout-no-header {
 }
 
 .filing-reader-block-heading {
-  margin: 0;
+  margin: 1.35rem 0 0.28rem;
   color: #0f172a;
-  font-weight: 700;
-  line-height: 1.28;
-  letter-spacing: -0.03em;
-  padding-left: 0.9rem;
-  border-left: 3px solid rgba(161, 98, 7, 0.28);
+  font-weight: 680;
+  line-height: 1.36;
+  letter-spacing: 0;
 }
 
 .filing-reader-block-heading--level2 {
-  font-size: 1.14rem;
+  font-size: 1.12rem;
 }
 
 .filing-reader-block-heading--level3 {
-  font-size: 1.02rem;
+  font-size: 1rem;
 }
 
 .filing-reader-block-heading--level4,
 .filing-reader-block-heading--level5,
-.filing-reader-block-heading--level6 {
-  font-size: 0.94rem;
+.filing-reader-block-heading--level6,
+.filing-reader-block-heading--note {
+  color: #243145;
+  font-size: 0.95rem;
+  font-weight: 650;
 }
 
 .filing-reader-list {
@@ -7169,13 +7169,12 @@ body.layout-no-header {
 }
 
 .filing-reader-note {
-  margin: 0;
-  padding: 0.72rem 0.82rem;
-  border-left: 3px solid rgba(161, 98, 7, 0.3);
-  background: rgba(217, 119, 6, 0.06);
-  border-radius: 10px;
-  color: #334155;
-  overflow-wrap: anywhere;
+  margin: 1.35rem 0 0.28rem;
+  color: #243145;
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.36;
+  letter-spacing: 0;
   max-width: 74ch;
 }
 

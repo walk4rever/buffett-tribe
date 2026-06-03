@@ -320,18 +320,33 @@ model FilingSection {
   sourceId String // 关联 ExtSource
 
   section     String // "item_1_business" | "item_1a_risk_factors" | "item_2_properties" | "item_3_legal" | "item_7_mda" | "item_7a_market_risk" | "item_8_notes" | "exhibits"
-  content     String // 提取的纯文本 / Markdown（清洗后的可读文本）
-  rawHtml     String? // 原始 HTML 片段（保留用于精确溯源和重新提取）
+  content     String // 兼容字段：新架构下保存 preview / lightweight fallback，完整文本在 textArtifact
+  rawHtml     String? // 兼容字段：新架构下不再保存大 HTML，完整片段在 htmlArtifact
   outlineJson Json? // 目录树 / 标题层级
-  blocksJson  Json? // 结构化正文块（heading / paragraph / list / table / note）
+  blocksJson  Json? // 兼容字段：新架构下保存去掉 html 的轻量 blocks，完整结构在 blocksArtifact
+
+  contentPreview    String?
+  contentTextLength Int     @default(0)
+  blockCount        Int     @default(0)
+  extractionVersion Int     @default(1)
+
+  textArtifactId   String?
+  blocksArtifactId String?
+  htmlArtifactId   String?
 
   extractedAt DateTime @default(now())
 
   entity Entity    @relation(fields: [entityId], references: [id], onDelete: Cascade)
   source ExtSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  textArtifact   FilingArtifact? @relation("FilingSectionTextArtifact", fields: [textArtifactId], references: [id], onDelete: SetNull)
+  blocksArtifact FilingArtifact? @relation("FilingSectionBlocksArtifact", fields: [blocksArtifactId], references: [id], onDelete: SetNull)
+  htmlArtifact   FilingArtifact? @relation("FilingSectionHtmlArtifact", fields: [htmlArtifactId], references: [id], onDelete: SetNull)
 
   @@unique([sourceId, section])
   @@index([entityId, section])
+  @@index([textArtifactId])
+  @@index([blocksArtifactId])
+  @@index([htmlArtifactId])
 }
 
 model FilingAttachment {
@@ -357,7 +372,7 @@ model FilingAttachment {
 model FilingArtifact {
   id           String   @id @default(cuid())
   sourceId     String
-  kind         String // primary_html | index_html | attachment | data_file
+  kind         String // primary_html | index_html | attachment | data_file | section_text | section_blocks | section_html
   objectKey    String   @unique
   contentType  String
   sizeBytes    BigInt
@@ -370,6 +385,9 @@ model FilingArtifact {
   updatedAt    DateTime @updatedAt
 
   source ExtSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  textForSections   FilingSection[] @relation("FilingSectionTextArtifact")
+  blocksForSections FilingSection[] @relation("FilingSectionBlocksArtifact")
+  htmlForSections   FilingSection[] @relation("FilingSectionHtmlArtifact")
 
   @@index([sourceId, kind])
   @@index([sha256])
