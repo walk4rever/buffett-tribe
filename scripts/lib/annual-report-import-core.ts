@@ -1,27 +1,17 @@
 /**
- * import-10k-xbrl.ts
+ * annual-report-import-core.ts
  *
- * Import annual 10-K financial line items from SEC EDGAR XBRL CompanyFacts.
- *
- * Usage:
- *   npm run import:10k -- --ticker AAPL --from 2021 --to 2024
- *   npm run import:10k -- --ticker MSFT --years 5
- *
- * Defaults:
- *   --years 5 (if --from/--to not provided)
+ * Shared annual-report storage and parsing primitives.
  */
 import { Prisma, PrismaClient } from "@prisma/client";
 import * as cheerio from "cheerio";
-import { hasChineseText, issuerKey, normalizeEnglishName } from "../src/lib/company-name-map";
-import { translateCompanyNameToZh, upsertNameMapEntries } from "./lib/company-name-zh";
+import { hasChineseText, issuerKey, normalizeEnglishName } from "../../src/lib/company-name-map";
+import { translateCompanyNameToZh, upsertNameMapEntries } from "./company-name-zh";
 import {
-  fetchAllAnnualFilings,
-  fetchSecSubmissions,
   mapSectorFromSic,
-  pickCompanyProfile,
   type SecCompanyProfile,
-} from "./lib/sec-company-profile";
-import { extractTargetSections, normalizeHtmlToText } from "./lib/extract-10k-sections";
+} from "./sec-company-profile";
+import { extractTargetSections, normalizeHtmlToText } from "./extract-10k-sections";
 import {
   archiveFilingArtifact,
   buildFilingArtifactKey,
@@ -29,16 +19,13 @@ import {
   fetchSecBuffer,
   fetchSecText,
   SEC_HEADERS,
-} from "./lib/filing-archive";
+} from "./filing-archive";
 import {
   buildStoredFilingSectionData,
   buildStoredTextOnlyFilingSectionData,
-} from "./lib/filing-section-storage";
-import { buildAnnualReportToc } from "../src/lib/annual-report-html";
+} from "./filing-section-storage";
 
-const db = new PrismaClient();
-
-const SEC_WWW = "https://www.sec.gov";
+export const db = new PrismaClient();
 
 type QuarterFact = {
   start?: string;
@@ -66,7 +53,7 @@ type InlineXbrlFact = {
   value: number | null;
 };
 
-type InlineXbrlDocument = {
+export type InlineXbrlDocument = {
   contexts: Map<string, InlineXbrlContext>;
   facts: InlineXbrlFact[];
 };
@@ -79,7 +66,7 @@ type LineItemConfig = {
   periodType: "instant" | "duration";
 };
 
-const LINE_ITEMS: LineItemConfig[] = [
+export const LINE_ITEMS: LineItemConfig[] = [
   {
     key: "Revenue",
     tagsUsGaap: ["RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "Revenues"],
@@ -159,19 +146,10 @@ const TICKER_ALIASES: Record<string, string> = {
   YY: "JOYY",
 };
 
-const ANNUAL_FORMS = new Set(["10-K", "10-K/A", "20-F", "20-F/A", "40-F", "40-F/A"]);
+export const ANNUAL_FORMS = new Set(["10-K", "10-K/A", "20-F", "20-F/A", "40-F", "40-F/A"]);
 const zhByTickerDb = new Map<string, string>();
 
-function parsePositiveInt(value: string | undefined, fallback: number) {
-  if (!value) return fallback;
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new Error(`Invalid positive integer: ${value}`);
-  }
-  return parsed;
-}
-
-function mapLimit<T, R>(items: T[], concurrency: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
+export function mapLimit<T, R>(items: T[], concurrency: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
   const results = new Array<R>(items.length);
   let cursor = 0;
   const workers = Array.from({ length: Math.max(1, concurrency) }, async () => {
@@ -184,64 +162,12 @@ function mapLimit<T, R>(items: T[], concurrency: number, fn: (item: T, index: nu
   return Promise.all(workers).then(() => results);
 }
 
-function normalizeTicker(ticker: string): string {
+export function normalizeTicker(ticker: string): string {
   const raw = ticker.trim().toUpperCase();
   return TICKER_ALIASES[raw] ?? raw;
 }
 
-function parseArgs(args: string[]) {
-  const ticker = normalizeTicker(args.find((_, i) => args[i - 1] === "--ticker") ?? "");
-  const fromArg = args.find((_, i) => args[i - 1] === "--from");
-  const toArg = args.find((_, i) => args[i - 1] === "--to");
-  const yearsArg = args.find((_, i) => args[i - 1] === "--years");
-  const archiveConcurrencyArg = args.find((_, i) => args[i - 1] === "--archive-concurrency");
-  const filingConcurrencyArg = args.find((_, i) => args[i - 1] === "--filing-concurrency");
-  const skipAttachmentArchive = args.includes("--skip-attachment-archive");
-  const years = yearsArg ? parseInt(yearsArg, 10) : 5;
-  const archiveConcurrency = parsePositiveInt(archiveConcurrencyArg, 4);
-  const filingConcurrency = parsePositiveInt(filingConcurrencyArg, 1);
-
-  if (!ticker) {
-    throw new Error("Missing --ticker. Example: --ticker AAPL");
-  }
-  if ((fromArg && !toArg) || (!fromArg && toArg)) {
-    throw new Error("--from and --to must be used together.");
-  }
-
-  let fromYear: number;
-  let toYear: number;
-  if (fromArg && toArg) {
-    fromYear = parseInt(fromArg, 10);
-    toYear = parseInt(toArg, 10);
-    if (Number.isNaN(fromYear) || Number.isNaN(toYear)) {
-      throw new Error("Invalid --from/--to year.");
-    }
-    if (fromYear > toYear) {
-      throw new Error("--from cannot be greater than --to.");
-    }
-  } else {
-    const now = new Date();
-    toYear = now.getUTCFullYear();
-    fromYear = toYear - years + 1;
-  }
-
-  return { ticker, fromYear, toYear, archiveConcurrency, filingConcurrency, skipAttachmentArchive };
-}
-
-async function getTickerCikMap() {
-  const res = await fetch(`${SEC_WWW}/files/company_tickers.json`, { headers: SEC_HEADERS });
-  if (!res.ok) {
-    throw new Error(`Ticker map fetch failed: ${res.status}`);
-  }
-  const data = (await res.json()) as Record<string, { cik_str: number; ticker: string; title: string }>;
-  const map = new Map<string, { cik: string; title: string }>();
-  for (const item of Object.values(data)) {
-    map.set(item.ticker.toUpperCase(), { cik: String(item.cik_str), title: item.title });
-  }
-  return map;
-}
-
-async function getCompanyFacts(cik: string) {
+export async function getCompanyFacts(cik: string) {
   const padded = cik.padStart(10, "0");
   const res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${padded}.json`, { headers: SEC_HEADERS });
   if (!res.ok) throw new Error(`CompanyFacts fetch failed for CIK ${cik}`);
@@ -253,7 +179,7 @@ async function getCompanyFacts(cik: string) {
   }>;
 }
 
-function findBestFactValue(
+export function findBestFactValue(
   facts: Awaited<ReturnType<typeof getCompanyFacts>>,
   tagsUsGaap: string[],
   tagsIfrs: string[],
@@ -302,7 +228,7 @@ function findBestFactValue(
   return candidates[0].val;
 }
 
-async function upsertFilingSectionsFromHtml(
+export async function upsertFilingSectionsFromHtml(
   entityId: string,
   sourceId: string,
   cik: string,
@@ -427,7 +353,7 @@ function classify40FAttachment(text: string, file: Awaited<ReturnType<typeof fet
   return [...sections];
 }
 
-async function upsert40FAttachmentSections(
+export async function upsert40FAttachmentSections(
   entityId: string,
   sourceId: string,
   cik: string,
@@ -484,7 +410,7 @@ async function upsert40FAttachmentSections(
   return upserted;
 }
 
-async function upsertFilingAttachments(
+export async function upsertFilingAttachments(
   entityId: string,
   sourceId: string,
   files: Awaited<ReturnType<typeof fetchFilingIndexFiles>>["files"],
@@ -509,7 +435,7 @@ async function upsertFilingAttachments(
   return files.length;
 }
 
-async function archiveFilingArtifacts(params: {
+export async function archiveFilingArtifacts(params: {
   entityId: string;
   sourceId: string;
   cik: string;
@@ -668,7 +594,7 @@ function normalizeInlineUnitRef(unitRef: string | null) {
   return trimmed.toUpperCase();
 }
 
-function parseInlineXbrlDocument(html: string): InlineXbrlDocument {
+export function parseInlineXbrlDocument(html: string): InlineXbrlDocument {
   const contexts = new Map<string, InlineXbrlContext>();
   const contextRe = /<xbrli:context\b([^>]*)>([\s\S]*?)<\/xbrli:context>/gi;
   let contextMatch: RegExpExecArray | null;
@@ -735,7 +661,7 @@ function parseInlineXbrlDocument(html: string): InlineXbrlDocument {
   return { contexts, facts };
 }
 
-function pickInlineFactWithUnit(
+export function pickInlineFactWithUnit(
   doc: InlineXbrlDocument,
   tagsUsGaap: string[],
   tagsIfrs: string[],
@@ -766,7 +692,7 @@ function pickInlineFactWithUnit(
   return candidates[0];
 }
 
-function decimalFromNumber(value: number) {
+export function decimalFromNumber(value: number) {
   if (!Number.isFinite(value)) return null;
   return value.toString();
 }
@@ -775,7 +701,7 @@ function toJsonValue(value: unknown): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue;
 }
 
-async function batchUpsertFinancialFactsFromApi(
+export async function batchUpsertFinancialFactsFromApi(
   entityId: string,
   sourceId: string,
   facts: Awaited<ReturnType<typeof getCompanyFacts>>,
@@ -852,7 +778,7 @@ async function batchUpsertFinancialFactsFromApi(
   return records.length;
 }
 
-async function batchUpsertFinancialFactsFromInline(
+export async function batchUpsertFinancialFactsFromInline(
   entityId: string,
   sourceId: string,
   doc: InlineXbrlDocument,
@@ -924,7 +850,7 @@ async function batchUpsertFinancialFactsFromInline(
   return records.length;
 }
 
-async function upsertCompanyEntity(cik: string, ticker: string, title: string, profile: SecCompanyProfile) {
+export async function upsertCompanyEntity(cik: string, ticker: string, title: string, profile: SecCompanyProfile) {
   // 1. Find by CIK (any type)
   const byCik = await db.entity.findFirst({
     where: { cik },
@@ -984,7 +910,7 @@ async function upsertCompanyEntity(cik: string, ticker: string, title: string, p
   const nextMeta = {
     ...existingMeta,
     source: "sec-edgar",
-    importedBy: "import-10k-xbrl",
+    importedBy: "import-10k-edgartools",
     nameZh,
     nameEnShort,
     industry: profile.sicDescription,
@@ -1035,7 +961,7 @@ async function upsertCompanyEntity(cik: string, ticker: string, title: string, p
   });
 }
 
-async function upsertExtSource(
+export async function upsertExtSource(
   entityId: string,
   cik: string,
   filing: {
@@ -1076,206 +1002,3 @@ async function upsertExtSource(
     },
   });
 }
-
-async function import10kForTicker(params: {
-  ticker: string;
-  fromYear: number;
-  toYear: number;
-  archiveConcurrency: number;
-  filingConcurrency: number;
-  skipAttachmentArchive: boolean;
-}) {
-  const { ticker, fromYear, toYear, archiveConcurrency, filingConcurrency, skipAttachmentArchive } = params;
-  if (!zhByTickerDb.size) {
-    const maps = await db.companyNameMap.findMany({
-      where: { keyType: "ticker" },
-      select: { key: true, nameZh: true },
-    });
-    for (const row of maps) {
-      if (hasChineseText(row.nameZh)) zhByTickerDb.set(row.key.toUpperCase(), row.nameZh);
-    }
-  }
-
-  const tickerMap = await getTickerCikMap();
-  const resolved = tickerMap.get(ticker);
-  if (!resolved) throw new Error(`Ticker not found in SEC ticker map: ${ticker}`);
-
-  const { cik, title } = resolved;
-  console.log(`Ticker ${ticker} -> CIK ${cik} (${title})`);
-
-  const submissions = await fetchSecSubmissions(cik);
-  const profile = pickCompanyProfile(submissions);
-  const companyEntity = await upsertCompanyEntity(cik, ticker, title, profile);
-  const [facts, filings] = await Promise.all([
-    getCompanyFacts(cik),
-    fetchAllAnnualFilings(cik),
-  ]);
-
-  const targetFilings = filings
-    .filter((f) => {
-      const y = new Date(f.reportDate).getUTCFullYear();
-      return y >= fromYear && y <= toYear;
-    })
-    .sort((a, b) => (a.reportDate < b.reportDate ? 1 : -1));
-
-  console.log(`Found ${targetFilings.length} annual filings (10-K/20-F/40-F) in ${fromYear}-${toYear}`);
-  if (!targetFilings.length) return;
-  console.log(
-    `Filing concurrency: ${filingConcurrency}; archive concurrency: ${archiveConcurrency}; skip attachment archive: ${skipAttachmentArchive}`,
-  );
-
-  await mapLimit(targetFilings, filingConcurrency, async (filing) => {
-    const extSource = await upsertExtSource(companyEntity.id, cik, filing);
-    const accnoPath = filing.accession.replace(/-/g, "");
-    const filingUrlBase = `https://www.sec.gov/Archives/edgar/data/${cik}/${accnoPath}`;
-
-    // 1. Write all XBRL facts from CompanyFacts API
-    const apiFactCount = await batchUpsertFinancialFactsFromApi(
-      companyEntity.id,
-      extSource.id,
-      facts,
-      filing,
-    );
-
-    // 2. Download raw filing HTML once and reuse it for extraction + archival
-    const html = await fetchSecText(`${filingUrlBase}/${filing.primaryDocument}`);
-    const tocJson = buildAnnualReportToc(html);
-    const inlineDoc = parseInlineXbrlDocument(html);
-    const inlineFactCount = await batchUpsertFinancialFactsFromInline(
-      companyEntity.id,
-      extSource.id,
-      inlineDoc,
-      filing,
-    );
-
-    // 3. Extract FilingSection text (Item 1/1A/2/3/7/7A/8 …) from the same HTML
-    const sectionCount = await upsertFilingSectionsFromHtml(
-      companyEntity.id,
-      extSource.id,
-      cik,
-      filing.accession,
-      html,
-      extSource.kind as "10k" | "20f" | "40f",
-      `${filingUrlBase}/${filing.primaryDocument}`,
-    );
-
-    // 4. Download index page once, register attachment rows, and archive all listed files
-    const { html: indexHtml, files: indexFiles } = await fetchFilingIndexFiles(cik, filing.accession);
-    const attachmentSectionCount =
-      extSource.kind === "40f"
-        ? await upsert40FAttachmentSections(companyEntity.id, extSource.id, cik, filing.accession, indexFiles)
-        : 0;
-    const attachmentCount = await upsertFilingAttachments(
-      companyEntity.id,
-      extSource.id,
-      indexFiles.filter((file) => file.category === "attachment"),
-    );
-    await archiveFilingArtifacts({
-      entityId: companyEntity.id,
-      sourceId: extSource.id,
-      cik,
-      accession: filing.accession,
-      primaryDocument: filing.primaryDocument,
-      filingUrlBase,
-      primaryHtml: html,
-      indexHtml,
-      indexFiles,
-      concurrency: archiveConcurrency,
-      skipAttachmentArchive,
-    });
-
-    await db.extSource.update({
-      where: { id: extSource.id },
-      data: {
-        metadata: {
-          ...(extSource.metadata as Record<string, unknown>),
-          tocJson,
-        },
-      },
-    });
-
-    // 5. Continue existing LINE_ITEMS logic (derived layer)
-    let upserted = 0;
-    let missing = 0;
-    let fallbackUsed = 0;
-
-    for (const item of LINE_ITEMS) {
-      const companyFactsValue = findBestFactValue(
-        facts,
-        item.tagsUsGaap,
-        item.tagsIfrs,
-        item.unitCandidates,
-        filing.reportDate,
-      );
-
-      let value = companyFactsValue;
-      let unit = item.unitCandidates[0];
-
-      if (value == null) {
-        const inlineFact = pickInlineFactWithUnit(
-          inlineDoc,
-          item.tagsUsGaap,
-          item.tagsIfrs,
-          filing.reportDate,
-          item.periodType,
-          item.unitCandidates,
-        );
-        if (inlineFact) {
-          value = inlineFact.value;
-          unit = inlineFact.unit ? normalizeInlineUnitRef(inlineFact.unit) ?? unit : unit;
-          fallbackUsed++;
-        }
-      }
-
-      if (value == null) {
-        missing++;
-        continue;
-      }
-
-      await db.financial.upsert({
-        where: {
-          entityId_periodEnd_periodType_lineItem: {
-            entityId: companyEntity.id,
-            periodEnd: new Date(filing.reportDate),
-            periodType: "FY",
-            lineItem: item.key,
-          },
-        },
-        create: {
-          entityId: companyEntity.id,
-          sourceId: extSource.id,
-          periodEnd: new Date(filing.reportDate),
-          periodType: "FY",
-          lineItem: item.key,
-          value: decimalFromNumber(value),
-          unit,
-        },
-        update: {
-          sourceId: extSource.id,
-          value: decimalFromNumber(value),
-          unit,
-        },
-      });
-      upserted++;
-    }
-
-    console.log(
-      `  ${filing.reportDate} (${filing.accession}) -> facts(API ${apiFactCount}, Inline ${inlineFactCount}), sections ${sectionCount}+${attachmentSectionCount}, attachments ${attachmentCount}, derived ${upserted}, missing ${missing}, fallback ${fallbackUsed}`,
-    );
-  });
-}
-
-async function main() {
-  const { ticker, fromYear, toYear, archiveConcurrency, filingConcurrency, skipAttachmentArchive } = parseArgs(process.argv.slice(2));
-  await import10kForTicker({ ticker, fromYear, toYear, archiveConcurrency, filingConcurrency, skipAttachmentArchive });
-  console.log("Done.");
-}
-
-main()
-  .catch((err) => {
-    console.error("Fatal:", err);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await db.$disconnect();
-  });

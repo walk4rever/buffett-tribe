@@ -73,7 +73,7 @@ async function runImport(params: {
   const childArgs = [
     "--env-file=.env.local",
     "./node_modules/.bin/tsx",
-    "scripts/import-10k-xbrl.ts",
+    "scripts/import-10k-edgartools.ts",
     "--ticker",
     target.ticker,
     "--from",
@@ -277,7 +277,7 @@ async function main() {
 }
 
 main().catch(async (err) => {
-  console.error("[import-all-10k-xbrl] fatal", err);
+  console.error("[import-all-10k-edgartools] fatal", err);
   await prisma.$disconnect();
   process.exit(1);
 });

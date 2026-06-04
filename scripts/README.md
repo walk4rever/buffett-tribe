@@ -10,10 +10,15 @@
 
 直接导入入口：
 
-- 文件：[import-13f.ts](/Users/rafael/R129/buffett-tribe/scripts/import-13f.ts)
+- 文件：[import-13f-edgartools.ts](/Users/rafael/R129/buffett-tribe/scripts/import-13f-edgartools.ts)
 - 命令：`npm run import:13f`
 - 命令：`npm run import:13f:range`
-- 作用：按季度区间导入 13F 原始持仓。
+- 作用：用 `edgartools` 获取 13F-HR filing 与 holdings，按季度区间导入原始持仓。
+
+共享入库 core：
+
+- 文件：[13f-import-core.ts](/Users/rafael/R129/buffett-tribe/scripts/lib/13f-import-core.ts)
+- 作用：承载 Entity / ExtSource / Security / Holding 的共享入库逻辑。
 
 ## 02. 10-K 导入主入口
 
@@ -23,13 +28,25 @@
 
 底层入口：
 
-- 文件：[import-10k-xbrl.ts](/Users/rafael/R129/buffett-tribe/scripts/import-10k-xbrl.ts)
+- 文件：[import-10k-edgartools.ts](/Users/rafael/R129/buffett-tribe/scripts/import-10k-edgartools.ts)
 - 命令：`npm run import:10k`
-- 作用：按 ticker / 年份导入 10-K、20-F、40-F 财务数据，并把原始 filing HTML、index page、exhibits 与 data files 归档到 R2 的 `FilingArtifact`。
+- 作用：用 `edgartools` 做 annual filing 发现与 primary HTML 获取，按 ticker / 年份导入 10-K、20-F、40-F 财务数据，并把原始 filing HTML、index page、exhibits 与 data files 归档到 R2 的 `FilingArtifact`。
+- 依赖：先安装 `requirements-edgartools.txt`。
+
+共享入库 core：
+
+- 文件：[annual-report-import-core.ts](/Users/rafael/R129/buffett-tribe/scripts/lib/annual-report-import-core.ts)
+- 作用：承载 Prisma/R2/section artifact/facts/attachments/derived financials 的共享入库逻辑。
+
+验证入口：
+
+- 文件：[verify-10k-edgartools.ts](/Users/rafael/R129/buffett-tribe/scripts/verify-10k-edgartools.ts)
+- 命令：`npm run verify:10k:edgartools`
+- 作用：对同一批 ticker 跑 edgartools 导入，并按 accession 输出 sections、attachments、artifacts、facts、derived 计数。
 
 全量入口：
 
-- 文件：[import-all-10k-xbrl.ts](/Users/rafael/R129/buffett-tribe/scripts/import-all-10k-xbrl.ts)
+- 文件：[import-all-10k-edgartools.ts](/Users/rafael/R129/buffett-tribe/scripts/import-all-10k-edgartools.ts)
 - 命令：`npm run import:10k:all`
 - 作用：按公司批量导入 2020 到最新的 10-K / 20-F / 40-F 年报，带 `.cache` checkpoint，可中断续跑。
 

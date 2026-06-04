@@ -692,7 +692,7 @@ Apple HIG 精简风格：
 ### 当前状态
 
 - 页面数据来自数据库 `Financial` 表，通过 `src/lib/company-data.ts#getCompanyFinancials()` 读取。
-- 导入链路为 `scripts/pipeline-10k.ts` -> `scripts/import-10k-from-13f.ts` -> `scripts/import-10k-xbrl.ts`。
+- 导入链路为 `scripts/pipeline-10k.ts` -> `scripts/import-10k-from-13f.ts` -> `scripts/import-10k-edgartools.ts`，共享入库逻辑在 `scripts/lib/annual-report-import-core.ts`。
 - 数据源优先级：SEC CompanyFacts API -> filing-level inline XBRL fallback。
 - 当前 `Financial.lineItem` 已覆盖通用公司常用项目：`Revenue`、`GrossProfit`、`OperatingIncome`、`NetIncome`、`OperatingCashFlow`、`TotalAssets`、`TotalLiabilities`、`ShareholdersEquity`、`EPSBasic`、`EPSDiluted`。
 - `—` 不等于全部“没有数据”：可能是导入映射未覆盖、行业不适用、历史不足，或可由已有项目推导但当前尚未推导。
@@ -770,7 +770,7 @@ Derived metrics 派生指标 / 看板指标
 
 #### Phase 2：扩展 SEC XBRL 映射
 
-- 把 `scripts/import-10k-xbrl.ts` 的 line item 映射配置化，按行业选择 mapping rules。
+- 把 `scripts/lib/annual-report-import-core.ts` 的 line item 映射配置化，按行业选择 mapping rules。
 - 补银行、保险、金融服务常见标签。
 - 重新跑重点持仓公司 2020 至最新 FY 的导入。
 - 扩展 `check:financial:integrity`，从“是否有 FY 数据”升级为“按行业检查核心指标覆盖率”。
@@ -864,7 +864,7 @@ FinancialFact
 - `npm run generate:company-profile`：批量生成并入库公司基本信息
 - `npm run generate:business-model`：批量生成并入库业务概览与商业画布
 - `npm run generate:value-analysis`：批量生成并入库价值分析
-- `scripts/import-10k-xbrl.ts`：现在支持 `companyfacts + filing-level inline XBRL fallback`，并归档 SEC 原始文件到 `FilingArtifact`
+- `scripts/import-10k-edgartools.ts`：用 edgartools 获取 annual filing，支持 `companyfacts + filing-level inline XBRL fallback`，并归档 SEC 原始文件到 `FilingArtifact`
 
 ### 实验与基准
 

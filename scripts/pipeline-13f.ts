@@ -38,7 +38,7 @@ async function main() {
   const importArgs = args.filter((a) => a !== "--strict");
 
   console.log("\\n[1/3] Import 13F filings");
-  const importRes = await run(process.execPath, ["--env-file=.env.local", "./node_modules/.bin/tsx", "scripts/import-13f.ts", ...importArgs]);
+  const importRes = await run(process.execPath, ["--env-file=.env.local", "./node_modules/.bin/tsx", "scripts/import-13f-edgartools.ts", ...importArgs]);
   if (importRes.code !== 0) process.exit(importRes.code);
 
   console.log("\\n[2/3] Reconcile security/company linkage");

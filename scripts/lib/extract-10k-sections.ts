@@ -2,7 +2,7 @@
  * Structured annual filing section extraction.
  *
  * Pure functions — no I/O, no DB. Used by:
- *   - scripts/import-10k-xbrl.ts (inline during import, reuses already-fetched HTML)
+ *   - scripts/import-10k-edgartools.ts (inline during import, reuses already-fetched HTML)
  *   - scripts/extract-10k-sections.ts (backfill tool for filings imported before this was wired)
  */
 

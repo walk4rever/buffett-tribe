@@ -128,7 +128,7 @@ function runTickerImport(ticker: string, fromYear: number, toYear: number): Prom
       [
         "--env-file=.env.local",
         "./node_modules/.bin/tsx",
-        "scripts/import-10k-xbrl.ts",
+        "scripts/import-10k-edgartools.ts",
         "--ticker",
         ticker,
         "--from",
