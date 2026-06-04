@@ -28,6 +28,20 @@ type ArchiveArtifactParams = {
   metadata?: Prisma.InputJsonValue;
 };
 
+const ARCHIVE_TRACE = process.env.ARCHIVE_TRACE === "1";
+
+function formatSeconds(startedAt: number) {
+  return ((Date.now() - startedAt) / 1000).toFixed(1);
+}
+
+function formatBytes(bytes: number) {
+  return bytes.toLocaleString();
+}
+
+function traceArchive(message: string) {
+  if (ARCHIVE_TRACE) console.log(message);
+}
+
 function normalizeKeyPart(value: string) {
   return value
     .trim()
@@ -141,24 +155,36 @@ export async function archiveFilingArtifact(
   db: PrismaClient,
   params: ArchiveArtifactParams,
 ) {
+  const startedAt = Date.now();
   const objectKey = buildFilingArtifactKey({
     cik: params.cik,
     accession: params.accession,
     kind: params.kind,
     originalName: params.originalName,
   });
+  const label = `${params.kind} ${params.originalName}`;
+  traceArchive(`  Artifact ${label}: start size=${formatBytes(params.body.length)} contentType=${params.contentType}`);
 
+  const lookupStartedAt = Date.now();
   const existing = await db.filingArtifact.findUnique({
     where: { objectKey },
   });
+  traceArchive(`  Artifact ${label}: existing lookup ${formatSeconds(lookupStartedAt)}s`);
   if (existing) {
+    traceArchive(`  Artifact ${label}: cache hit total=${formatSeconds(startedAt)}s`);
     return existing;
   }
 
+  const hashStartedAt = Date.now();
   const sha256 = crypto.createHash("sha256").update(params.body).digest("hex");
-  const publicUrl = await uploadToR2(objectKey, params.body, params.contentType);
+  traceArchive(`  Artifact ${label}: hash ${formatSeconds(hashStartedAt)}s sha256=${sha256.slice(0, 12)}`);
 
-  return db.filingArtifact.upsert({
+  const uploadStartedAt = Date.now();
+  const publicUrl = await uploadToR2(objectKey, params.body, params.contentType);
+  traceArchive(`  Artifact ${label}: upload R2 ${formatSeconds(uploadStartedAt)}s`);
+
+  const upsertStartedAt = Date.now();
+  const artifact = await db.filingArtifact.upsert({
     where: { objectKey },
     update: {
       sourceId: params.sourceId,
@@ -184,4 +210,6 @@ export async function archiveFilingArtifact(
       publicUrl,
     },
   });
+  traceArchive(`  Artifact ${label}: db upsert ${formatSeconds(upsertStartedAt)}s total=${formatSeconds(startedAt)}s`);
+  return artifact;
 }

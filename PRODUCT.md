@@ -2,7 +2,7 @@
 
 # 巴菲特部落 · Buffett Tribe — 产品设计文档
 
-> 最后更新：2026-06-01（v0.36.8）
+> 最后更新：2026-06-04（v0.37.0）
 
 ---
 
@@ -28,12 +28,13 @@
 3. [文档系统路线图](#文档系统路线图)
 4. [公司覆盖模型](#公司覆盖模型冷热演进)
 5. [公司研究闭环路线图](#公司研究闭环路线图)
-6. [设计与技术基线](#设计与技术基线)
-7. [当前实现状态](#当前实现状态v0367)
-8. [数据字典与工程口径](#数据字典与工程口径)
-9. [公司页财务看板](#公司页财务看板truth-of-source-设计)
-10. [数据与脚本](#数据与脚本)
-11. [运维速查表](#运维速查表)
+6. [A股与港股覆盖扩展](#a股与港股覆盖扩展)
+7. [设计与技术基线](#设计与技术基线)
+8. [当前实现状态](#当前实现状态v0370)
+9. [数据字典与工程口径](#数据字典与工程口径)
+10. [公司页财务看板](#公司页财务看板truth-of-source-设计)
+11. [数据与脚本](#数据与脚本)
+12. [运维速查表](#运维速查表)
 
 ---
 
@@ -422,6 +423,207 @@ Cron Job 触发 Fact Fetch Pipeline
 
 ---
 
+## A股与港股覆盖扩展
+
+当前系统深度绑定 SEC EDGAR 体系（CIK、XBRL、10-K/20-F/40-F），公司页路由、Entity 模型、财务导入链路、年报阅读器都围绕这一体系构建。下一阶段需要扩展支持 A 股和港股公司，首批以贵州茅台（600519.SS）和泡泡玛特（9992.HK）为验证目标。
+
+### 扩展动机
+
+- 价值投资框架不局限于美股。A 股和港股有大量符合价值投资标准的标的。
+- 用户对话中已频繁出现中概股、A 股和港股公司名称，当前系统只能依赖 LLM 实时搜索回答，没有结构化数据层支撑。
+- 股价数据方面，Yahoo Finance 已原生支持 A 股（后缀 `.SS`/`.SZ`）和港股（后缀 `.HK`），`StockPrice` 表和现有价格导入链路可以复用。
+
+### 核心挑战
+
+| 挑战 | 美股（当前） | A 股 / 港股（目标） |
+|------|------------|-------------------|
+| **标识体系** | CIK（唯一，SEC 分配） | A 股数字代码（600519，需后缀区分沪深）；港股数字代码（9992，后缀 .HK） |
+| **财务来源** | SEC CompanyFacts API + inline XBRL | 无 XBRL 体系；需从东方财富/新浪财经等第三方获取表格化财务数据 |
+| **年报格式** | 标准化 HTML（inline XBRL），有固定章节标签 | PDF 为主，无统一章节标签，结构不固定 |
+| **货币单位** | USD | CNY / HKD |
+| **财年定义** | 各公司自行定义（如 Apple 为 Sep） | 日历年度为主（1-12 月） |
+| **持仓披露** | 13F-HR（标准化季度申报） | A 股十大流通股东（不完整）；港股披露权益（event-driven，非标准化） |
+| **AI 分析语料** | 10-K/20-F/40-F 英文原文 + 大师信件 | 中文年报 PDF + 中文研报 + 公开访谈 |
+
+最大瓶颈是**标识体系**：当前 `Entity.cik` 有 `@unique` 约束，URL 路由为 `/company/[cik]`，公司页查询逻辑、持仓关联、财务读取都假设 CIK 存在。A 股和港股没有 CIK，需要让 Entity 模型和路由层支持无 CIK 的公司。
+
+### 数据源评估
+
+#### akshare（Python 库）
+
+[akshare](https://github.com/akfamily/akshare) 是基于东方财富、新浪财经等源的免费中文金融数据接口库。
+
+| 数据类型 | A 股 | 港股 | 备注 |
+|---------|------|------|------|
+| 公司基本信息 | ✅ 丰富 | ⚠️ 一般 | `stock_individual_info_em()` / `stock_hk_ggt_components_em()` |
+| 历史 K 线/股价 | ✅ | ✅ | `stock_zh_a_hist()` / `stock_hk_hist()` |
+| 财务报表（三大表） | ✅ 较全 | ⚠️ 有限 | `stock_financial_report_sina()` / `stock_financial_analysis_indicator()` |
+| 业绩快报/预告 | ✅ | ❌ | `stock_yjbb_em()` / `stock_yjkb_em()` |
+| 年报原文 PDF | ❌ | ❌ | 需从巨潮资讯网/港交所披露易单独获取 |
+| XBRL 结构化财务 | ❌ | ❌ | 中国股市不采用 XBRL 披露体系 |
+
+**结论**：akshare 足以支撑**阶段 1（基础信息）和阶段 2（财务数据）**。年报原文需要单独处理，不作为首批目标。
+
+#### 备选数据源
+
+| 数据源 | 优势 | 劣势 | 适用阶段 |
+|--------|------|------|---------|
+| **Tushare Pro** | 更专业稳定，财务指标覆盖全 | 需积分/付费 token | 阶段 2 长期替代 |
+| **Yahoo Finance** | 股价已在使用，A 股/港股 ticker 支持 | 财务数据粒度不够 | 阶段 1 股价复用 |
+| **巨潮资讯网 API** | A 股年报 PDF 官方来源 | 无标准化 API，需爬虫 | 阶段 3 年报原文 |
+| **港交所披露易** | 港股公告/年报官方来源 | 无 API，需爬虫 | 阶段 3 年报原文 |
+
+### 实施阶段
+
+#### Phase 1：基础信息 + 股价（最短路径，1-2 天）
+
+**目标**：让贵州茅台、泡泡玛特能在网站上展示基本信息和股价走势图。
+
+**改动点**：
+1. **Entity 模型扩展**：`cik` 改为 nullable，新增 `market`（`'us' | 'cn' | 'hk'`）和 `code`（A 股/港股数字代码）字段。
+2. **URL 路由扩展**：支持多市场标识格式：
+   - `/company/CIK0000320193` → SEC 公司（向后兼容）
+   - `/company/cn-600519` → A 股
+   - `/company/hk-9992` → 港股
+3. **公司信息获取**：新增 akshare 脚本获取公司中文名、行业、交易所等基础信息，写入 `Entity.metadata`。
+4. **股价**：复用现有 Yahoo Finance 导入脚本
+   - 茅台：`600519.SS`
+   - 泡泡玛特：`9992.HK`
+   - 已有 `npm run import:stock-prices:yf` 可直接使用
+
+**公司页适配**：
+- 概览区 `CIK` 字段对非美市场显示为 `—` 或替换为市场代码。
+- `交易所` 字段展示对应市场（上交所/深交所/港交所）。
+- 财务分析 tab 显示 "暂无数据" 占位，不报错。
+- 年度报告 tab 显示 "A 股/港股年报原文暂未接入" 占位。
+
+#### Phase 2：财务数据（中等复杂度，3-5 天）
+
+**目标**：展示财务报表趋势。
+
+**改动点**：
+1. **新增 akshare 财务导入脚本**：获取三大报表数据，建立中文财务指标 → `LINE_ITEMS` 映射：
+
+   | 中文报表指标 | LINE_ITEM |
+   |-------------|-----------|
+   | 营业收入 / 营业总收入 | Revenue |
+   | 毛利润 / 营业毛利 | GrossProfit |
+   | 营业利润 / 营业利润（亏损） | OperatingIncome |
+   | 净利润 / 归属于母公司净利润 | NetIncome |
+   | 经营活动产生的现金流量净额 | OperatingCashFlow |
+   | 资产总计 / 总资产 | TotalAssets |
+   | 负债合计 / 总负债 | TotalLiabilities |
+   | 所有者权益合计 / 归属于母公司股东权益 | ShareholdersEquity |
+   | 基本每股收益 | EPSBasic |
+   | 稀释每股收益 | EPSDiluted |
+
+2. **货币单位处理**：`Financial.unit` 增加 `'CNY'` / `'HKD'`，前端展示时标注货币。
+3. **财年对齐**：A 股/港股以日历年度为准，`periodEnd` 统一为 `12-31`。
+4. **存储**：复用现有 `Financial` 表结构，不新建表。
+
+**数据源优先级**：akshare 为主，Tushare Pro 作为备选。
+
+#### Phase 3：年报原文（较复杂，可选，暂缓）
+
+**目标**：年度报告 tab 能阅读年报。
+
+**方案 A（轻量，推荐）**：直接外链到巨潮资讯网/披露易的 PDF，不做本地存储和解析。
+
+**方案 B（重量）**：
+- A 股：下载 PDF → OCR/文本提取 → 按章节切分（需 NLP 或规则匹配，因为 A 股年报结构不统一）。
+- 港股：类似处理。
+
+**建议**：Phase 1 和 2 完成后上线。A 股用户更习惯直接看东方财富/同花顺的年报，本地阅读体验不是刚需。
+
+### 技术方案
+
+#### 数据库改造（最小改动）
+
+```prisma
+model Entity {
+  id            String   @id @default(cuid())
+  type          String   // 'company' | 'security' | 'master' | 'concept'
+  market        String   @default("us") // 'us' | 'cn' | 'hk'
+  canonicalName String
+  aliases       String[] @default([])
+  cik           String?  @unique // SEC 特有，A 股/港股为 null
+  code          String?  // A 股/港股数字代码，如 '600519'、'9992'
+  // ... 其他字段不变
+}
+```
+
+- `cik` 保持 unique，但改为 nullable。
+- 新增 `code` 字段（不设置 unique，因为同一公司可能在多个市场上市）。
+- 新增 `market` 字段区分市场，用于路由解析和展示逻辑。
+
+#### URL 路由改造
+
+公司页路由从 `/company/[cik]` 泛化为 `/company/[id]`，解析逻辑：
+
+```typescript
+function parseCompanyId(raw: string): { market: string; identifier: string } | null {
+  if (raw.startsWith("CIK")) {
+    return { market: "us", identifier: raw.replace(/^CIK0*/, "") };
+  }
+  const cnMatch = raw.match(/^cn-(\d{6})$/);
+  if (cnMatch) return { market: "cn", identifier: cnMatch[1] };
+  const hkMatch = raw.match(/^hk-(\d{4,5})$/);
+  if (hkMatch) return { market: "hk", identifier: hkMatch[1] };
+  return null;
+}
+```
+
+查询逻辑：
+- US：`where: { cik: identifier }`
+- CN/HK：`where: { market, code: identifier }`
+
+#### 财务数据导入（新增脚本）
+
+新增 `scripts/import-cn-financials.ts`：
+
+```typescript
+// 伪代码
+const MAPPING = {
+  "营业收入": "Revenue",
+  "营业总收入": "Revenue",
+  "净利润": "NetIncome",
+  // ...
+};
+
+// 1. 用 akshare 获取三大报表
+// 2. 按年份归集
+// 3. 映射到 LINE_ITEMS
+// 4. 写入 Financial 表（unit = 'CNY' 或 'HKD'）
+```
+
+#### 前端适配
+
+- 公司页概览区：根据 `market` 动态展示字段（US 显示 CIK，CN/HK 显示市场代码）。
+- 财务分析 tab：货币单位展示为 `¥ xxx 亿`（CNY）或 `HK$ xxx 亿`（HKD），与 USD 区分。
+- 年度报告 tab：CN/HK 公司显示 "年报原文暂未接入" 占位，附外链到巨潮/披露易。
+
+### 首批目标公司
+
+| 公司 | 市场 | 代码 | Yahoo Ticker | 选择理由 |
+|------|------|------|-------------|---------|
+| 贵州茅台 | A 股（上交所） | 600519 | 600519.SS | 品牌价值极高，财务数据完整，akshare 接口稳定 |
+| 泡泡玛特 | 港股（港交所） | 9992 | 9992.HK | 新消费代表，港股数据验证 akshare 港股能力 |
+
+### 成功标准
+
+- Phase 1：能访问 `/company/cn-600519` 和 `/company/hk-9992`，页面不报错，展示中文公司名、行业、交易所、股价走势图。
+- Phase 2：财务分析 tab 展示 5 年财务趋势，指标与美股公司统一口径，货币单位正确标注。
+- Phase 3（可选）：年度报告 tab 至少提供外链到官方 PDF。
+
+### 与现有系统的兼容性
+
+- 所有改动向后兼容：US 公司的 CIK 路由、查询逻辑、财务导入链路完全不受影响。
+- `Financial` 表已有 `unit` 字段，支持多货币无需改表。
+- `StockPrice` 表以 `ticker` 为 key，Yahoo Finance 的 A 股/港股 ticker 可直接入库。
+- 公司页 6-tab 结构不变，仅内容层根据 `market` 做条件渲染。
+
+---
+
 ## 设计与技术基线
 
 ### 设计语言
@@ -456,9 +658,9 @@ Apple HIG 精简风格：
 /master/[id]        大师主页（资料库卡片 + 持仓）
 /master/[id]/library  资料阅读（左侧年份/文章列表，右侧正文）
 /master/[id]/holdings 持仓快照
-/company/[cik]      公司研究画布
-/company/[cik]/annual-report  年度报告默认入口（跳转到最新可读年份）
-/company/[cik]/annual-report/[year]  年度报告阅读
+/company/[id]       公司研究画布（id 格式：CIK... / cn-600519 / hk-9992）
+/company/[id]/annual-report  年度报告默认入口（跳转到最新可读年份）
+/company/[id]/annual-report/[year]  年度报告阅读
 /idea               对话研究室（左：对话，右：Canvas）
 /login              登录
 /reset-password     重置密码
@@ -468,7 +670,14 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.36.7）
+## 当前实现状态（v0.37.0）
+
+### v0.37.0 变更（计划中）
+
+- **A 股与港股覆盖扩展**：新增 `Entity.market` 和 `Entity.code` 字段，支持 A 股（cn-600519）和港股（hk-9992）公司接入。
+- **公司页路由泛化**：`/company/[cik]` 改为 `/company/[id]`，支持 `CIK...`、`cn-...`、`hk-...` 三种标识格式。
+- **akshare 数据接入**：新增 A 股/港股公司基础信息和财务数据导入脚本。
+- **多货币财务展示**：`Financial` 表支持 `CNY` / `HKD` 单位，前端按市场展示对应货币符号。
 
 ### v0.36.7 变更
 
@@ -635,6 +844,8 @@ Apple HIG 精简风格：
 | `Ticker` | 股票交易代码，用于在交易所识别证券 | `AAPL`, `MCO`, `SPGI` | 主要用于展示、搜索和价格数据初期导入，不作为稳定主键 |
 | `CUSIP` | 9 位证券标识码，用于唯一识别多数美加证券 | `037833100` | 存在于 `Security.cusip`，适合 13F 证券归并 |
 | `CIK` | SEC 分配给 EDGAR 申报主体的唯一编号 | `0001067983` | 存在于 `Entity.cik`，用于统一 EDGAR / 13F / company 页面 |
+| `Market` | 公司所属市场 | `us`, `cn`, `hk` | 存在于 `Entity.market`，决定标识体系和数据来源 |
+| `Code` | A 股/港股数字代码（不含后缀） | `600519`, `9992` | 存在于 `Entity.code`，与 `market` 组合查询 |
 | `Accession Number` / `accno` | EDGAR 单次申报的唯一受理号 | `0001193125-26-226661` | 存在于 `ExtSource.accessionNumber`，与 `filerEntityId` 组成唯一约束 |
 
 快速辨析：
@@ -651,8 +862,11 @@ Apple HIG 精简风格：
 | `10-K` | 美国上市公司年度报告 | 年报阅读、XBRL 财务事实、章节抽取 |
 | `20-F` | 外国私人发行人年度报告 | 年报阅读、XBRL 财务事实、章节抽取 |
 | `40-F` | 加拿大公司等外国私人发行人年度报告 | 年报阅读，重点依赖 `EX-99` 附件抽取 AIF / MD&A 等章节 |
-| `XBRL` | 结构化财报标记语言 | `FinancialFact` 原始事实层和 `Financial` 标准化项目 |
+| `年报 (A 股)` | A 股上市公司年度报告（PDF） | 年报原文阅读（Phase 3 可选），来源：巨潮资讯网 |
+| `年报 (港股)` | 港股上市公司年度报告（PDF） | 年报原文阅读（Phase 3 可选），来源：港交所披露易 |
+| `XBRL` | 结构化财报标记语言 | `FinancialFact` 原始事实层和 `Financial` 标准化项目（仅美股） |
 | `EDGAR` | SEC 披露系统 | filing discovery、submissions、companyfacts、原文归档 |
+| `akshare` | 中文金融数据 Python 库 | A 股/港股公司信息、财务报表、股价数据获取 |
 
 ### 时间字段
 
@@ -679,9 +893,10 @@ Apple HIG 精简风格：
 
 - 13F 导入与增量对比的工程主键使用 `Holding.securityId`；`ticker` 主要用于展示和价格图早期查询。
 - `Security` 通过 `companyEntityId` 关联公司实体；同一公司可以有多个 `Security`。
-- `ExtSource` 对 SEC filing 使用 `(filerEntityId, accessionNumber)` 去重，避免同一份 filing 重复入库。
+- `ExtSource` 对 SEC filing 使用 `(filerEntityId, accessionNumber)` 去重，避免同一份 filing 重复入库。A 股/港股暂无 filing 归档，ExtSource 相关表对其不适用。
 - 文本关系抽取当前不再落到 Postgres 表；`Mention` 和 `EntityRelation` 已移除，关系检索统一走 Neo4j 图谱链路。
 - 原始 filing 文件通过 `FilingArtifact` 归档到 R2，结构化事实和章节通过 `FinancialFact` / `FilingSection` 保留可追溯数据。
+- 非美市场公司的查询主键：`{ market, code }` 组合（A 股/港股），`{ cik }` 继续用于美股。URL 路由层统一解析为 `companyId`，下游按 `market` 分发查询策略。
 
 ---
 
@@ -837,6 +1052,8 @@ FinancialFact
 
 - `npm run import:13f` / `npm run import:13f:range`：导入 13F 持仓
 - `npm run import:10k`：按 ticker / 年份导入 10-K、20-F、40-F 财务数据
+- `npm run import:cn-financials`：按 code / market 从 akshare 导入 A 股/港股财务报表（新增）
+- `npm run import:cn-company-info`：从 akshare 获取 A 股/港股公司基础信息并写入 Entity（新增）
 - `npm run import:stock-prices:yf`：按 ticker 从 Yahoo Finance 拉取日线价格，可选择写入 `StockPrice`
 - `npm run import:company-stock-prices:yf`：按公司批量补齐价格数据
 - `npm run import:10k:from13f`：从 13F 持仓反推需要补齐的公司财务
@@ -865,6 +1082,8 @@ FinancialFact
 - `npm run generate:business-model`：批量生成并入库业务概览与商业画布
 - `npm run generate:value-analysis`：批量生成并入库价值分析
 - `scripts/import-10k-edgartools.ts`：用 edgartools 获取 annual filing，支持 `companyfacts + filing-level inline XBRL fallback`，并归档 SEC 原始文件到 `FilingArtifact`
+- `scripts/import-cn-financials.ts`：akshare 财务数据导入，含中文指标 → LINE_ITEMS 映射，支持 CNY/HKD 单位写入
+- `scripts/import-cn-company-info.ts`：akshare 公司信息导入，创建/更新 A 股/港股 Entity，自动翻译中文名
 
 ### 实验与基准
 
@@ -895,6 +1114,8 @@ FinancialFact
 - `npm run generate:business-model -- --company AAPL --force`
 - `npm run generate:value-analysis -- --company AAPL --force`
 - `npm run generate:home-signals`
+- `npm run import:cn-company-info -- --market cn --code 600519`
+- `npm run import:cn-financials -- --market cn --code 600519 --years 5`
 
 ### 数据修复
 
