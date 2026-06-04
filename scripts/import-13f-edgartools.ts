@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { ImportTimer } from "./lib/import-timer";
 import {
   db,
   FILERS,
@@ -169,25 +170,40 @@ function warnMissingQuarters(params: {
 
 async function main() {
   const { filersToRun, maxQuarters, quarterList, python } = parseArgs();
-  await seedEntityCache();
+  const importTimer = new ImportTimer("[13F]");
+  await importTimer.time("seed entity cache", () => seedEntityCache());
 
   for (const filer of filersToRun) {
     console.log(`\n── ${filer.name} (CIK ${filer.cik}) ──`);
-    const filerEntity = await upsertFilerEntity(filer);
+    const filerTimer = new ImportTimer(`[13F ${filer.tribeId}]`, "  ");
+    const filerEntity = await filerTimer.time("upsert filer entity", () => upsertFilerEntity(filer));
     console.log(`  Entity: ${filerEntity.id}`);
 
     const fetchCount = quarterList.length > 0 ? 120 : maxQuarters;
-    const payload = await extractWithEdgarTools({ cik: filer.cik, maxFilings: fetchCount, python });
+    const payload = await filerTimer.time(
+      "extract edgartools",
+      () => extractWithEdgarTools({ cik: filer.cik, maxFilings: fetchCount, python }),
+      (result) => `filings=${result.filings.length}`,
+    );
     console.log(`  Found ${payload.filings.length} 13F filings via edgartools ${payload.toolVersion ?? "unknown"} (fetched window: ${fetchCount})`);
 
-    const filingsToImport = filterFilings({ filings: payload.filings, quarterList });
+    const filingsToImport = filerTimer.timeSync(
+      "filter filings",
+      () => filterFilings({ filings: payload.filings, quarterList }),
+      (result) => `selected=${result.length}`,
+    );
     warnMissingQuarters({ requested: quarterList, filings: filingsToImport });
 
     for (const filing of filingsToImport) {
       console.log(`  Filing ${filing.accession} (${filing.reportDate}, filed ${filing.filedAt})`);
       try {
         const started = Date.now();
-        const entries = filing.holdings.map(toEntry).filter((entry) => entry.cusip);
+        const filingTimer = new ImportTimer(`[13F ${filer.tribeId} ${filing.reportDate} ${filing.accession}]`, "    ");
+        const entries = filingTimer.timeSync(
+          "normalize holdings",
+          () => filing.holdings.map(toEntry).filter((entry) => entry.cusip),
+          (result) => `positions=${result.length}`,
+        );
         console.log(`    Parsed ${entries.length} positions`);
         if (!entries.length) {
           console.warn("    No positions parsed - check edgartools 13F object");
@@ -201,6 +217,7 @@ async function main() {
           filing.filedAt,
           filing.reportDate,
           entries,
+          filingTimer,
         );
         const elapsed = ((Date.now() - started) / 1000).toFixed(1);
         console.log(`    ✓ ${imported} holdings saved for Q${quarter} ${year} (${elapsed}s)`);

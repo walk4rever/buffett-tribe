@@ -13,6 +13,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { buildAnnualReportToc } from "../src/lib/annual-report-html";
 import { fetchFilingIndexFiles, fetchSecText } from "./lib/filing-archive";
+import { ImportTimer } from "./lib/import-timer";
 import {
   archiveFilingArtifacts,
   batchUpsertFinancialFactsFromApi,
@@ -190,7 +191,12 @@ async function importEdgarToolsAnnualReports(params: {
   noHtml: boolean;
   python: string;
 }) {
-  const extracted = await extractWithEdgarTools(params);
+  const importTimer = new ImportTimer("[10K]");
+  const extracted = await importTimer.time(
+    "extract edgartools",
+    () => extractWithEdgarTools(params),
+    (payload) => `filings=${payload.filings.length}`,
+  );
   if (!extracted.cik || !extracted.title) {
     throw new Error(`edgartools did not return company identity for ${params.ticker}`);
   }
@@ -199,8 +205,8 @@ async function importEdgarToolsAnnualReports(params: {
   const ticker = extracted.ticker || params.ticker;
   console.log(`Ticker ${ticker} -> CIK ${cik} (${extracted.title}) via edgartools ${extracted.toolVersion ?? "unknown"}`);
 
-  const companyEntity = await upsertCompanyEntity(cik, ticker, extracted.title, extracted.profile);
-  const facts = await getCompanyFacts(cik);
+  const companyEntity = await importTimer.time("upsert company", () => upsertCompanyEntity(cik, ticker, extracted.title, extracted.profile));
+  const facts = await importTimer.time("fetch companyfacts", () => getCompanyFacts(cik));
   const targetFilings = extracted.filings
     .filter((filing) => {
       const y = new Date(filing.reportDate).getUTCFullYear();
@@ -214,129 +220,171 @@ async function importEdgarToolsAnnualReports(params: {
   );
 
   await mapLimit(targetFilings, params.filingConcurrency, async (filing) => {
-    const extSource = await upsertExtSource(companyEntity.id, cik, filing);
+    const filingTimer = new ImportTimer(`[10K ${ticker} ${filing.reportDate} ${filing.accession}]`, "    ");
+    const extSource = await filingTimer.time("upsert source", () => upsertExtSource(companyEntity.id, cik, filing));
     const primaryUrl = filing.primaryUrl ?? `${filing.filingUrlBase}/${filing.primaryDocument}`;
 
-    const apiFactCount = await batchUpsertFinancialFactsFromApi(companyEntity.id, extSource.id, facts, filing);
-    const html = filing.html || await fetchSecText(primaryUrl);
-    const tocJson = buildAnnualReportToc(html);
-    const inlineDoc = parseInlineXbrlDocument(html);
-    const inlineFactCount = await batchUpsertFinancialFactsFromInline(companyEntity.id, extSource.id, inlineDoc, filing);
-
-    const sectionCount = await upsertFilingSectionsFromHtml(
-      companyEntity.id,
-      extSource.id,
-      cik,
-      filing.accession,
-      html,
-      extSource.kind as "10k" | "20f" | "40f",
-      primaryUrl,
+    const apiFactCount = await filingTimer.time(
+      "store companyfacts",
+      () => batchUpsertFinancialFactsFromApi(companyEntity.id, extSource.id, facts, filing),
+      (count) => `facts=${count}`,
+    );
+    const html = await filingTimer.time(
+      filing.html ? "load primary html from edgartools" : "fetch primary html",
+      async () => filing.html || await fetchSecText(primaryUrl),
+      (body) => `bytes=${Buffer.byteLength(body, "utf8").toLocaleString()}`,
+    );
+    const tocJson = filingTimer.timeSync("build toc", () => buildAnnualReportToc(html));
+    const inlineDoc = filingTimer.timeSync(
+      "parse inline facts",
+      () => parseInlineXbrlDocument(html),
+      (doc) => `facts=${doc.facts.length}, contexts=${doc.contexts.size}`,
+    );
+    const inlineFactCount = await filingTimer.time(
+      "store inline facts",
+      () => batchUpsertFinancialFactsFromInline(companyEntity.id, extSource.id, inlineDoc, filing),
+      (count) => `facts=${count}`,
     );
 
-    const { html: indexHtml, files: indexFiles } = await fetchFilingIndexFiles(cik, filing.accession);
+    const sectionCount = await filingTimer.time(
+      "extract/store sections",
+      () => upsertFilingSectionsFromHtml(
+        companyEntity.id,
+        extSource.id,
+        cik,
+        filing.accession,
+        html,
+        extSource.kind as "10k" | "20f" | "40f",
+        primaryUrl,
+        filingTimer,
+      ),
+      (count) => `sections=${count}`,
+    );
+
+    const { html: indexHtml, files: indexFiles } = await filingTimer.time(
+      "fetch filing index",
+      () => fetchFilingIndexFiles(cik, filing.accession),
+      (index) => `files=${index.files.length}`,
+    );
     const attachmentSectionCount =
       extSource.kind === "40f"
-        ? await upsert40FAttachmentSections(companyEntity.id, extSource.id, cik, filing.accession, indexFiles)
+        ? await filingTimer.time(
+            "extract/store 40-F attachment sections",
+            () => upsert40FAttachmentSections(companyEntity.id, extSource.id, cik, filing.accession, indexFiles),
+            (count) => `sections=${count}`,
+          )
         : 0;
-    const attachmentCount = await upsertFilingAttachments(
-      companyEntity.id,
-      extSource.id,
-      indexFiles.filter((file) => file.category === "attachment"),
+    const attachmentCount = await filingTimer.time(
+      "store attachments",
+      () => upsertFilingAttachments(
+        companyEntity.id,
+        extSource.id,
+        indexFiles.filter((file) => file.category === "attachment"),
+      ),
+      (count) => `attachments=${count}`,
     );
-    await archiveFilingArtifacts({
-      entityId: companyEntity.id,
-      sourceId: extSource.id,
-      cik,
-      accession: filing.accession,
-      primaryDocument: filing.primaryDocument,
-      filingUrlBase: filing.filingUrlBase,
-      primaryHtml: html,
-      indexHtml,
-      indexFiles,
-      concurrency: params.archiveConcurrency,
-      skipAttachmentArchive: params.skipAttachmentArchive,
-    });
+    await filingTimer.time("archive artifacts", () => archiveFilingArtifacts({
+        entityId: companyEntity.id,
+        sourceId: extSource.id,
+        cik,
+        accession: filing.accession,
+        primaryDocument: filing.primaryDocument,
+        filingUrlBase: filing.filingUrlBase,
+        primaryHtml: html,
+        indexHtml,
+        indexFiles,
+        concurrency: params.archiveConcurrency,
+        skipAttachmentArchive: params.skipAttachmentArchive,
+      }),
+      (artifacts) => `artifacts=${artifacts.length}`,
+    );
 
-    await db.extSource.update({
-      where: { id: extSource.id },
-      data: {
-        metadata: {
-          ...(extSource.metadata as Record<string, unknown>),
-          tocJson,
-          importedBy: "import-10k-edgartools",
-          edgartools: {
-            version: extracted.toolVersion,
-            indexUrl: filing.indexUrl,
-            isXbrl: filing.isXbrl,
-            isInlineXbrl: filing.isInlineXbrl,
-            attachmentCount: filing.attachments.length,
+    await filingTimer.time("update source metadata", () => db.extSource.update({
+        where: { id: extSource.id },
+        data: {
+          metadata: {
+            ...(extSource.metadata as Record<string, unknown>),
+            tocJson,
+            importedBy: "import-10k-edgartools",
+            edgartools: {
+              version: extracted.toolVersion,
+              indexUrl: filing.indexUrl,
+              isXbrl: filing.isXbrl,
+              isInlineXbrl: filing.isInlineXbrl,
+              attachmentCount: filing.attachments.length,
+            },
           },
         },
-      },
-    });
+      }));
 
     let upserted = 0;
     let missing = 0;
     let fallbackUsed = 0;
 
-    for (const item of LINE_ITEMS) {
-      const companyFactsValue = findBestFactValue(
-        facts,
-        item.tagsUsGaap,
-        item.tagsIfrs,
-        item.unitCandidates,
-        filing.reportDate,
-      );
-
-      let value = companyFactsValue;
-      let unit = item.unitCandidates[0];
-      if (value == null) {
-        const inlineFact = pickInlineFactWithUnit(
-          inlineDoc,
+    await filingTimer.time("upsert derived financials", async () => {
+      const results = await mapLimit(LINE_ITEMS, 5, async (item) => {
+        const companyFactsValue = findBestFactValue(
+          facts,
           item.tagsUsGaap,
           item.tagsIfrs,
-          filing.reportDate,
-          item.periodType,
           item.unitCandidates,
+          filing.reportDate,
         );
-        if (inlineFact) {
-          value = inlineFact.value;
-          unit = inlineFact.unit ? normalizeInlineUnitRef(inlineFact.unit) ?? unit : unit;
-          fallbackUsed++;
+
+        let value = companyFactsValue;
+        let unit = item.unitCandidates[0];
+        let usedFallback = false;
+        if (value == null) {
+          const inlineFact = pickInlineFactWithUnit(
+            inlineDoc,
+            item.tagsUsGaap,
+            item.tagsIfrs,
+            filing.reportDate,
+            item.periodType,
+            item.unitCandidates,
+          );
+          if (inlineFact) {
+            value = inlineFact.value;
+            unit = inlineFact.unit ? normalizeInlineUnitRef(inlineFact.unit) ?? unit : unit;
+            usedFallback = true;
+          }
         }
-      }
 
-      if (value == null) {
-        missing++;
-        continue;
-      }
+        if (value == null) return { upserted: 0, missing: 1, fallbackUsed: 0 };
 
-      await db.financial.upsert({
-        where: {
-          entityId_periodEnd_periodType_lineItem: {
+        await db.financial.upsert({
+          where: {
+            entityId_periodEnd_periodType_lineItem: {
+              entityId: companyEntity.id,
+              periodEnd: new Date(filing.reportDate),
+              periodType: "FY",
+              lineItem: item.key,
+            },
+          },
+          create: {
             entityId: companyEntity.id,
+            sourceId: extSource.id,
             periodEnd: new Date(filing.reportDate),
             periodType: "FY",
             lineItem: item.key,
+            value: decimalFromNumber(value),
+            unit,
           },
-        },
-        create: {
-          entityId: companyEntity.id,
-          sourceId: extSource.id,
-          periodEnd: new Date(filing.reportDate),
-          periodType: "FY",
-          lineItem: item.key,
-          value: decimalFromNumber(value),
-          unit,
-        },
-        update: {
-          sourceId: extSource.id,
-          value: decimalFromNumber(value),
-          unit,
-        },
+          update: {
+            sourceId: extSource.id,
+            value: decimalFromNumber(value),
+            unit,
+          },
+        });
+        return { upserted: 1, missing: 0, fallbackUsed: usedFallback ? 1 : 0 };
       });
-      upserted++;
-    }
+
+      for (const result of results) {
+        upserted += result.upserted;
+        missing += result.missing;
+        fallbackUsed += result.fallbackUsed;
+      }
+    }, () => `derived=${upserted}, missing=${missing}, fallback=${fallbackUsed}`);
 
     console.log(
       `  ${filing.reportDate} (${filing.accession}) -> facts(API ${apiFactCount}, Inline ${inlineFactCount}), sections ${sectionCount}+${attachmentSectionCount}, attachments ${attachmentCount}, derived ${upserted}, missing ${missing}, fallback ${fallbackUsed}`,

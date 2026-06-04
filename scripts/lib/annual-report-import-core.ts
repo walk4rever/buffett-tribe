@@ -24,6 +24,7 @@ import {
   buildStoredFilingSectionData,
   buildStoredTextOnlyFilingSectionData,
 } from "./filing-section-storage";
+import { ImportTimer } from "./import-timer";
 
 export const db = new PrismaClient();
 
@@ -236,33 +237,64 @@ export async function upsertFilingSectionsFromHtml(
   html: string,
   filingKind: "10k" | "20f" | "40f",
   sourceUrl?: string,
+  timer?: ImportTimer,
+  sectionConcurrency = 3,
 ) {
-  const sections = extractTargetSections(html, sourceUrl, filingKind);
+  const sections = timer
+    ? timer.timeSync("section extract target sections", () => extractTargetSections(html, sourceUrl, filingKind), (result) => `sections=${Object.keys(result).length}`)
+    : extractTargetSections(html, sourceUrl, filingKind);
   const keys = Object.keys(sections);
   if (!keys.length) return 0;
 
-  await db.filingSection.deleteMany({
-    where: {
-      sourceId,
-      section: { notIn: keys },
-    },
-  });
-
-  for (const [section, extracted] of Object.entries(sections)) {
-    const data = await buildStoredFilingSectionData(db, {
-      entityId,
-      sourceId,
-      cik,
-      accession,
-      sourceUrl,
-    }, section, extracted);
-
-    await db.filingSection.upsert({
-      where: { sourceId_section: { sourceId, section } },
-      update: data,
-      create: data,
+  if (timer) {
+    await timer.time("section delete stale", () => db.filingSection.deleteMany({
+      where: {
+        sourceId,
+        section: { notIn: keys },
+      },
+    }), (result) => `deleted=${result.count}`);
+  } else {
+    await db.filingSection.deleteMany({
+      where: {
+        sourceId,
+        section: { notIn: keys },
+      },
     });
   }
+
+  const sectionEntries = Object.entries(sections);
+  await mapLimit(sectionEntries, sectionConcurrency, async ([section, extracted]) => {
+    const sectionTimer = timer ? new ImportTimer(`[section ${section}]`, "      ") : null;
+    const data = sectionTimer
+      ? await sectionTimer.time("build artifacts", () => buildStoredFilingSectionData(db, {
+          entityId,
+          sourceId,
+          cik,
+          accession,
+          sourceUrl,
+        }, section, extracted), (result) => `text=${result.contentTextLength}, blocks=${result.blockCount}`)
+      : await buildStoredFilingSectionData(db, {
+          entityId,
+          sourceId,
+          cik,
+          accession,
+          sourceUrl,
+        }, section, extracted);
+
+    if (sectionTimer) {
+      await sectionTimer.time("upsert row", () => db.filingSection.upsert({
+        where: { sourceId_section: { sourceId, section } },
+        update: data,
+        create: data,
+      }));
+    } else {
+      await db.filingSection.upsert({
+        where: { sourceId_section: { sourceId, section } },
+        update: data,
+        create: data,
+      });
+    }
+  });
   return keys.length;
 }
 

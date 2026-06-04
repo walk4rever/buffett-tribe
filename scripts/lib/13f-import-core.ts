@@ -3,10 +3,12 @@
  *
  * Shared 13F Entity / ExtSource / Security / Holding storage primitives.
  */
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
+import crypto from "node:crypto";
 import { hasChineseText, issuerKey, resolveCompanyNamesFromMaps } from "../../src/lib/company-name-map";
 import { normalizeTicker } from "../../src/lib/ticker";
 import { translateCompanyNameToZh, upsertNameMapEntries } from "./company-name-zh";
+import { ImportTimer } from "./import-timer";
 
 export const db = new PrismaClient();
 
@@ -16,7 +18,7 @@ const tickerByIssuerDb = new Map<string, string>();
 const tickerByCusipDb = new Map<string, string>();
 
 const companyByTickerCache = new Map<string, string>();
-const securityByCusip = new Map<string, string>();
+const securityByCusip = new Map<string, SecuritySnapshot>();
 const CUSIP_TICKER_OVERRIDES: Record<string, string> = {
   // Alphabet Class C should map to GOOG (Class A is GOOGL).
   "02079K107": "GOOG",
@@ -76,10 +78,58 @@ async function mapLimit<T>(items: T[], concurrency: number, fn: (item: T) => Pro
   await Promise.all(workers);
 }
 
-function chunk<T>(arr: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
+async function upsertHoldingsBulk(rows: Array<{
+  holderEntityId: string;
+  securityId: string;
+  sourceId: string;
+  asOfDate: Date;
+  shares: bigint;
+  valueUsd: bigint;
+  percentOfPortfolio: number;
+}>) {
+  if (!rows.length) return { count: 0 };
+
+  const values = Prisma.join(rows.map((row) => Prisma.sql`(
+    ${crypto.randomUUID()},
+    ${row.holderEntityId},
+    ${row.securityId},
+    ${row.sourceId},
+    ${row.asOfDate},
+    ${row.shares},
+    ${row.valueUsd},
+    ${row.percentOfPortfolio}
+  )`));
+
+  const count = await db.$executeRaw`
+    INSERT INTO "Holding" (
+      "id",
+      "holderEntityId",
+      "securityId",
+      "sourceId",
+      "asOfDate",
+      "shares",
+      "valueUsd",
+      "percentOfPortfolio"
+    )
+    VALUES ${values}
+    ON CONFLICT ("holderEntityId", "securityId", "asOfDate")
+    DO UPDATE SET
+      "sourceId" = EXCLUDED."sourceId",
+      "shares" = EXCLUDED."shares",
+      "valueUsd" = EXCLUDED."valueUsd",
+      "percentOfPortfolio" = EXCLUDED."percentOfPortfolio"
+  `;
+
+  return { count };
+}
+
+async function runTimed<T>(
+  timer: ImportTimer | undefined,
+  step: string,
+  fn: () => Promise<T>,
+  details?: (result: T) => string | undefined,
+) {
+  return timer ? timer.time(step, fn, details) : fn();
 }
 
 async function translateMissingNames(entries: InfoTableEntry[], concurrency = 4) {
@@ -184,6 +234,24 @@ export interface InfoTableEntry {
   ticker?: string | null;
 }
 
+function securitySnapshotFromRow(row: {
+  id: string;
+  companyEntityId: string | null;
+  ticker: string | null;
+  cusip: string | null;
+  titleOfClass: string | null;
+  metadata: unknown;
+}, fallback?: InfoTableEntry): SecuritySnapshot {
+  return {
+    securityId: row.id,
+    companyEntityId: row.companyEntityId ?? "",
+    ticker: row.ticker ?? fallback?.ticker ?? null,
+    cusip: row.cusip ?? fallback?.cusip ?? "",
+    titleOfClass: row.titleOfClass ?? fallback?.titleOfClass ?? "",
+    metadata: (row.metadata as Record<string, unknown> | null) ?? {},
+  };
+}
+
 export function normalizeCusip(raw: string): string {
   const compact = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
   if (!compact) return "";
@@ -232,10 +300,10 @@ export async function seedEntityCache() {
 
   // Cache securities by cusip
   const securityRows = await db.security.findMany({
-    select: { id: true, cusip: true, companyEntityId: true, ticker: true },
+    select: { id: true, cusip: true, companyEntityId: true, ticker: true, titleOfClass: true, metadata: true },
   });
   for (const s of securityRows) {
-    if (s.cusip) securityByCusip.set(s.cusip, s.id);
+    if (s.cusip) securityByCusip.set(s.cusip, securitySnapshotFromRow(s));
     if (s.companyEntityId && s.ticker && !companyByTickerCache.has(s.ticker.toUpperCase())) {
       companyByTickerCache.set(s.ticker.toUpperCase(), s.companyEntityId);
     }
@@ -261,6 +329,48 @@ export async function seedEntityCache() {
     }
   }
   console.log(`  Name map cache seeded: ${dbMaps.length} rows`);
+}
+
+export async function preloadSecurityResolution(entries: InfoTableEntry[]) {
+  const cusips = [...new Set(entries.map((entry) => entry.cusip).filter(Boolean))];
+  const tickers = [...new Set(entries.flatMap((entry) => {
+    const baseResolved = resolveNamesDbFirst(entry.nameOfIssuer);
+    const ticker = resolveTickerWithCusipOverride(entry.cusip, normalizeTicker(entry.ticker) ?? baseResolved.ticker);
+    return ticker ? [ticker] : [];
+  }))];
+
+  const missingCusips = cusips.filter((cusip) => !securityByCusip.has(cusip));
+  if (missingCusips.length) {
+    const rows = await db.security.findMany({
+      where: { cusip: { in: missingCusips } },
+      select: { id: true, cusip: true, companyEntityId: true, ticker: true, titleOfClass: true, metadata: true },
+    });
+    for (const row of rows) {
+      if (row.cusip) securityByCusip.set(row.cusip, securitySnapshotFromRow(row));
+    }
+  }
+
+  const missingTickers = tickers.filter((ticker) => !companyByTickerCache.has(ticker));
+  if (missingTickers.length) {
+    const companies = await db.entity.findMany({
+      where: {
+        type: "company",
+        ticker: { in: missingTickers, mode: "insensitive" },
+      },
+      select: { id: true, ticker: true },
+    });
+    for (const company of companies) {
+      const ticker = normalizeTicker(company.ticker);
+      if (ticker && !companyByTickerCache.has(ticker)) companyByTickerCache.set(ticker, company.id);
+    }
+  }
+
+  return {
+    cusips: cusips.length,
+    tickers: tickers.length,
+    missingCusips: missingCusips.length,
+    missingTickers: missingTickers.length,
+  };
 }
 
 export async function upsertFilerEntity(filer: Filer) {
@@ -294,25 +404,24 @@ async function upsertSecurityEntity(entry: InfoTableEntry): Promise<SecuritySnap
   };
 
   // 1. Check cusip cache
-  const cachedSecId = securityByCusip.get(entry.cusip);
-  if (cachedSecId) {
-    const sec = await db.security.findUnique({ where: { id: cachedSecId } });
-    if (sec) {
-      // Backfill companyEntityId if missing
-      if (!sec.companyEntityId && resolved.ticker) {
-        const companyId = companyByTickerCache.get(resolved.ticker);
-        if (companyId) {
-          await db.security.update({ where: { id: sec.id }, data: { companyEntityId: companyId } });
-          sec.companyEntityId = companyId;
-        }
+  const cachedSec = securityByCusip.get(entry.cusip);
+  if (cachedSec) {
+    // Backfill companyEntityId if missing
+    if (!cachedSec.companyEntityId && resolved.ticker) {
+      const companyId = companyByTickerCache.get(resolved.ticker);
+      if (companyId) {
+        await db.security.update({ where: { id: cachedSec.securityId }, data: { companyEntityId: companyId } });
+        cachedSec.companyEntityId = companyId;
       }
+    }
+    if (cachedSec.companyEntityId || cachedSec.securityId) {
       return {
-        securityId: sec.id,
-        companyEntityId: sec.companyEntityId ?? "",
-        ticker: sec.ticker ?? resolved.ticker,
+        securityId: cachedSec.securityId,
+        companyEntityId: cachedSec.companyEntityId,
+        ticker: cachedSec.ticker ?? resolved.ticker,
         cusip: entry.cusip,
-        titleOfClass: sec.titleOfClass ?? entry.titleOfClass,
-        metadata: (sec.metadata as Record<string, unknown>) ?? {},
+        titleOfClass: cachedSec.titleOfClass || entry.titleOfClass,
+        metadata: cachedSec.metadata,
       };
     }
   }
@@ -320,13 +429,15 @@ async function upsertSecurityEntity(entry: InfoTableEntry): Promise<SecuritySnap
   // 2. Find existing security by cusip
   const existingSec = await db.security.findFirst({ where: { cusip: entry.cusip } });
   if (existingSec) {
-    securityByCusip.set(entry.cusip, existingSec.id);
+    const snapshot = securitySnapshotFromRow(existingSec, entry);
+    securityByCusip.set(entry.cusip, snapshot);
     // Backfill companyEntityId if missing
     if (!existingSec.companyEntityId && resolved.ticker) {
       const companyId = companyByTickerCache.get(resolved.ticker);
       if (companyId) {
         await db.security.update({ where: { id: existingSec.id }, data: { companyEntityId: companyId } });
         existingSec.companyEntityId = companyId;
+        snapshot.companyEntityId = companyId;
       }
     }
     return {
@@ -335,7 +446,7 @@ async function upsertSecurityEntity(entry: InfoTableEntry): Promise<SecuritySnap
       ticker: existingSec.ticker ?? resolved.ticker,
       cusip: entry.cusip,
       titleOfClass: existingSec.titleOfClass ?? entry.titleOfClass,
-      metadata: (existingSec.metadata as Record<string, unknown>) ?? {},
+      metadata: snapshot.metadata,
     };
   }
 
@@ -385,7 +496,18 @@ async function upsertSecurityEntity(entry: InfoTableEntry): Promise<SecuritySnap
         data: { cusip: entry.cusip, titleOfClass: entry.titleOfClass },
       });
     }
-    securityByCusip.set(entry.cusip, existingByEntity.id);
+    securityByCusip.set(entry.cusip, {
+      securityId: existingByEntity.id,
+      companyEntityId: companyId,
+      ticker: resolved.ticker,
+      cusip: entry.cusip,
+      titleOfClass: existingByEntity.titleOfClass ?? entry.titleOfClass,
+      metadata: (existingByEntity.metadata as Record<string, unknown> | null) ?? {
+        nameZh: resolved.nameZh,
+        nameEnShort: resolved.nameEnShort,
+        source: "import-13f",
+      },
+    });
     return {
       securityId: existingByEntity.id,
       companyEntityId: companyId,
@@ -414,7 +536,18 @@ async function upsertSecurityEntity(entry: InfoTableEntry): Promise<SecuritySnap
       },
     },
   });
-  securityByCusip.set(entry.cusip, newSec.id);
+  securityByCusip.set(entry.cusip, {
+    securityId: newSec.id,
+    companyEntityId: companyId,
+    ticker: resolved.ticker,
+    cusip: entry.cusip,
+    titleOfClass: entry.titleOfClass,
+    metadata: {
+      nameZh: resolved.nameZh,
+      nameEnShort: resolved.nameEnShort,
+      source: "import-13f",
+    },
+  });
 
   return {
     securityId: newSec.id,
@@ -442,6 +575,7 @@ export async function importFiling(
   filedAt: string,
   reportDate: string,
   entries: InfoTableEntry[],
+  timer?: ImportTimer,
 ) {
   const { year, quarter, date } = parseReportDate(reportDate);
   const asOfDate = date;
@@ -467,7 +601,13 @@ export async function importFiling(
     },
   });
 
-  await translateMissingNames(entries, 4);
+  await runTimed(timer, "translate missing names", () => translateMissingNames(entries, 4));
+  await runTimed(
+    timer,
+    "preload security resolution",
+    () => preloadSecurityResolution(entries),
+    (stats) => `cusips=${stats.cusips}, tickers=${stats.tickers}, missingCusips=${stats.missingCusips}, missingTickers=${stats.missingTickers}`,
+  );
 
   const prepared: Array<{
     holderEntityId: string;
@@ -480,12 +620,14 @@ export async function importFiling(
   }> = [];
   const snapshots: SecuritySnapshot[] = [];
 
-  for (const entry of entries) {
+  await runTimed(timer, "upsert securities", async () => {
+    for (const entry of entries) {
     const snapshot = await upsertSecurityEntity(entry);
     snapshots.push(snapshot);
-  }
+    }
+  }, () => `securities=${snapshots.length}`);
 
-  await ensureSecurityProfilesBulk();
+  await runTimed(timer, "ensure security profiles", () => ensureSecurityProfilesBulk());
 
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
@@ -505,55 +647,7 @@ export async function importFiling(
     });
   }
 
-  const securityIds = prepared.map((p) => p.securityId);
-
-  const existingHoldings = await db.holding.findMany({
-    where: {
-      holderEntityId: filerEntityId,
-      asOfDate,
-      securityId: { in: securityIds },
-    },
-    select: { id: true, securityId: true },
-  });
-
-  const existingByKey = new Map<string, { id: string }>();
-  for (const row of existingHoldings) {
-    existingByKey.set(row.securityId, { id: row.id });
-  }
-
-  const toCreate: typeof prepared = [];
-  const toUpdate: Array<{ id: string; row: typeof prepared[number] }> = [];
-
-  for (const row of prepared) {
-    const existing = existingByKey.get(row.securityId);
-    if (existing) {
-      toUpdate.push({ id: existing.id, row });
-    } else {
-      toCreate.push(row);
-    }
-  }
-
-  if (toCreate.length) {
-    await db.holding.createMany({
-      data: toCreate,
-      skipDuplicates: true,
-    });
-  }
-
-  for (const group of chunk(toUpdate, 8)) {
-    await Promise.all(group.map((item) =>
-      db.holding.update({
-        where: { id: item.id },
-        data: {
-          securityId: item.row.securityId,
-          sourceId: item.row.sourceId,
-          shares: item.row.shares,
-          valueUsd: item.row.valueUsd,
-          percentOfPortfolio: item.row.percentOfPortfolio,
-        },
-      }),
-    ));
-  }
+  await runTimed(timer, "upsert holdings", () => upsertHoldingsBulk(prepared), (result) => `rows=${prepared.length}, affected=${result.count}`);
 
   return { imported: prepared.length, year, quarter };
 }
