@@ -65,11 +65,9 @@ async function runImport(params: {
   target: ImportTarget;
   fromYear: number;
   toYear: number;
-  archiveConcurrency: number;
   filingConcurrency: number;
-  skipAttachmentArchive: boolean;
 }) {
-  const { target, fromYear, toYear, archiveConcurrency, filingConcurrency, skipAttachmentArchive } = params;
+  const { target, fromYear, toYear, filingConcurrency } = params;
   const childArgs = [
     "--env-file=.env.local",
     "./node_modules/.bin/tsx",
@@ -80,12 +78,9 @@ async function runImport(params: {
     String(fromYear),
     "--to",
     String(toYear),
-    "--archive-concurrency",
-    String(archiveConcurrency),
     "--filing-concurrency",
     String(filingConcurrency),
   ];
-  if (skipAttachmentArchive) childArgs.push("--skip-attachment-archive");
 
   return new Promise<{ code: number }>((resolve) => {
     const child = spawn(
@@ -199,11 +194,8 @@ async function main() {
   const limit = limitArg ? Number.parseInt(limitArg, 10) : undefined;
   const concurrencyArg = getArg("--concurrency");
   const concurrency = concurrencyArg ? Number.parseInt(concurrencyArg, 10) : 1;
-  const archiveConcurrencyArg = getArg("--archive-concurrency");
-  const archiveConcurrency = archiveConcurrencyArg ? Number.parseInt(archiveConcurrencyArg, 10) : 4;
   const filingConcurrencyArg = getArg("--filing-concurrency");
   const filingConcurrency = filingConcurrencyArg ? Number.parseInt(filingConcurrencyArg, 10) : 1;
-  const skipAttachmentArchive = hasFlag("--skip-attachment-archive");
   const dryRun = hasFlag("--dry-run");
 
   if (Number.isNaN(limit ?? 0)) {
@@ -211,9 +203,6 @@ async function main() {
   }
   if (!Number.isFinite(concurrency) || concurrency <= 0) {
     throw new Error(`Invalid --concurrency value: ${concurrencyArg}`);
-  }
-  if (!Number.isFinite(archiveConcurrency) || archiveConcurrency <= 0) {
-    throw new Error(`Invalid --archive-concurrency value: ${archiveConcurrencyArg}`);
   }
   if (!Number.isFinite(filingConcurrency) || filingConcurrency <= 0) {
     throw new Error(`Invalid --filing-concurrency value: ${filingConcurrencyArg}`);
@@ -225,7 +214,7 @@ async function main() {
   console.log(`Found ${targets.length} companies to import 10-K data for (${fromYear} -> ${toYear})`);
   console.log(`Concurrency: ${concurrency}`);
   console.log(
-    `Child filing concurrency: ${filingConcurrency}; archive concurrency: ${archiveConcurrency}; skip attachment archive: ${skipAttachmentArchive}`,
+    `Child filing concurrency: ${filingConcurrency}; archive strategy: standard`,
   );
   console.log(`Checkpoint: ${CHECKPOINT_FILE}`);
 
@@ -247,7 +236,7 @@ async function main() {
       return;
     }
 
-    const res = await runImport({ target, fromYear, toYear, archiveConcurrency, filingConcurrency, skipAttachmentArchive });
+    const res = await runImport({ target, fromYear, toYear, filingConcurrency });
     if (res.code === 0) {
       completed++;
       checkpoint.completed[target.cik] = {

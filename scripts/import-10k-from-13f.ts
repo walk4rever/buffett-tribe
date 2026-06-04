@@ -20,6 +20,8 @@ type CliArgs = {
   limit: number | null;
   investors: string[];
   tickerList: string[] | null;
+  filingConcurrency: number;
+  noHtml: boolean;
   dryRun: boolean;
 };
 
@@ -39,6 +41,7 @@ function parseArgs(argv: string[]): CliArgs {
   const limitArg = get("--limit");
   const investorsArg = get("--investors");
   const tickerListArg = get("--ticker-list");
+  const filingConcurrencyArg = get("--filing-concurrency") ?? "1";
 
   const fromYear = Number(fromArg);
   const toYear = Number(toArg);
@@ -50,6 +53,7 @@ function parseArgs(argv: string[]): CliArgs {
   const retries = Math.max(0, Number(retriesArg));
   const retryDelayMs = Math.max(0, Number(retryDelayArg));
   const limit = limitArg ? Math.max(1, Number(limitArg)) : null;
+  const filingConcurrency = Math.max(1, Number(filingConcurrencyArg));
   const investors = (investorsArg ?? "buffett,lilu,duan")
     .split(",")
     .map((s) => s.trim())
@@ -67,6 +71,8 @@ function parseArgs(argv: string[]): CliArgs {
     limit,
     investors,
     tickerList,
+    filingConcurrency,
+    noHtml: has("--no-html"),
     dryRun: has("--dry-run"),
   };
 }
@@ -121,21 +127,26 @@ async function getTickersFrom13f(investors: string[]): Promise<{ tickers: string
   };
 }
 
-function runTickerImport(ticker: string, fromYear: number, toYear: number): Promise<{ ok: boolean; error?: string }> {
+function runTickerImport(ticker: string, args: CliArgs): Promise<{ ok: boolean; error?: string }> {
   return new Promise((resolve) => {
+    const childArgs = [
+      "--env-file=.env.local",
+      "./node_modules/.bin/tsx",
+      "scripts/import-10k-edgartools.ts",
+      "--ticker",
+      ticker,
+      "--from",
+      String(args.fromYear),
+      "--to",
+      String(args.toYear),
+      "--filing-concurrency",
+      String(args.filingConcurrency),
+    ];
+    if (args.noHtml) childArgs.push("--no-edgartools-html");
+
     const child = spawn(
       process.execPath,
-      [
-        "--env-file=.env.local",
-        "./node_modules/.bin/tsx",
-        "scripts/import-10k-edgartools.ts",
-        "--ticker",
-        ticker,
-        "--from",
-        String(fromYear),
-        "--to",
-        String(toYear),
-      ],
+      childArgs,
       {
         stdio: ["ignore", "pipe", "pipe"],
         cwd: process.cwd(),
@@ -144,8 +155,13 @@ function runTickerImport(ticker: string, fromYear: number, toYear: number): Prom
     );
 
     let err = "";
+    child.stdout.on("data", (d) => {
+      process.stdout.write(d);
+    });
     child.stderr.on("data", (d) => {
-      err += d.toString();
+      const text = d.toString();
+      err += text;
+      process.stderr.write(text);
     });
 
     child.on("close", (code) => {
@@ -161,7 +177,7 @@ async function runWithRetry(ticker: string, args: CliArgs): Promise<RunResult> {
 
   for (let i = 0; i <= args.retries; i++) {
     const attempt = i + 1;
-    const run = await runTickerImport(ticker, args.fromYear, args.toYear);
+    const run = await runTickerImport(ticker, args);
     if (run.ok) {
       return { ticker, ok: true, attempts: attempt, ms: Date.now() - started };
     }
@@ -222,6 +238,9 @@ async function main() {
         discoveredTickers: discovered.length,
         selectedTickers: tickers.length,
         concurrency: args.concurrency,
+        filingConcurrency: args.filingConcurrency,
+        archiveStrategy: "standard",
+        noHtml: args.noHtml,
         retries: args.retries,
         dryRun: args.dryRun,
       },

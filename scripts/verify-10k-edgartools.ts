@@ -3,7 +3,7 @@
  * the resulting DB counts per filing accession.
  *
  * Usage:
- *   npm run verify:10k:edgartools -- --tickers AAPL,PDD,SU --from 2025 --to 2025 --skip-attachment-archive
+ *   npm run verify:10k:edgartools -- --tickers AAPL,PDD,SU --from 2025 --to 2025
  */
 import { spawn } from "node:child_process";
 import { db, normalizeTicker } from "./lib/annual-report-import-core";
@@ -25,10 +25,6 @@ function getArg(flag: string): string | undefined {
   return args.find((_, i) => args[i - 1] === flag);
 }
 
-function hasFlag(flag: string): boolean {
-  return process.argv.slice(2).includes(flag);
-}
-
 function parseYear(value: string | undefined, fallback: number) {
   if (!value) return fallback;
   const parsed = Number.parseInt(value, 10);
@@ -45,9 +41,7 @@ function runScript(script: string, params: {
   ticker: string;
   fromYear: number;
   toYear: number;
-  archiveConcurrency: number;
   filingConcurrency: number;
-  skipAttachmentArchive: boolean;
 }) {
   const args = [
     "--env-file=.env.local",
@@ -59,12 +53,9 @@ function runScript(script: string, params: {
     String(params.fromYear),
     "--to",
     String(params.toYear),
-    "--archive-concurrency",
-    String(params.archiveConcurrency),
     "--filing-concurrency",
     String(params.filingConcurrency),
   ];
-  if (params.skipAttachmentArchive) args.push("--skip-attachment-archive");
 
   return new Promise<number>((resolve) => {
     const child = spawn(process.execPath, args, {
@@ -142,12 +133,10 @@ async function main() {
   const tickers = parseTickers();
   const fromYear = parseYear(getArg("--from"), 2025);
   const toYear = parseYear(getArg("--to"), 2025);
-  const archiveConcurrency = parseYear(getArg("--archive-concurrency"), 4);
   const filingConcurrency = parseYear(getArg("--filing-concurrency"), 1);
-  const skipAttachmentArchive = hasFlag("--skip-attachment-archive");
 
   console.log(
-    `Verify edgartools annual importer: tickers=${tickers.join(",")} years=${fromYear}-${toYear} skipAttachmentArchive=${skipAttachmentArchive}`,
+    `Verify edgartools annual importer: tickers=${tickers.join(",")} years=${fromYear}-${toYear} archiveStrategy=standard`,
   );
 
   for (const ticker of tickers) {
@@ -156,9 +145,7 @@ async function main() {
       ticker,
       fromYear,
       toYear,
-      archiveConcurrency,
       filingConcurrency,
-      skipAttachmentArchive,
     });
     if (code !== 0) throw new Error(`edgartools importer failed for ${ticker} with code ${code}`);
     const rows = await snapshot(ticker, fromYear, toYear);

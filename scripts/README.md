@@ -30,7 +30,8 @@
 
 - 文件：[import-10k-edgartools.ts](/Users/rafael/R129/buffett-tribe/scripts/import-10k-edgartools.ts)
 - 命令：`npm run import:10k`
-- 作用：用 `edgartools` 做 annual filing 发现与 primary HTML 获取，按 ticker / 年份导入 10-K、20-F、40-F 财务数据，并把原始 filing HTML、index page、exhibits 与 data files 归档到 R2 的 `FilingArtifact`。
+- 作用：用 `edgartools` 做 annual filing 发现与 primary HTML 获取，按 ticker / 年份导入 10-K、20-F、40-F 财务数据。
+- R2 standard 归档范围：保存 `primary_html`、`index_html`、`section_text`、`section_blocks`；不默认归档 `section_html`、exhibits、attachments、data files。附件只入库清单、类型、描述和 SEC 原始 URL。
 - 依赖：先安装 `requirements-edgartools.txt`。
 
 共享入库 core：
@@ -54,7 +55,7 @@
 
 - 归档层通过 `scripts/lib/filing-archive.ts` 统一管理
 - 原始工件会按 `cik / accession / kind` 生成稳定的 R2 key
-- 这条入口可以重复跑，artifact 会按固定 key 覆盖写入，不会重复建脏数据
+- 这条入口可以重复跑，standard artifact 会按固定 key 幂等写入，不会重复建脏数据
 
 - 文件：[import-10k-from-13f.ts](/Users/rafael/R129/buffett-tribe/scripts/import-10k-from-13f.ts)
 - 命令：`npm run import:10k:from13f`

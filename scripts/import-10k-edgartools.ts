@@ -102,9 +102,7 @@ function parseArgs(args: string[]) {
   const fromArg = args.find((_, i) => args[i - 1] === "--from");
   const toArg = args.find((_, i) => args[i - 1] === "--to");
   const yearsArg = args.find((_, i) => args[i - 1] === "--years");
-  const archiveConcurrency = parsePositiveInt(getArg("--archive-concurrency"), 4);
   const filingConcurrency = parsePositiveInt(getArg("--filing-concurrency"), 1);
-  const skipAttachmentArchive = hasFlag("--skip-attachment-archive");
   const noHtml = hasFlag("--no-edgartools-html");
   const python = getArg("--python") ?? (process.env.EDGARTOOLS_PYTHON || path.join(process.cwd(), ".venv/bin/python"));
 
@@ -124,7 +122,7 @@ function parseArgs(args: string[]) {
     fromYear = toYear - years + 1;
   }
 
-  return { ticker, fromYear, toYear, archiveConcurrency, filingConcurrency, skipAttachmentArchive, noHtml, python };
+  return { ticker, fromYear, toYear, filingConcurrency, noHtml, python };
 }
 
 async function extractWithEdgarTools(params: {
@@ -185,9 +183,7 @@ async function importEdgarToolsAnnualReports(params: {
   ticker: string;
   fromYear: number;
   toYear: number;
-  archiveConcurrency: number;
   filingConcurrency: number;
-  skipAttachmentArchive: boolean;
   noHtml: boolean;
   python: string;
 }) {
@@ -216,7 +212,7 @@ async function importEdgarToolsAnnualReports(params: {
 
   console.log(`Found ${targetFilings.length} annual filings from edgartools (${params.fromYear}-${params.toYear})`);
   console.log(
-    `Filing concurrency: ${params.filingConcurrency}; archive concurrency: ${params.archiveConcurrency}; skip attachment archive: ${params.skipAttachmentArchive}`,
+    `Filing concurrency: ${params.filingConcurrency}; archive strategy: standard (primary/index + section text/blocks; attachment metadata only)`,
   );
 
   await mapLimit(targetFilings, params.filingConcurrency, async (filing) => {
@@ -293,8 +289,6 @@ async function importEdgarToolsAnnualReports(params: {
         primaryHtml: html,
         indexHtml,
         indexFiles,
-        concurrency: params.archiveConcurrency,
-        skipAttachmentArchive: params.skipAttachmentArchive,
       }),
       (artifacts) => `artifacts=${artifacts.length}`,
     );

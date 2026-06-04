@@ -100,29 +100,6 @@ async function archiveSectionBlocksArtifact(
   });
 }
 
-async function archiveSectionHtmlArtifact(
-  db: PrismaClient,
-  context: FilingSectionArtifactContext,
-  section: string,
-  rawHtml: string,
-) {
-  return archiveFilingArtifact(db, {
-    sourceId: context.sourceId,
-    kind: "section_html",
-    cik: normalizeKeyPartFallback(context.cik, context.entityId),
-    accession: normalizeKeyPartFallback(context.accession, context.sourceId),
-    originalName: `${section}.html`,
-    contentType: "text/html; charset=utf-8",
-    body: Buffer.from(rawHtml, "utf8"),
-    sourceUrl: context.sourceUrl ?? null,
-    metadata: {
-      entityId: context.entityId,
-      section,
-      extractionVersion: FILING_SECTION_EXTRACTION_VERSION,
-    },
-  });
-}
-
 export async function buildStoredFilingSectionData(
   db: PrismaClient,
   context: FilingSectionArtifactContext,
@@ -130,10 +107,9 @@ export async function buildStoredFilingSectionData(
   extracted: Pick<ExtractedSection, "content" | "rawHtml" | "outline" | "blocks">,
 ): Promise<StoredSectionData> {
   const lightBlocks = stripBlocksHtml(extracted.blocks);
-  const [textArtifact, blocksArtifact, htmlArtifact] = await Promise.all([
+  const [textArtifact, blocksArtifact] = await Promise.all([
     archiveSectionTextArtifact(db, context, section, extracted.content),
     lightBlocks.length ? archiveSectionBlocksArtifact(db, context, section, lightBlocks) : Promise.resolve(null),
-    extracted.rawHtml ? archiveSectionHtmlArtifact(db, context, section, extracted.rawHtml) : Promise.resolve(null),
   ]);
   const preview = makeContentPreview(extracted.content);
 
@@ -151,7 +127,7 @@ export async function buildStoredFilingSectionData(
     extractionVersion: FILING_SECTION_EXTRACTION_VERSION,
     textArtifactId: textArtifact.id,
     blocksArtifactId: blocksArtifact?.id ?? null,
-    htmlArtifactId: htmlArtifact?.id ?? null,
+    htmlArtifactId: null,
     extractedAt: new Date(),
   };
 }
@@ -163,10 +139,8 @@ export async function buildStoredTextOnlyFilingSectionData(
   content: string,
   rawHtml: string | null,
 ): Promise<StoredSectionData> {
-  const [textArtifact, htmlArtifact] = await Promise.all([
-    archiveSectionTextArtifact(db, context, section, content),
-    rawHtml ? archiveSectionHtmlArtifact(db, context, section, rawHtml) : Promise.resolve(null),
-  ]);
+  void rawHtml;
+  const textArtifact = await archiveSectionTextArtifact(db, context, section, content);
   const preview = makeContentPreview(content);
 
   return {
@@ -183,7 +157,7 @@ export async function buildStoredTextOnlyFilingSectionData(
     extractionVersion: FILING_SECTION_EXTRACTION_VERSION,
     textArtifactId: textArtifact.id,
     blocksArtifactId: null,
-    htmlArtifactId: htmlArtifact?.id ?? null,
+    htmlArtifactId: null,
     extractedAt: new Date(),
   };
 }

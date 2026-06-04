@@ -14,9 +14,7 @@ import {
 import { extractTargetSections, normalizeHtmlToText } from "./extract-10k-sections";
 import {
   archiveFilingArtifact,
-  buildFilingArtifactKey,
   fetchFilingIndexFiles,
-  fetchSecBuffer,
   fetchSecText,
   SEC_HEADERS,
 } from "./filing-archive";
@@ -477,8 +475,6 @@ export async function archiveFilingArtifacts(params: {
   primaryHtml: string;
   indexHtml: string;
   indexFiles: Awaited<ReturnType<typeof fetchFilingIndexFiles>>["files"];
-  concurrency: number;
-  skipAttachmentArchive: boolean;
 }) {
   const {
     entityId,
@@ -490,8 +486,6 @@ export async function archiveFilingArtifacts(params: {
     primaryHtml,
     indexHtml,
     indexFiles,
-    concurrency,
-    skipAttachmentArchive,
   } = params;
   const primaryUrl = `${filingUrlBase}/${primaryDocument}`;
   const indexUrl = `${filingUrlBase}/${accession}-index.htm`;
@@ -533,75 +527,12 @@ export async function archiveFilingArtifacts(params: {
     }),
   );
 
-  const artifactTargets = indexFiles.map((file) => ({
-    file,
-    kind: file.category === "data_file" ? "data_file" as const : "attachment" as const,
-    objectKey: buildFilingArtifactKey({
-      cik,
-      accession,
-      kind: file.category === "data_file" ? "data_file" : "attachment",
-      originalName: file.documentName,
-    }),
-  }));
-
-  const existingArtifactRows = artifactTargets.length
-    ? await db.filingArtifact.findMany({
-        where: { objectKey: { in: artifactTargets.map((target) => target.objectKey) } },
-        select: { objectKey: true },
-      })
-    : [];
-  const existingArtifactKeys = new Set(existingArtifactRows.map((row) => row.objectKey));
-
-  const missingArtifactTargets = artifactTargets.filter((target) => !existingArtifactKeys.has(target.objectKey));
+  const attachmentTargets = indexFiles.filter((file) => file.category === "attachment" || file.category === "data_file");
   console.log(
-    `  Archive attachments/data: total ${artifactTargets.length}, cached ${existingArtifactKeys.size}, missing ${missingArtifactTargets.length}, concurrency ${concurrency}`,
+    `  Archive standard: primary/index saved; attachments/data metadata only (${attachmentTargets.length} files)`,
   );
-  if (existingArtifactKeys.size) {
-    console.log(`  Archive cache: ${existingArtifactKeys.size}/${artifactTargets.length} attachment/data artifacts already uploaded`);
-  }
 
-  if (skipAttachmentArchive) {
-    if (missingArtifactTargets.length) {
-      console.log(`  Archive skipped: ${missingArtifactTargets.length} missing attachment/data artifacts (--skip-attachment-archive)`);
-    }
-    return Promise.all(artifacts);
-  }
-
-  let completed = 0;
-  const startedAt = Date.now();
-  const attachmentArtifacts = await mapLimit(missingArtifactTargets, concurrency, async ({ file, kind }, index) => {
-    const label = `${file.sequence || index + 1} ${file.documentName}`;
-    const oneStartedAt = Date.now();
-    console.log(`  Archive [${index + 1}/${missingArtifactTargets.length}] start ${kind} ${label}`);
-    const { buffer, contentType } = await fetchSecBuffer(file.url);
-    const artifact = await archiveFilingArtifact(db, {
-      sourceId,
-      kind,
-      cik,
-      accession,
-      originalName: file.documentName,
-      contentType,
-      body: buffer,
-      sourceUrl: file.url,
-      metadata: {
-        entityId,
-        sequence: file.sequence,
-        description: file.description,
-        documentType: file.documentType,
-        category: file.category,
-        accession,
-      },
-    });
-    completed++;
-    const elapsed = ((Date.now() - oneStartedAt) / 1000).toFixed(1);
-    const totalElapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
-    console.log(
-      `  Archive [${completed}/${missingArtifactTargets.length}] done ${label} (${buffer.length.toLocaleString()} bytes, ${elapsed}s, total ${totalElapsed}s)`,
-    );
-    return artifact;
-  });
-
-  return Promise.all([...artifacts, ...attachmentArtifacts]);
+  return Promise.all(artifacts);
 }
 
 function parseAttrMap(source: string) {

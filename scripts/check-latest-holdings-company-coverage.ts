@@ -69,11 +69,9 @@ async function getLatestQuarterHoldings(tribeId: string, year: number, quarter: 
       source: { is: { kind: "13f", periodYear: year, periodQuarter: quarter } },
     },
     include: {
-      security: true,
-      securityProfile: {
+      security: {
         include: {
           company: true,
-          entity: true,
         },
       },
     },
@@ -116,7 +114,7 @@ async function main() {
     for (const h of holdings) {
       const meta = (h.security.metadata ?? {}) as { companyEntityId?: string };
       const companyEntityId =
-        h.securityProfile?.companyEntityId ??
+        h.security.companyEntityId ??
         (typeof meta.companyEntityId === "string" ? meta.companyEntityId : null);
       const key = companyEntityId ?? `sec:${h.securityId}`;
       const prev = deduped.get(key);
@@ -130,7 +128,7 @@ async function main() {
         .map((holding) => {
           const meta = (holding.security.metadata ?? {}) as { companyEntityId?: string };
           return (
-            holding.securityProfile?.companyEntityId ??
+            holding.security.companyEntityId ??
             (typeof meta.companyEntityId === "string" ? meta.companyEntityId : null)
           );
         })
@@ -198,14 +196,14 @@ async function main() {
     for (const holding of deduped.values()) {
       const meta = (holding.security.metadata ?? {}) as { companyEntityId?: string };
       const linkedCompany =
-        holding.securityProfile?.company ??
+        holding.security.company ??
         (typeof meta.companyEntityId === "string" ? companyById.get(meta.companyEntityId) ?? null : null);
 
       if (!linkedCompany) {
         companies.push({
           entityId: null,
-          companyName: holding.security.canonicalName,
-          ticker: normalizeTicker(holding.securityProfile?.ticker ?? holding.security.ticker),
+          companyName: holding.security.company?.canonicalName ?? holding.security.titleOfClass ?? holding.security.ticker ?? "Unknown",
+          ticker: normalizeTicker(holding.security.ticker),
           cik: null,
           holdingPct: holding.percentOfPortfolio,
           financeStatus: "no-company-link" as CoverageStatus,
@@ -220,7 +218,7 @@ async function main() {
         continue;
       }
 
-      const ticker = normalizeTicker(linkedCompany.ticker ?? holding.securityProfile?.ticker ?? holding.security.ticker);
+      const ticker = normalizeTicker(linkedCompany.ticker ?? holding.security.ticker);
       const familyIds = ticker ? familyIdsByTicker.get(ticker) ?? [linkedCompany.id] : [linkedCompany.id];
       const financialYears = [...new Set(
         familyIds.flatMap((id) => [...(financialYearsByEntityId.get(id) ?? new Set<number>()).values()]),
