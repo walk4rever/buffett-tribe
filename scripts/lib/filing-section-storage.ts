@@ -107,10 +107,10 @@ export async function buildStoredFilingSectionData(
   extracted: Pick<ExtractedSection, "content" | "rawHtml" | "outline" | "blocks">,
 ): Promise<StoredSectionData> {
   const lightBlocks = stripBlocksHtml(extracted.blocks);
-  const [textArtifact, blocksArtifact] = await Promise.all([
-    archiveSectionTextArtifact(db, context, section, extracted.content),
-    lightBlocks.length ? archiveSectionBlocksArtifact(db, context, section, lightBlocks) : Promise.resolve(null),
-  ]);
+  const textArtifact = await archiveSectionTextArtifact(db, context, section, extracted.content);
+  const blocksArtifact = lightBlocks.length
+    ? await archiveSectionBlocksArtifact(db, context, section, lightBlocks)
+    : null;
   const preview = makeContentPreview(extracted.content);
 
   return {

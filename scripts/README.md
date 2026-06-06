@@ -31,6 +31,11 @@
 - 文件：[import-10k-edgartools.ts](/Users/rafael/R129/buffett-tribe/scripts/import-10k-edgartools.ts)
 - 命令：`npm run import:10k`
 - 作用：用 `edgartools` 做 annual filing 发现与 primary HTML 获取，按 ticker / 年份导入 10-K、20-F、40-F 财务数据。
+- 常用参数：
+  - `--ticker AAPL --from 2020 --to 2026`：指定 ticker 和年份范围。
+  - `--filing-concurrency 1`：控制同一 ticker 内多个 filing 的并发。
+  - `--extract-timeout-ms 1800000`：限制 edgartools helper 的年度 filing 发现阶段。
+  - `--no-edgartools-html`：只用 edgartools 做 filing 发现，primary HTML 改由 TS 侧从 SEC 拉取；适合绕开 edgartools `html()` 读取超时。
 - R2 standard 归档范围：保存 `primary_html`、`index_html`、`section_text`、`section_blocks`；不默认归档 `section_html`、exhibits、attachments、data files。附件只入库清单、类型、描述和 SEC 原始 URL。
 - 依赖：先安装 `requirements-edgartools.txt`。
 
@@ -49,7 +54,33 @@
 
 - 文件：[import-all-10k-edgartools.ts](/Users/rafael/R129/buffett-tribe/scripts/import-all-10k-edgartools.ts)
 - 命令：`npm run import:10k:all`
-- 作用：按公司批量导入 2020 到最新的 10-K / 20-F / 40-F 年报，带 `.cache` checkpoint，可中断续跑。
+- 作用：按公司批量导入 2020 到最新的 10-K / 20-F / 40-F 年报，带 `.cache/import-10k-all.json` checkpoint，可中断续跑。
+- checkpoint 粒度：同时记录公司级和年度级状态，包括 `completed`、`failed`、`inProgress`、`completedYears`、`failedYears`、`inProgressYears`。重跑时会跳过已完成公司；部分失败公司只补未完成年份。
+- 日志：长任务建议把输出追加到 `.cache/import-10k-all.log`，便于恢复 session 后定位中断点。
+- 常用参数：
+  - `--from 2020 --to 2026`：导入年份范围。
+  - `--concurrency 1`：公司级并发；默认 1，保守保护 SEC/R2/DB。
+  - `--filing-concurrency 1`：子进程内 filing 并发；默认 1。
+  - `--extract-timeout-ms 1800000`：edgartools helper 超时。
+  - `--company-timeout-ms 5400000`：单个公司年度导入子进程超时。
+  - `--retries 5 --retry-delay-ms 30000`：失败年份补跑时提高重试次数和间隔。
+  - `--no-edgartools-html`：禁用 edgartools 预加载 primary HTML，改由 TS 侧拉取；用于处理 `html()` read timeout。
+  - `--fresh`：忽略旧 checkpoint 重新开始。
+  - `--dry-run`：只打印将要处理的目标，仍会刷新 checkpoint 的 `targetOrder`。
+
+失败年份补跑示例：
+
+```bash
+npm run import:10k:all -- --from 2020 --to 2026 --concurrency 1 --filing-concurrency 1 --no-edgartools-html --extract-timeout-ms 1800000 --company-timeout-ms 5400000 --retries 5 --retry-delay-ms 30000
+```
+
+当前 2020-2026 全量导入结果：
+
+- 公司：126/126 completed
+- 年度报告：882 completed
+- 失败项：`failed=0`、`failedYears=0`
+- checkpoint：`.cache/import-10k-all.json`
+- 日志：`.cache/import-10k-all.log`
 
 补充：
 

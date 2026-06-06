@@ -42,6 +42,30 @@ function traceArchive(message: string) {
   if (ARCHIVE_TRACE) console.log(message);
 }
 
+function isRetryableDbError(error: unknown) {
+  const code = (error as { code?: string } | null)?.code;
+  if (code && ["P1001", "P1002", "P2024"].includes(code)) return true;
+
+  const message = error instanceof Error ? error.message : String(error);
+  return /Can't reach database|Timed out|Connection terminated|ECONNRESET|ETIMEDOUT/i.test(message);
+}
+
+async function withArtifactDbRetry<T>(label: string, fn: () => Promise<T>) {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableDbError(error) || attempt >= 3) break;
+      const delayMs = 1000 * 2 ** (attempt - 1);
+      console.warn(`[DB] artifact retry ${attempt}/3 ${label} error=${error instanceof Error ? error.message : String(error)} nextDelayMs=${delayMs}`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastError;
+}
+
 function normalizeKeyPart(value: string) {
   return value
     .trim()
@@ -166,9 +190,11 @@ export async function archiveFilingArtifact(
   traceArchive(`  Artifact ${label}: start size=${formatBytes(params.body.length)} contentType=${params.contentType}`);
 
   const lookupStartedAt = Date.now();
-  const existing = await db.filingArtifact.findUnique({
-    where: { objectKey },
-  });
+  const existing = await withArtifactDbRetry(`${label} lookup`, () =>
+    db.filingArtifact.findUnique({
+      where: { objectKey },
+    }),
+  );
   traceArchive(`  Artifact ${label}: existing lookup ${formatSeconds(lookupStartedAt)}s`);
   if (existing) {
     traceArchive(`  Artifact ${label}: cache hit total=${formatSeconds(startedAt)}s`);
@@ -184,32 +210,34 @@ export async function archiveFilingArtifact(
   traceArchive(`  Artifact ${label}: upload R2 ${formatSeconds(uploadStartedAt)}s`);
 
   const upsertStartedAt = Date.now();
-  const artifact = await db.filingArtifact.upsert({
-    where: { objectKey },
-    update: {
-      sourceId: params.sourceId,
-      kind: params.kind,
-      contentType: params.contentType,
-      sizeBytes: BigInt(params.body.length),
-      sha256,
-      originalName: params.originalName,
-      sourceUrl: params.sourceUrl ?? null,
-      metadata: params.metadata ?? Prisma.JsonNull,
-      publicUrl,
-    },
-    create: {
-      sourceId: params.sourceId,
-      kind: params.kind,
-      objectKey,
-      contentType: params.contentType,
-      sizeBytes: BigInt(params.body.length),
-      sha256,
-      originalName: params.originalName,
-      sourceUrl: params.sourceUrl ?? null,
-      metadata: params.metadata ?? Prisma.JsonNull,
-      publicUrl,
-    },
-  });
+  const artifact = await withArtifactDbRetry(`${label} upsert`, () =>
+    db.filingArtifact.upsert({
+      where: { objectKey },
+      update: {
+        sourceId: params.sourceId,
+        kind: params.kind,
+        contentType: params.contentType,
+        sizeBytes: BigInt(params.body.length),
+        sha256,
+        originalName: params.originalName,
+        sourceUrl: params.sourceUrl ?? null,
+        metadata: params.metadata ?? Prisma.JsonNull,
+        publicUrl,
+      },
+      create: {
+        sourceId: params.sourceId,
+        kind: params.kind,
+        objectKey,
+        contentType: params.contentType,
+        sizeBytes: BigInt(params.body.length),
+        sha256,
+        originalName: params.originalName,
+        sourceUrl: params.sourceUrl ?? null,
+        metadata: params.metadata ?? Prisma.JsonNull,
+        publicUrl,
+      },
+    }),
+  );
   traceArchive(`  Artifact ${label}: db upsert ${formatSeconds(upsertStartedAt)}s total=${formatSeconds(startedAt)}s`);
   return artifact;
 }

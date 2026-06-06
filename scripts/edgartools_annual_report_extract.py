@@ -85,12 +85,6 @@ def _filing_to_dict(filing: Any, include_html: bool) -> dict[str, Any]:
         elif isinstance(extracted, dict):
             print(f"[edgartools-helper] html() failed for {accession}: {extracted['error']}", file=sys.stderr)
 
-    attachments = []
-    try:
-        attachments = [_attachment_to_dict(attachment) for attachment in _safe_get(filing, "attachments", [])]
-    except Exception as exc:
-        print(f"[edgartools-helper] attachment iteration failed for {accession}: {exc}", file=sys.stderr)
-
     return {
         "accession": accession,
         "form": str(_safe_get(filing, "form") or ""),
@@ -103,7 +97,7 @@ def _filing_to_dict(filing: Any, include_html: bool) -> dict[str, Any]:
         "isXbrl": bool(_safe_get(filing, "is_xbrl", False)),
         "isInlineXbrl": bool(_safe_get(filing, "is_inline_xbrl", False)),
         "size": _safe_get(filing, "size"),
-        "attachments": attachments,
+        "attachments": [],
         "html": html,
     }
 
@@ -111,8 +105,11 @@ def _filing_to_dict(filing: Any, include_html: bool) -> dict[str, Any]:
 def extract(args: argparse.Namespace) -> dict[str, Any]:
     set_identity(args.identity)
     ticker = args.ticker.strip().upper()
+    print(f"[edgartools-helper] {ticker}: create Company", file=sys.stderr, flush=True)
     company = Company(ticker)
+    print(f"[edgartools-helper] {ticker}: get annual filings", file=sys.stderr, flush=True)
     filings = company.get_filings(form=ANNUAL_FORMS)
+    print(f"[edgartools-helper] {ticker}: scan filings", file=sys.stderr, flush=True)
 
     selected = []
     for filing in filings:
@@ -120,7 +117,14 @@ def extract(args: argparse.Namespace) -> dict[str, Any]:
         report_year = _year(report_date)
         if report_year is None or report_year < args.from_year or report_year > args.to_year:
             continue
+        accession = str(_safe_get(filing, "accession_number") or _safe_get(filing, "accession_no") or "")
+        print(
+            f"[edgartools-helper] {ticker}: selected {report_date} {accession}",
+            file=sys.stderr,
+            flush=True,
+        )
         selected.append(_filing_to_dict(filing, include_html=not args.no_html))
+    print(f"[edgartools-helper] {ticker}: selected count {len(selected)}", file=sys.stderr, flush=True)
 
     profile = {
         "name": _safe_get(company, "name"),

@@ -236,7 +236,7 @@ export async function upsertFilingSectionsFromHtml(
   filingKind: "10k" | "20f" | "40f",
   sourceUrl?: string,
   timer?: ImportTimer,
-  sectionConcurrency = 3,
+  sectionConcurrency = 1,
 ) {
   const sections = timer
     ? timer.timeSync("section extract target sections", () => extractTargetSections(html, sourceUrl, filingKind), (result) => `sections=${Object.keys(result).length}`)

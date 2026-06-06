@@ -1,6 +1,6 @@
 # Buffett Tribe Data Tracker
 
-Last updated: 2026-06-02
+Last updated: 2026-06-06
 
 This file is the project data glossary and operational tracker. Keep it current when adding new import scripts, generated artifacts, or data quality checks.
 
@@ -33,8 +33,8 @@ In this project, `fund` means the SEC 13F filer or fund vehicle linked to a mast
 | Category | Data / artifact | Source | Canonical table / files | Script / command | Current status | Needs follow-up |
 |---|---|---|---|---|---|---|
 | Company entities | Company CIK/ticker/profile metadata | SEC submissions + ticker map | `Entity(type=company)` | `npm run import:10k`, `npm run backfill:company:profiles` | 126 company entities in current DB check. | Keep CIK as primary identity; reconcile duplicate tickers/classes. |
-| Annual reports | 10-K / 20-F / 40-F from 2020 to latest | SEC EDGAR | `ExtSource(kind=10k/20f/40f)`, `FilingArtifact`, `FilingSection`, `FilingAttachment` | `npm run import:10k -- --ticker AAPL --from 2020 --to 2025` | Coverage is incomplete for 64/126 companies in current 2020-2025 check. | Run catch-up imports; distinguish true missing data from companies without pre-IPO annual reports. |
-| Batch annual report import | All companies 2020-latest | SEC EDGAR | Same as annual reports | `npm run import:10k:all -- --from 2020 --to 2026 --concurrency 2 --filing-concurrency 2 --archive-concurrency 4` | Script has checkpointing and concurrency flags. | Tune concurrency against SEC/R2/DB limits; monitor failures in `.cache/import-10k-all.json`. |
+| Annual reports | 10-K / 20-F / 40-F from 2020 to latest | SEC EDGAR | `ExtSource(kind=10k/20f/40f)`, `FilingArtifact`, `FilingSection`, `FilingAttachment` | `npm run import:10k -- --ticker AAPL --from 2020 --to 2026` | 2020-2026 catch-up completed for all 126 tracked company entities; checkpoint shows 882 completed annual-report years and 0 failed years. | Distinguish true missing filings from companies without pre-IPO annual reports when adding new companies. |
+| Batch annual report import | All companies 2020-latest | SEC EDGAR | Same as annual reports | `npm run import:10k:all -- --from 2020 --to 2026 --concurrency 1 --filing-concurrency 1` | Script has company/year checkpointing in `.cache/import-10k-all.json`; 126/126 companies completed in the latest run. | Keep conservative concurrency unless SEC/R2/DB limits are re-tested; use `--no-edgartools-html` for edgartools HTML read timeouts. |
 | XBRL source facts | Raw XBRL facts | SEC CompanyFacts + inline XBRL | `FinancialFact` | `npm run import:10k` | Import path exists; now filters API facts by filing accession when available. | Add a coverage report for facts by source/year/concept. |
 | Financial line items | Derived FY metrics | `FinancialFact` / CompanyFacts / inline XBRL | `Financial` | `npm run import:10k`, `npm run check:financial:integrity` | Derived layer maintained for core metrics. | Expand line items only after page requirements are clear. |
 | Filing sections | Business, risk, MD&A, market risk, notes, company information | Primary filing HTML / 40-F attachments | `FilingSection` | `npm run import:10k` | Extractor supports 10-K/20-F/40-F target sections. | Add section-level coverage report for Item 1/1A/7/8 equivalents. |
@@ -63,31 +63,24 @@ In this project, `fund` means the SEC 13F filer or fund vehicle linked to a mast
 | Security/company integrity | `npm run check:security:integrity` | Security link completeness | Run after 13F imports. |
 | Financial integrity | `npm run check:financial:integrity` | Missing FY metrics and abnormal values | Needs regular use after annual report imports. |
 | Latest holdings company coverage | `node --env-file=.env.local ./node_modules/.bin/tsx scripts/check-latest-holdings-company-coverage.ts` | Latest holdings missing finance/analysis coverage | Analysis command now points to `generate:value-analysis`. |
-| Company annual report coverage | Ad hoc query over `ExtSource(kind=10k/20f/40f)` | Missing 2020-latest annual filing rows | Turn into a maintained script if this becomes a weekly operation. |
+| Company annual report coverage | `.cache/import-10k-all.json` plus ad hoc query over `ExtSource(kind=10k/20f/40f)` | Missing 2020-latest annual filing rows and failed import years | Latest checkpoint has `completed=126`, `failed=0`, `completedYears=882`, `failedYears=0`; turn DB coverage query into a maintained script if this becomes weekly. |
 | Script type check | `npm run typecheck:scripts` | Type safety for scripts | Should pass before shipping data pipeline changes. |
 | Production build | `npm run build` | App and route build health | Should pass before tags. |
 
 ## Current Annual Report Coverage Snapshot
 
-Checked against `Entity(type=company)` with CIK and expected years `2020-2025`.
+Checked from `.cache/import-10k-all.json` after the 2020-2026 catch-up.
 
-| Rank | Missing count | Ticker | Company | Present years | Missing years | Note |
-|---:|---:|---|---|---|---|---|
-| 1 | 5 | CRCL | Circle Internet Group, Inc. | 2025 | 2020, 2021, 2022, 2023, 2024 | Likely limited by filing history / IPO timing; verify against SEC before treating as import failure. |
-| 2 | 5 | CRWV | CoreWeave, Inc. | 2025 | 2020, 2021, 2022, 2023, 2024 | Likely limited by filing history / IPO timing. |
-| 3 | 5 | LLYVK | Liberty Live Holdings, Inc. | 2025 | 2020, 2021, 2022, 2023, 2024 | Verify successor/spin-off history. |
-| 4 | 4 | TEM | Tempus AI, Inc. | 2024, 2025 | 2020, 2021, 2022, 2023 | Likely limited by filing history / IPO timing. |
-| 5 | 3 | BATRK | Atlanta Braves Holdings, Inc. | 2023, 2024, 2025 | 2020, 2021, 2022 | Verify tracking-stock / spin-off history. |
-| 6 | 2 | BMY | BRISTOL MYERS SQUIBB CO | 2022, 2023, 2024, 2025 | 2020, 2021 | Import candidate. |
-| 7 | 2 | CRDO | Credo Technology Group Holding Ltd | 2022, 2023, 2024, 2025 | 2020, 2021 | Verify fiscal history. |
-| 8 | 2 | GOLD | Gold.com, Inc. | 2022, 2023, 2024, 2025 | 2020, 2021 | Import candidate / verify ticker identity. |
-| 9 | 2 | MTB | M&T BANK CORP | 2022, 2023, 2024, 2025 | 2020, 2021 | Import candidate. |
-| 10 | 2 | PNC | PNC FINANCIAL SERVICES GROUP, INC. | 2022, 2023, 2024, 2025 | 2020, 2021 | Import candidate. |
-| 11 | 2 | SYF | Synchrony Financial | 2022, 2023, 2024, 2025 | 2020, 2021 | Import candidate. |
-| 12 | 2 | TEVA | TEVA PHARMACEUTICAL INDUSTRIES LTD | 2022, 2023, 2024, 2025 | 2020, 2021 | 20-F import candidate. |
-| 13 | 2 | UAL | United Airlines Holdings, Inc. | 2022, 2023, 2024, 2025 | 2020, 2021 | Import candidate. |
-| 14 | 2 | VTS | Vitesse Energy, Inc. | 2022, 2023, 2024, 2025 | 2020, 2021 | Verify spin-off history. |
-| 15+ | 1 | Multiple | 50 companies | 2021-2025 | 2020 | Mostly import candidates; verify companies that did not have public annual reports in 2020. |
+| Metric | Value |
+|---|---:|
+| Tracked company targets | 126 |
+| Completed companies | 126 |
+| Failed companies | 0 |
+| Completed annual-report years | 882 |
+| Failed annual-report years | 0 |
+| In-progress annual-report years | 0 |
+
+The latest catch-up completed the remaining failed years: `SIRI 2020`, `SNOW 2025`, `SNOW 2026`, `VTS 2024`, and `ZM 2025`.
 
 ## LLM Versioning
 
@@ -104,10 +97,13 @@ Checked against `Entity(type=company)` with CIK and expected years `2020-2025`.
 
 ```bash
 # Annual reports for all tracked companies, conservative parallelism
-npm run import:10k:all -- --from 2020 --to 2026 --concurrency 2 --filing-concurrency 2 --archive-concurrency 4
+npm run import:10k:all -- --from 2020 --to 2026 --concurrency 1 --filing-concurrency 1
+
+# Failed-year annual report backfill with longer timeouts and SEC-side HTML fetch
+npm run import:10k:all -- --from 2020 --to 2026 --concurrency 1 --filing-concurrency 1 --no-edgartools-html --extract-timeout-ms 1800000 --company-timeout-ms 5400000 --retries 5 --retry-delay-ms 30000
 
 # One company annual report catch-up
-npm run import:10k -- --ticker BMY --from 2020 --to 2021 --filing-concurrency 2 --archive-concurrency 4
+npm run import:10k -- --ticker BMY --from 2020 --to 2021 --filing-concurrency 1 --no-edgartools-html
 
 # LLM generated company artifacts
 npm run generate:company-profile -- --company AAPL --force

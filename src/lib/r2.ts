@@ -19,9 +19,9 @@ function parsePositiveInt(value: string | undefined, fallback: number) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-const R2_UPLOAD_ATTEMPTS = parsePositiveInt(process.env.R2_UPLOAD_ATTEMPTS, 3);
+const R2_UPLOAD_ATTEMPTS = parsePositiveInt(process.env.R2_UPLOAD_ATTEMPTS, 5);
 const R2_UPLOAD_TIMEOUT_MS = parsePositiveInt(process.env.R2_UPLOAD_TIMEOUT_MS, 45_000);
-const R2_UPLOAD_RETRY_BASE_MS = parsePositiveInt(process.env.R2_UPLOAD_RETRY_BASE_MS, 1_000);
+const R2_UPLOAD_RETRY_BASE_MS = parsePositiveInt(process.env.R2_UPLOAD_RETRY_BASE_MS, 2_000);
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

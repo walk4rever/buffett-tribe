@@ -6,7 +6,7 @@
  * Usage:
  *   npm run import:10k -- --ticker AAPL --from 2025 --to 2025
  */
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -103,6 +103,7 @@ function parseArgs(args: string[]) {
   const toArg = args.find((_, i) => args[i - 1] === "--to");
   const yearsArg = args.find((_, i) => args[i - 1] === "--years");
   const filingConcurrency = parsePositiveInt(getArg("--filing-concurrency"), 1);
+  const extractTimeoutMs = parsePositiveInt(getArg("--extract-timeout-ms"), 8 * 60 * 1000);
   const noHtml = hasFlag("--no-edgartools-html");
   const python = getArg("--python") ?? (process.env.EDGARTOOLS_PYTHON || path.join(process.cwd(), ".venv/bin/python"));
 
@@ -122,7 +123,44 @@ function parseArgs(args: string[]) {
     fromYear = toYear - years + 1;
   }
 
-  return { ticker, fromYear, toYear, filingConcurrency, noHtml, python };
+  return { ticker, fromYear, toYear, filingConcurrency, extractTimeoutMs, noHtml, python };
+}
+
+function runEdgarToolsHelper(params: {
+  python: string;
+  args: string[];
+  timeoutMs: number;
+}) {
+  return new Promise<void>((resolve, reject) => {
+    const child = spawn(params.python, params.args, {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      child.kill("SIGTERM");
+      reject(new Error(`edgartools helper timed out after ${params.timeoutMs}ms`));
+    }, params.timeoutMs);
+
+    child.stdout.on("data", (chunk) => process.stdout.write(chunk));
+    child.stderr.on("data", (chunk) => process.stderr.write(chunk));
+    child.on("error", (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      reject(err);
+    });
+    child.on("close", (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (code === 0) resolve();
+      else reject(new Error(`edgartools helper exited with code ${code ?? "unknown"}`));
+    });
+  });
 }
 
 async function extractWithEdgarTools(params: {
@@ -130,6 +168,7 @@ async function extractWithEdgarTools(params: {
   fromYear: number;
   toYear: number;
   python: string;
+  extractTimeoutMs: number;
   noHtml: boolean;
 }) {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "buffett-edgartools-"));
@@ -148,17 +187,7 @@ async function extractWithEdgarTools(params: {
     ];
     if (params.noHtml) args.push("--no-html");
 
-    const res = spawnSync(params.python, args, {
-      cwd: process.cwd(),
-      env: process.env,
-      encoding: "utf8",
-      maxBuffer: 64 * 1024 * 1024,
-    });
-    if (res.stdout) process.stdout.write(res.stdout);
-    if (res.stderr) process.stderr.write(res.stderr);
-    if (res.status !== 0) {
-      throw new Error(`edgartools helper exited with code ${res.status ?? "unknown"}`);
-    }
+    await runEdgarToolsHelper({ python: params.python, args, timeoutMs: params.extractTimeoutMs });
 
     const raw = await readFile(outputPath, "utf8");
     return JSON.parse(raw) as EdgarToolsPayload;
@@ -184,6 +213,7 @@ async function importEdgarToolsAnnualReports(params: {
   fromYear: number;
   toYear: number;
   filingConcurrency: number;
+  extractTimeoutMs: number;
   noHtml: boolean;
   python: string;
 }) {
@@ -305,7 +335,7 @@ async function importEdgarToolsAnnualReports(params: {
               indexUrl: filing.indexUrl,
               isXbrl: filing.isXbrl,
               isInlineXbrl: filing.isInlineXbrl,
-              attachmentCount: filing.attachments.length,
+              attachmentCount,
             },
           },
         },
