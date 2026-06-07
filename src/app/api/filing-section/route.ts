@@ -25,6 +25,7 @@ export async function GET(request: Request) {
   const sourceId = searchParams.get("sourceId");
   const section = searchParams.get("section");
   const includeRaw = searchParams.get("raw") === "1";
+  const includeFullBlocks = searchParams.get("fullBlocks") === "1";
 
   if (!sourceId || !section) {
     return NextResponse.json({ error: "sourceId and section are required" }, { status: 400 });
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
 
   const [text, blocksText, rawHtml] = await Promise.all([
     fetchArtifactText(row.textArtifact?.publicUrl),
-    row.blocksJson ? Promise.resolve(null) : fetchArtifactText(row.blocksArtifact?.publicUrl),
+    includeFullBlocks || !row.blocksJson ? fetchArtifactText(row.blocksArtifact?.publicUrl) : Promise.resolve(null),
     includeRaw ? fetchArtifactText(row.htmlArtifact?.publicUrl) : Promise.resolve(null),
   ]);
 
@@ -63,7 +64,7 @@ export async function GET(request: Request) {
     content: text ?? row.content,
     rawHtml: includeRaw ? rawHtml ?? row.rawHtml : null,
     outlineJson: row.outlineJson,
-    blocksJson: row.blocksJson ?? parseJsonArtifact(blocksText) ?? null,
+    blocksJson: parseJsonArtifact(blocksText) ?? row.blocksJson ?? null,
     contentPreview: row.contentPreview,
     contentTextLength: row.contentTextLength,
     blockCount: row.blockCount,

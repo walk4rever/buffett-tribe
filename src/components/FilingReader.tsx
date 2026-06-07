@@ -1,8 +1,10 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronLeft, ExternalLink, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import {
   formatCompanyCikUrl,
   type CompanyAnnualFiling,
@@ -13,6 +15,7 @@ import {
 type FilingReaderProps = {
   company: {
     name: string;
+    nameZh: string | null;
     ticker: string | null;
     cik: string | null;
   };
@@ -382,9 +385,9 @@ const FILING_TEMPLATES: Record<string, FilingTemplate> = {
   },
 };
 
-function formatFilingDate(date: Date | null) {
-  if (!date) return "—";
-  return date.toISOString().slice(0, 10);
+function formatShortDate(date: Date | null) {
+  if (!date) return null;
+  return date.toISOString().slice(5, 10);
 }
 
 function formatFilingKindLabel(kind: string) {
@@ -442,6 +445,14 @@ function parseBlocksJson(value: unknown): CompanyAnnualFilingBlock[] {
 
 function parseOutlineJson(value: unknown): CompanyAnnualFilingOutlineNode[] {
   return isOutlineArray(value) ? value : [];
+}
+
+function blockHasHtml(block: CompanyAnnualFilingBlock) {
+  return typeof block.html === "string" && block.html.trim().length > 0;
+}
+
+function needsFullBlockHydration(blocks: CompanyAnnualFilingBlock[]) {
+  return blocks.some((block) => (block.type === "table" || block.type === "image") && !blockHasHtml(block));
 }
 
 function isSectionHeadingBlock(text: string) {
@@ -550,7 +561,29 @@ function renderLegacyTextContent(content: string) {
   });
 }
 
-function renderBlock(block: CompanyAnnualFilingBlock) {
+function buildFilingAssetUrl(sourceId: string, src: string) {
+  if (!src || src.startsWith("data:") || src.startsWith("blob:")) return src;
+  const name = src.split(/[?#]/)[0]?.split("/").filter(Boolean).pop();
+  if (!name) return src;
+  return `/api/filing-asset?${new URLSearchParams({ sourceId, name }).toString()}`;
+}
+
+function rewriteStructuredBlockHtml(html: string, sourceId: string) {
+  return html.replace(/(<img\b[^>]*\bsrc=)(["'])([^"']+)\2/gi, (_match, prefix: string, quote: string, src: string) => {
+    return `${prefix}${quote}${buildFilingAssetUrl(sourceId, src)}${quote}`;
+  });
+}
+
+function renderBlock(block: CompanyAnnualFilingBlock, sourceId: string) {
+  if (blockHasHtml(block)) {
+    return (
+      <div
+        className={`filing-reader-structured-html filing-reader-structured-html--${block.type}`}
+        dangerouslySetInnerHTML={{ __html: rewriteStructuredBlockHtml(block.html!, sourceId) }}
+      />
+    );
+  }
+
   switch (block.type) {
     case "heading":
       return (
@@ -579,6 +612,13 @@ function renderBlock(block: CompanyAnnualFilingBlock) {
             <li key={`${block.id}-${index}`}>{item}</li>
           ))}
         </ul>
+      );
+    case "image":
+      return (
+        <figure className="filing-reader-image">
+          <img src={buildFilingAssetUrl(sourceId, block.src)} alt={block.alt ?? block.caption ?? ""} loading="lazy" />
+          {block.caption ? <figcaption>{block.caption}</figcaption> : null}
+        </figure>
       );
     case "table":
       return (
@@ -735,11 +775,12 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
 
     const hasFullText = section.contentTextLength <= section.content.length;
     const needsText = Boolean(section.textArtifactId && !section.blocks.length && !hasFullText);
-    const needsBlocks = Boolean(section.blocksArtifactId && !section.blocks.length);
+    const needsBlocks = Boolean(section.blocksArtifactId && (!section.blocks.length || needsFullBlockHydration(section.blocks)));
     if (!needsText && !needsBlocks) return;
 
     const controller = new AbortController();
     const params = new URLSearchParams({ sourceId: filing.id, section: currentSection });
+    if (needsBlocks) params.set("fullBlocks", "1");
 
     fetch(`/api/filing-section?${params.toString()}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : null))
@@ -761,8 +802,18 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
   const reportLabel = `${filing.periodYear ?? "—"}${filing.periodQuarter ? ` Q${filing.periodQuarter}` : ""}`;
   const companyUrl = formatCompanyCikUrl(company.cik) ?? `/company/${company.cik ?? ""}`;
   const referencesUrl = `${companyUrl}?tab=references`;
-  const filingDateLabel = filing.filedAt ? formatFilingDate(filing.filedAt) : null;
-  const reportDateLabel = filing.ts ? formatFilingDate(filing.ts) : null;
+  const displayCompanyName = company.nameZh?.trim() || company.name;
+  const filingDateLabel = formatShortDate(filing.filedAt);
+  const reportDateLabel = formatShortDate(filing.ts);
+  const reportMetaLabel = [
+    reportLabel,
+    filingDateLabel ? `Filed ${filingDateLabel}` : null,
+    reportDateLabel ? `Report ${reportDateLabel}` : null,
+  ].filter(Boolean).join(" · ");
+  const primaryHtmlArtifact = useMemo(() => {
+    return filing.artifacts.find((artifact) => artifact.kind === "primary_html" && (artifact.sourceUrl || artifact.publicUrl));
+  }, [filing.artifacts]);
+  const secOriginalUrl = filing.url ?? primaryHtmlArtifact?.sourceUrl ?? null;
   const supplementalFiles = useMemo(() => {
     const attachmentFiles = filing.attachments.map((attachment) => ({
       key: `attachment-${attachment.sequence}-${attachment.documentName}`,
@@ -885,17 +936,20 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
             <ChevronLeft size={15} />
           </Link>
           <div className="filing-reader-bar-copy">
-            <span className="filing-reader-bar-label">Annual Report Reader</span>
             <span className="filing-reader-bar-name">
-              {company.name}
+              {displayCompanyName}
               {company.ticker ? <em>{company.ticker}</em> : null}
+              {reportMetaLabel ? <small>{reportMetaLabel}</small> : null}
             </span>
           </div>
         </div>
         <div className="filing-reader-bar-right">
-          <span className="filing-reader-bar-pill">{reportLabel}</span>
-          {filingDateLabel ? <span className="filing-reader-bar-meta">Filed {filingDateLabel}</span> : null}
-          {reportDateLabel ? <span className="filing-reader-bar-meta">Report {reportDateLabel}</span> : null}
+          {secOriginalUrl ? (
+            <a className="filing-reader-sec-link" href={secOriginalUrl} target="_blank" rel="noreferrer">
+              <ExternalLink size={14} />
+              SEC 原文
+            </a>
+          ) : null}
         </div>
       </div>
 
@@ -995,7 +1049,7 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
                         id={block.id}
                         className={`filing-reader-block filing-reader-block--${block.type}`}
                       >
-                        {renderBlock(block)}
+                        {renderBlock(block, filing.id)}
                       </div>
                     ))
                   ) : section?.rawHtml ? (

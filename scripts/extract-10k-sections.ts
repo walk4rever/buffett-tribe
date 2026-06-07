@@ -11,7 +11,7 @@
 import prisma from "../src/lib/prisma";
 import { extractTargetSections } from "./lib/extract-10k-sections";
 import { buildAnnualReportToc } from "../src/lib/annual-report-html";
-import { buildStoredFilingSectionData } from "./lib/filing-section-storage";
+import { buildStoredFilingSectionData, FILING_SECTION_EXTRACTION_VERSION } from "./lib/filing-section-storage";
 
 const HEADERS = {
   "User-Agent": "buffett-tribe research walkklaw@gmail.com",
@@ -29,16 +29,18 @@ async function processSource(source: {
   kind: string;
   accessionNumber: string | null;
   filer: { cik: string | null } | null;
+  artifacts: Array<{ publicUrl: string | null }>;
 }) {
   if (!source.url || !source.filerEntityId) return { sections: 0, skipped: true };
 
   try {
     const label = `${source.id} ${source.kind}`;
-    console.log(`  ${label}: fetching ${source.url}`);
+    const htmlUrl = source.artifacts[0]?.publicUrl ?? source.url;
+    console.log(`  ${label}: fetching ${htmlUrl}`);
     const timeoutMs = source.kind === "20f" || source.kind === "40f" ? 120000 : 30000;
-    const res = await fetch(source.url, { headers: HEADERS, signal: AbortSignal.timeout(timeoutMs) });
+    const res = await fetch(htmlUrl, { headers: HEADERS, signal: AbortSignal.timeout(timeoutMs) });
     if (!res.ok) {
-      console.warn(`  HTTP ${res.status} for ${source.url}`);
+      console.warn(`  HTTP ${res.status} for ${htmlUrl}`);
       return { sections: 0, skipped: false };
     }
 
@@ -109,12 +111,20 @@ async function main() {
   const sourceIdArg = args.find((_, i) => args[i - 1] === "--source-id");
   const limitArg = args.find((_, i) => args[i - 1] === "--limit");
   const limit = limitArg ? parseInt(limitArg, 10) : undefined;
+  const needsCurrentVersion = args.includes("--needs-current-version");
 
   // Build query
   const where: Record<string, unknown> = {
     kind: { in: ["10k", "20f", "40f"] },
     url: { not: null },
   };
+
+  if (needsCurrentVersion) {
+    where.OR = [
+      { sections: { none: {} } },
+      { sections: { some: { extractionVersion: { lt: FILING_SECTION_EXTRACTION_VERSION } } } },
+    ];
+  }
 
   if (sourceIdArg) {
     where.id = sourceIdArg;
@@ -140,6 +150,12 @@ async function main() {
         metadata: true,
         accessionNumber: true,
         filer: { select: { cik: true } },
+        artifacts: {
+          where: { kind: "primary_html" },
+          select: { publicUrl: true },
+          orderBy: { createdAt: "asc" },
+          take: 1,
+        },
       },
     });
 

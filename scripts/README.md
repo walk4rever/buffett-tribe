@@ -50,6 +50,20 @@
 - 命令：`npm run verify:10k:edgartools`
 - 作用：对同一批 ticker 跑 edgartools 导入，并按 accession 输出 sections、attachments、artifacts、facts、derived 计数。
 
+保真度对比：
+
+- 文件：[compare-annual-report-fidelity.ts](/Users/rafael/R129/buffett-tribe/scripts/compare-annual-report-fidelity.ts)
+- 命令：`npm run compare:10k:fidelity -- --tickers AAPL,ZM,SNOW,VTS,TSM,ASML --out scratch/annual-report-qa/fidelity.json`
+- 作用：对比已归档 `primary_html` 与结构化 section blocks。v3 blocks artifact 会保留 block HTML，所以脚本会按结构化阅读器实际渲染路径统计图片、表格、`colspan`、`rowspan`、inline style、iXBRL facts 等差异。默认只报告 warning；加 `--strict` 后有 warning 会返回非零退出码。
+- 适用场景：检查年度报告页面的图片缺失、财务表格错位、结构化抽取丢失原 HTML 样式等问题。
+
+结构化 sections 回填：
+
+- 文件：[extract-10k-sections.ts](/Users/rafael/R129/buffett-tribe/scripts/extract-10k-sections.ts)
+- 命令：`npm run extract:10k:sections -- --needs-current-version --limit 50`
+- 作用：从 `primary_html` 重新抽取结构化章节。当前 v3 会把 table/image 的原 HTML 保存到 versioned `section_blocks` artifact，前端按需 hydrate 后可在结构化模式保留图片、`colspan`、`rowspan` 和原 inline style。
+- 常用参数：`--ticker SNOW`、`--source-id <ExtSource.id>`、`--limit 50`、`--needs-current-version`。
+
 全量入口：
 
 - 文件：[import-all-10k-edgartools.ts](/Users/rafael/R129/buffett-tribe/scripts/import-all-10k-edgartools.ts)

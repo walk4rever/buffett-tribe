@@ -713,11 +713,13 @@ export type CompanyAnnualFilingBlock =
       text: string;
       level: number;
       sourceTag: string;
+      html?: string;
     }
   | {
       id: string;
       type: "paragraph";
       text: string;
+      html?: string;
     }
   | {
       id: string;
@@ -725,6 +727,7 @@ export type CompanyAnnualFilingBlock =
       ordered: boolean;
       items: string[];
       text: string;
+      html?: string;
     }
   | {
       id: string;
@@ -733,11 +736,22 @@ export type CompanyAnnualFilingBlock =
       headers: string[];
       rows: string[][];
       text: string;
+      html?: string;
+    }
+  | {
+      id: string;
+      type: "image";
+      src: string;
+      alt: string | null;
+      caption: string | null;
+      text: string;
+      html?: string;
     }
   | {
       id: string;
       type: "note";
       text: string;
+      html?: string;
     };
 
 export type CompanyAnnualFilingArtifact = {

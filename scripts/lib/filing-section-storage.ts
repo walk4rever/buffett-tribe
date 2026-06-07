@@ -3,7 +3,7 @@ import type { ExtractedSection, FilingBlock } from "./extract-10k-sections";
 import { archiveFilingArtifact } from "./filing-archive";
 
 const CONTENT_PREVIEW_CHARS = 8_000;
-export const FILING_SECTION_EXTRACTION_VERSION = 2;
+export const FILING_SECTION_EXTRACTION_VERSION = 3;
 
 type FilingSectionArtifactContext = {
   entityId: string;
@@ -65,7 +65,7 @@ async function archiveSectionTextArtifact(
     kind: "section_text",
     cik: normalizeKeyPartFallback(context.cik, context.entityId),
     accession: normalizeKeyPartFallback(context.accession, context.sourceId),
-    originalName: `${section}.txt`,
+    originalName: `${section}.v${FILING_SECTION_EXTRACTION_VERSION}.txt`,
     contentType: "text/plain; charset=utf-8",
     body: Buffer.from(content, "utf8"),
     sourceUrl: context.sourceUrl ?? null,
@@ -88,7 +88,7 @@ async function archiveSectionBlocksArtifact(
     kind: "section_blocks",
     cik: normalizeKeyPartFallback(context.cik, context.entityId),
     accession: normalizeKeyPartFallback(context.accession, context.sourceId),
-    originalName: `${section}.blocks.json`,
+    originalName: `${section}.v${FILING_SECTION_EXTRACTION_VERSION}.blocks.json`,
     contentType: "application/json; charset=utf-8",
     body: Buffer.from(JSON.stringify(blocks), "utf8"),
     sourceUrl: context.sourceUrl ?? null,
@@ -108,8 +108,8 @@ export async function buildStoredFilingSectionData(
 ): Promise<StoredSectionData> {
   const lightBlocks = stripBlocksHtml(extracted.blocks);
   const textArtifact = await archiveSectionTextArtifact(db, context, section, extracted.content);
-  const blocksArtifact = lightBlocks.length
-    ? await archiveSectionBlocksArtifact(db, context, section, lightBlocks)
+  const blocksArtifact = extracted.blocks.length
+    ? await archiveSectionBlocksArtifact(db, context, section, extracted.blocks)
     : null;
   const preview = makeContentPreview(extracted.content);
 

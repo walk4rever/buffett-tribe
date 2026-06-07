@@ -184,6 +184,16 @@ export type FilingBlock =
   | {
       id: string;
       anchor: string | null;
+      type: "image";
+      src: string;
+      alt: string | null;
+      caption: string | null;
+      text: string;
+      html: string;
+    }
+  | {
+      id: string;
+      anchor: string | null;
       type: "note";
       text: string;
       html: string;
@@ -209,6 +219,7 @@ const BLOCK_CHILD_TAGS = new Set([
   "p",
   "pre",
   "section",
+  "img",
   "table",
   "tbody",
   "td",
@@ -400,6 +411,28 @@ function parseList($: CheerioAPI, list: Element, blockId: string): FilingBlock |
   };
 }
 
+function parseImage($: CheerioAPI, image: Element, blockId: string, figure?: Element): FilingBlock | null {
+  const src = ($(image).attr("src") ?? "").trim();
+  if (!src) return null;
+
+  const alt = normalizePlainText($(image).attr("alt") ?? "") || null;
+  const caption = figure ? normalizePlainText($(figure).find("figcaption").first().text()) || null : null;
+  const text = caption ?? alt ?? src.split(/[?#]/)[0]?.split("/").pop() ?? "image";
+  const htmlNode = figure ?? image;
+  const html = $.html(htmlNode) ?? "";
+
+  return {
+    id: blockId,
+    anchor: getNodeAnchor(htmlNode),
+    type: "image",
+    src,
+    alt,
+    caption,
+    text,
+    html,
+  };
+}
+
 function pushTextBlock(blocks: FilingBlock[], text: string, sourceTag: string, html: string, anchor: string | null) {
   const normalized = normalizePlainText(text);
   if (!normalized) return;
@@ -434,6 +467,21 @@ function collectRenderableBlocks($: CheerioAPI, root: Element) {
     if (tag === "li") return; // handled by the parent list
 
     const blockId = "";
+    if (tag === "figure") {
+      const image = $(node).find("img").first().get(0);
+      if (image) {
+        const imageBlock = parseImage($, image, blockId, node);
+        if (imageBlock) blocks.push(imageBlock);
+        return;
+      }
+    }
+
+    if (tag === "img") {
+      const imageBlock = parseImage($, node, blockId);
+      if (imageBlock) blocks.push(imageBlock);
+      return;
+    }
+
     if (HEADING_TAGS.has(tag)) {
       const text = normalizePlainText($(node).text());
       if (text) {
@@ -475,7 +523,7 @@ function collectRenderableBlocks($: CheerioAPI, root: Element) {
   };
 
   visit(root);
-  return blocks.filter((block) => normalizePlainText(block.text).length > 0);
+  return blocks.filter((block) => block.type === "image" || normalizePlainText(block.text).length > 0);
 }
 
 function renderBlockText(block: FilingBlock) {
@@ -486,6 +534,8 @@ function renderBlockText(block: FilingBlock) {
       return block.text;
     case "list":
       return block.items.map((item) => `- ${item}`).join("\n");
+    case "image":
+      return block.caption ?? block.alt ?? "";
     case "table": {
       const rows = [] as string[];
       if (block.caption) rows.push(block.caption);

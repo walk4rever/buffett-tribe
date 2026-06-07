@@ -7,6 +7,12 @@ interface Props {
   params: Promise<{ cik: string; year: string }>;
 }
 
+function getCompanyNameZh(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const value = (metadata as { nameZh?: unknown }).nameZh;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
 export default async function AnnualReportPage({ params }: Props) {
   const { cik: rawCik, year: rawYear } = await params;
   const canonicalSlug = formatCompanyCikSlug(rawCik.trim());
@@ -29,6 +35,7 @@ export default async function AnnualReportPage({ params }: Props) {
         <FilingReader
           company={{
             name: company.canonicalName,
+            nameZh: getCompanyNameZh(company.metadata),
             ticker: company.ticker ?? null,
             cik: company.cik ?? null,
           }}

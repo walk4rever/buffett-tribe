@@ -6402,7 +6402,7 @@ body.layout-no-header {
   align-items: center;
   justify-content: flex-end;
   gap: 0.55rem;
-  flex: 1;
+  flex: 0 0 auto;
   min-width: 0;
   flex-wrap: wrap;
 }
@@ -6434,30 +6434,27 @@ body.layout-no-header {
 
 .filing-reader-bar-copy {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   min-width: 0;
-}
-
-.filing-reader-bar-label {
-  font-size: 0.67rem;
-  color: #8c7761;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
+  flex: 1;
 }
 
 .filing-reader-bar-name {
-  display: inline-flex;
+  display: flex;
   align-items: baseline;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.42rem;
   min-width: 0;
-  font-size: 1rem;
-  font-weight: 600;
   color: #0f172a;
-  letter-spacing: -0.02em;
+  font-size: 1.02rem;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .filing-reader-bar-name em {
   font-style: normal;
+  display: inline-flex;
+  align-items: center;
   font-size: 0.72rem;
   padding: 0.18rem 0.42rem;
   border-radius: 999px;
@@ -6465,10 +6462,17 @@ body.layout-no-header {
   color: #7c5d31;
 }
 
-.filing-reader-bar-pill,
-.filing-reader-bar-meta {
+.filing-reader-bar-name small {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.filing-reader-sec-link {
   display: inline-flex;
   align-items: center;
+  gap: 0.35rem;
   height: 32px;
   padding: 0 0.72rem;
   border-radius: 999px;
@@ -6476,16 +6480,17 @@ body.layout-no-header {
   white-space: nowrap;
 }
 
-.filing-reader-bar-pill {
-  background: #1f2937;
-  color: #f8fafc;
-  font-weight: 600;
+.filing-reader-sec-link {
+  background: rgba(255, 255, 255, 0.72);
+  color: #8a5a14;
+  border: 1px solid rgba(138, 90, 20, 0.18);
+  text-decoration: none;
+  font-weight: 650;
 }
 
-.filing-reader-bar-meta {
-  background: rgba(255, 255, 255, 0.72);
-  color: #475569;
-  border: 1px solid rgba(132, 146, 166, 0.18);
+.filing-reader-sec-link:hover {
+  background: rgba(255, 255, 255, 0.96);
+  color: #6f450d;
 }
 
 .filing-reader-body {
@@ -6975,6 +6980,36 @@ body.layout-no-header {
   line-height: 1.82;
   font-size: 0.98rem;
   overflow-wrap: anywhere;
+}
+
+.filing-reader-structured-html {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.filing-reader-structured-html img,
+.filing-reader-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.filing-reader-structured-html figure,
+.filing-reader-image {
+  margin: 0;
+  max-width: 100%;
+}
+
+.filing-reader-structured-html figcaption,
+.filing-reader-image figcaption {
+  margin-top: 0.45rem;
+  color: #64748b;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.filing-reader-structured-html table {
+  max-width: 100%;
 }
 
 .filing-reader-html-block {

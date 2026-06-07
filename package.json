@@ -1,6 +1,6 @@
 {
   "name": "buffett-tribe",
-  "version": "0.36.19",
+  "version": "0.36.20",
   "private": true,
   "type": "module",
   "scripts": {
@@ -25,6 +25,8 @@
     "import:10k:from13f": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-10k-from-13f.ts",
     "pipeline:10k": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/pipeline-10k.ts",
     "data:10k": "npm run pipeline:10k --",
+    "compare:10k:fidelity": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/compare-annual-report-fidelity.ts",
+    "extract:10k:sections": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/extract-10k-sections.ts",
     "migrate:filing-sections:artifacts": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/migrate-filing-sections-to-artifacts.ts",
     "import:stock-prices:yf": "sh -c 'PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python; exec \"$PY\" scripts/fetch-stock-prices-yf.py \"$@\"' sh",
     "import:company-stock-prices:yf": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-company-stock-prices-yf.ts",
