@@ -58,6 +58,8 @@ __pycache__/
 # Eval run history (timestamped artifacts)
 tests/evals/history/mvp_benchmark_30_results_*.json
 tests/evals/history/mvp_benchmark_30_summary_*.json
+logs/
+tmp/
 
 # Local agent/IDE artifacts
 /.cache/

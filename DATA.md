@@ -1,6 +1,6 @@
 # Buffett Tribe Data Tracker
 
-Last updated: 2026-06-06
+Last updated: 2026-06-08
 
 This file is the project data glossary and operational tracker. Keep it current when adding new import scripts, generated artifacts, or data quality checks.
 
@@ -38,6 +38,7 @@ In this project, `fund` means the SEC 13F filer or fund vehicle linked to a mast
 | XBRL source facts | Raw XBRL facts | SEC CompanyFacts + inline XBRL | `FinancialFact` | `npm run import:10k` | Import path exists; now filters API facts by filing accession when available. | Add a coverage report for facts by source/year/concept. |
 | Financial line items | Derived FY metrics | `FinancialFact` / CompanyFacts / inline XBRL | `Financial` | `npm run import:10k`, `npm run check:financial:integrity` | Derived layer maintained for core metrics. | Expand line items only after page requirements are clear. |
 | Filing sections | Business, risk, MD&A, market risk, notes, company information | Primary filing HTML / 40-F attachments | `FilingSection` | `npm run import:10k` | Extractor supports 10-K/20-F/40-F target sections. | Add section-level coverage report for Item 1/1A/7/8 equivalents. |
+| Filing section extraction jobs | Source-level v3 structured section backfill status | Existing `ExtSource` annual filings | `FilingSectionExtractionJob`, `FilingSection`, `FilingArtifact` | `npm run backfill:filing-section-jobs -- --kinds 10k --sample 20` | Job queue added for low-QPS, auditable backfill; initial 20-job 10-K sample completed with 18 success, 2 no_sections, 0 failed. | Review Supabase hourly Disk IO before increasing sample size; keep 20-F/40-F in separate queues until parser quality is reviewed. |
 | Filing archive | Primary HTML, index HTML, attachments, data files | SEC EDGAR + R2 | `FilingArtifact`, R2 object keys | `npm run import:10k` | Existing artifacts are now reused by object key to avoid re-upload. | Consider retention policy and R2 cost dashboard. |
 | Stock prices | Historical OHLC data | Yahoo Finance | `StockPrice` | `npm run import:company-stock-prices:yf` | Script exists. | Track ticker coverage and date ranges. |
 | Company profile | LLM-generated basic company information | SEC filings + metadata + financial dashboard | `CompanyAnalysis.narrative.overview`, `GeneratedContentVersion(artifactType=company_profile)` | `npm run generate:company-profile` | Latest display plus version history now supported. | Backfill history for rows generated before the version table if needed. |
@@ -64,6 +65,7 @@ In this project, `fund` means the SEC 13F filer or fund vehicle linked to a mast
 | Financial integrity | `npm run check:financial:integrity` | Missing FY metrics and abnormal values | Needs regular use after annual report imports. |
 | Latest holdings company coverage | `node --env-file=.env.local ./node_modules/.bin/tsx scripts/check-latest-holdings-company-coverage.ts` | Latest holdings missing finance/analysis coverage | Analysis command now points to `generate:value-analysis`. |
 | Company annual report coverage | `.cache/import-10k-all.json` plus ad hoc query over `ExtSource(kind=10k/20f/40f)` | Missing 2020-latest annual filing rows and failed import years | Latest checkpoint has `completed=126`, `failed=0`, `completedYears=882`, `failedYears=0`; turn DB coverage query into a maintained script if this becomes weekly. |
+| Filing section job status | `npm run backfill:filing-section-jobs -- --kinds 10k --sample 20 --seed-only` plus query over `FilingSectionExtractionJob` | Source-level backfill state and failure/no-section audit trail | Use before any broad v3 section backfill; current policy is small 10-K samples only while Supabase Disk IO is constrained. |
 | Script type check | `npm run typecheck:scripts` | Type safety for scripts | Should pass before shipping data pipeline changes. |
 | Production build | `npm run build` | App and route build health | Should pass before tags. |
 
@@ -104,6 +106,13 @@ npm run import:10k:all -- --from 2020 --to 2026 --concurrency 1 --filing-concurr
 
 # One company annual report catch-up
 npm run import:10k -- --ticker BMY --from 2020 --to 2021 --filing-concurrency 1 --no-edgartools-html
+
+# Safe structured section v3 backfill sample; source-level jobs, single worker, low QPS
+npm run backfill:filing-section-jobs -- --kinds 10k --sample 20
+
+# Seed only, then run the queued jobs manually; useful when observing Supabase hourly Disk IO
+npm run backfill:filing-section-jobs -- --kinds 10k --sample 20 --seed-only
+npm run backfill:filing-section-jobs -- --kinds 10k --run-only --limit 20 --delay-ms 60000
 
 # LLM generated company artifacts
 npm run generate:company-profile -- --company AAPL --force

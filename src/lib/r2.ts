@@ -20,7 +20,7 @@ function parsePositiveInt(value: string | undefined, fallback: number) {
 }
 
 const R2_UPLOAD_ATTEMPTS = parsePositiveInt(process.env.R2_UPLOAD_ATTEMPTS, 5);
-const R2_UPLOAD_TIMEOUT_MS = parsePositiveInt(process.env.R2_UPLOAD_TIMEOUT_MS, 45_000);
+const R2_UPLOAD_TIMEOUT_MS = parsePositiveInt(process.env.R2_UPLOAD_TIMEOUT_MS, 600_000);
 const R2_UPLOAD_RETRY_BASE_MS = parsePositiveInt(process.env.R2_UPLOAD_RETRY_BASE_MS, 2_000);
 
 function sleep(ms: number) {
@@ -92,6 +92,32 @@ export async function uploadToR2(key: string, body: Buffer, contentType: string)
   throw new Error(`R2 upload failed after ${R2_UPLOAD_ATTEMPTS} attempts: key=${key} status=${status ?? '-'} error=${name}`, {
     cause: lastError,
   });
+}
+
+export async function getR2ObjectBuffer(key: string, timeoutMs = 300_000): Promise<Buffer> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await r2.send(
+      new GetObjectCommand({
+        Bucket: BUCKET,
+        Key: key,
+      }),
+      { abortSignal: controller.signal },
+    );
+
+    if (!response.Body) {
+      throw new Error('R2 object has no body');
+    }
+
+    const chunks: Buffer[] = [];
+    for await (const chunk of response.Body as AsyncIterable<Buffer | Uint8Array | string>) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /**

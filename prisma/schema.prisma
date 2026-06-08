@@ -239,10 +239,39 @@ model ExtSource {
   sections    FilingSection[]
   attachments FilingAttachment[]
   artifacts   FilingArtifact[]
+  sectionExtractionJobs FilingSectionExtractionJob[]
 
   @@unique([filerEntityId, accessionNumber], name: "ExtSource_filer_accession_unique")
   @@index([kind, ts])
   @@index([filerEntityId])
+}
+
+model FilingSectionExtractionJob {
+  id                String    @id @default(cuid())
+  sourceId          String
+  extractionVersion Int
+  status            String    @default("pending") // pending | running | success | failed | no_sections
+  attempts          Int       @default(0)
+  maxAttempts       Int       @default(1)
+  sectionCount      Int       @default(0)
+  lastError         String?
+  lastErrorCode     String?
+  workerId          String?
+  lockedAt          DateTime?
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  nextRunAt         DateTime?
+  lastDurationMs    Int?
+  metadata          Json?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  source ExtSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, extractionVersion])
+  @@index([status, nextRunAt])
+  @@index([sourceId])
+  @@index([updatedAt])
 }
 
 model Financial {

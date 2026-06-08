@@ -29,6 +29,13 @@ type ArchiveArtifactParams = {
 };
 
 const ARCHIVE_TRACE = process.env.ARCHIVE_TRACE === "1";
+const ARTIFACT_DB_RETRY_ATTEMPTS = parsePositiveInt(process.env.ARTIFACT_DB_RETRY_ATTEMPTS, 6);
+
+function parsePositiveInt(value: string | undefined, fallback: number) {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 function formatSeconds(startedAt: number) {
   return ((Date.now() - startedAt) / 1000).toFixed(1);
@@ -52,14 +59,14 @@ function isRetryableDbError(error: unknown) {
 
 async function withArtifactDbRetry<T>(label: string, fn: () => Promise<T>) {
   let lastError: unknown;
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= ARTIFACT_DB_RETRY_ATTEMPTS; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error;
-      if (!isRetryableDbError(error) || attempt >= 3) break;
+      if (!isRetryableDbError(error) || attempt >= ARTIFACT_DB_RETRY_ATTEMPTS) break;
       const delayMs = 1000 * 2 ** (attempt - 1);
-      console.warn(`[DB] artifact retry ${attempt}/3 ${label} error=${error instanceof Error ? error.message : String(error)} nextDelayMs=${delayMs}`);
+      console.warn(`[DB] artifact retry ${attempt}/${ARTIFACT_DB_RETRY_ATTEMPTS} ${label} error=${error instanceof Error ? error.message : String(error)} nextDelayMs=${delayMs}`);
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }

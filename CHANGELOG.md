@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.36.21] - 2026-06-08
+
+### Added
+- 新增 `FilingSectionExtractionJob`，按 source 记录结构化年报 section 回填状态：`pending`、`running`、`success`、`failed`、`no_sections`。
+- 新增 `npm run backfill:filing-section-jobs`，支持单 worker、低 QPS、pause file、source 级失败记录和小样本回填。
+- 新增 R2 object 直读能力，section backfill 优先通过 R2 SDK 读取已归档 `primary_html`，再 fallback 到 URL。
+
+### Changed
+- `extract-10k-sections.ts` 导出 source 级处理函数，失败时回滚本 source 本轮部分写入，避免半份年报被误判完成。
+- R2 上传和 artifact DB retry 调整为更适合大 section artifact 的保守配置。
+
+### Notes
+- 2026-06-08 先跑 20 份 10-K 小样本：18 `success`、2 `no_sections`、0 `failed`。扩大回填前应先观察 Supabase hourly Disk IO。
+- 暂不继续混跑 20-F/40-F；这些 filing 类型需要单独队列和 parser 质量复核。
+
 ## [v0.36.14] - 2026-06-04
 
 ### Added

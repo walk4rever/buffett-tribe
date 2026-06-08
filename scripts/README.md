@@ -64,6 +64,16 @@
 - 作用：从 `primary_html` 重新抽取结构化章节。当前 v3 会把 table/image 的原 HTML 保存到 versioned `section_blocks` artifact，前端按需 hydrate 后可在结构化模式保留图片、`colspan`、`rowspan` 和原 inline style。
 - 常用参数：`--ticker SNOW`、`--source-id <ExtSource.id>`、`--limit 50`、`--needs-current-version`。
 
+结构化 sections 安全回填队列：
+
+- 文件：[backfill-filing-section-jobs.ts](/Users/rafael/R129/buffett-tribe/scripts/backfill-filing-section-jobs.ts)
+- 命令：`npm run backfill:filing-section-jobs -- --kinds 10k --sample 20`
+- 作用：按 `ExtSource` 粒度创建并执行 `FilingSectionExtractionJob`，用于低速、可暂停、可审计地回填 v3 sections。状态包括 `pending`、`running`、`success`、`failed`、`no_sections`。
+- 默认策略：单 worker、每份之间延迟 60 秒、`maxAttempts=1`，失败只记录 job error，不无限重试。
+- 暂停方式：创建 `tmp/filing-section-backfill.pause`；worker 会在当前 source 完成后停止。
+- 小样本验证：2026-06-08 已 seed 20 个 `10k` job；结果为 18 `success`、2 `no_sections`、0 `failed`。由于 Supabase Disk IO budget 已告警，扩大样本前应先观察 Supabase hourly Disk IO。
+- 建议：先只跑 `10k`；`20f`、`40f` 单独排队和修 parser 后再跑，不要混入主回填。
+
 全量入口：
 
 - 文件：[import-all-10k-edgartools.ts](/Users/rafael/R129/buffett-tribe/scripts/import-all-10k-edgartools.ts)
