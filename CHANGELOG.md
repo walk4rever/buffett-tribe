@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.36.22] - 2026-06-08
+
+### Fixed
+- 首页 Server Component 的公司列表和成员季度查询增加 DB fallback，Supabase pooler 短暂取不到连接时不再让首页 production render 直接 500。
+
+### Notes
+- 本地 production 复现到 digest `1088092378`，真实错误为 Supabase pooler `ECHECKOUTTIMEOUT`。修复后首页返回 200，但请求仍可能受 Supabase Disk IO / pooler 健康影响变慢。
+
 ## [v0.36.21] - 2026-06-08
 
 ### Added

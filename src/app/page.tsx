@@ -9,10 +9,15 @@ import { getAvailableQuarters } from "@/lib/master-data";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
-  const [signals, memberStates, companies] = await Promise.all([
-    getLatestHomeSignalCards(),
-    Promise.all(
+function logHomeFallback(scope: string, err: unknown) {
+  if (process.env.DEBUG_DB_FALLBACK !== "1") return;
+  const message = err instanceof Error ? err.message : String(err);
+  console.warn(`[home:${scope}] DB query failed, fallback to empty result: ${message}`);
+}
+
+async function getHomeMemberStates() {
+  try {
+    return await Promise.all(
       TRIBE_MEMBERS.map(async (m) => {
         const quarters = await getAvailableQuarters(m.id);
         return {
@@ -20,13 +25,35 @@ export default async function Home() {
           latestQuarter: quarters[0] ?? null,
         };
       })
-    ),
-    prisma.entity.findMany({
+    );
+  } catch (err) {
+    logHomeFallback("memberStates", err);
+    return TRIBE_MEMBERS.map((m) => ({
+      id: m.id,
+      latestQuarter: null,
+    }));
+  }
+}
+
+async function getHomeCompanies() {
+  try {
+    return await prisma.entity.findMany({
       where: { type: "company", cik: { not: null } },
       select: { canonicalName: true, cik: true, metadata: true },
       orderBy: { canonicalName: "asc" },
       take: 200,
-    }),
+    });
+  } catch (err) {
+    logHomeFallback("companies", err);
+    return [];
+  }
+}
+
+export default async function Home() {
+  const [signals, memberStates, companies] = await Promise.all([
+    getLatestHomeSignalCards(),
+    getHomeMemberStates(),
+    getHomeCompanies(),
   ]);
 
   const stateMap = new Map(memberStates.map((s) => [s.id, s]));
