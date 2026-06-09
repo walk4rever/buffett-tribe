@@ -184,6 +184,91 @@ date: "2026-06-09"
     expect(mockTree.children[1].properties["data-insight-callout"]).toBe("tribe-view");
   });
 
+  it("rehypeInsightCallouts promotes semantic bold text after a default note marker", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockTree: any = {
+      type: "root",
+      children: [
+        {
+          type: "element",
+          tagName: "blockquote",
+          properties: {},
+          children: [
+            {
+              type: "element",
+              tagName: "p",
+              properties: {},
+              children: [
+                { type: "text", value: "[!NOTE] " },
+                {
+                  type: "element",
+                  tagName: "strong",
+                  properties: {},
+                  children: [{ type: "text", value: "巴菲特部落视角（伯克希尔的选人标准）" }],
+                },
+              ],
+            },
+            {
+              type: "element",
+              tagName: "p",
+              properties: {},
+              children: [{ type: "text", value: "沃伦·巴菲特常说，经理人必须具备诚信。" }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const transform = rehypeInsightCallouts();
+    transform(mockTree);
+
+    const aside = mockTree.children[0];
+    expect(aside.properties.className).toContain("insight-callout--tribe-view");
+    expect(aside.properties["data-insight-callout"]).toBe("tribe-view");
+    expect(aside.children[0].children[0].value).toBe("巴菲特部落视角（伯克希尔的选人标准）");
+    expect(aside.children[1].children[0].value).toBe("沃伦·巴菲特常说，经理人必须具备诚信。");
+  });
+
+  it("rehypeInsightCallouts removes promoted semantic bold title from paragraph body", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockTree: any = {
+      type: "root",
+      children: [
+        {
+          type: "element",
+          tagName: "blockquote",
+          properties: {},
+          children: [
+            {
+              type: "element",
+              tagName: "p",
+              properties: {},
+              children: [
+                { type: "text", value: "[!NOTE] " },
+                {
+                  type: "element",
+                  tagName: "strong",
+                  properties: {},
+                  children: [{ type: "text", value: "巴菲特部落视角（坪效的魔力）" }],
+                },
+                { type: "text", value: "\n数字化带来的经济商誉会提高单店回报。" },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const transform = rehypeInsightCallouts();
+    transform(mockTree);
+
+    const aside = mockTree.children[0];
+    expect(aside.children[0].children[0].value).toBe("巴菲特部落视角（坪效的魔力）");
+    expect(aside.children[1].children).toEqual([
+      { type: "text", value: "数字化带来的经济商誉会提高单店回报。" },
+    ]);
+  });
+
   it("rehypeInsightCallouts drops empty blockquote fragments around callouts", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockTree: any = {

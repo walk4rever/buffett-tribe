@@ -217,13 +217,27 @@ function createCalloutFromGroup(group: HastElement[]): HastElement {
   
   const match = /^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(.*?)(?:\r?\n|$)/i.exec(firstText.value);
   const type = match ? match[1].toLowerCase() : "note";
-  const title = match ? (match[2].trim() || CALLOUT_LABELS[type] || type.toUpperCase()) : "NOTE";
-  const semanticClass = getInsightCalloutSemanticClass(title);
+  let title = match ? (match[2].trim() || CALLOUT_LABELS[type] || type.toUpperCase()) : "NOTE";
 
   // Slice callout prefix from the first text node
   if (match) {
     firstText.value = firstText.value.slice(match[0].length);
   }
+
+  const defaultTitle = CALLOUT_LABELS[type] || type.toUpperCase();
+  const firstParagraphText = collectText(firstParagraph).trim();
+  let dropFirstParagraph = false;
+  if (title === defaultTitle) {
+    const semanticTitle = extractInsightCalloutSemanticTitle(firstParagraphText);
+    if (semanticTitle) {
+      title = semanticTitle;
+      removeLeadingText(firstParagraph, semanticTitle);
+      pruneEmptyTextNodes(firstParagraph);
+      dropFirstParagraph = !hasRenderableContent([firstParagraph]);
+    }
+  }
+
+  const semanticClass = getInsightCalloutSemanticClass(title);
 
   const titleNode: HastElement = {
     type: "element",
@@ -249,7 +263,9 @@ function createCalloutFromGroup(group: HastElement[]): HastElement {
     return true;
   });
 
-  const finalChildren = hasContent ? calloutChildren : calloutChildren.filter((child) => child !== firstParagraph);
+  const finalChildren = hasContent && !dropFirstParagraph
+    ? calloutChildren
+    : calloutChildren.filter((child) => child !== firstParagraph);
 
   return {
     type: "element",
@@ -261,6 +277,81 @@ function createCalloutFromGroup(group: HastElement[]): HastElement {
     },
     children: finalChildren,
   };
+}
+
+function collectText(node: HastElement): string {
+  if (node.type === "text") {
+    return typeof node.value === "string" ? node.value : "";
+  }
+
+  if (!Array.isArray(node.children)) return "";
+
+  return node.children.map((child) => collectText(child)).join("");
+}
+
+function extractInsightCalloutSemanticTitle(value: string): string | null {
+  const normalized = value.trim();
+  if (!normalized) return null;
+
+  const titleMatch = /^(2026\s*跨时空复盘[^\n。！？]*?[）)]|巴菲特部落视角[^\n。！？]*?[）)])/u.exec(normalized);
+  return titleMatch?.[1]?.trim() ?? null;
+}
+
+function removeLeadingText(node: HastElement, value: string): boolean {
+  if (!value) return false;
+
+  if (node.type === "text") {
+    if (typeof node.value !== "string") return false;
+    const leadingWhitespace = node.value.match(/^\s*/)?.[0] ?? "";
+    const afterWhitespace = node.value.slice(leadingWhitespace.length);
+    if (!afterWhitespace.startsWith(value)) return false;
+    node.value = afterWhitespace.slice(value.length).replace(/^\s+/, "");
+    return true;
+  }
+
+  if (!Array.isArray(node.children)) return false;
+
+  for (let index = 0; index < node.children.length; index += 1) {
+    const child = node.children[index];
+    if (!hasRenderableContent([child])) {
+      continue;
+    }
+
+    const childText = collectText(child).trim();
+    if (childText === value) {
+      node.children.splice(index, 1);
+      trimLeadingTextNode(node.children[index]);
+      return true;
+    }
+
+    if (removeLeadingText(child, value)) {
+      trimLeadingTextNode(node.children[index + 1]);
+      return true;
+    }
+
+    return false;
+  }
+
+  return false;
+}
+
+function trimLeadingTextNode(node: HastElement | undefined) {
+  if (node?.type === "text" && typeof node.value === "string") {
+    node.value = node.value.replace(/^\s+/, "");
+  }
+}
+
+function pruneEmptyTextNodes(node: HastElement) {
+  if (!Array.isArray(node.children)) return;
+
+  node.children = node.children.filter((child) => {
+    if (child.type === "text") {
+      return typeof child.value === "string" && child.value.length > 0;
+    }
+
+    pruneEmptyTextNodes(child);
+    return true;
+  });
 }
 
 function getInsightCalloutSemanticClass(title: string): string | null {
