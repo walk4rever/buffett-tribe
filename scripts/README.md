@@ -14,6 +14,8 @@
 - 命令：`npm run import:13f`
 - 命令：`npm run import:13f:range`
 - 作用：用 `edgartools` 获取 13F-HR filing 与 holdings，按季度区间导入原始持仓。
+- 支持 filer：`buffett`、`lilu`、`duan`、`gavin-baker`。其中 `gavin-baker` 映射 Atreides Management, LP，CIK `0001777813`，在产品上作为 Alpha master 与核心部落成员分开展示。
+- 示例：`npm run import:13f -- --filer gavin-baker --quarter-list 2026Q1,2025Q4`。
 
 共享入库 core：
 

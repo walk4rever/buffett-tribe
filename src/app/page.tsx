@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { formatCompanyPathFromCik } from "@/lib/cik";
 import { SiteNav } from "@/components/SiteNav";
 import { HeroSearch } from "@/components/HeroSearch";
-import { formatAumForHome, TRIBE_MEMBERS } from "@/lib/tribe";
+import { ALPHA_TRIBE_MEMBERS, CORE_TRIBE_MEMBERS, formatAumForHome, TRIBE_MEMBERS } from "@/lib/tribe";
 import { getLatestHomeSignalCards } from "@/lib/home-signals";
 import { getAvailableQuarters } from "@/lib/master-data";
 
@@ -100,7 +100,7 @@ export default async function Home() {
         <div className="home-members-in">
           <p className="home-members-hd">部落成员</p>
           <div className="home-member-list">
-            {TRIBE_MEMBERS.map((m) => {
+            {CORE_TRIBE_MEMBERS.map((m) => {
               const state = stateMap.get(m.id)!;
               return (
                 <div key={m.id} className="home-member-card">
@@ -149,6 +149,54 @@ export default async function Home() {
               );
             })}
           </div>
+          {ALPHA_TRIBE_MEMBERS.length > 0 ? (
+            <div className="home-alpha-block">
+              <p className="home-members-hd home-members-hd--alpha">Alpha 投资人</p>
+              <div className="home-member-list home-member-list--alpha">
+                {ALPHA_TRIBE_MEMBERS.map((m) => {
+                  const state = stateMap.get(m.id);
+                  return (
+                    <div key={m.id} className="home-member-card home-member-card--alpha">
+                      <Link href={`/master/${m.id}`} className="home-member-main">
+                        <div className="home-member-top">
+                          <span
+                            className="home-member-avatar"
+                            style={{ background: m.color }}
+                          >
+                            {m.initials.slice(0, 2)}
+                          </span>
+                          <div className="home-member-info">
+                            <div className="home-member-name">{m.nameZh}</div>
+                            <div className="home-member-firm">{m.firm}</div>
+                          </div>
+                          {m.aum && <span className="home-member-aum">{formatAumForHome(m.aum) ?? m.aum}</span>}
+                        </div>
+                      </Link>
+                      <div className="home-member-links">
+                        {state?.latestQuarter ? (
+                          <Link href={`/master/${m.id}#holdings`} className="home-member-link">
+                            <span className="home-member-link-icon">A</span>
+                            <span className="home-member-link-text">
+                              最新 13F
+                              <em>{state.latestQuarter.year} Q{state.latestQuarter.quarter}</em>
+                            </span>
+                          </Link>
+                        ) : (
+                          <span className="home-member-link home-member-link--disabled">
+                            <span className="home-member-link-icon">A</span>
+                            <span className="home-member-link-text">
+                              最新 13F
+                              <em>暂无数据</em>
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
 

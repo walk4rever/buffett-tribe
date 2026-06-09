@@ -84,6 +84,9 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
             <p className="holdings-eyebrow">持仓快照</p>
             <h1 className="holdings-name">{member.nameZh}</h1>
             <p className="holdings-firm">{member.firm}</p>
+            {member.category === "alpha" ? (
+              <p className="holdings-firm">Alpha 投资人 · 13F 仅覆盖公开市场披露仓位</p>
+            ) : null}
           </div>
         </div>
 
@@ -290,6 +293,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
 
         <p className="holdings-note">
           数据来源：SEC EDGAR 13F-HR · 数值为申报日市值，不构成投资建议
+          {member.category === "alpha" ? " · Atreides 可能持有未在 13F 中披露的私募投资、空头或其他非披露资产" : ""}
         </p>
       </div>
     </div>

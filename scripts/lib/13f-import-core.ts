@@ -175,6 +175,7 @@ export const FILERS = [
   { tribeId: "buffett", name: "Berkshire Hathaway Inc", cik: "1067983" },
   { tribeId: "lilu", name: "Himalaya Capital Management LLC", cik: "1709323" },
   { tribeId: "duan", name: "H&H International Investment LLC", cik: "1759760" },
+  { tribeId: "gavin-baker", name: "Atreides Management, LP", cik: "1777813" },
 ] as const;
 
 export type Filer = (typeof FILERS)[number];

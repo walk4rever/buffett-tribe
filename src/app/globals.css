@@ -4335,6 +4335,24 @@ body.layout-no-header {
   gap: 0.75rem;
 }
 
+.home-alpha-block {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.home-members-hd--alpha {
+  margin-bottom: 0.85rem;
+}
+
+.home-member-list--alpha {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.home-member-card--alpha {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 .home-member-card {
   background: var(--apple-dark-surface);
   border-radius: 12px;
@@ -5031,6 +5049,8 @@ body.layout-no-header {
 .person-eyebrow { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--apple-secondary); margin: 0 0 0.3rem; }
 .person-name { font-size: 2.25rem; line-height: 1.08; letter-spacing: -0.5px; margin: 0; color: var(--apple-near-black); font-weight: 700; }
 .person-firm { margin: 0.28rem 0 0; font-size: 0.9375rem; color: var(--apple-body); }
+.person-alpha-note { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.65rem; }
+.person-alpha-note span { font-size: 0.72rem; color: #4c1d95; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.22); border-radius: 999px; padding: 0.22rem 0.62rem; font-weight: 600; }
 .person-intro { margin: 0.9rem 0 0; font-size: 0.9375rem; color: var(--apple-near-black); line-height: 1.58; }
 .person-framework { margin-top: 0.85rem; display: grid; gap: 0.46rem; }
 .person-framework-item { font-size: 0.8125rem; color: var(--apple-body); padding-left: 1.1rem; position: relative; line-height: 1.5; }

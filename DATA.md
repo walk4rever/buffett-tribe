@@ -1,6 +1,6 @@
 # Buffett Tribe Data Tracker
 
-Last updated: 2026-06-08
+Last updated: 2026-06-09
 
 This file is the project data glossary and operational tracker. Keep it current when adding new import scripts, generated artifacts, or data quality checks.
 
@@ -20,9 +20,9 @@ In this project, `fund` means the SEC 13F filer or fund vehicle linked to a mast
 
 | Category | Data / artifact | Source | Canonical table / files | Script / command | Current status | Needs follow-up |
 |---|---|---|---|---|---|---|
-| Masters | Master entities (`buffett`, `lilu`, `duan`) | Code / seed data | `Entity(type=master)` | `scripts/import-13f.ts`, `scripts/neo4j-seed-mvp.ts` | Present for core masters. | Keep `tribeId` stable; add new masters only with explicit profile and source plan. |
+| Masters | Master entities (`buffett`, `lilu`, `duan`, `gavin-baker`) | Code / seed data | `Entity(type=master)` | `npm run import:13f`, `scripts/neo4j-seed-mvp.ts` | Core masters remain the primary tribe; Gavin Baker is the first `alpha` master and is displayed separately. | Keep `tribeId` stable; add new masters only with explicit profile, category, and source plan. |
 | Fund / filer identity | Master-linked 13F reporting entity / fund vehicle | SEC filer metadata + project mapping | `Entity(type=master)`, `ExtSource.filerEntityId` | `npm run import:13f` | Current model treats the reporting filer as the master-linked fund/filer identity. | If one master has multiple filers, add explicit mapping before importing. |
-| 13F filings | Quarterly holdings filings | SEC EDGAR 13F | `ExtSource(kind=13f)`, `Holding`, `Security`, `Entity` | `npm run import:13f`, `npm run pipeline:13f` | Core pipeline exists. | Periodically run latest quarter and integrity checks. |
+| 13F filings | Quarterly holdings filings | SEC EDGAR 13F | `ExtSource(kind=13f)`, `Holding`, `Security`, `Entity` | `npm run import:13f`, `npm run pipeline:13f` | Core pipeline exists. Atreides Management, LP is mapped to `gavin-baker` with CIK `0001777813`. | Periodically run latest quarter and integrity checks. |
 | 13F company links | Security to company entity links | 13F + ticker/name maps | `Security.companyEntityId`, `CompanyNameMap` | `npm run backfill:security:company-links`, `npm run sync:company-name-map` | Existing repair scripts available. | Run after new 13F imports; inspect unresolved issuers. |
 | Holdings change sets | Quarter-over-quarter add/trim/new/exit signals | `Holding` history | Derived in scripts / app queries | `scripts/generate-portfolio-insight.ts` | Used by portfolio insight generation. | Add explicit coverage report by master and quarter if this becomes a recurring gap. |
 | Master profile | LLM-generated investment profile | Latest holdings + source material counts | `MasterProfile`, `GeneratedContentVersion(artifactType=master_profile)` | `npm run generate:master-profile` | Latest display plus version history now supported. | Backfill history for rows generated before the version table if needed. |
@@ -66,6 +66,7 @@ In this project, `fund` means the SEC 13F filer or fund vehicle linked to a mast
 | Latest holdings company coverage | `node --env-file=.env.local ./node_modules/.bin/tsx scripts/check-latest-holdings-company-coverage.ts` | Latest holdings missing finance/analysis coverage | Analysis command now points to `generate:value-analysis`. |
 | Company annual report coverage | `.cache/import-10k-all.json` plus ad hoc query over `ExtSource(kind=10k/20f/40f)` | Missing 2020-latest annual filing rows and failed import years | Latest checkpoint has `completed=126`, `failed=0`, `completedYears=882`, `failedYears=0`; turn DB coverage query into a maintained script if this becomes weekly. |
 | Filing section job status | `npm run backfill:filing-section-jobs -- --kinds 10k --sample 20 --seed-only` plus query over `FilingSectionExtractionJob` | Source-level backfill state and failure/no-section audit trail | Use before any broad v3 section backfill; current policy is small 10-K samples only while Supabase Disk IO is constrained. |
+| Supabase pooler health | `node --env-file=.env.local ./node_modules/.bin/tsx -e 'import db from "./src/lib/prisma"; db.entity.count().then(console.log).finally(()=>db.$disconnect())'` | Whether Prisma can check out even a lightweight connection | 2026-06-09: pooler returned `ECHECKOUTTIMEOUT`; pause imports/backfills until Disk IO / pooler recovers. |
 | Script type check | `npm run typecheck:scripts` | Type safety for scripts | Should pass before shipping data pipeline changes. |
 | Production build | `npm run build` | App and route build health | Should pass before tags. |
 

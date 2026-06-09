@@ -200,6 +200,23 @@ const FALLBACK_BRIEF: Record<
       "2018：建仓并持续买入腾讯，公开分享对微信生态的理解",
     ],
   },
+  "gavin-baker": {
+    intro:
+      "Gavin Baker，Atreides Management, LP 创始人、Managing Partner 与 CIO，长期专注科技、消费成长、AI、半导体与 public/private crossover 投资。",
+    framework: [
+      "技术周期：跟踪算力、半导体、软件平台和消费互联网的长期结构变化",
+      "成长质量：重视市场空间、竞争位置、单位经济模型和管理层执行力",
+      "跨市场视角：结合公开市场与私募成长投资理解企业生命周期",
+      "风险控制：通过组合、对冲和仓位管理应对高成长资产波动",
+    ],
+    tags: ["Alpha 投资人", "科技成长", "AI", "半导体", "Crossover"],
+    timeline: [
+      "1999：加入 Fidelity Investments，开始研究科技、医药、零售和通信等行业",
+      "2009：开始管理 Fidelity OTC Portfolio",
+      "2013：参与推动 Fidelity 的风险投资和成长投资业务",
+      "2019：创立 Atreides Management, LP",
+    ],
+  },
 };
 
 export default async function PersonHubPage({ params }: Props) {
@@ -257,6 +274,7 @@ export default async function PersonHubPage({ params }: Props) {
   const documentOwner = id === "buffett" || id === "duan" || id === "lilu" ? id : null;
   const documents = documentOwner ? getDocumentsForOwner(documentOwner) : [];
   const bookDoc = id === "buffett" ? documents[0] ?? null : null;
+  const isAlphaMaster = member.category === "alpha";
 
   return (
     <div className="person-page">
@@ -270,9 +288,17 @@ export default async function PersonHubPage({ params }: Props) {
               {member.initials.slice(0, 2)}
             </span>
             <div className="person-hero-info">
-              <p className="person-eyebrow">Investor Profile</p>
+              <p className="person-eyebrow">
+                {isAlphaMaster ? "Alpha Investor Profile" : "Investor Profile"}
+              </p>
               <h1 className="person-name">{member.nameZh}</h1>
               <p className="person-firm">{member.firm}</p>
+              {isAlphaMaster ? (
+                <div className="person-alpha-note">
+                  <span>Alpha 投资人</span>
+                  <span>科技成长 / Crossover / SEC 13F</span>
+                </div>
+              ) : null}
               <p className="person-intro">{intro}</p>
               {timeline.length > 0 && (
                 <div className="person-timeline-v2 person-timeline-v2--hero">
@@ -474,8 +500,9 @@ export default async function PersonHubPage({ params }: Props) {
               ))}
             </div>
           ) : (
-            <div className="person-master-grid">
-              {masterClass.filter((item) => item.count > 0).map((item) => (
+            masterClass.filter((item) => item.count > 0).length > 0 ? (
+              <div className="person-master-grid">
+                {masterClass.filter((item) => item.count > 0).map((item) => (
                 <Link
                   key={item.key}
                   href={
@@ -494,8 +521,11 @@ export default async function PersonHubPage({ params }: Props) {
                     最近:{item.latest ?? "-"}
                   </div>
                 </Link>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="person-empty">资料库建设中。</p>
+            )
           )}
         </section>
 
@@ -504,6 +534,11 @@ export default async function PersonHubPage({ params }: Props) {
             <div>
               <h2 className="person-section-title">最新持仓({latestLabel})</h2>
               <p className="person-compare-note">对比基准:{baseLabel}</p>
+              {isAlphaMaster ? (
+                <p className="person-compare-note">
+                  13F 仅覆盖可披露的美国公开市场多头及部分期权仓位，不代表 Atreides 全部组合。
+                </p>
+              ) : null}
             </div>
             {latest ? (
               <Link href={`/master/${id}/holdings`} className="person-view-all">

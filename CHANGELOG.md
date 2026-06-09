@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.36.23] - 2026-06-09
+
+### Added
+- 新增 Alpha master 分类，Gavin Baker / Atreides Management, LP 作为第一位 Alpha 投资人，与核心大师导航和首页展示分区区分。
+- 新增 Gavin Baker master 页面默认画像、Alpha 标签和 13F 披露限制说明；持仓页复用现有 13F 展示并提示 13F 不代表完整 Atreides 组合。
+- `import:13f` 支持 `--filer gavin-baker`，Atreides Management, LP 映射 CIK `0001777813`。
+
+### Changed
+- 首页和全站导航只把 Buffett、Li Lu、Duan 作为核心部落成员展示，Alpha 投资人放在独立区域。
+- 未配置资料库的 master 不再 fallback 到 Buffett 资料分类，改为显示“资料库建设中”。
+
+### Notes
+- Gavin Baker 最近 8 个季度 13F 入库命令已准备好：`npm run import:13f -- --filer gavin-baker --quarters 8`。
+- 本轮尝试导入时 Supabase pooler 仍返回 `ECHECKOUTTIMEOUT`，轻量 `entity.count()` 也无法取到连接；因此 Atreides 13F 实际入库需等 Supabase Disk IO / pooler 恢复后再执行。
+
 ## [v0.36.22] - 2026-06-08
 
 ### Fixed

@@ -164,7 +164,7 @@ export async function getMasterClassSummary(personId: string): Promise<MasterCla
     ],
   };
 
-  const config = presets[personId] ?? presets.buffett;
+  const config = presets[personId] ?? [];
   if (personId !== "buffett") {
     return config.map((c) => ({
       key: c.key,

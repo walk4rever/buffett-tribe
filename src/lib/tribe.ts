@@ -1,5 +1,7 @@
 export interface TribeMember {
   id: string;
+  category: "core" | "alpha";
+  displayGroup: string;
   name: string;
   nameZh: string;
   firm: string;
@@ -17,6 +19,8 @@ export interface TribeMember {
 export const TRIBE_MEMBERS: TribeMember[] = [
   {
     id: "buffett",
+    category: "core",
+    displayGroup: "部落成员",
     name: "Warren Buffett",
     nameZh: "巴菲特",
     firm: "Berkshire Hathaway",
@@ -32,6 +36,8 @@ export const TRIBE_MEMBERS: TribeMember[] = [
   },
   {
     id: "lilu",
+    category: "core",
+    displayGroup: "部落成员",
     name: "Li Lu",
     nameZh: "李录",
     firm: "喜马拉雅资本",
@@ -47,6 +53,8 @@ export const TRIBE_MEMBERS: TribeMember[] = [
   },
   {
     id: "duan",
+    category: "core",
+    displayGroup: "部落成员",
     name: "Duan Yongping",
     nameZh: "段永平",
     firm: "H&H International Investment",
@@ -60,7 +68,27 @@ export const TRIBE_MEMBERS: TribeMember[] = [
     hasData: true,
     icon: "✍️",
   },
+  {
+    id: "gavin-baker",
+    category: "alpha",
+    displayGroup: "Alpha 投资人",
+    name: "Gavin Baker",
+    nameZh: "Gavin Baker",
+    firm: "Atreides Management, LP",
+    color: "#7c3aed",
+    initials: "GB",
+    aum: "$5.0B",
+    materialLabel: "访谈与观点",
+    materialSub: "建设中",
+    materialHref: "/master/gavin-baker#library",
+    holdingsHref: "/master/gavin-baker/holdings",
+    hasData: true,
+    icon: "A",
+  },
 ];
+
+export const CORE_TRIBE_MEMBERS = TRIBE_MEMBERS.filter((m) => m.category === "core");
+export const ALPHA_TRIBE_MEMBERS = TRIBE_MEMBERS.filter((m) => m.category === "alpha");
 
 export function getTribeMember(id: string): TribeMember | null {
   return TRIBE_MEMBERS.find((m) => m.id === id) ?? null;

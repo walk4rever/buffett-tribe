@@ -89,7 +89,7 @@ function parseArgs() {
 
   const filersToRun = filerArg ? FILERS.filter((f) => f.tribeId === filerArg) : [...FILERS];
   if (filerArg && filersToRun.length === 0) {
-    throw new Error(`Unknown filer: ${filerArg}. Use buffett, lilu, or duan.`);
+    throw new Error(`Unknown filer: ${filerArg}. Use ${FILERS.map((f) => f.tribeId).join(", ")}.`);
   }
 
   return { filersToRun, maxQuarters, quarterList, python };
