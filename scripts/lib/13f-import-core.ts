@@ -630,6 +630,16 @@ export async function importFiling(
 
   await runTimed(timer, "ensure security profiles", () => ensureSecurityProfilesBulk());
 
+  const aggregated = new Map<string, {
+    holderEntityId: string;
+    securityId: string;
+    sourceId: string;
+    asOfDate: Date;
+    shares: bigint;
+    valueUsd: bigint;
+    percentOfPortfolio: number;
+  }>();
+
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
     const snapshot = snapshots[i];
@@ -637,16 +647,25 @@ export async function importFiling(
       ? Number((entry.value * BigInt(10000)) / totalValue) / 100
       : 0;
 
-    prepared.push({
-      holderEntityId: filerEntityId,
-      securityId: snapshot.securityId,
-      sourceId: extSource.id,
-      asOfDate,
-      shares: entry.shares,
-      valueUsd: entry.value * valueUsdScale,
-      percentOfPortfolio,
-    });
+    const existing = aggregated.get(snapshot.securityId);
+    if (existing) {
+      existing.shares += entry.shares;
+      existing.valueUsd += entry.value * valueUsdScale;
+      existing.percentOfPortfolio += percentOfPortfolio;
+    } else {
+      aggregated.set(snapshot.securityId, {
+        holderEntityId: filerEntityId,
+        securityId: snapshot.securityId,
+        sourceId: extSource.id,
+        asOfDate,
+        shares: entry.shares,
+        valueUsd: entry.value * valueUsdScale,
+        percentOfPortfolio,
+      });
+    }
   }
+
+  prepared.push(...aggregated.values());
 
   await runTimed(timer, "upsert holdings", () => upsertHoldingsBulk(prepared), (result) => `rows=${prepared.length}, affected=${result.count}`);
 

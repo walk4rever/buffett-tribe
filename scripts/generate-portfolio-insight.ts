@@ -137,9 +137,17 @@ async function getAvailableQuarters(tribeId: string) {
     select: { periodYear: true, periodQuarter: true },
     orderBy: [{ periodYear: "desc" }, { periodQuarter: "desc" }],
   });
-  return sources
-    .filter((s) => s.periodYear != null && s.periodQuarter != null)
-    .map((s) => ({ year: s.periodYear!, quarter: s.periodQuarter! }));
+  const seen = new Set<string>();
+  const uniq: QuarterPoint[] = [];
+  for (const s of sources) {
+    if (s.periodYear == null || s.periodQuarter == null) continue;
+    const key = `${s.periodYear}-${s.periodQuarter}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniq.push({ year: s.periodYear, quarter: s.periodQuarter });
+    }
+  }
+  return uniq;
 }
 
 function findBaseQuarter(quarters: QuarterPoint[], latest: QuarterPoint) {

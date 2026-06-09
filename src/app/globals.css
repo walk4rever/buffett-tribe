@@ -3971,6 +3971,13 @@ body.layout-no-header {
   color: var(--apple-white);
 }
 
+.home-nav-divider {
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 0.75rem;
+  font-weight: 300;
+  user-select: none;
+}
+
 .home-nav .user-menu-trigger {
   color: rgba(255, 255, 255, 0.8);
 }
@@ -4346,7 +4353,7 @@ body.layout-no-header {
 }
 
 .home-member-list--alpha {
-  grid-template-columns: minmax(0, 1fr);
+  /* Inherits 3-column grid from .home-member-list on desktop */
 }
 
 .home-member-card--alpha {

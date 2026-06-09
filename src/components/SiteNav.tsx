@@ -29,12 +29,19 @@ export function SiteNav() {
           <BtLogoMark />
           Buffett Tribe
         </Link>
-        <div className="home-nav-center" aria-label="部落成员">
+        <div className="home-nav-center" aria-label="部落成员与入口">
           {CORE_TRIBE_MEMBERS.map((member) => (
             <Link key={member.id} href={`/master/${member.id}`} className="home-nav-link">
               {member.nameZh}
             </Link>
           ))}
+          <span className="home-nav-divider">|</span>
+          <Link href="/idea" className="home-nav-link">
+            对话
+          </Link>
+          <Link href="#" className="home-nav-link">
+            洞见
+          </Link>
         </div>
         <div className="home-nav-right">
           {session ? (
