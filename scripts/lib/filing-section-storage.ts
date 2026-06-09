@@ -120,7 +120,7 @@ export async function buildStoredFilingSectionData(
     content: preview,
     rawHtml: null,
     outlineJson: extracted.outline as Prisma.InputJsonValue,
-    blocksJson: lightBlocks.length ? lightBlocks as Prisma.InputJsonValue : Prisma.JsonNull,
+    blocksJson: Prisma.JsonNull,
     contentPreview: preview,
     contentTextLength: extracted.content.length,
     blockCount: lightBlocks.length,
