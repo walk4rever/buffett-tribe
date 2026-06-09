@@ -136,6 +136,89 @@ date: "2026-06-09"
     expect(contentP.children[0].value).toBe("This is content.");
   });
 
+  it("rehypeInsightCallouts adds semantic classes for recurring editorial notes", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockTree: any = {
+      type: "root",
+      children: [
+        {
+          type: "element",
+          tagName: "blockquote",
+          properties: {},
+          children: [
+            {
+              type: "element",
+              tagName: "p",
+              properties: {},
+              children: [
+                {
+                  type: "text",
+                  value: "[!IMPORTANT] 2026 跨时空复盘（三大个股案例的十年结局)\nContent.",
+                },
+              ],
+            },
+            {
+              type: "element",
+              tagName: "p",
+              properties: {},
+              children: [
+                {
+                  type: "text",
+                  value: "[!NOTE] 巴菲特部落视角（伟大企业与便宜企业的永恒抉择）\nContent.",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const transform = rehypeInsightCallouts();
+    transform(mockTree);
+
+    expect(mockTree.children[0].properties.className).toContain("insight-callout--important");
+    expect(mockTree.children[0].properties.className).toContain("insight-callout--retrospective");
+    expect(mockTree.children[0].properties["data-insight-callout"]).toBe("retrospective");
+    expect(mockTree.children[1].properties.className).toContain("insight-callout--note");
+    expect(mockTree.children[1].properties.className).toContain("insight-callout--tribe-view");
+    expect(mockTree.children[1].properties["data-insight-callout"]).toBe("tribe-view");
+  });
+
+  it("rehypeInsightCallouts drops empty blockquote fragments around callouts", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockTree: any = {
+      type: "root",
+      children: [
+        {
+          type: "element",
+          tagName: "blockquote",
+          properties: {},
+          children: [
+            {
+              type: "element",
+              tagName: "p",
+              properties: {},
+              children: [{ type: "text", value: "\n" }],
+            },
+            {
+              type: "element",
+              tagName: "p",
+              properties: {},
+              children: [{ type: "text", value: "[!TIP] 2026 跨时空复盘\nContent." }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const transform = rehypeInsightCallouts();
+    transform(mockTree);
+
+    expect(mockTree.children).toHaveLength(1);
+    expect(mockTree.children[0].tagName).toBe("aside");
+    expect(mockTree.children[0].properties.className).toContain("insight-callout--retrospective");
+  });
+
   it("rehypeInsightCallouts splits consecutive callouts within a single blockquote", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockTree: any = {

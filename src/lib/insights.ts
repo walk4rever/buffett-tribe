@@ -125,6 +125,9 @@ function visitParent(node: HastElement) {
         for (const group of groups) {
           if (shouldTransformGroup(group)) {
             newChildren.push(createCalloutFromGroup(group));
+          } else if (!hasRenderableContent(group)) {
+            // Drop empty blockquote fragments created by blank quoted lines around callouts.
+            continue;
           } else {
             // Keep normal blockquote for non-callout group
             newChildren.push({
@@ -182,6 +185,20 @@ function splitBlockquoteChildren(children: HastElement[]): HastElement[][] {
   return groups;
 }
 
+function hasRenderableContent(nodes: HastElement[]): boolean {
+  return nodes.some((node) => {
+    if (node.type === "text") {
+      return typeof node.value === "string" && node.value.trim().length > 0;
+    }
+
+    if (Array.isArray(node.children)) {
+      return hasRenderableContent(node.children);
+    }
+
+    return node.type === "element";
+  });
+}
+
 function shouldTransformGroup(group: HastElement[]): boolean {
   if (!Array.isArray(group) || group.length === 0) return false;
   const firstParagraph = group[0];
@@ -201,6 +218,7 @@ function createCalloutFromGroup(group: HastElement[]): HastElement {
   const match = /^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(.*?)(?:\r?\n|$)/i.exec(firstText.value);
   const type = match ? match[1].toLowerCase() : "note";
   const title = match ? (match[2].trim() || CALLOUT_LABELS[type] || type.toUpperCase()) : "NOTE";
+  const semanticClass = getInsightCalloutSemanticClass(title);
 
   // Slice callout prefix from the first text node
   if (match) {
@@ -237,11 +255,26 @@ function createCalloutFromGroup(group: HastElement[]): HastElement {
     type: "element",
     tagName: "aside",
     properties: {
-      className: ["insight-callout", `insight-callout--${type}`],
+      className: ["insight-callout", `insight-callout--${type}`, semanticClass].filter(Boolean),
       "data-callout": type,
+      ...(semanticClass ? { "data-insight-callout": semanticClass.replace("insight-callout--", "") } : {}),
     },
     children: finalChildren,
   };
+}
+
+function getInsightCalloutSemanticClass(title: string): string | null {
+  const normalizedTitle = title.replace(/\s+/g, "");
+
+  if (/跨时空复盘/.test(normalizedTitle)) {
+    return "insight-callout--retrospective";
+  }
+
+  if (/巴菲特部落视角/.test(normalizedTitle)) {
+    return "insight-callout--tribe-view";
+  }
+
+  return null;
 }
 
 function stripYamlQuotes(value: string): string {

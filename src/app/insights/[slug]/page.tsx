@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
@@ -26,22 +25,14 @@ export default async function InsightDetailPage({ params }: Props) {
       <SiteNav />
       <main className="insight-detail-shell">
         <header className="insight-detail-head">
-          <Link href="/insights" className="insight-detail-eyebrow">洞见</Link>
           <h1>{post.title}</h1>
-          {post.description ? <p>{post.description}</p> : null}
           <div className="insight-detail-meta">
             <span>{post.sourceUrl ? <a href={post.sourceUrl} target="_blank" rel="noopener noreferrer">{post.source || "来源"}</a> : post.source || "Buffett Tribe"}</span>
             {post.author ? <span>{post.author}</span> : null}
             <span>{dateLabel}</span>
-            <span>{estimateReadingMinutes(post.contentRaw)} 分钟</span>
+            <span>{estimateReadingMinutes(post.contentRaw)} min</span>
           </div>
-          {post.tags.length > 0 ? (
-            <div className="insight-detail-tags">
-              {post.tags.map((tag) => (
-                <Link key={tag} href={`/insights?tag=${encodeURIComponent(tag)}`}>{tag}</Link>
-              ))}
-            </div>
-          ) : null}
+          {post.description ? <p className="insight-detail-desc">{post.description}</p> : null}
         </header>
 
         <InsightReader title={post.title} content={post.contentRaw} format={format} />

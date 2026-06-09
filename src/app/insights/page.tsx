@@ -9,58 +9,50 @@ export const dynamic = "force-dynamic";
 export default async function InsightsPage() {
   const posts = await getInsightPosts();
 
-  const latestUpdatedAt = posts[0]?.updatedAt ?? null;
-
   return (
     <div className="home-v2 insights-page">
       <SiteNav />
       <main className="insights-shell">
         <header className="insights-head">
-          <div>
-            <p className="insights-kicker">Research Notes</p>
-            <h1>洞见</h1>
-            <p className="insights-lede">从访谈、股东信和投资史里提炼可复用的判断框架。</p>
-          </div>
-          <div className="insights-stat">
-            <span>{posts.length}</span>
-            <em>篇文章{latestUpdatedAt ? ` · 更新于 ${formatDate(latestUpdatedAt)}` : ""}</em>
-          </div>
+          <h1>洞见</h1>
+          <p className="insights-lede">关于公司、商业模式、技术演进与资本配置的深度观察。</p>
         </header>
 
-        <div className="insights-layout">
-          <section className="insights-list" aria-label="文章列表">
-            {posts.length === 0 ? (
-              <div className="insights-empty">暂无匹配文章</div>
-            ) : (
-              posts.map((post, index) => (
+        <section className="insights-list" aria-label="文章列表">
+          {posts.length === 0 ? (
+            <div className="insights-empty">暂无文章</div>
+          ) : (
+            posts.map((post, index) => {
+              const articleNumber = posts.length - index;
+
+              return (
                 <Link
                   key={post.slug}
                   href={`/insights/${post.slug}`}
-                  className={`insight-row${index === 0 ? " insight-row--featured" : ""}`}
+                  className="insight-row"
                 >
-                  <div className="insight-row-main">
+                  <span className="insight-row-num">第{articleNumber}篇</span>
+                  <div className="insight-row-body">
                     <div className="insight-row-meta">
                       <span>{post.source || "Buffett Tribe"}</span>
                       <span>{post.publishedAt ? formatDate(post.publishedAt) : formatDate(post.updatedAt)}</span>
-                      <span>{estimateReadingMinutes(post.contentRaw)} 分钟</span>
+                      <span>{estimateReadingMinutes(post.contentRaw)} min</span>
                     </div>
                     <h2>{post.title}</h2>
                     {post.description ? <p>{post.description}</p> : null}
-                    <div className="insight-row-tags">
-                      {post.tags.slice(0, 5).map((postTag) => (
-                        <span key={postTag}>{postTag}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="insight-row-side">
-                    <span>{post.author || "编辑部"}</span>
-                    <em>阅读</em>
+                    {post.tags.length > 0 ? (
+                      <div className="insight-row-tags">
+                        {post.tags.slice(0, 4).map((postTag) => (
+                          <span key={postTag}>{postTag}</span>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </Link>
-              ))
-            )}
-          </section>
-        </div>
+              );
+            })
+          )}
+        </section>
       </main>
     </div>
   );
