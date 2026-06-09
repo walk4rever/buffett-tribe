@@ -16,7 +16,6 @@
  */
 
 import { Client } from "pg";
-import fs from "fs";
 
 // PostgreSQL hard limit: 65535 bind parameters per query.
 // With 18 columns, max safe rows per batch = floor(65535 / 18) = 3640.

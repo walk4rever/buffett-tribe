@@ -73,6 +73,28 @@ model Source {
   @@unique([year, type, date])
 }
 
+model InsightPost {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  description String?
+  source      String?
+  sourceUrl   String?
+  author      String?
+  publishedAt DateTime?
+  tags        String[]  @default([])
+  format      String    @default("markdown")
+  contentRaw  String
+  contentHtml String?
+  status      String    @default("published")
+  externalId  String?   @unique
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, publishedAt])
+  @@index([status, updatedAt])
+}
+
 model Chunk {
   id            String                   @id @default(cuid())
   sourceId      String

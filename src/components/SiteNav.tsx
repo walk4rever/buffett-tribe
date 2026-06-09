@@ -39,7 +39,7 @@ export function SiteNav() {
           <Link href="/idea" className="home-nav-link">
             对话
           </Link>
-          <Link href="#" className="home-nav-link">
+          <Link href="/insights" className="home-nav-link">
             洞见
           </Link>
         </div>
