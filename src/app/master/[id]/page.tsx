@@ -217,6 +217,23 @@ const FALLBACK_BRIEF: Record<
       "2019：创立 Atreides Management, LP",
     ],
   },
+  "alex-sacerdote": {
+    intro:
+      "Alex Sacerdote，Whale Rock Capital Management 创始人，专注科技成长投资的资深基金经理，以深度基本面研究和长期持有优质成长企业著称。",
+    framework: [
+      "成长质量优先：投资于具备可持续竞争优势和强大单位经济模型的企业",
+      "长期持有：对有信心的持仓保持耐心，换手率低于多数成长型基金",
+      "深度研究：自下而上的基本面分析，重视管理层质量和资本配置能力",
+      "科技聚焦：专注软件、互联网、金融科技和数字平台等结构性增长领域",
+    ],
+    tags: ["Alpha 投资人", "科技成长", "长期持有", "基本面研究"],
+    timeline: [
+      "2006：创立 Whale Rock Capital Management",
+      "2006-2022：管理 Whale Rock 多空股票策略，聚焦科技成长领域",
+      "2020：疫情期间精准布局远程办公和数字基础设施标的",
+      "2022：宣布关闭 Whale Rock，返还投资者资本",
+    ],
+  },
 };
 
 export default async function PersonHubPage({ params }: Props) {

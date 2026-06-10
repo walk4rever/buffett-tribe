@@ -85,6 +85,23 @@ export const TRIBE_MEMBERS: TribeMember[] = [
     hasData: true,
     icon: "A",
   },
+  {
+    id: "alex-sacerdote",
+    category: "alpha",
+    displayGroup: "Alpha 投资人",
+    name: "Alex Sacerdote",
+    nameZh: "Alex Sacerdote",
+    firm: "Whale Rock Capital Management",
+    color: "#0ea5e9",
+    initials: "AS",
+    aum: "$8.0B",
+    materialLabel: "访谈与观点",
+    materialSub: "建设中",
+    materialHref: "/master/alex-sacerdote#library",
+    holdingsHref: "/master/alex-sacerdote/holdings",
+    hasData: true,
+    icon: "A",
+  },
 ];
 
 export const CORE_TRIBE_MEMBERS = TRIBE_MEMBERS.filter((m) => m.category === "core");

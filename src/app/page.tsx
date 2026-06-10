@@ -98,7 +98,7 @@ export default async function Home() {
       {/* Members */}
       <section className="home-members">
         <div className="home-members-in">
-          <p className="home-members-hd">部落成员</p>
+          <p className="home-members-hd">巴菲特部落</p>
           <div className="home-member-list">
             {CORE_TRIBE_MEMBERS.map((m) => {
               const state = stateMap.get(m.id)!;
@@ -151,7 +151,7 @@ export default async function Home() {
           </div>
           {ALPHA_TRIBE_MEMBERS.length > 0 ? (
             <div className="home-alpha-block">
-              <p className="home-members-hd home-members-hd--alpha">Alpha 投资人</p>
+              <p className="home-members-hd home-members-hd--alpha">Alpha投资人</p>
               <div className="home-member-list home-member-list--alpha">
                 {ALPHA_TRIBE_MEMBERS.map((m) => {
                   const state = stateMap.get(m.id);
