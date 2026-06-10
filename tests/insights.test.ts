@@ -274,6 +274,51 @@ date: "2026-06-09"
     expect(aside.children[1].children[0].value).toBe("本文译自 Business Breakdowns。");
   });
 
+  it("rehypeInsightCallouts promotes tribe view title without a subtitle", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockTree: any = {
+      type: "root",
+      children: [
+        {
+          type: "element",
+          tagName: "blockquote",
+          properties: {},
+          children: [
+            {
+              type: "element",
+              tagName: "p",
+              properties: {},
+              children: [
+                { type: "text", value: "[!NOTE] " },
+                {
+                  type: "element",
+                  tagName: "strong",
+                  properties: {},
+                  children: [{ type: "text", value: "巴菲特部落视角" }],
+                },
+              ],
+            },
+            {
+              type: "element",
+              tagName: "p",
+              properties: {},
+              children: [{ type: "text", value: "从巴菲特的投资哲学来剖析 S 曲线。" }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const transform = rehypeInsightCallouts();
+    transform(mockTree);
+
+    const aside = mockTree.children[0];
+    expect(aside.properties.className).toContain("insight-callout--tribe-view");
+    expect(aside.properties["data-insight-callout"]).toBe("tribe-view");
+    expect(aside.children[0].children[0].value).toBe("巴菲特部落视角");
+    expect(aside.children[1].children[0].value).toBe("从巴菲特的投资哲学来剖析 S 曲线。");
+  });
+
   it("rehypeInsightCallouts removes promoted semantic bold title from paragraph body", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockTree: any = {

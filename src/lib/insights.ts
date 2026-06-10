@@ -24,6 +24,24 @@ const CALLOUT_LABELS: Record<string, string> = {
   caution: "CAUTION",
 };
 
+const INSIGHT_CALLOUT_SEMANTICS = [
+  {
+    className: "insight-callout--background",
+    pattern: /背景说明/u,
+    titlePattern: /背景说明/u,
+  },
+  {
+    className: "insight-callout--retrospective",
+    pattern: /跨时空复盘/u,
+    titlePattern: /2026\s*跨时空复盘(?:[（(][^\n。！？]*?[）)])?/u,
+  },
+  {
+    className: "insight-callout--tribe-view",
+    pattern: /巴菲特部落视角/u,
+    titlePattern: /巴菲特部落视角(?:[（(][^\n。！？]*?[）)])?/u,
+  },
+] as const;
+
 export function isInsightFormat(value: unknown): value is InsightFormat {
   return typeof value === "string" && (INSIGHT_FORMATS as readonly string[]).includes(value);
 }
@@ -293,8 +311,14 @@ function extractInsightCalloutSemanticTitle(value: string): string | null {
   const normalized = value.trim();
   if (!normalized) return null;
 
-  const titleMatch = /^(背景说明|2026\s*跨时空复盘[^\n。！？]*?[）)]|巴菲特部落视角[^\n。！？]*?[）)])/u.exec(normalized);
-  return titleMatch?.[1]?.trim() ?? null;
+  for (const semantic of INSIGHT_CALLOUT_SEMANTICS) {
+    const match = semantic.titlePattern.exec(normalized);
+    if (match?.index === 0) {
+      return match[0].trim();
+    }
+  }
+
+  return null;
 }
 
 function removeLeadingText(node: HastElement, value: string): boolean {
@@ -357,16 +381,10 @@ function pruneEmptyTextNodes(node: HastElement) {
 function getInsightCalloutSemanticClass(title: string): string | null {
   const normalizedTitle = title.replace(/\s+/g, "");
 
-  if (/跨时空复盘/.test(normalizedTitle)) {
-    return "insight-callout--retrospective";
-  }
-
-  if (/巴菲特部落视角/.test(normalizedTitle)) {
-    return "insight-callout--tribe-view";
-  }
-
-  if (/背景说明/.test(normalizedTitle)) {
-    return "insight-callout--background";
+  for (const semantic of INSIGHT_CALLOUT_SEMANTICS) {
+    if (semantic.pattern.test(normalizedTitle)) {
+      return semantic.className;
+    }
   }
 
   return null;
