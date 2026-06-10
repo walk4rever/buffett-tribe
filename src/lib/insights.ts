@@ -22,6 +22,26 @@ const CALLOUT_LABELS: Record<string, string> = {
   important: "IMPORTANT",
   warning: "WARNING",
   caution: "CAUTION",
+  overview: "OVERVIEW",
+  tips: "TIPS",
+  facts: "FACTS",
+  value: "VALUE",
+  inverse: "INVERSE",
+  takeaway: "TAKEAWAY",
+};
+
+const CALLOUT_CONFIGS: Record<string, { label: string; defaultTitle: string; baseType: string }> = {
+  overview: { label: "Overview", defaultTitle: "背景概览", baseType: "overview" },
+  tips: { label: "Tips", defaultTitle: "知识科普", baseType: "tips" },
+  tip: { label: "Tips", defaultTitle: "知识科普", baseType: "tips" },
+  facts: { label: "Facts", defaultTitle: "时空复盘", baseType: "facts" },
+  important: { label: "Facts", defaultTitle: "时空复盘", baseType: "facts" },
+  value: { label: "Value", defaultTitle: "价值视角", baseType: "value" },
+  inverse: { label: "Inverse", defaultTitle: "反向思考", baseType: "inverse" },
+  warning: { label: "Inverse", defaultTitle: "反向思考", baseType: "inverse" },
+  takeaway: { label: "Takeaway", defaultTitle: "实操启示", baseType: "takeaway" },
+  caution: { label: "Takeaway", defaultTitle: "实操启示", baseType: "takeaway" },
+  note: { label: "Buffett View", defaultTitle: "巴菲特部落视角", baseType: "note" },
 };
 
 const INSIGHT_CALLOUT_SEMANTICS = [
@@ -177,7 +197,7 @@ function splitBlockquoteChildren(children: HastElement[]): HastElement[][] {
   const groups: HastElement[][] = [];
   let currentGroup: HastElement[] = [];
 
-  const calloutRegex = /^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i;
+  const calloutRegex = /^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|OVERVIEW|FACTS|TIPS|VALUE|INVERSE|TAKEAWAY)\]/i;
 
   for (const child of children) {
     let isNewCalloutStart = false;
@@ -223,7 +243,7 @@ function shouldTransformGroup(group: HastElement[]): boolean {
   if (firstParagraph.type !== "element" || firstParagraph.tagName !== "p") return false;
   const firstText = firstParagraph.children?.find((c) => c.type === "text");
   if (!firstText || typeof firstText.value !== "string") return false;
-  return /^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i.test(firstText.value);
+  return /^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|OVERVIEW|FACTS|TIPS|VALUE|INVERSE|TAKEAWAY)\]/i.test(firstText.value);
 }
 
 function createCalloutFromGroup(group: HastElement[]): HastElement {
@@ -233,7 +253,7 @@ function createCalloutFromGroup(group: HastElement[]): HastElement {
     throw new Error("Invalid callout node structure");
   }
   
-  const match = /^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][ \t]*(.*?)(?:\r?\n|$)/i.exec(firstText.value);
+  const match = /^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|OVERVIEW|FACTS|TIPS|VALUE|INVERSE|TAKEAWAY)\][ \t]*(.*?)(?:\r?\n|$)/i.exec(firstText.value);
   const type = match ? match[1].toLowerCase() : "note";
   let title = match ? (match[2].trim() || CALLOUT_LABELS[type] || type.toUpperCase()) : "NOTE";
 
@@ -257,21 +277,72 @@ function createCalloutFromGroup(group: HastElement[]): HastElement {
 
   const semanticClass = getInsightCalloutSemanticClass(title);
 
-  const titleNode: HastElement = {
+  // Find config for this type
+  const config = CALLOUT_CONFIGS[type] || {
+    label: type.charAt(0).toUpperCase() + type.slice(1),
+    defaultTitle: type.toUpperCase(),
+    baseType: type,
+  };
+
+  // Clean title: extract text inside parentheses if present (e.g. "（算力重构与资本回报率）" -> "算力重构与资本回报率")
+  let displayTitle = title.trim();
+  const parenMatch = /[（\(](.*?)[）\)]/.exec(displayTitle);
+  if (parenMatch) {
+    displayTitle = parenMatch[1].trim();
+  }
+  
+  // If displayTitle matches the default UPPERCASE type string, use the localized defaultTitle
+  if (!displayTitle || displayTitle === type.toUpperCase()) {
+    displayTitle = config.defaultTitle;
+  }
+
+  // Override label based on semantic class for backward compatibility
+  let label = config.label;
+  if (semanticClass === "insight-callout--retrospective") {
+    label = "Retrospective";
+  } else if (semanticClass === "insight-callout--tribe-view") {
+    label = "Buffett View";
+  } else if (semanticClass === "insight-callout--background") {
+    label = "Background";
+  }
+
+  const headerNode: HastElement = {
     type: "element",
     tagName: "div",
     properties: {
-      className: ["insight-callout-title"],
+      className: ["insight-callout-header"],
     },
     children: [
       {
-        type: "text",
-        value: title,
+        type: "element",
+        tagName: "span",
+        properties: {
+          className: ["insight-callout-label"],
+        },
+        children: [
+          {
+            type: "text",
+            value: label,
+          },
+        ],
+      },
+      {
+        type: "element",
+        tagName: "span",
+        properties: {
+          className: ["insight-callout-title"],
+        },
+        children: [
+          {
+            type: "text",
+            value: displayTitle,
+          },
+        ],
       },
     ],
   };
 
-  const calloutChildren = [titleNode, ...group];
+  const calloutChildren = [headerNode, ...group];
 
   // Clean up first paragraph if it is now completely empty
   const hasContent = firstParagraph.children?.some((child) => {
@@ -289,8 +360,14 @@ function createCalloutFromGroup(group: HastElement[]): HastElement {
     type: "element",
     tagName: "aside",
     properties: {
-      className: ["insight-callout", `insight-callout--${type}`, semanticClass].filter(Boolean),
+      className: [
+        "insight-callout",
+        `insight-callout--${config.baseType}`,
+        `insight-callout--type-${type}`,
+        semanticClass
+      ].filter(Boolean),
       "data-callout": type,
+      "data-base-callout": config.baseType,
       ...(semanticClass ? { "data-insight-callout": semanticClass.replace("insight-callout--", "") } : {}),
     },
     children: finalChildren,

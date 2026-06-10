@@ -10245,52 +10245,154 @@ body {
 }
 
 .insight-callout {
-  margin: 1.2em 0;
-  padding: 0.8rem 0.95rem;
-  border-radius: 7px;
-  border: 1px solid var(--insight-callout-border, rgba(0, 0, 0, 0.07));
-  background: var(--insight-callout-bg, #f7f8fa);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  margin: 1.6em 0;
+  padding: 1.15rem 1.25rem;
+  border-radius: 4px;
+  box-sizing: border-box;
 }
 
-.insight-callout--tip {
-  --insight-callout-bg: #f1f7f3;
-  --insight-callout-border: rgba(45, 122, 79, 0.15);
-  --insight-callout-title: #2f6848;
+/* Callout Header (Double Column layout matching WeChat) */
+.insight-callout-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--insight-callout-border-color, rgba(0, 0, 0, 0.08));
 }
 
-.insight-callout--important {
-  --insight-callout-bg: #fff7ed;
-  --insight-callout-border: rgba(190, 107, 30, 0.18);
-  --insight-callout-title: #8a551f;
-}
-
-.insight-callout--retrospective {
-  --insight-callout-bg: #f7f4ee;
-  --insight-callout-border: rgba(128, 92, 41, 0.18);
-  --insight-callout-title: #745126;
-}
-
-.insight-callout--tribe-view {
-  --insight-callout-bg: #eaf4df;
-  --insight-callout-border: rgba(82, 116, 69, 0.26);
-  --insight-callout-title: #3f6133;
-  background: var(--insight-callout-bg);
-  border-color: var(--insight-callout-border);
-}
-
-.insight-callout--background {
-  --insight-callout-bg: #f4f6f8;
-  --insight-callout-border: rgba(70, 82, 98, 0.16);
-  --insight-callout-title: #445161;
+.insight-callout-label {
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--insight-callout-accent-color, #777777);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
 }
 
 .insight-callout-title {
-  margin: 0 0 0.48rem;
-  color: var(--insight-callout-title, rgba(0, 0, 0, 0.72));
-  font-weight: 700;
-  font-size: 1rem;
-  line-height: 1.42;
+  font-size: 14px;
+  font-weight: bold;
+  color: #000000;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Top Border Layouts (6px top, 1.5px other sides) */
+.insight-callout--overview,
+.insight-callout--facts,
+.insight-callout--important,
+.insight-callout--inverse,
+.insight-callout--warning,
+.insight-callout--takeaway,
+.insight-callout--caution,
+.insight-callout--background,
+.insight-callout--retrospective {
+  border: 1.5px solid var(--insight-callout-border-color);
+  border-top: 6px solid var(--insight-callout-border-color);
+}
+
+/* Left Border Layouts (6px left, 1.5px other sides) */
+.insight-callout--tips,
+.insight-callout--tip,
+.insight-callout--value,
+.insight-callout--note,
+.insight-callout--tribe-view {
+  border: 1.5px solid var(--insight-callout-border-color);
+  border-left: 6px solid var(--insight-callout-border-color);
+}
+
+/* 1. Overview (Slate Gray) */
+.insight-callout--overview {
+  --insight-callout-accent-color: #777777;
+  --insight-callout-border-color: #777777;
+  background-color: #fafafa;
+}
+
+/* 2. Tips (Sky Blue) */
+.insight-callout--tips,
+.insight-callout--tip {
+  --insight-callout-accent-color: #1e88e5;
+  --insight-callout-border-color: #1e88e5;
+  background-color: #f7fbfe;
+}
+
+/* 3. Facts (Emerald Green) */
+.insight-callout--facts,
+.insight-callout--important {
+  --insight-callout-accent-color: #2e7d32;
+  --insight-callout-border-color: #2e7d32;
+  background-color: #f5faf5;
+}
+
+/* 4. Value (Royal Purple/Indigo) */
+.insight-callout--value {
+  --insight-callout-accent-color: #5e35b1;
+  --insight-callout-border-color: #5e35b1;
+  background-color: #faf7fc;
+}
+
+/* 5. Inverse (Amber Orange) */
+.insight-callout--inverse,
+.insight-callout--warning {
+  --insight-callout-accent-color: #e65100;
+  --insight-callout-border-color: #e65100;
+  background-color: #fffaf4;
+}
+
+/* 6. Takeaway (Gold/Teal) */
+.insight-callout--takeaway,
+.insight-callout--caution {
+  --insight-callout-accent-color: #00796b;
+  --insight-callout-border-color: #00796b;
+  background-color: #f2faf9;
+}
+
+/* 7. Note / Default Black */
+.insight-callout--note {
+  --insight-callout-accent-color: #1a1a1a;
+  --insight-callout-border-color: #1a1a1a;
+  background-color: #fcfcfc;
+}
+
+/* Backward compatibility semantic class overrides */
+.insight-callout--background {
+  --insight-callout-accent-color: #445161;
+  --insight-callout-border-color: #445161;
+  background-color: #f4f6f8;
+}
+
+.insight-callout--retrospective {
+  --insight-callout-accent-color: #745126;
+  --insight-callout-border-color: #745126;
+  background-color: #f7f4ee;
+}
+
+.insight-callout--tribe-view {
+  --insight-callout-accent-color: #3f6133;
+  --insight-callout-border-color: #3f6133;
+  background-color: #eaf4df;
+}
+
+/* Inner typography for callout cards */
+.insight-reader-body .insight-callout p {
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: #333333;
+  text-align: justify;
+  margin-bottom: 0.8em;
+}
+
+.insight-reader-body .insight-callout p:last-child {
+  margin-bottom: 0;
+}
+
+.insight-reader-body .insight-callout ul,
+.insight-reader-body .insight-callout ol {
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: #333333;
+  margin-bottom: 0.8em;
 }
 
 .insight-callout > :last-child {
