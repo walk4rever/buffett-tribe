@@ -10285,9 +10285,7 @@ body {
 .insight-callout--inverse,
 .insight-callout--warning,
 .insight-callout--takeaway,
-.insight-callout--caution,
-.insight-callout--background,
-.insight-callout--retrospective {
+.insight-callout--caution {
   border: 1.5px solid var(--insight-callout-border-color);
   border-top: 6px solid var(--insight-callout-border-color);
 }
@@ -10296,8 +10294,7 @@ body {
 .insight-callout--tips,
 .insight-callout--tip,
 .insight-callout--value,
-.insight-callout--note,
-.insight-callout--tribe-view {
+.insight-callout--note {
   border: 1.5px solid var(--insight-callout-border-color);
   border-left: 6px solid var(--insight-callout-border-color);
 }
@@ -10353,25 +10350,6 @@ body {
   --insight-callout-accent-color: #1a1a1a;
   --insight-callout-border-color: #1a1a1a;
   background-color: #fcfcfc;
-}
-
-/* Backward compatibility semantic class overrides */
-.insight-callout--background {
-  --insight-callout-accent-color: #445161;
-  --insight-callout-border-color: #445161;
-  background-color: #f4f6f8;
-}
-
-.insight-callout--retrospective {
-  --insight-callout-accent-color: #745126;
-  --insight-callout-border-color: #745126;
-  background-color: #f7f4ee;
-}
-
-.insight-callout--tribe-view {
-  --insight-callout-accent-color: #3f6133;
-  --insight-callout-border-color: #3f6133;
-  background-color: #eaf4df;
 }
 
 /* Inner typography for callout cards */

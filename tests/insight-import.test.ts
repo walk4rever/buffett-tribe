@@ -51,6 +51,34 @@ description: 测试描述
     expect(data.status).toBe("published");
   });
 
+  it("normalizes legacy editorial callouts during import", () => {
+    const args = parseInsightImportArgs(["/tmp/CI003 测试文章.md"]);
+    const data = buildInsightImportData(
+      `---
+title: 测试文章
+---
+> [!NOTE]
+> **背景说明**
+> 本文译自某播客。
+
+> [!TIP] 2026 跨时空复盘（案例）
+> 复盘内容。
+
+> [!NOTE] **巴菲特部落视角（估值）**
+> 价值内容。`,
+      args,
+    );
+
+    expect(data.contentRaw).toBe(`> [!Overview] 背景概览
+> 本文译自某播客。
+
+> [!Facts] 时空复盘
+> 复盘内容。
+
+> [!Value] 价值视角
+> 价值内容。`);
+  });
+
   it("lets CLI metadata override frontmatter", () => {
     const args = parseInsightImportArgs([
       "/tmp/CI003 原标题.md",

@@ -2,6 +2,7 @@ import * as path from "path";
 import {
   isInsightFormat,
   normalizeInsightSlug,
+  normalizeInsightLegacyCallouts,
   parseInsightFrontmatter,
   type InsightFormat,
 } from "../../src/lib/insights";
@@ -99,7 +100,7 @@ export function buildInsightImportData(rawContent: string, args: InsightImportAr
     publishedAt: parseDate(dateInput),
     tags: normalizeTags(args.tags ?? parsed.metadata.tags),
     format: args.format,
-    contentRaw: parsed.content,
+    contentRaw: normalizeInsightLegacyCallouts(parsed.content),
     contentHtml: null,
     status: args.status,
     externalId: args.externalId ?? null,

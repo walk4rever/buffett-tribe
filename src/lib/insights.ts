@@ -41,26 +41,8 @@ const CALLOUT_CONFIGS: Record<string, { label: string; defaultTitle: string; bas
   warning: { label: "Inverse", defaultTitle: "反向思考", baseType: "inverse" },
   takeaway: { label: "Takeaway", defaultTitle: "实操启示", baseType: "takeaway" },
   caution: { label: "Takeaway", defaultTitle: "实操启示", baseType: "takeaway" },
-  note: { label: "Buffett View", defaultTitle: "巴菲特部落视角", baseType: "note" },
+  note: { label: "Note", defaultTitle: "NOTE", baseType: "note" },
 };
-
-const INSIGHT_CALLOUT_SEMANTICS = [
-  {
-    className: "insight-callout--background",
-    pattern: /背景说明/u,
-    titlePattern: /背景说明/u,
-  },
-  {
-    className: "insight-callout--retrospective",
-    pattern: /跨时空复盘/u,
-    titlePattern: /2026\s*跨时空复盘(?:[（(][^\n。！？]*?[）)])?/u,
-  },
-  {
-    className: "insight-callout--tribe-view",
-    pattern: /巴菲特部落视角/u,
-    titlePattern: /巴菲特部落视角(?:[（(][^\n。！？]*?[）)])?/u,
-  },
-] as const;
 
 export function isInsightFormat(value: unknown): value is InsightFormat {
   return typeof value === "string" && (INSIGHT_FORMATS as readonly string[]).includes(value);
@@ -134,10 +116,85 @@ export function markdownToHtmlMarkdown(raw: string): string {
   });
 }
 
+const LEGACY_INSIGHT_CALLOUT_MAPPINGS = [
+  {
+    match: /^(?:\*\*)?\s*(?:背景说明|背景概览|Background overview)\s*(?:\*\*)?$/iu,
+    type: "Overview",
+    title: "背景概览",
+  },
+  {
+    match: /^(?:\*\*)?\s*(?:\d{4}\s*)?(?:跨时空复盘|跨时空评注|时空复盘)(?:[（(][^)）\n]*[）)])?\s*(?:\*\*)?$/iu,
+    type: "Facts",
+    title: "时空复盘",
+  },
+  {
+    match: /^(?:\*\*)?\s*(?:巴菲特部落视角|巴菲特视角)(?:[（(][^)）\n]*[）)])?\s*(?:\*\*)?$/iu,
+    type: "Value",
+    title: "价值视角",
+  },
+  {
+    match: /^(?:\*\*)?\s*(?:巴菲特|芒格).*(?:\*\*)?$/iu,
+    type: "Value",
+    title: "价值视角",
+  },
+];
+
+export function normalizeInsightLegacyCallouts(raw: string): string {
+  const lines = raw.split(/\r?\n/);
+  const normalized: string[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const match = /^(>\s*)\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|OVERVIEW|FACTS|TIPS|VALUE|INVERSE|TAKEAWAY)\]\s*(.*)$/i.exec(line);
+    if (!match) {
+      normalized.push(line);
+      continue;
+    }
+
+    const quotePrefix = match[1];
+    const sameLineTitle = stripLegacyInsightTitle(match[3]);
+    const nextLine = lines[index + 1] ?? "";
+    const nextLineTitle = extractQuotedLegacyInsightTitle(nextLine);
+    const mapping = resolveLegacyInsightCalloutMapping(sameLineTitle) ?? resolveLegacyInsightCalloutMapping(nextLineTitle);
+
+    if (!mapping) {
+      normalized.push(line);
+      continue;
+    }
+
+    normalized.push(`${quotePrefix}[!${mapping.type}] ${mapping.title}`);
+    if (!sameLineTitle && nextLineTitle) {
+      index += 1;
+    }
+  }
+
+  return normalized.join("\n");
+}
+
 export function estimateReadingMinutes(content: string): number {
   const cjkChars = content.match(/[\u3400-\u9fff]/g)?.length ?? 0;
   const latinWords = content.match(/[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*/g)?.length ?? 0;
   return Math.max(1, Math.ceil((cjkChars / 450) + (latinWords / 220)));
+}
+
+function resolveLegacyInsightCalloutMapping(value: string): { type: string; title: string } | null {
+  const normalized = stripLegacyInsightTitle(value);
+  if (!normalized) return null;
+  return LEGACY_INSIGHT_CALLOUT_MAPPINGS.find((mapping) => mapping.match.test(normalized)) ?? null;
+}
+
+function extractQuotedLegacyInsightTitle(line: string): string {
+  const match = /^>\s*(.*)$/.exec(line);
+  return stripLegacyInsightTitle(match?.[1] ?? "");
+}
+
+function stripLegacyInsightTitle(value: string): string {
+  return value
+    .replace(/^>\s*/, "")
+    .replace(/^\[!\w+\]\s*/i, "")
+    .replace(/^[-*]\s+/, "")
+    .replace(/^>\s*/, "")
+    .replace(/^\s+|\s+$/g, "");
 }
 
 export function rehypeInsightCallouts() {
@@ -255,27 +312,12 @@ function createCalloutFromGroup(group: HastElement[]): HastElement {
   
   const match = /^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|OVERVIEW|FACTS|TIPS|VALUE|INVERSE|TAKEAWAY)\][ \t]*(.*?)(?:\r?\n|$)/i.exec(firstText.value);
   const type = match ? match[1].toLowerCase() : "note";
-  let title = match ? (match[2].trim() || CALLOUT_LABELS[type] || type.toUpperCase()) : "NOTE";
+  const title = match ? (match[2].trim() || CALLOUT_LABELS[type] || type.toUpperCase()) : "NOTE";
 
   // Slice callout prefix from the first text node
   if (match) {
     firstText.value = firstText.value.slice(match[0].length);
   }
-
-  const defaultTitle = CALLOUT_LABELS[type] || type.toUpperCase();
-  const firstParagraphText = collectText(firstParagraph).trim();
-  let dropFirstParagraph = false;
-  if (title === defaultTitle) {
-    const semanticTitle = extractInsightCalloutSemanticTitle(firstParagraphText);
-    if (semanticTitle) {
-      title = semanticTitle;
-      removeLeadingText(firstParagraph, semanticTitle);
-      pruneEmptyTextNodes(firstParagraph);
-      dropFirstParagraph = !hasRenderableContent([firstParagraph]);
-    }
-  }
-
-  const semanticClass = getInsightCalloutSemanticClass(title);
 
   // Find config for this type
   const config = CALLOUT_CONFIGS[type] || {
@@ -296,16 +338,6 @@ function createCalloutFromGroup(group: HastElement[]): HastElement {
     displayTitle = config.defaultTitle;
   }
 
-  // Override label based on semantic class for backward compatibility
-  let label = config.label;
-  if (semanticClass === "insight-callout--retrospective") {
-    label = "Retrospective";
-  } else if (semanticClass === "insight-callout--tribe-view") {
-    label = "Buffett View";
-  } else if (semanticClass === "insight-callout--background") {
-    label = "Background";
-  }
-
   const headerNode: HastElement = {
     type: "element",
     tagName: "div",
@@ -322,7 +354,7 @@ function createCalloutFromGroup(group: HastElement[]): HastElement {
         children: [
           {
             type: "text",
-            value: label,
+            value: config.label,
           },
         ],
       },
@@ -352,7 +384,7 @@ function createCalloutFromGroup(group: HastElement[]): HastElement {
     return true;
   });
 
-  const finalChildren = hasContent && !dropFirstParagraph
+  const finalChildren = hasContent
     ? calloutChildren
     : calloutChildren.filter((child) => child !== firstParagraph);
 
@@ -364,107 +396,12 @@ function createCalloutFromGroup(group: HastElement[]): HastElement {
         "insight-callout",
         `insight-callout--${config.baseType}`,
         `insight-callout--type-${type}`,
-        semanticClass
       ].filter(Boolean),
       "data-callout": type,
       "data-base-callout": config.baseType,
-      ...(semanticClass ? { "data-insight-callout": semanticClass.replace("insight-callout--", "") } : {}),
     },
     children: finalChildren,
   };
-}
-
-function collectText(node: HastElement): string {
-  if (node.type === "text") {
-    return typeof node.value === "string" ? node.value : "";
-  }
-
-  if (!Array.isArray(node.children)) return "";
-
-  return node.children.map((child) => collectText(child)).join("");
-}
-
-function extractInsightCalloutSemanticTitle(value: string): string | null {
-  const normalized = value.trim();
-  if (!normalized) return null;
-
-  for (const semantic of INSIGHT_CALLOUT_SEMANTICS) {
-    const match = semantic.titlePattern.exec(normalized);
-    if (match?.index === 0) {
-      return match[0].trim();
-    }
-  }
-
-  return null;
-}
-
-function removeLeadingText(node: HastElement, value: string): boolean {
-  if (!value) return false;
-
-  if (node.type === "text") {
-    if (typeof node.value !== "string") return false;
-    const leadingWhitespace = node.value.match(/^\s*/)?.[0] ?? "";
-    const afterWhitespace = node.value.slice(leadingWhitespace.length);
-    if (!afterWhitespace.startsWith(value)) return false;
-    node.value = afterWhitespace.slice(value.length).replace(/^\s+/, "");
-    return true;
-  }
-
-  if (!Array.isArray(node.children)) return false;
-
-  for (let index = 0; index < node.children.length; index += 1) {
-    const child = node.children[index];
-    if (!hasRenderableContent([child])) {
-      continue;
-    }
-
-    const childText = collectText(child).trim();
-    if (childText === value) {
-      node.children.splice(index, 1);
-      trimLeadingTextNode(node.children[index]);
-      return true;
-    }
-
-    if (removeLeadingText(child, value)) {
-      trimLeadingTextNode(node.children[index + 1]);
-      return true;
-    }
-
-    return false;
-  }
-
-  return false;
-}
-
-function trimLeadingTextNode(node: HastElement | undefined) {
-  if (node?.type === "text" && typeof node.value === "string") {
-    node.value = node.value.replace(/^\s+/, "");
-  }
-}
-
-function pruneEmptyTextNodes(node: HastElement) {
-  if (!Array.isArray(node.children)) return;
-
-  node.children = node.children.filter((child) => {
-    if (child.type === "text") {
-      return typeof child.value === "string" && child.value.length > 0;
-    }
-
-    pruneEmptyTextNodes(child);
-    return true;
-  });
-}
-
-function getInsightCalloutSemanticClass(title: string): string | null {
-  const normalizedTitle = title.replace(/\s+/g, "");
-
-  for (const semantic of INSIGHT_CALLOUT_SEMANTICS) {
-    if (semantic.pattern.test(normalizedTitle)) {
-      return semantic.className;
-    }
-  }
-
-  return null;
 }
 
 function stripYamlQuotes(value: string): string {

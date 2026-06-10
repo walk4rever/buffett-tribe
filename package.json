@@ -1,6 +1,6 @@
 {
   "name": "buffett-tribe",
-  "version": "0.36.33",
+  "version": "0.36.34",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,6 +16,7 @@
     "eval:mvp:compare": "node --loader ts-node/esm scripts/compare-mvp-benchmark.ts",
     "test:asr": "node scripts/test-volc-asr.mjs",
     "import:insight": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-insight.ts",
+    "migrate:insight:callouts": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/migrate-insight-callouts.ts",
     "import:13f": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-13f-edgartools.ts",
     "pipeline:13f": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/pipeline-13f.ts",
     "data:13f": "npm run pipeline:13f --",

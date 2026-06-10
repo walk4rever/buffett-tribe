@@ -5,6 +5,7 @@ import {
   markdownToHtmlMarkdown,
   estimateReadingMinutes,
   rehypeInsightCallouts,
+  normalizeInsightLegacyCallouts,
 } from "../src/lib/insights";
 
 describe("insights helper library", () => {
@@ -39,6 +40,52 @@ date: "2026-06-09"
     const raw = `> First paragraph.\n\n> [!NOTE] Second block\n> content.`;
     const result = markdownToHtmlMarkdown(raw);
     expect(result).toBe(`> First paragraph.\n\n> [!NOTE] Second block\n> content.`);
+  });
+
+  it("normalizeInsightLegacyCallouts remaps legacy editorial callouts to overview facts value", () => {
+    const raw = `> [!NOTE]
+> **背景说明**
+> 本文译自 Business Breakdowns。
+
+> [!TIP] 2026 跨时空复盘（生态整合）
+> 复盘内容。
+
+> [!IMPORTANT] 2026 跨时空评注（资本开支）
+> 另一段复盘。
+
+> [!NOTE] **巴菲特部落视角（护城河）**
+> 价值判断。`;
+
+    expect(normalizeInsightLegacyCallouts(raw)).toBe(`> [!Overview] 背景概览
+> 本文译自 Business Breakdowns。
+
+> [!Facts] 时空复盘
+> 复盘内容。
+
+> [!Facts] 时空复盘
+> 另一段复盘。
+
+> [!Value] 价值视角
+> 价值判断。`);
+  });
+
+  it("normalizeInsightLegacyCallouts remaps buffett-and-munger legacy notes to value", () => {
+    const raw = `> [!NOTE]
+> **巴菲特与芒格的多学科思维模型**
+> 内容。`;
+
+    expect(normalizeInsightLegacyCallouts(raw)).toBe(`> [!Value] 价值视角
+> 内容。`);
+  });
+
+  it("normalizeInsightLegacyCallouts keeps already standardized callouts unchanged", () => {
+    const raw = `> [!Overview] 背景概览
+> 内容
+
+> [!Facts] 时空复盘
+> 内容`;
+
+    expect(normalizeInsightLegacyCallouts(raw)).toBe(raw);
   });
 
   it("estimateReadingMinutes estimates reading time correctly", () => {
@@ -88,8 +135,9 @@ date: "2026-06-09"
 
     const titleDiv = aside.children[0];
     expect(titleDiv.tagName).toBe("div");
-    expect(titleDiv.properties.className).toContain("insight-callout-title");
-    expect(titleDiv.children[0].value).toBe("NOTE");
+    expect(titleDiv.properties.className).toContain("insight-callout-header");
+    expect(titleDiv.children[1].properties.className).toContain("insight-callout-title");
+    expect(titleDiv.children[1].children[0].value).toBe("NOTE");
 
     const contentP = aside.children[1];
     expect(contentP.tagName).toBe("p");
@@ -127,16 +175,16 @@ date: "2026-06-09"
 
     const aside = mockTree.children[0];
     expect(aside.tagName).toBe("aside");
-    expect(aside.properties.className).toContain("insight-callout--tip");
+    expect(aside.properties.className).toContain("insight-callout--tips");
 
     const titleDiv = aside.children[0];
-    expect(titleDiv.children[0].value).toBe("Custom Title");
+    expect(titleDiv.children[1].children[0].value).toBe("Custom Title");
 
     const contentP = aside.children[1];
     expect(contentP.children[0].value).toBe("This is content.");
   });
 
-  it("rehypeInsightCallouts adds semantic classes for recurring editorial notes", () => {
+  it("rehypeInsightCallouts preserves note and facts base classes", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockTree: any = {
       type: "root",
@@ -176,15 +224,11 @@ date: "2026-06-09"
     const transform = rehypeInsightCallouts();
     transform(mockTree);
 
-    expect(mockTree.children[0].properties.className).toContain("insight-callout--important");
-    expect(mockTree.children[0].properties.className).toContain("insight-callout--retrospective");
-    expect(mockTree.children[0].properties["data-insight-callout"]).toBe("retrospective");
+    expect(mockTree.children[0].properties.className).toContain("insight-callout--facts");
     expect(mockTree.children[1].properties.className).toContain("insight-callout--note");
-    expect(mockTree.children[1].properties.className).toContain("insight-callout--tribe-view");
-    expect(mockTree.children[1].properties["data-insight-callout"]).toBe("tribe-view");
   });
 
-  it("rehypeInsightCallouts promotes semantic bold text after a default note marker", () => {
+  it("rehypeInsightCallouts keeps explicit note titles after a note marker", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockTree: any = {
       type: "root",
@@ -223,13 +267,13 @@ date: "2026-06-09"
     transform(mockTree);
 
     const aside = mockTree.children[0];
-    expect(aside.properties.className).toContain("insight-callout--tribe-view");
-    expect(aside.properties["data-insight-callout"]).toBe("tribe-view");
-    expect(aside.children[0].children[0].value).toBe("巴菲特部落视角（伯克希尔的选人标准）");
-    expect(aside.children[1].children[0].value).toBe("沃伦·巴菲特常说，经理人必须具备诚信。");
+    expect(aside.properties.className).toContain("insight-callout--note");
+    expect(aside.children[0].children[1].children[0].value).toBe("NOTE");
+    expect(aside.children[1].children[1].tagName).toBe("strong");
+    expect(aside.children[2].children[0].value).toBe("沃伦·巴菲特常说，经理人必须具备诚信。");
   });
 
-  it("rehypeInsightCallouts promotes background note bold text after a default note marker", () => {
+  it("rehypeInsightCallouts keeps explicit note titles on the first paragraph", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockTree: any = {
       type: "root",
@@ -268,13 +312,12 @@ date: "2026-06-09"
     transform(mockTree);
 
     const aside = mockTree.children[0];
-    expect(aside.properties.className).toContain("insight-callout--background");
-    expect(aside.properties["data-insight-callout"]).toBe("background");
-    expect(aside.children[0].children[0].value).toBe("背景说明");
-    expect(aside.children[1].children[0].value).toBe("本文译自 Business Breakdowns。");
+    expect(aside.properties.className).toContain("insight-callout--note");
+    expect(aside.children[0].children[1].children[0].value).toBe("NOTE");
+    expect(aside.children[1].children[1].tagName).toBe("strong");
   });
 
-  it("rehypeInsightCallouts promotes tribe view title without a subtitle", () => {
+  it("rehypeInsightCallouts keeps a note title without a subtitle", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockTree: any = {
       type: "root",
@@ -313,13 +356,12 @@ date: "2026-06-09"
     transform(mockTree);
 
     const aside = mockTree.children[0];
-    expect(aside.properties.className).toContain("insight-callout--tribe-view");
-    expect(aside.properties["data-insight-callout"]).toBe("tribe-view");
-    expect(aside.children[0].children[0].value).toBe("巴菲特部落视角");
-    expect(aside.children[1].children[0].value).toBe("从巴菲特的投资哲学来剖析 S 曲线。");
+    expect(aside.properties.className).toContain("insight-callout--note");
+    expect(aside.children[0].children[1].children[0].value).toBe("NOTE");
+    expect(aside.children[1].children[1].tagName).toBe("strong");
   });
 
-  it("rehypeInsightCallouts removes promoted semantic bold title from paragraph body", () => {
+  it("rehypeInsightCallouts preserves note paragraph body when title is inline", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockTree: any = {
       type: "root",
@@ -353,10 +395,8 @@ date: "2026-06-09"
     transform(mockTree);
 
     const aside = mockTree.children[0];
-    expect(aside.children[0].children[0].value).toBe("巴菲特部落视角（坪效的魔力）");
-    expect(aside.children[1].children).toEqual([
-      { type: "text", value: "数字化带来的经济商誉会提高单店回报。" },
-    ]);
+    expect(aside.children[0].children[1].children[0].value).toBe("NOTE");
+    expect(aside.children[1].children[1].children[0].value).toBe("巴菲特部落视角（坪效的魔力）");
   });
 
   it("rehypeInsightCallouts drops empty blockquote fragments around callouts", () => {
@@ -391,7 +431,7 @@ date: "2026-06-09"
 
     expect(mockTree.children).toHaveLength(1);
     expect(mockTree.children[0].tagName).toBe("aside");
-    expect(mockTree.children[0].properties.className).toContain("insight-callout--retrospective");
+    expect(mockTree.children[0].properties.className).toContain("insight-callout--tips");
   });
 
   it("rehypeInsightCallouts splits consecutive callouts within a single blockquote", () => {
@@ -438,14 +478,14 @@ date: "2026-06-09"
 
     const firstAside = mockTree.children[0];
     expect(firstAside.tagName).toBe("aside");
-    expect(firstAside.properties.className).toContain("insight-callout--tip");
-    expect(firstAside.children[0].children[0].value).toBe("First Callout");
+    expect(firstAside.properties.className).toContain("insight-callout--tips");
+    expect(firstAside.children[0].children[1].children[0].value).toBe("First Callout");
     expect(firstAside.children[1].children[0].value).toBe("Tip content.");
 
     const secondAside = mockTree.children[1];
     expect(secondAside.tagName).toBe("aside");
     expect(secondAside.properties.className).toContain("insight-callout--note");
-    expect(secondAside.children[0].children[0].value).toBe("Second Callout");
+    expect(secondAside.children[0].children[1].children[0].value).toBe("Second Callout");
     expect(secondAside.children[1].children[0].value).toBe("Note content.");
   });
 });
