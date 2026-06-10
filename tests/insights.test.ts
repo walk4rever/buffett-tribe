@@ -229,6 +229,51 @@ date: "2026-06-09"
     expect(aside.children[1].children[0].value).toBe("沃伦·巴菲特常说，经理人必须具备诚信。");
   });
 
+  it("rehypeInsightCallouts promotes background note bold text after a default note marker", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockTree: any = {
+      type: "root",
+      children: [
+        {
+          type: "element",
+          tagName: "blockquote",
+          properties: {},
+          children: [
+            {
+              type: "element",
+              tagName: "p",
+              properties: {},
+              children: [
+                { type: "text", value: "[!NOTE] " },
+                {
+                  type: "element",
+                  tagName: "strong",
+                  properties: {},
+                  children: [{ type: "text", value: "背景说明" }],
+                },
+              ],
+            },
+            {
+              type: "element",
+              tagName: "p",
+              properties: {},
+              children: [{ type: "text", value: "本文译自 Business Breakdowns。" }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const transform = rehypeInsightCallouts();
+    transform(mockTree);
+
+    const aside = mockTree.children[0];
+    expect(aside.properties.className).toContain("insight-callout--background");
+    expect(aside.properties["data-insight-callout"]).toBe("background");
+    expect(aside.children[0].children[0].value).toBe("背景说明");
+    expect(aside.children[1].children[0].value).toBe("本文译自 Business Breakdowns。");
+  });
+
   it("rehypeInsightCallouts removes promoted semantic bold title from paragraph body", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockTree: any = {

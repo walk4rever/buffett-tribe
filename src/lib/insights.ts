@@ -293,7 +293,7 @@ function extractInsightCalloutSemanticTitle(value: string): string | null {
   const normalized = value.trim();
   if (!normalized) return null;
 
-  const titleMatch = /^(2026\s*跨时空复盘[^\n。！？]*?[）)]|巴菲特部落视角[^\n。！？]*?[）)])/u.exec(normalized);
+  const titleMatch = /^(背景说明|2026\s*跨时空复盘[^\n。！？]*?[）)]|巴菲特部落视角[^\n。！？]*?[）)])/u.exec(normalized);
   return titleMatch?.[1]?.trim() ?? null;
 }
 
@@ -363,6 +363,10 @@ function getInsightCalloutSemanticClass(title: string): string | null {
 
   if (/巴菲特部落视角/.test(normalizedTitle)) {
     return "insight-callout--tribe-view";
+  }
+
+  if (/背景说明/.test(normalizedTitle)) {
+    return "insight-callout--background";
   }
 
   return null;
