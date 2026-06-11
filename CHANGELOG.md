@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.37.1] - 2026-06-11
+
+### Changed
+- 设计一致性收口（依据 APPLE-DESIGN.md 审查）：全站功能蓝统一为 Apple 蓝 `#0071e3`（替换 Tailwind 蓝 #2563eb/#1d4ed8、iOS 蓝 #007AFF、#93c5fd）。
+- 阅读界面正文色统一为 `--apple-near-black`/`--apple-body`，消除信件/财报/中译块四种文字灰。
+- 股东信阅读列宽 980px → 780px，与财报阅读器 74ch 行宽对齐。
+- 财报阅读器正文字号 0.98rem → 1rem，与信件正文齐平。
+
+### Notes
+- PRODUCT.md 新增"颜色规则"段落：单一功能蓝、阅读行宽上限、大师品牌色豁免（仅限 master hero 区）、数据语义色 token 化。
+- 遗留项（下一轮）：三个阅读器顶栏/侧栏 chrome 结构统一、圆角体系、青铜金 accent token 化。
+
 ## [v0.37.0] - 2026-06-11
 
 ### Removed
