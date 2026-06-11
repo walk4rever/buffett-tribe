@@ -10080,6 +10080,13 @@ body {
   min-width: 0;
 }
 
+.insight-row-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
 .insight-row-meta,
 .insight-detail-meta {
   display: flex;
@@ -10088,6 +10095,55 @@ body {
   color: rgba(0, 0, 0, 0.42);
   font-size: 0.72rem;
   letter-spacing: 0;
+}
+
+.insight-row-source-pill {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  max-width: min(42%, 220px);
+  padding: 0 0.65rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 999px;
+  background: #f7f8fa;
+  color: rgba(0, 0, 0, 0.62);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.insight-row-source-pill--default {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: #f7f8fa;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.insight-row-source-pill--iltb {
+  border-color: rgba(33, 99, 235, 0.16);
+  background: #f3f7ff;
+  color: #2754c5;
+}
+
+.insight-row-source-pill--acquired {
+  border-color: rgba(176, 106, 0, 0.16);
+  background: #fff7ea;
+  color: #9a5b00;
+}
+
+.insight-row-source-pill--breakdowns {
+  border-color: rgba(33, 128, 74, 0.16);
+  background: #eefaf2;
+  color: #237346;
+}
+
+.insight-row-source-pill--founders {
+  border-color: rgba(171, 73, 112, 0.16);
+  background: #fff2f7;
+  color: #a34c70;
 }
 
 .insight-row h2 {
@@ -10127,6 +10183,18 @@ body {
   color: rgba(0, 0, 0, 0.52);
   font-size: 0.67rem;
   text-decoration: none;
+}
+
+@media (max-width: 640px) {
+  .insight-row-top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.45rem;
+  }
+
+  .insight-row-source-pill {
+    max-width: 100%;
+  }
 }
 
 /* ── Detail page ── */

@@ -24,6 +24,7 @@ export default async function InsightsPage() {
           ) : (
             posts.map((post, index) => {
               const articleNumber = posts.length - index;
+              const sourceLabel = post.source || "Buffett Tribe";
 
               return (
                 <Link
@@ -33,10 +34,12 @@ export default async function InsightsPage() {
                 >
                   <span className="insight-row-num">第{articleNumber}篇</span>
                   <div className="insight-row-body">
-                    <div className="insight-row-meta">
-                      <span>{post.source || "Buffett Tribe"}</span>
-                      <span>{post.publishedAt ? formatDate(post.publishedAt) : formatDate(post.updatedAt)}</span>
-                      <span>{estimateReadingMinutes(post.contentRaw)} min</span>
+                    <div className="insight-row-top">
+                      <div className="insight-row-meta">
+                        <span>{post.publishedAt ? formatDate(post.publishedAt) : formatDate(post.updatedAt)}</span>
+                        <span>{estimateReadingMinutes(post.contentRaw)} min</span>
+                      </div>
+                      <span className={`insight-row-source-pill ${getInsightSourcePillClass(sourceLabel)}`}>{sourceLabel}</span>
                     </div>
                     <h2>{post.title}</h2>
                     {post.description ? <p>{post.description}</p> : null}
@@ -93,4 +96,13 @@ function formatDate(date: Date): string {
     month: "2-digit",
     day: "2-digit",
   }).format(date);
+}
+
+function getInsightSourcePillClass(source: string): string {
+  const normalized = source.trim().toLowerCase();
+  if (normalized === "invest like the best") return "insight-row-source-pill--iltb";
+  if (normalized === "acquired") return "insight-row-source-pill--acquired";
+  if (normalized === "business breakdowns") return "insight-row-source-pill--breakdowns";
+  if (normalized === "founders") return "insight-row-source-pill--founders";
+  return "insight-row-source-pill--default";
 }
