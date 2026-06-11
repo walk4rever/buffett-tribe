@@ -6986,7 +6986,7 @@ body.layout-no-header {
 
 .filing-reader-section-body {
   margin-top: 1rem;
-  color: #2f3a4b;
+  color: var(--apple-near-black);
   line-height: 1.82;
   font-size: 0.98rem;
   white-space: normal;
@@ -7003,7 +7003,7 @@ body.layout-no-header {
 }
 
 .filing-reader-html {
-  color: #2f3a4b;
+  color: var(--apple-near-black);
   line-height: 1.82;
   font-size: 0.98rem;
   overflow-wrap: anywhere;
@@ -7210,7 +7210,7 @@ body.layout-no-header {
 .filing-reader-block-heading--level5,
 .filing-reader-block-heading--level6,
 .filing-reader-block-heading--note {
-  color: #243145;
+  color: var(--apple-near-black);
   font-size: 0.95rem;
   font-weight: 650;
 }
@@ -7232,7 +7232,7 @@ body.layout-no-header {
 
 .filing-reader-note {
   margin: 1.35rem 0 0.28rem;
-  color: #243145;
+  color: var(--apple-near-black);
   font-size: 0.95rem;
   font-weight: 650;
   line-height: 1.36;
@@ -8294,7 +8294,7 @@ body.layout-no-header {
   --graphite-surface-soft: #f6f8fb;
   --graphite-border: #cdd3dc;
   --graphite-border-soft: #dbe1e9;
-  --graphite-text: #111827;
+  --graphite-text: var(--apple-near-black);
   --graphite-text-secondary: #4b5563;
   --graphite-accent: var(--apple-blue);
 }
@@ -9370,7 +9370,7 @@ body {
 .md-reader h1,
 .md-reader h2,
 .md-reader h3 {
-  color: #0f172a;
+  color: var(--apple-near-black);
   letter-spacing: -0.02em;
 }
 
@@ -9384,15 +9384,15 @@ body {
 
 .md-reader p,
 .md-reader li {
-  color: #1f2937;
+  color: var(--apple-near-black);
 }
 
 .md-reader .md-lang-en {
-  color: #374151;
+  color: var(--apple-body);
 }
 
 .md-reader .md-lang-zh {
-  color: #111827;
+  color: var(--apple-near-black);
 }
 
 .md-reader table {
