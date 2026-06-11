@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.37.0] - 2026-06-11
+
+### Removed
+- 语音与数字人功能整体下线，产品范围收缩为纯文字对话。
+- 删除 `/api/asr/*`、`/api/tts`、`/api/digital-human/jobs/*` API 路由和 `/avatar` 跳转页。
+- 删除 `src/lib/speech/`（火山引擎 ASR 客户端/协议/浏览器录音）与 `src/lib/digital-human*` 模块。
+- 删除独立 ASR relay 服务（`relay/` 目录）及 `bench-live-asr-*`、`test-volc-asr` 实验脚本。
+- 移除 `ws` / `@types/ws` 依赖和 `.env.example` 中的 ASR/TTS/relay 环境变量。
+- 数据库删除 `DigitalHumanProfile` / `DigitalHumanJob` 表（migration `20260611000100_drop_digital_human`，已应用到生产库）。
+
+### Notes
+- 修复迁移历史分叉：将失败的 `20260609000100_add_insight_posts` 记录标记为 rolled back，本地 `add_insight_post` 标记为已应用（DB 实际结构已验证一致），`migrate deploy` 恢复可用。
+- 文字对话、检索、embedding 链路不受影响；relay 服务器可停机，火山语音 token 可吊销。
+
 ## [v0.36.23] - 2026-06-09
 
 ### Added

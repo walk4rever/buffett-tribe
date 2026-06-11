@@ -1,6 +1,6 @@
 {
   "name": "buffett-tribe",
-  "version": "0.36.37",
+  "version": "0.37.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,6 @@
     "eval:retrieval:v2": "node --loader ts-node/esm scripts/eval-retrieval-v2.ts",
     "eval:mvp:benchmark": "node --loader ts-node/esm scripts/eval-mvp-benchmark.ts",
     "eval:mvp:compare": "node --loader ts-node/esm scripts/compare-mvp-benchmark.ts",
-    "test:asr": "node scripts/test-volc-asr.mjs",
     "import:insight": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-insight.ts",
     "migrate:insight:callouts": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/migrate-insight-callouts.ts",
     "import:13f": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-13f-edgartools.ts",
@@ -81,7 +80,6 @@
     "@aws-sdk/client-s3": "^3.1052.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@prisma/client": "6.19.2",
-    "@types/ws": "^8.18.1",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.37.0",
     "bcryptjs": "^3.0.3",
@@ -105,8 +103,7 @@
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
     "resend": "^6.9.4",
-    "uqr": "^0.1.2",
-    "ws": "^8.20.0"
+    "uqr": "^0.1.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

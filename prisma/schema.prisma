@@ -147,45 +147,6 @@ model ChatMessage {
   updatedAt      DateTime @updatedAt
 }
 
-model DigitalHumanProfile {
-  id           String            @id @default(cuid())
-  key          String            @unique
-  name         String
-  provider     String            @default("mock")
-  status       String            @default("active")
-  faceImageUrl String?
-  voiceProfile String?
-  providerMeta Json?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  jobs         DigitalHumanJob[]
-}
-
-model DigitalHumanJob {
-  id              String              @id @default(cuid())
-  avatarProfileId String
-  chatMessageId   String?
-  question        String
-  answer          String
-  status          String              @default("queued")
-  provider        String              @default("mock")
-  providerJobId   String?
-  subtitle        String
-  audioUrl        String?
-  videoUrl        String?
-  errorMessage    String?
-  readyAt         DateTime?
-  startedAt       DateTime?
-  finishedAt      DateTime?
-  metadata        Json?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  avatarProfile   DigitalHumanProfile @relation(fields: [avatarProfileId], references: [id], onDelete: Cascade)
-
-  @@index([chatMessageId])
-  @@index([status, readyAt])
-}
-
 // ============================================================================
 // Longitudinal Narrative — multi-source intelligence layer
 // See PRODUCT.md "标的纵向叙事" section for the full design.

@@ -762,7 +762,7 @@ Apple HIG 精简风格：
 | 对话评分 | ✅ 已实现 |
 | PostHog 前端埋点 | 🟡 已接入 provider 与 chat_sent，事件体系待补齐 |
 | 等候名单 | ✅ 已实现 |
-| 数字人 / 语音实验 | 🟡 有 API 与数据模型，入口仍是实验态 |
+| 数字人 / 语音实验 | ❌ 已下线（2026-06-11 范围收缩，只保留文字对话） |
 | Company Analysis 批量入库 | ✅ 已实现 |
 | Canvas 实时生成（RAG → AI） | 🟡 部分实现，仍在迭代 |
 | Company Brain 写回 | 🟡 部分实现 |
@@ -823,7 +823,6 @@ Apple HIG 精简风格：
 - 主题时间线。
 - 探索页 `/explore`。
 - 热门话题标签。
-- 数字人 / 语音实验产品化：补齐 `/avatar` 当前跳转目标、实时语音房间入口、失败降级和成本控制。
 - 年度背景卡片。
 - SEO 优化。
 - 测试覆盖率目标 >80%。
@@ -1091,8 +1090,8 @@ FinancialFact
 
 - `scripts/eval-*.ts`：检索与 MVP 评测
 - `scripts/neo4j-*.ts`：图谱抽取、导入、演练
-- `scripts/bench-live-asr-*.ts` / `scripts/test-volc-asr.mjs`：语音链路实验
-- `/api/asr/*`、`/api/tts`、`/api/digital-human/jobs/*`：语音与数字人实验 API
+
+> 语音（ASR/TTS）与数字人实验已于 2026-06-11 移除（产品范围收缩为纯文字对话）。相关代码、relay 服务、数据模型（`DigitalHumanProfile` / `DigitalHumanJob`）均已删除，历史实现见 git 历史。
 
 ### 维护原则
 
