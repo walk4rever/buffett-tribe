@@ -3,7 +3,8 @@ import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { SiteNav } from "@/components/SiteNav";
 import { InsightReader } from "@/components/InsightReader";
-import { estimateReadingMinutes, isInsightFormat } from "@/lib/insights";
+import { InsightOverviewShareButton } from "@/components/InsightOverviewShareButton";
+import { estimateReadingMinutes, extractInsightOverviewShareContent, isInsightFormat } from "@/lib/insights";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export default async function InsightDetailPage({ params }: Props) {
 
   const format = isInsightFormat(post.format) ? post.format : "markdown";
   const dateLabel = post.publishedAt ? formatDate(post.publishedAt) : formatDate(post.updatedAt);
+  const overview = extractInsightOverviewShareContent(post.contentRaw, post.description ?? undefined);
 
   return (
     <div className="home-v2 insight-detail-page">
@@ -35,7 +37,20 @@ export default async function InsightDetailPage({ params }: Props) {
           {post.description ? <p className="insight-detail-desc">{post.description}</p> : null}
         </header>
 
-        <InsightReader title={post.title} content={post.contentRaw} format={format} />
+        <InsightReader
+          title={post.title}
+          content={post.contentRaw}
+          format={format}
+          actions={(
+            <InsightOverviewShareButton
+              title={post.title}
+              source={post.source}
+              dateLabel={dateLabel}
+              overviewTitle={overview.title}
+              overviewMarkdown={overview.markdown}
+            />
+          )}
+        />
       </main>
     </div>
   );

@@ -1,13 +1,12 @@
 import type { ReactElement } from "react";
 import { ImageResponse } from "next/og";
 import { encode } from "uqr";
+import { SITE_ORIGIN } from "@/lib/site-url";
 
 const FALLBACK_QUESTION = `护城河这个概念，你怎么理解？`;
 const FALLBACK_ANSWER = `一家真正伟大的企业，必须有一道持久的\u201c护城河\u201d来保护投资资本获得卓越回报。资本主义的本质就是竞争——任何正在赚取高额回报的\u201c城堡\u201d，都会遭到竞争对手反复进攻。
 
 因此，真正难以逾越的屏障，比如成为行业的低成本生产商，或者拥有强大的全球品牌，才是我最看重的东西。我们不会因为今天的护城河够宽就感到满足——我需要它每年都在变得更宽。`;
-
-const SITE_URL = "https://buffett.air7.fun";
 
 type Segment = { text: string; bold: boolean };
 
@@ -155,13 +154,13 @@ export async function GET(req: Request) {
   const QUESTION = (searchParams.get("q") ?? FALLBACK_QUESTION).slice(0, 120);
   const ANSWER = (searchParams.get("a") ?? FALLBACK_ANSWER).slice(0, 600);
   // Fetch avatar (non-blocking fallback)
-  const avatarRes = await fetch(`${SITE_URL}/buffett-avarta.jpg`).catch(() => null);
+  const avatarRes = await fetch(`${SITE_ORIGIN}/buffett-avarta.jpg`).catch(() => null);
   const avatarSrc = avatarRes?.ok
     ? `data:image/jpeg;base64,${Buffer.from(await avatarRes.arrayBuffer()).toString("base64")}`
     : null;
 
   // Build QR code for site URL
-  const qrSvg = buildQrSvg(SITE_URL, 100);
+  const qrSvg = buildQrSvg(SITE_ORIGIN, 100);
   const qrSrc = svgToDataUri(qrSvg);
 
   const timestamp = formatTimestamp();

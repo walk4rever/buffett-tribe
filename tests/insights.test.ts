@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  extractInsightOverviewShareContent,
   normalizeInsightSlug,
   parseInsightFrontmatter,
   markdownToHtmlMarkdown,
@@ -86,6 +87,30 @@ date: "2026-06-09"
 > 内容`;
 
     expect(normalizeInsightLegacyCallouts(raw)).toBe(raw);
+  });
+
+  it("extractInsightOverviewShareContent extracts normalized overview markdown", () => {
+    const raw = `> [!Overview] 背景概览
+> 第一段。
+>
+> - 要点一
+> - 要点二
+
+## 正文
+
+内容`;
+
+    expect(extractInsightOverviewShareContent(raw, "后备摘要")).toEqual({
+      title: "背景概览",
+      markdown: "第一段。\n\n- 要点一\n- 要点二",
+    });
+  });
+
+  it("extractInsightOverviewShareContent falls back to description when no overview exists", () => {
+    expect(extractInsightOverviewShareContent("正文第一段。\n\n正文第二段。", "后备摘要")).toEqual({
+      title: "背景概览",
+      markdown: "后备摘要",
+    });
   });
 
   it("estimateReadingMinutes estimates reading time correctly", () => {

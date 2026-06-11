@@ -10233,6 +10233,30 @@ body {
   letter-spacing: 0;
 }
 
+.insight-share-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 30px;
+  padding: 0 0.18rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.62);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.insight-share-trigger:hover {
+  color: rgba(0, 0, 0, 0.82);
+}
+
+.insight-share-trigger:active {
+  opacity: 0.72;
+}
+
 /* ── Reader bar ── */
 
 .insight-reader-bar {
@@ -10243,7 +10267,7 @@ body {
   margin: 0 0 0.75rem;
   padding: 0 0.65rem;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.65rem;
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -10266,6 +10290,12 @@ body {
   white-space: nowrap;
   color: rgba(0, 0, 0, 0.5);
   font-size: 0.75rem;
+}
+
+.insight-reader-bar-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
 }
 
 /* ── Reader body ── */
@@ -10445,6 +10475,184 @@ body {
   margin-bottom: 0;
 }
 
+.insight-share-capture-root {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.insight-share-modal {
+  max-width: 520px;
+}
+
+.insight-share-overlay {
+  align-items: center;
+  padding: 20px;
+}
+
+.insight-share-overlay .insight-share-modal {
+  border-radius: 16px;
+  max-height: min(90vh, 920px);
+}
+
+.insight-share-modal-body {
+  padding-top: 18px;
+}
+
+.insight-share-preview-wrap {
+  width: 100%;
+  background: #f5f4ef;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.insight-share-preview {
+  max-height: min(75vh, 760px);
+}
+
+.insight-share-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 38px;
+  padding: 0 0.95rem;
+  border-radius: 999px;
+  background: #111111;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.insight-share-card {
+  width: 960px;
+  padding: 48px 48px 40px;
+  background: #f5f4ef;
+  color: #111111;
+}
+
+.insight-share-card-head h2 {
+  margin: 0;
+  font-size: 38px;
+  line-height: 1.16;
+  font-weight: 700;
+  color: #111111;
+}
+
+.insight-share-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.9rem;
+  margin-top: 12px;
+  color: rgba(0, 0, 0, 0.52);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.insight-share-card-body {
+  margin-top: 26px;
+}
+
+.insight-share-card-reader {
+  max-width: 100%;
+}
+
+.insight-share-card-reader .insight-callout {
+  margin: 0;
+}
+
+.insight-share-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.insight-share-brand {
+  display: block;
+  min-width: 0;
+}
+
+.insight-share-brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: #1d1d1f;
+  flex-shrink: 0;
+}
+
+.insight-share-brand-mark svg {
+  width: 44px;
+  height: 44px;
+}
+
+.insight-share-brand-copy {
+  display: grid;
+  gap: 0.28rem;
+  max-width: 420px;
+  align-content: center;
+}
+
+.insight-share-brand-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.insight-share-brand-head-copy {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.insight-share-brand-name {
+  font-size: 18px;
+  line-height: 1.15;
+  color: #111111;
+  font-weight: 700;
+}
+
+.insight-share-brand-domain {
+  font-size: 12px;
+  line-height: 1.2;
+  color: rgba(0, 0, 0, 0.42);
+  white-space: nowrap;
+}
+
+.insight-share-brand-tagline {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.58);
+}
+
+.insight-share-qr-block {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.insight-share-qr-frame {
+  padding: 10px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  line-height: 0;
+}
+
+.insight-share-qr-block span {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.52);
+}
+
 .insight-table-wrap {
   overflow-x: auto;
   margin: 1em 0;
@@ -10482,6 +10690,23 @@ body {
   .insight-detail-shell {
     padding-left: 1rem;
     padding-right: 1rem;
+  }
+
+  .insight-share-download {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .insight-reader-bar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.45rem;
+    padding: 0 0.5rem;
+  }
+
+  .insight-share-trigger {
+    min-height: 30px;
+    padding: 0 0.12rem;
+    font-size: 0.72rem;
   }
 }
 

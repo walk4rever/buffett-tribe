@@ -4,13 +4,12 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { encode } from "uqr";
 import type { Components } from "react-markdown";
+import { SITE_ORIGIN } from "@/lib/site-url";
 
 interface ShareCardProps {
   question: string;
   answer: string;
 }
-
-const SITE_URL = "https://buffett.air7.fun";
 
 function QRCode({ url, size }: { url: string; size: number }) {
   const result = encode(url, { ecc: "M" });
@@ -165,7 +164,7 @@ export function ShareCard({ question, answer }: ShareCardProps) {
           border: "1px solid rgba(180,150,60,0.25)",
           lineHeight: 0,
         }}>
-          <QRCode url={SITE_URL} size={56} />
+          <QRCode url={SITE_ORIGIN} size={56} />
         </div>
       </div>
 

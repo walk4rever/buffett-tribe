@@ -177,6 +177,41 @@ export function estimateReadingMinutes(content: string): number {
   return Math.max(1, Math.ceil((cjkChars / 450) + (latinWords / 220)));
 }
 
+export function extractInsightOverviewShareContent(raw: string, fallbackDescription?: string): {
+  title: string;
+  markdown: string;
+} {
+  const normalized = normalizeInsightLegacyCallouts(raw);
+  const lines = normalized.split(/\r?\n/);
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = /^>\s*\[!OVERVIEW\]\s*(.*)$/i.exec(lines[index]);
+    if (!match) continue;
+
+    const title = stripLegacyInsightTitle(match[1]) || "背景概览";
+    const bodyLines: string[] = [];
+
+    for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
+      const bodyMatch = /^>\s?(.*)$/.exec(lines[cursor]);
+      if (!bodyMatch) break;
+      bodyLines.push(bodyMatch[1]);
+      index = cursor;
+    }
+
+    const markdown = trimBlankLines(bodyLines).join("\n").trim();
+    if (markdown) {
+      return { title, markdown };
+    }
+    break;
+  }
+
+  const fallback = resolveInsightOverviewFallback(normalized, fallbackDescription);
+  return {
+    title: "背景概览",
+    markdown: fallback,
+  };
+}
+
 function resolveLegacyInsightCalloutMapping(value: string): { type: string; title: string } | null {
   const normalized = stripLegacyInsightTitle(value);
   if (!normalized) return null;
@@ -195,6 +230,32 @@ function stripLegacyInsightTitle(value: string): string {
     .replace(/^[-*]\s+/, "")
     .replace(/^>\s*/, "")
     .replace(/^\s+|\s+$/g, "");
+}
+
+function trimBlankLines(lines: string[]): string[] {
+  let start = 0;
+  let end = lines.length;
+  while (start < end && !lines[start]?.trim()) start += 1;
+  while (end > start && !lines[end - 1]?.trim()) end -= 1;
+  return lines.slice(start, end);
+}
+
+function resolveInsightOverviewFallback(raw: string, fallbackDescription?: string): string {
+  const description = fallbackDescription?.trim();
+  if (description) return description;
+
+  const paragraphs = raw
+    .replace(/^---[\s\S]*?\n---\n?/, "")
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph
+      .split(/\r?\n/)
+      .map((line) => line.replace(/^#+\s*/, "").replace(/^>\s*/, "").trim())
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim())
+    .filter(Boolean);
+
+  return paragraphs[0] ?? "";
 }
 
 export function rehypeInsightCallouts() {
