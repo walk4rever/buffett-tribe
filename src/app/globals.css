@@ -582,7 +582,7 @@ body.layout-no-header {
 .login-page {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.1), transparent 34%),
+    radial-gradient(circle at 0% 0%, rgba(0, 113, 227, 0.1), transparent 34%),
     radial-gradient(circle at 100% 100%, rgba(148, 163, 184, 0.12), transparent 40%),
     var(--graphite-bg);
 }
@@ -665,7 +665,7 @@ body.layout-no-header {
 .login-input:focus {
   outline: none;
   border-color: var(--graphite-accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
 }
 
 .login-error {
@@ -2974,7 +2974,7 @@ body.layout-no-header {
 .workspace-master-select:focus {
   outline: none;
   border-color: var(--graphite-accent);
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.12);
 }
 
 .workspace-chat-body {
@@ -4536,8 +4536,8 @@ body.layout-no-header {
 }
 
 .home-company-item:hover {
-  background: rgba(37, 99, 235, 0.1);
-  border-left-color: rgba(37, 99, 235, 0.45);
+  background: rgba(0, 113, 227, 0.1);
+  border-left-color: rgba(0, 113, 227, 0.45);
 }
 
 .home-company-item--static {
@@ -4813,7 +4813,7 @@ body.layout-no-header {
 .holdings-row:not(:last-child) td { border-bottom: 1px solid rgba(0,0,0,0.04); }
 .holdings-row:hover { background: rgba(0,113,227,0.03); }
 .holdings-row--new td {
-  background: rgba(37, 99, 235, 0.06);
+  background: rgba(0, 113, 227, 0.06);
 }
 .holdings-row--added td {
   background: rgba(22, 163, 74, 0.06);
@@ -4980,9 +4980,9 @@ body.layout-no-header {
 }
 
 .holdings-activity--new {
-  color: #1d4ed8;
-  background: rgba(37, 99, 235, 0.1);
-  border-color: rgba(37, 99, 235, 0.25);
+  color: #0066cc;
+  background: rgba(0, 113, 227, 0.1);
+  border-color: rgba(0, 113, 227, 0.25);
 }
 
 .holdings-activity--added {
@@ -5025,9 +5025,9 @@ body.layout-no-header {
   border-radius: 999px;
   font-size: 0.66rem;
   font-weight: 600;
-  color: #1d4ed8;
-  background: rgba(37, 99, 235, 0.12);
-  border: 1px solid rgba(37, 99, 235, 0.3);
+  color: #0066cc;
+  background: rgba(0, 113, 227, 0.12);
+  border: 1px solid rgba(0, 113, 227, 0.3);
 }
 
 .holdings-activity-soldout {
@@ -5393,7 +5393,7 @@ body.layout-no-header {
 }
 
 .person-top10-table tbody tr:hover {
-  background: rgba(37, 99, 235, 0.06);
+  background: rgba(0, 113, 227, 0.06);
 }
 
 .person-top10-table tbody tr:last-child td {
@@ -5465,9 +5465,9 @@ body.layout-no-header {
   --company-border-soft: #dbe1e9;
   --company-text: #111827;
   --company-text-secondary: #4b5563;
-  --company-accent: #2563eb;
+  --company-accent: var(--apple-blue);
   background:
-    radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.12), transparent 34%),
+    radial-gradient(circle at 0% 0%, rgba(0, 113, 227, 0.12), transparent 34%),
     radial-gradient(circle at 100% 100%, rgba(148, 163, 184, 0.14), transparent 40%),
     var(--company-bg);
   overflow-x: clip;
@@ -5851,7 +5851,7 @@ body.layout-no-header {
   background: var(--company-accent);
   border-color: var(--company-accent);
   color: #fff;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 8px 18px rgba(0, 113, 227, 0.22);
   transform: translateY(-1px);
 }
 
@@ -5897,8 +5897,8 @@ body.layout-no-header {
 }
 
 .stock-price-range-btn.active {
-  background: rgba(37, 99, 235, 0.1);
-  border-color: rgba(37, 99, 235, 0.25);
+  background: rgba(0, 113, 227, 0.1);
+  border-color: rgba(0, 113, 227, 0.25);
   color: var(--company-accent);
 }
 
@@ -6037,15 +6037,15 @@ body.layout-no-header {
 }
 
 .company-tab:hover {
-  background: rgba(37, 99, 235, 0.06);
-  border-color: rgba(37, 99, 235, 0.18);
+  background: rgba(0, 113, 227, 0.06);
+  border-color: rgba(0, 113, 227, 0.18);
   transform: translateY(-1px);
 }
 
 .company-tab--active {
-  background: linear-gradient(180deg, #1d4ed8 0%, #2563eb 100%);
+  background: linear-gradient(180deg, #0066cc 0%, var(--apple-blue) 100%);
   border-color: rgba(29, 78, 216, 0.9);
-  box-shadow: 0 10px 18px rgba(37, 99, 235, 0.18);
+  box-shadow: 0 10px 18px rgba(0, 113, 227, 0.18);
   transform: translateY(-1px);
 }
 
@@ -6353,16 +6353,16 @@ body.layout-no-header {
   gap: 0.25rem;
   padding: 0.38rem 0.7rem;
   border-radius: 999px;
-  border: 1px solid rgba(37, 99, 235, 0.18);
-  background: rgba(37, 99, 235, 0.06);
-  color: #1d4ed8;
+  border: 1px solid rgba(0, 113, 227, 0.18);
+  background: rgba(0, 113, 227, 0.06);
+  color: #0066cc;
   text-decoration: none;
   font-size: 0.72rem;
   font-weight: 600;
 }
 
 .company-reference-links a:hover {
-  background: rgba(37, 99, 235, 0.1);
+  background: rgba(0, 113, 227, 0.1);
 }
 
 .filing-reader-backcrumb {
@@ -6383,7 +6383,7 @@ body.layout-no-header {
 }
 
 .filing-reader-back--muted:hover {
-  color: #1d4ed8;
+  color: #0066cc;
 }
 
 .filing-reader {
@@ -7090,7 +7090,7 @@ body.layout-no-header {
 }
 
 .filing-reader-html a {
-  color: #2563eb;
+  color: var(--apple-blue);
   text-decoration: none;
 }
 
@@ -7406,9 +7406,9 @@ body.layout-no-header {
   align-items: center;
   padding: 0.16rem 0.38rem;
   border-radius: 999px;
-  background: rgba(37, 99, 235, 0.08);
-  border: 1px solid rgba(37, 99, 235, 0.14);
-  color: #1d4ed8;
+  background: rgba(0, 113, 227, 0.08);
+  border: 1px solid rgba(0, 113, 227, 0.14);
+  color: #0066cc;
   font-size: 0.62rem;
   line-height: 1.35;
 }
@@ -7506,7 +7506,7 @@ body.layout-no-header {
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 14px;
   background:
-    radial-gradient(circle at 50% 50%, rgba(37, 99, 235, 0.05), transparent 48%),
+    radial-gradient(circle at 50% 50%, rgba(0, 113, 227, 0.05), transparent 48%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(245, 248, 252, 0.96) 100%);
 }
 
@@ -7549,13 +7549,13 @@ body.layout-no-header {
 }
 
 .company-radar-area {
-  fill: rgba(37, 99, 235, 0.18);
-  stroke: rgba(37, 99, 235, 0.92);
+  fill: rgba(0, 113, 227, 0.18);
+  stroke: rgba(0, 113, 227, 0.92);
   stroke-width: 2.2;
 }
 
 .company-radar-dot {
-  fill: #2563eb;
+  fill: var(--apple-blue);
 }
 
 .company-radar-label {
@@ -7570,7 +7570,7 @@ body.layout-no-header {
 .company-radar-score {
   font-size: 10px;
   font-weight: 700;
-  fill: #2563eb;
+  fill: var(--apple-blue);
 }
 
 .company-value-side {
@@ -7617,8 +7617,8 @@ body.layout-no-header {
 .company-moat-thesis {
   margin: 0;
   padding: 0.8rem 0.9rem;
-  border-left: 3px solid rgba(37, 99, 235, 0.42);
-  background: linear-gradient(90deg, rgba(37, 99, 235, 0.06), rgba(255, 255, 255, 0));
+  border-left: 3px solid rgba(0, 113, 227, 0.42);
+  background: linear-gradient(90deg, rgba(0, 113, 227, 0.06), rgba(255, 255, 255, 0));
   color: #1e293b;
   font-size: 0.86rem;
   line-height: 1.58;
@@ -7670,7 +7670,7 @@ body.layout-no-header {
 
 .company-value-note-block li strong {
   font-size: 0.82rem;
-  color: #2563eb;
+  color: var(--apple-blue);
 }
 
 .company-value-index {
@@ -7719,7 +7719,7 @@ body.layout-no-header {
 .company-value-row-score strong {
   font-size: 1.2rem;
   line-height: 1;
-  color: #2563eb;
+  color: var(--apple-blue);
 }
 
 .company-value-row-score span {
@@ -8296,7 +8296,7 @@ body.layout-no-header {
   --graphite-border-soft: #dbe1e9;
   --graphite-text: #111827;
   --graphite-text-secondary: #4b5563;
-  --graphite-accent: #2563eb;
+  --graphite-accent: var(--apple-blue);
 }
 
 body {
@@ -8309,7 +8309,7 @@ body {
 .holdings-page,
 .letter-page {
   background:
-    radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.1), transparent 34%),
+    radial-gradient(circle at 0% 0%, rgba(0, 113, 227, 0.1), transparent 34%),
     radial-gradient(circle at 100% 100%, rgba(148, 163, 184, 0.12), transparent 40%),
     var(--graphite-bg);
 }
@@ -8344,7 +8344,7 @@ body {
 
 .home-member-link {
   background: rgba(255, 255, 255, 0.08);
-  color: #93c5fd;
+  color: var(--apple-link-dark);
 }
 
 .home-hero {
@@ -8380,7 +8380,7 @@ body {
 .person-chip--selected,
 .hero-input:focus {
   border-color: var(--graphite-accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
 }
 
 .person-hero,
@@ -8443,11 +8443,11 @@ body {
 .workspace-source-chip:hover,
 .workspace-source-toggle:hover {
   border-color: var(--graphite-accent);
-  background: rgba(37, 99, 235, 0.08);
+  background: rgba(0, 113, 227, 0.08);
 }
 
 .holdings-row:hover {
-  background: rgba(37, 99, 235, 0.05);
+  background: rgba(0, 113, 227, 0.05);
 }
 
 .holdings-th,
@@ -8473,7 +8473,7 @@ body {
 }
 
 .reader-ctrl-btn:hover:not(:disabled) {
-  background: rgba(37, 99, 235, 0.08);
+  background: rgba(0, 113, 227, 0.08);
   border-color: var(--graphite-accent);
 }
 
@@ -8485,7 +8485,7 @@ body {
 
 .md-reader blockquote {
   border-left-color: var(--graphite-accent);
-  background: rgba(37, 99, 235, 0.05);
+  background: rgba(0, 113, 227, 0.05);
 }
 
 .md-reader table {
@@ -8528,7 +8528,7 @@ body {
 }
 
 .chat-send-btn:not(:disabled):hover {
-  background: #1d4ed8;
+  background: #0066cc;
   opacity: 1;
 }
 
@@ -9231,7 +9231,7 @@ body {
 
 .letter-sidebar-year--active {
   background: rgba(0, 0, 0, 0.07);
-  box-shadow: inset 0 0 0 1.5px rgba(0, 122, 255, 0.35);
+  box-shadow: inset 0 0 0 1.5px rgba(0, 113, 227, 0.35);
   color: #1d1d1f;
   font-weight: 600;
 }
@@ -9567,14 +9567,14 @@ body {
 }
 
 .masterclass-year-link:hover {
-  background: rgba(37, 99, 235, 0.06);
-  border-color: rgba(37, 99, 235, 0.18);
+  background: rgba(0, 113, 227, 0.06);
+  border-color: rgba(0, 113, 227, 0.18);
 }
 
 .masterclass-year-link--active {
   color: var(--graphite-accent);
-  border-color: rgba(37, 99, 235, 0.3);
-  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(0, 113, 227, 0.3);
+  background: rgba(0, 113, 227, 0.08);
   font-weight: 700;
 }
 
@@ -9653,13 +9653,13 @@ body {
 }
 
 .library-cat-tab:hover {
-  background: rgba(37, 99, 235, 0.06);
+  background: rgba(0, 113, 227, 0.06);
   color: var(--graphite-text);
 }
 
 .library-cat-tab--active {
-  background: rgba(37, 99, 235, 0.1);
-  border-color: rgba(37, 99, 235, 0.28);
+  background: rgba(0, 113, 227, 0.1);
+  border-color: rgba(0, 113, 227, 0.28);
   color: var(--graphite-accent);
   font-weight: 600;
 }
@@ -9684,14 +9684,14 @@ body {
 }
 
 .library-year-item:hover {
-  background: rgba(37, 99, 235, 0.06);
-  border-color: rgba(37, 99, 235, 0.18);
+  background: rgba(0, 113, 227, 0.06);
+  border-color: rgba(0, 113, 227, 0.18);
 }
 
 .library-year-item--active {
   color: var(--graphite-accent);
-  border-color: rgba(37, 99, 235, 0.3);
-  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(0, 113, 227, 0.3);
+  background: rgba(0, 113, 227, 0.08);
   font-weight: 700;
 }
 
@@ -9714,7 +9714,7 @@ body {
 }
 
 .library-year-item--active .library-type-badge {
-  background: rgba(37, 99, 235, 0.15);
+  background: rgba(0, 113, 227, 0.15);
   color: var(--graphite-accent);
 }
 
@@ -9736,14 +9736,14 @@ body {
 }
 
 .library-article-item:hover {
-  background: rgba(37, 99, 235, 0.06);
-  border-color: rgba(37, 99, 235, 0.18);
+  background: rgba(0, 113, 227, 0.06);
+  border-color: rgba(0, 113, 227, 0.18);
 }
 
 .library-article-item--active {
   color: var(--graphite-accent);
-  border-color: rgba(37, 99, 235, 0.3);
-  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(0, 113, 227, 0.3);
+  background: rgba(0, 113, 227, 0.08);
 }
 
 .library-article-title {
@@ -9880,7 +9880,7 @@ body {
 
 .document-card--link:hover {
   border-color: var(--graphite-accent);
-  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 113, 227, 0.12);
 }
 
 .document-card-head {
@@ -9894,7 +9894,7 @@ body {
   align-items: center;
   padding: 0.16rem 0.42rem;
   border-radius: 999px;
-  background: rgba(37, 99, 235, 0.08);
+  background: rgba(0, 113, 227, 0.08);
   color: var(--graphite-accent);
   font-size: 0.64rem;
   font-weight: 600;
@@ -9980,8 +9980,8 @@ body {
   font-size: 0.68rem;
   padding: 0.06rem 0.38rem;
   border-radius: 4px;
-  background: rgba(37, 99, 235, 0.08);
-  color: var(--graphite-accent, #2563eb);
+  background: rgba(0, 113, 227, 0.08);
+  color: var(--graphite-accent, var(--apple-blue));
   font-weight: 500;
 }
 
@@ -11945,9 +11945,9 @@ body {
 
 .pdf-viewer-controls .pdf-viewer-fit-btn--active,
 .pdf-viewer-controls .pdf-viewer-fit-btn--active:hover:not(:disabled) {
-  background: rgba(0, 122, 255, 0.12);
-  color: #007aff;
-  box-shadow: inset 0 0 0 1px rgba(0, 122, 255, 0.35);
+  background: rgba(0, 113, 227, 0.12);
+  color: var(--apple-blue);
+  box-shadow: inset 0 0 0 1px rgba(0, 113, 227, 0.35);
 }
 
 .pdf-viewer-page {
@@ -11963,7 +11963,7 @@ body {
 .pdf-viewer-page-input {
   width: 32px;
   height: 24px;
-  border: 1px solid rgba(0, 122, 255, 0.45);
+  border: 1px solid rgba(0, 113, 227, 0.45);
   border-radius: 6px;
   background: #fff;
   color: #1d1d1f;
@@ -12055,7 +12055,7 @@ body {
 
 .pdf-thumb-item--active {
   background: rgba(0, 0, 0, 0.07);
-  box-shadow: inset 0 0 0 1.5px rgba(0, 122, 255, 0.35);
+  box-shadow: inset 0 0 0 1.5px rgba(0, 113, 227, 0.35);
 }
 
 .pdf-thumb-num {
@@ -12122,9 +12122,9 @@ body {
 
 .pdf-outline-item--active,
 .pdf-outline-item--active:hover {
-  background: rgba(0, 122, 255, 0.12);
-  color: #007aff;
-  box-shadow: inset 0 0 0 1px rgba(0, 122, 255, 0.32);
+  background: rgba(0, 113, 227, 0.12);
+  color: var(--apple-blue);
+  box-shadow: inset 0 0 0 1px rgba(0, 113, 227, 0.32);
 }
 
 .pdf-outline-empty {
@@ -12217,7 +12217,7 @@ body {
 }
 
 .pdf-text-layer span::selection {
-  background: rgba(0, 122, 255, 0.3);
+  background: rgba(0, 113, 227, 0.3);
   color: transparent;
 }
 
@@ -12294,8 +12294,8 @@ body {
 }
 
 .home-hero:hover {
-  background: rgba(37, 99, 235, 0.04);
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.12);
+  background: rgba(0, 113, 227, 0.04);
+  box-shadow: 0 0 0 1px rgba(0, 113, 227, 0.12);
 }
 
 .home-hero:hover .home-hero-brand {
