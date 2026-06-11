@@ -6988,7 +6988,7 @@ body.layout-no-header {
   margin-top: 1rem;
   color: var(--apple-near-black);
   line-height: 1.82;
-  font-size: 0.98rem;
+  font-size: 1rem;
   white-space: normal;
   padding-top: 1rem;
   border-top: 1px solid rgba(15, 23, 42, 0.08);
@@ -7005,7 +7005,7 @@ body.layout-no-header {
 .filing-reader-html {
   color: var(--apple-near-black);
   line-height: 1.82;
-  font-size: 0.98rem;
+  font-size: 1rem;
   overflow-wrap: anywhere;
 }
 
