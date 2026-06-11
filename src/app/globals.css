@@ -10509,6 +10509,22 @@ body {
 
 .insight-share-preview {
   max-height: min(75vh, 760px);
+  -webkit-touch-callout: default;
+  user-select: auto;
+  -webkit-user-select: auto;
+}
+
+.insight-share-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: #5a4e2e;
+  font-weight: 500;
+  text-align: center;
+}
+
+.insight-share-hint--mobile {
+  display: none;
 }
 
 .insight-share-download {
@@ -10523,6 +10539,10 @@ body {
   text-decoration: none;
   font-size: 0.82rem;
   font-weight: 600;
+}
+
+.insight-share-download--desktop {
+  display: inline-flex;
 }
 
 .insight-share-card {
@@ -10707,6 +10727,16 @@ body {
     min-height: 30px;
     padding: 0 0.12rem;
     font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 900px), (pointer: coarse), (hover: none) {
+  .insight-share-hint--mobile {
+    display: block;
+  }
+
+  .insight-share-download--desktop {
+    display: none;
   }
 }
 

@@ -178,9 +178,10 @@ export function InsightOverviewShareButton({
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={imageUrl} alt="Overview 分享图" className="share-modal-image insight-share-preview" />
                         </div>
-                        <a href={imageUrl} download={filename} className="insight-share-download">
+                        <p className="insight-share-hint insight-share-hint--mobile">手机端 长按保存图片</p>
+                        <a href={imageUrl} download={filename} className="insight-share-download insight-share-download--desktop">
                           <Download size={15} strokeWidth={2} />
-                          <span>下载 PNG</span>
+                          <span>点击下载图片</span>
                         </a>
                       </>
                     )}
