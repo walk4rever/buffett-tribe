@@ -36,6 +36,9 @@ export function SiteNav() {
             </Link>
           ))}
           <span className="home-nav-divider">|</span>
+          <Link href="/company" className="home-nav-link">
+            公司
+          </Link>
           <Link href="/idea" className="home-nav-link">
             对话
           </Link>

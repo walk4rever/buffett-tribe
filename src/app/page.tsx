@@ -1,5 +1,4 @@
 import Link from "next/link";
-import prisma from "@/lib/prisma";
 import { formatCompanyPathFromCik } from "@/lib/cik";
 import { SiteNav } from "@/components/SiteNav";
 import { HeroSearch } from "@/components/HeroSearch";
@@ -35,25 +34,10 @@ async function getHomeMemberStates() {
   }
 }
 
-async function getHomeCompanies() {
-  try {
-    return await prisma.entity.findMany({
-      where: { type: "company", cik: { not: null } },
-      select: { canonicalName: true, cik: true, metadata: true },
-      orderBy: { canonicalName: "asc" },
-      take: 200,
-    });
-  } catch (err) {
-    logHomeFallback("companies", err);
-    return [];
-  }
-}
-
 export default async function Home() {
-  const [signals, memberStates, companies] = await Promise.all([
+  const [signals, memberStates] = await Promise.all([
     getLatestHomeSignalCards(),
     getHomeMemberStates(),
-    getHomeCompanies(),
   ]);
 
   const stateMap = new Map(memberStates.map((s) => [s.id, s]));
@@ -197,36 +181,6 @@ export default async function Home() {
               </div>
             </div>
           ) : null}
-        </div>
-      </section>
-
-      {/* Companies */}
-      <section className="home-companies">
-        <div className="home-companies-in">
-          <p className="home-companies-hd">公司库 · {companies.length} 家</p>
-          <div className="home-companies-grid">
-            {companies.map((c) => {
-              const meta = c.metadata as Record<string, unknown> | null;
-              const nameZh = (typeof meta?.nameZh === "string" && meta.nameZh.trim()) || c.canonicalName;
-              const nameEn = (typeof meta?.nameEnShort === "string" && meta.nameEnShort.trim()) || c.canonicalName;
-              const href = formatCompanyPathFromCik(c.cik);
-              return href ? (
-                <Link
-                  key={c.cik}
-                  href={href}
-                  className="home-company-item"
-                >
-                  <span className="home-company-zh">{nameZh}</span>
-                  <span className="home-company-en">{nameEn}</span>
-                </Link>
-              ) : (
-                <span key={c.cik} className="home-company-item home-company-item--static">
-                  <span className="home-company-zh">{nameZh}</span>
-                  <span className="home-company-en">{nameEn}</span>
-                </span>
-              );
-            })}
-          </div>
         </div>
       </section>
 
