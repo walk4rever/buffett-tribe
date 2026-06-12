@@ -14,16 +14,16 @@
 
 - [x] **valuation-metrics 计算层**（`src/lib/valuation-metrics.ts`）：从 Financial + StockPrice 计算当前 PE、
       历史 PE 区间与分位、P/OCF（轻资产公司 OCF≈FCF 需注明）、ROE/营收/净利趋势、
-      情景回报数学（增长率 × 退出倍数 → 隐含年化）。纯 TS 可单测，MCO 数字对照公开数据验证。（v0.38.0 2026-06-13）
+      情景回报数学（增长率 × 退出倍数 → 隐含年化）。纯 TS 可单测，MCO 数字对照公开数据验证。（v0.37.4 2026-06-13）
 - [x] **管理分析生成**（`scripts/generate-management-analysis.ts` → artifactType `management_analysis`）：
       不做高管名册（缺 proxy 数据），做资本配置行为分析。数据：财务 6 年 + 10-K item_5（回购）/item_7（MD&A）
       + 股东信提及 chunks（MCO 有 36 封信，1962–2024，独家素材）+ 13F 大师动作。
-      输出：资本配置记录卡 / 大师视角卡 / 股东利益一致性，每条带 sourceRef。（v0.38.0 2026-06-13）
+      输出：资本配置记录卡 / 大师视角卡 / 股东利益一致性，每条带 sourceRef。（v0.37.4 2026-06-13）
 - [x] **估值分析生成**（`scripts/generate-valuation-analysis.ts` → artifactType `valuation_analysis`）：
       metrics 先算 → LLM 解读估值位置 + 质量调整叙事；情景分析由 LLM 出假设（growth/exitPE/理由）、
-      代码算隐含回报。合规：不输出"买入/卖出/目标价"，只输出区间与假设。（v0.38.0 2026-06-13）
+      代码算隐含回报。合规：不输出"买入/卖出/目标价"，只输出区间与假设。（v0.37.4 2026-06-13）
 - [x] **公司页渲染**：management/valuation tab 读 GeneratedContentVersion 最新版渲染，
-      标注"AI 生成 + 生成时间 + 数据来源"；无数据回退占位卡。（v0.38.0 2026-06-13，MCO 浏览器验收通过）
+      标注"AI 生成 + 生成时间 + 数据来源"；无数据回退占位卡。（v0.37.4 2026-06-13，MCO 浏览器验收通过）
 - [ ] **MCO 验收后扩量**：先只跑部落成员实际持仓公司，不急于全量 126 家。
 
 ### P1 — 数据缺口

@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v0.38.0] - 2026-06-13
+## [v0.37.4] - 2026-06-13
 
 ### Added
 - 公司页「管理分析」tab 上线 AI 生成内容（MCO 试点）：管理层总评 + 资本配置评分、资本配置记录卡（回购与分红 / 并购与投资 / 资本回报纪律）、大师视角（股东信 + 13F 动作）、股东利益一致性，每条结论带数据来源。
