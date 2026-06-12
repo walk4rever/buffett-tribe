@@ -27,19 +27,6 @@ const AI_MODEL = process.env.AI_MODEL!;
 const FREE_DAILY_ANON_LIMIT = parseInt(process.env.FREE_DAILY_ANON_LIMIT ?? "100", 10);
 const FREE_DAILY_AUTH_LIMIT = parseInt(process.env.FREE_DAILY_AUTH_LIMIT ?? "100", 10);
 
-function hasNeo4jConfig(): boolean {
-  return Boolean(
-    process.env.NEO4J_URI &&
-      process.env.NEO4J_USERNAME &&
-      process.env.NEO4J_PASSWORD,
-  );
-}
-
-function appendGraphContext(systemPrompt: string, graphContext: string): string {
-  if (!graphContext) return systemPrompt;
-  return `${systemPrompt}\n\n【图谱关系补充】\n${graphContext}`;
-}
-
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -258,50 +245,7 @@ export async function POST(req: Request) {
       })
     : null;
 
-  let graphContext = "";
-  if (hasNeo4jConfig() && entities.length > 0) {
-    const graphStart = Date.now();
-    try {
-      const { fetchGraphInsights } = await import("@/lib/graph-retrieval");
-      const graphInsights = await fetchGraphInsights({
-        entities,
-        yearFrom,
-        yearTo,
-        limit: 6,
-      });
-
-      graphContext = graphInsights
-        .map((row) => {
-          const year = row.year ? `（${row.year}）` : "";
-          const quote = row.quote ? `；原文: ${row.quote.slice(0, 120)}${row.quote.length > 120 ? "…" : ""}` : "";
-          return `- ${row.from} -[${row.relation}]-> ${row.to}${year}${quote}`;
-        })
-        .join("\n");
-
-      trace.span({
-        name: "graph_retrieval",
-        input: { entities, yearFrom, yearTo },
-        output: { count: graphInsights.length, context: graphContext.slice(0, 500) },
-        startTime: new Date(graphStart),
-        endTime: new Date(),
-      });
-    } catch (error) {
-      console.error("[graph] neo4j lookup failed:", error);
-      trace.span({
-        name: "graph_retrieval",
-        input: { entities },
-        output: { error: String(error) },
-        level: "ERROR",
-        startTime: new Date(graphStart),
-        endTime: new Date(),
-      });
-    }
-  }
-
-  const systemPrompt = appendGraphContext(
-    buildSystemPrompt(chunks, order, distinctByYear, evidencePlan),
-    graphContext,
-  );
+  const systemPrompt = buildSystemPrompt(chunks, order, distinctByYear, evidencePlan);
 
   // Build sources from search results (always shown, independent of AI output)
   const sources = chunks.map((c) => ({

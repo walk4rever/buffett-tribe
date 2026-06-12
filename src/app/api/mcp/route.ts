@@ -3,7 +3,6 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import {
   searchParams, toolSearch,
   getDocumentParams, toolGetDocument,
-  graphParams, toolGraph,
 } from "@/lib/mcp-tools";
 
 export const maxDuration = 60;
@@ -19,7 +18,7 @@ function createServer() {
     `Search the Buffett Tribe knowledge base (1958–2025) using hybrid keyword + semantic retrieval.
 Use this first when answering questions about Buffett's views, decisions, or writings.
 Returns ranked passages with year, source type, and English/Chinese excerpts.
-Combine with get_document to read the full context of a passage, or with graph to explore entity relationships.
+Combine with get_document to read the full context of a passage.
 Source types: shareholder (annual letters 1965–2025), partnership (early partnership letters 1958–1970).`,
     searchParams.shape,
     async (params) => {
@@ -38,20 +37,6 @@ Example: year=2023, type="shareholder" retrieves the 2023 Berkshire shareholder 
     getDocumentParams.shape,
     async (params) => {
       const result = await toolGetDocument(params);
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-    },
-  );
-
-  server.tool(
-    "graph",
-    `Query the knowledge graph for structured relationships around an entity (company, concept, or master).
-Relationships are extracted from Buffett's writings — e.g. holdings, acquisitions, mentions of investment principles.
-Use this to complement search results when you need structured, time-stamped relationship data.
-Returns: from → relation → to, with year and source quote where available.
-Example entities: "Apple", "Berkshire Hathaway", "insurance float", "GEICO".`,
-    graphParams.shape,
-    async (params) => {
-      const result = await toolGraph(params);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     },
   );

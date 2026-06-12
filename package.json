@@ -61,19 +61,7 @@
     "vacuum:tables": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/vacuum-tables.ts",
     "compact:financial-facts": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/compact-financial-facts.ts",
     "compact:table": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/compact-table.ts",
-    "compact:server": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/compact-table-serverside.ts",
-    "neo4j:smoke": "node --env-file=.env.local ./node_modules/.bin/ts-node --esm --experimentalSpecifierResolution=node scripts/neo4j-smoke-test.ts",
-    "neo4j:schema:v2": "node --env-file=.env.local ./node_modules/.bin/ts-node --esm --experimentalSpecifierResolution=node scripts/neo4j-schema-v2.ts",
-    "neo4j:schema:v2:reset": "node --env-file=.env.local ./node_modules/.bin/ts-node --esm --experimentalSpecifierResolution=node scripts/neo4j-schema-v2.ts --reset",
-    "neo4j:extract": "node --env-file=.env.local ./node_modules/.bin/ts-node --esm --experimentalSpecifierResolution=node scripts/neo4j-extract-triplets.ts",
-    "neo4j:extract:test": "node --env-file=.env.local ./node_modules/.bin/ts-node --esm --experimentalSpecifierResolution=node scripts/neo4j-extract-triplets.ts --year 1989 --dry-run",
-    "neo4j:extract:recent": "node --env-file=.env.local ./node_modules/.bin/ts-node --esm --experimentalSpecifierResolution=node scripts/neo4j-extract-triplets.ts --from 2021 --to 2025",
-    "neo4j:seed:mvp": "node --env-file=.env.local ./node_modules/.bin/ts-node --esm --experimentalSpecifierResolution=node scripts/neo4j-seed-mvp.ts",
-    "neo4j:import:2020-2025": "node --env-file=.env.local ./node_modules/.bin/ts-node --esm --experimentalSpecifierResolution=node scripts/neo4j-import-shareholder-range.ts --from 2020 --to 2025 --type shareholder",
-    "neo4j:test": "node --env-file=.env.local ./node_modules/.bin/ts-node --esm --experimentalSpecifierResolution=node scripts/test-neo4j-query.ts",
-    "retrieval:compare": "node --env-file=.env.local ./node_modules/.bin/ts-node --esm --experimentalSpecifierResolution=node scripts/test-retrieval-compare.ts",
-    "neo4j:progress": "node --env-file=.env.local ./node_modules/.bin/ts-node --esm --experimentalSpecifierResolution=node scripts/neo4j-progress.ts",
-    "neo4j:progress:partnership": "node --env-file=.env.local ./node_modules/.bin/ts-node --esm --experimentalSpecifierResolution=node scripts/neo4j-progress.ts --type partnership"
+    "compact:server": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/compact-table-serverside.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
@@ -90,7 +78,6 @@
     "langfuse": "^3.38.20",
     "lightweight-charts": "^5.2.0",
     "lucide-react": "^1.16.0",
-    "neo4j-driver": "^6.0.1",
     "next": "16.1.6",
     "next-auth": "^4.24.13",
     "pdf-parse": "^1.1.1",

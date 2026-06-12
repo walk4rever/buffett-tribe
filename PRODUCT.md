@@ -17,7 +17,7 @@
 | `CHANGELOG.md` | 发布记录 | 只记录已经发布的用户可见变化和重要修复 |
 | `APPLE-DESIGN.md` | 设计参考资料 | 可保留为参考，但设计决策和项目落地规范应摘要进 `PRODUCT.md` |
 
-原则：以后讨论“要做什么、为什么做、怎么做、数据从哪里来、设计口径是什么”，默认更新 `PRODUCT.md`；对外只更新 `README.md` 和 `CHANGELOG.md`。`NEXT.md` / `TODOS.md` / `DATA_GLOSSARY.md` 的内容已经合并进本文档，不再作为单独入口维护。
+原则：以后讨论“要做什么、为什么做、怎么做、数据从哪里来、设计口径是什么”，默认更新 `PRODUCT.md`；对外只更新 `README.md` 和 `CHANGELOG.md`。`NEXT.md` / `DATA_GLOSSARY.md` 的内容已经合并进本文档，不再作为单独入口维护。`TODOS.md` 自 2026-06-12 起恢复维护，专门承载数据架构优化清单（来源：数据架构全局 review），完成项的结论回写本文档。
 
 ---
 
@@ -655,7 +655,7 @@ Apple HIG 精简风格：
 | 持仓数据 | SEC EDGAR 13F-HR |
 | 财务数据 | SEC EDGAR XBRL（CompanyFacts + filing-level inline XBRL fallback） |
 | 原始文件 | Cloudflare R2（PDF、SEC filing HTML、index、附件、data files） |
-| 图谱 | Neo4j（关系检索与检索对比实验） |
+| 检索 | pgvector 语义检索 + tsvector 关键词混合（Neo4j 图谱实验已于 2026-06-12 退役） |
 | 市场数据 | Yahoo Finance 导入脚本 + `StockPrice` |
 | 产品分析 | PostHog（前端事件，仍在补齐事件体系） |
 | 认证 | NextAuth.js |
@@ -903,7 +903,7 @@ Apple HIG 精简风格：
 - 13F 导入与增量对比的工程主键使用 `Holding.securityId`；`ticker` 主要用于展示和价格图早期查询。
 - `Security` 通过 `companyEntityId` 关联公司实体；同一公司可以有多个 `Security`。
 - `ExtSource` 对 SEC filing 使用 `(filerEntityId, accessionNumber)` 去重，避免同一份 filing 重复入库。A 股/港股暂无 filing 归档，ExtSource 相关表对其不适用。
-- 文本关系抽取当前不再落到 Postgres 表；`Mention` 和 `EntityRelation` 已移除，关系检索统一走 Neo4j 图谱链路。
+- 文本关系抽取当前不落任何存储；`Mention` / `EntityRelation`（Postgres）与 Neo4j 图谱链路均已下线，检索统一为 pgvector + tsvector 混合。结构化关系沉淀待 Company Brain（Claim 表）承接，见 `TODOS.md`。
 - 原始 filing 文件通过 `FilingArtifact` 归档到 R2，结构化事实和章节通过 `FinancialFact` / `FilingSection` 保留可追溯数据。
 - 非美市场公司的查询主键：`{ market, code }` 组合（A 股/港股），`{ cik }` 继续用于美股。URL 路由层统一解析为 `companyId`，下游按 `market` 分发查询策略。
 
@@ -1097,9 +1097,10 @@ FinancialFact
 ### 实验与基准
 
 - `scripts/eval-*.ts`：检索与 MVP 评测
-- `scripts/neo4j-*.ts`：图谱抽取、导入、演练
 
 > 语音（ASR/TTS）与数字人实验已于 2026-06-11 移除（产品范围收缩为纯文字对话）。相关代码、relay 服务、数据模型（`DigitalHumanProfile` / `DigitalHumanJob`）均已删除，历史实现见 git 历史。
+>
+> Neo4j 图谱实验已于 2026-06-12 退役（Aura 实例长期不可达，chat 一直在静默降级运行）。`neo4j-*` 脚本、graph-retrieval、retrieval-compare 实验页、MCP graph 工具、`neo4j-driver` 依赖均已删除，检索统一为 pgvector + tsvector。历史实现见 git 历史。
 
 ### 维护原则
 
