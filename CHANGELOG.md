@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.37.2] - 2026-06-12
+
+### Removed
+- Neo4j 图谱层完全退役：Aura 实例已长期不可达，chat 一直在静默降级运行。删除 `neo4j-driver` 依赖、graph-retrieval、`/retrieval-compare` 实验页与 API、`/api/tools/graph`、MCP graph 工具、8 个 neo4j 脚本和 12 个 npm scripts。
+- 检索统一为 pgvector 语义 + tsvector 关键词混合。
+
+### Added
+- `TODOS.md`：数据架构优化清单（来源：2026-06-12 Postgres/R2/Neo4j 全局 review），含 Company Brain 最小闭环、Entity 标识层泛化、容量治理等 P0–P3 事项。
+
+### Notes
+- 后续运维：Neo4j Aura 控制台删除实例、Vercel 删除 `NEO4J_*` 环境变量。
+- 结构化关系沉淀的后续方向是 Company Brain（Claim 表），见 TODOS.md P0。
+
 ## [v0.37.1] - 2026-06-11
 
 ### Changed
