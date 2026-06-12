@@ -478,6 +478,15 @@ export async function getCompanyAnalysis(entityId: string) {
   return row ?? null;
 }
 
+export async function getGeneratedArtifact(entityId: string, artifactType: string) {
+  const row = await db.generatedContentVersion.findFirst({
+    where: { scopeType: "entity", scopeId: entityId, artifactType },
+    orderBy: { versionSeq: "desc" },
+    select: { payload: true, generatedAt: true, source: true, versionSeq: true },
+  });
+  return row ?? null;
+}
+
 export type CompanyReferenceFiling = {
   id: string;
   kind: string;

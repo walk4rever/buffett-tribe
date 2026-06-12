@@ -15,9 +15,16 @@ import {
   getCompanySecurities,
   formatCompanyCikSlug,
   formatCompanyCikUrl,
+  getGeneratedArtifact,
   getRecentHolders,
   getCompanyReferenceFilings,
 } from "@/lib/company-data";
+import {
+  ManagementAnalysisSection,
+  ValuationAnalysisSection,
+  parseManagementPayload,
+  parseValuationPayload,
+} from "@/components/CompanyGeneratedSections";
 
 import { StockPriceChartLazy } from "@/components/StockPriceChartLazy";
 import { buildCompanyFinancialDashboard } from "@/lib/company-financial-dashboard";
@@ -447,14 +454,19 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   const company = await getCompanyByCik(canonicalSlug);
   if (!company) notFound();
 
-  const [financials, holders, securities, analysis, businessCanvas, referenceFilings] = await Promise.all([
+  const [financials, holders, securities, analysis, businessCanvas, referenceFilings, managementArtifact, valuationArtifact] = await Promise.all([
     getCompanyFinancials(company.id, 5),
     getRecentHolders(company.id, 30),
     getCompanySecurities(company.id),
     getCompanyAnalysis(company.id),
     getBusinessCanvas(company.id),
     getCompanyReferenceFilings(company.id, 12),
+    getGeneratedArtifact(company.id, "management_analysis"),
+    getGeneratedArtifact(company.id, "valuation_analysis"),
   ]);
+
+  const hasManagement = managementArtifact != null && parseManagementPayload(managementArtifact.payload) != null;
+  const hasValuation = valuationArtifact != null && parseValuationPayload(valuationArtifact.payload) != null;
 
   const priceTickers = uniqueTickers([
     company.ticker,
@@ -682,8 +694,8 @@ export default async function CompanyPage({ params, searchParams }: Props) {
             { id: "business", label: "业务分析" },
             { id: "financial", label: "财务分析" },
             { id: "value", label: "价值分析" },
-            { id: "management", label: "管理分析", note: "构建中" },
-            { id: "valuation", label: "估值分析", note: "构建中" },
+            { id: "management", label: "管理分析", ...(hasManagement ? {} : { note: "构建中" }) },
+            { id: "valuation", label: "估值分析", ...(hasValuation ? {} : { note: "构建中" }) },
             { id: "references", label: "年度报告" },
           ]}
           initialTabId={initialTabId}
@@ -938,20 +950,24 @@ export default async function CompanyPage({ params, searchParams }: Props) {
           </section>
 
           <section className="company-section" data-tab-panel="management">
-            <div className="company-placeholder-grid">
-              <article className="company-placeholder-card">
-                <h3>管理层与董事会</h3>
-                <p>后续可接入 CEO、CFO、董事会结构、任职履历与关键股权激励信息。</p>
-              </article>
-              <article className="company-placeholder-card">
-                <h3>资本配置</h3>
-                <p>后续可补充回购、并购、分红、投资回报率与管理层执行纪律的长期跟踪。</p>
-              </article>
-              <article className="company-placeholder-card">
-                <h3>组织与文化</h3>
-                <p>后续可接入管理层访谈、股东信、10-K 讨论区和公司治理相关证据。</p>
-              </article>
-            </div>
+            {hasManagement && managementArtifact ? (
+              <ManagementAnalysisSection artifact={managementArtifact} />
+            ) : (
+              <div className="company-placeholder-grid">
+                <article className="company-placeholder-card">
+                  <h3>管理层与董事会</h3>
+                  <p>后续可接入 CEO、CFO、董事会结构、任职履历与关键股权激励信息。</p>
+                </article>
+                <article className="company-placeholder-card">
+                  <h3>资本配置</h3>
+                  <p>后续可补充回购、并购、分红、投资回报率与管理层执行纪律的长期跟踪。</p>
+                </article>
+                <article className="company-placeholder-card">
+                  <h3>组织与文化</h3>
+                  <p>后续可接入管理层访谈、股东信、10-K 讨论区和公司治理相关证据。</p>
+                </article>
+              </div>
+            )}
           </section>
 
           <section className="company-section" data-tab-panel="valuation">
@@ -964,20 +980,24 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                 <StockPriceChartLazy tickers={availablePriceTickers} />
               </section>
             ) : null}
-            <div className="company-placeholder-grid">
-              <article className="company-placeholder-card">
-                <h3>倍数估值</h3>
-                <p>后续可展示 PE、EV/EBIT、P/FCF、PS 等历史区间与行业对比。</p>
-              </article>
-              <article className="company-placeholder-card">
-                <h3>现金流模型</h3>
-                <p>后续可接入 DCF、增长假设、资本回报和安全边际区间。</p>
-              </article>
-              <article className="company-placeholder-card">
-                <h3>估值判断</h3>
-                <p>后续可把价格历史、财务趋势和管理分析合成一个统一的估值结论。</p>
-              </article>
-            </div>
+            {hasValuation && valuationArtifact ? (
+              <ValuationAnalysisSection artifact={valuationArtifact} />
+            ) : (
+              <div className="company-placeholder-grid">
+                <article className="company-placeholder-card">
+                  <h3>倍数估值</h3>
+                  <p>后续可展示 PE、EV/EBIT、P/FCF、PS 等历史区间与行业对比。</p>
+                </article>
+                <article className="company-placeholder-card">
+                  <h3>现金流模型</h3>
+                  <p>后续可接入 DCF、增长假设、资本回报和安全边际区间。</p>
+                </article>
+                <article className="company-placeholder-card">
+                  <h3>估值判断</h3>
+                  <p>后续可把价格历史、财务趋势和管理分析合成一个统一的估值结论。</p>
+                </article>
+              </div>
+            )}
           </section>
 
           <section className="company-section" data-tab-panel="references">
