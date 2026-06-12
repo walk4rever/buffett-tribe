@@ -153,7 +153,7 @@ function formatPct(value: number | null, digits = 2) {
 function formatDeltaPct(value: number | null) {
   if (value == null || !Number.isFinite(value)) return "—";
   const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(2)}pp`;
+  return `${sign}${value.toFixed(2)}%`;
 }
 
 function formatShareCount(value: bigint | null) {
@@ -412,6 +412,19 @@ function buildConsensusCards(events: RawEvent[]): ScoredSignalCard[] {
   return cards.sort((a, b) => b.score - a.score);
 }
 
+function describeDivergenceSide(event: RawEvent, masterNames: string[]) {
+  const action =
+    event.kind === "new"
+      ? `建仓 ${formatPct(event.nowPct)}`
+      : event.kind === "add"
+        ? `加仓 ${formatDeltaPct(event.deltaPct)}`
+        : event.kind === "exit"
+          ? "清仓"
+          : `减持 ${formatDeltaPct(event.deltaPct)}`;
+  const name = masterNames.length > 1 ? `${event.masterNameZh}等${masterNames.length}人` : event.masterNameZh;
+  return `${name} ${action}`;
+}
+
 function buildDivergenceCards(events: RawEvent[]): ScoredSignalCard[] {
   const groups = groupByCompany(events);
   const cards: ScoredSignalCard[] = [];
@@ -423,7 +436,9 @@ function buildDivergenceCards(events: RawEvent[]): ScoredSignalCard[] {
     if (!positive.length || !negative.length) continue;
 
     const strongest = selectStrongest(collapsed, (item) => Math.abs(item.deltaPct ?? item.nowPct));
-    if (!strongest) continue;
+    const strongestPositive = selectStrongest(positive, (item) => Math.abs(item.deltaPct ?? item.nowPct));
+    const strongestNegative = selectStrongest(negative, (item) => Math.abs(item.deltaPct ?? item.nowPct));
+    if (!strongest || !strongestPositive || !strongestNegative) continue;
     const positiveMasters = [...new Set(positive.map((item) => item.masterNameZh))];
     const negativeMasters = [...new Set(negative.map((item) => item.masterNameZh))];
     const score = (positiveMasters.length + negativeMasters.length) * 10 + group.reduce((sum, item) => sum + Math.abs(item.deltaPct ?? item.nowPct), 0);
@@ -439,8 +454,8 @@ function buildDivergenceCards(events: RawEvent[]): ScoredSignalCard[] {
         company: strongest.company,
         body: `${negativeMasters.join("、")}在 ${formatQuarter(strongest.sourceQuarter)} 减持/退出；${positiveMasters.join("、")}则在增持/新进。`,
         chips: [
-          chip(`${positiveMasters.length} 多头`, "positive"),
-          chip(`${negativeMasters.length} 空头`, "negative"),
+          chip(describeDivergenceSide(strongestPositive, positiveMasters), "positive"),
+          chip(describeDivergenceSide(strongestNegative, negativeMasters), "negative"),
           chip(formatQuarter(strongest.sourceQuarter), "neutral"),
         ],
         companyKey: strongest.companyKey,
