@@ -1,6 +1,6 @@
 {
   "name": "buffett-tribe",
-  "version": "0.37.3",
+  "version": "0.38.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -54,6 +54,10 @@
     "generate:business-canvas:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-business-canvas.ts --dry-run",
     "generate:value-analysis": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-value-analysis.ts",
     "generate:value-analysis:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-value-analysis.ts --dry-run",
+    "generate:management-analysis": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-management-analysis.ts",
+    "generate:management-analysis:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-management-analysis.ts --dry-run",
+    "generate:valuation-analysis": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-valuation-analysis.ts",
+    "generate:valuation-analysis:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-valuation-analysis.ts --dry-run",
     "generate:home-signals": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-home-signals.ts",
     "generate:home-signals:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-home-signals.ts --dry-run",
     "check:db": "node --env-file=.env.local ./node_modules/.bin/ts-node --esm --experimentalSpecifierResolution=node scripts/check-db.ts",

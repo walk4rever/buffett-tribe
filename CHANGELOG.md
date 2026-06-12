@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.38.0] - 2026-06-13
+
+### Added
+- 公司页「管理分析」tab 上线 AI 生成内容（MCO 试点）：管理层总评 + 资本配置评分、资本配置记录卡（回购与分红 / 并购与投资 / 资本回报纪律）、大师视角（股东信 + 13F 动作）、股东利益一致性，每条结论带数据来源。
+- 公司页「估值分析」tab 上线 AI 生成内容（MCO 试点）：当前 PE / 历史 PE 区间与分位 / P/OCF 指标卡、质量与增长解读、5 年情景分析（保守/基准/乐观，假设由 AI 提出、隐含回报由代码计算）、估值判断。不输出买卖建议与目标价。
+- 估值计算层 `src/lib/valuation-metrics.ts`：PE 历史分位、P/OCF、ROE/营收/净利 CAGR、情景回报数学全部由代码计算，LLM 只负责叙事解读。
+- 生成管线脚本 `generate:management-analysis` / `generate:valuation-analysis`（支持 --dry-run），复用 GeneratedContentVersion 版本化存储。
+
+### Changed
+- 公司页两个新 tab 标注「AI 生成 + 生成时间」与免责声明；无生成数据的公司回退到「构建中」占位卡。
+
 ## [v0.37.3] - 2026-06-12
 
 ### Added
