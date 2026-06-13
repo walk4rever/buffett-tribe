@@ -49,9 +49,25 @@
 ## P1 — 扩展前置与容量
 
 - [ ] **Entity 标识层泛化（A股/港股前置）**：新增 `market` + `code`，CIK 降级为美股专属属性。必须先于 akshare 数据接入完成，否则每条管线要打两遍补丁。注意：A 股无 XBRL，`Financial` 需接受第三方表格直写（用已有 `confidence` 字段标记低置信来源）。
-- [ ] **ExtSource.metadata 瘦身**：893 行占 51MB（平均 57KB/行），完整 EDGAR filing 索引塞在枢纽表的 Json 里。裁剪到必要字段，大 JSON 下沉为 R2 artifact。
-- [ ] **StockPrice 容量策略**：189k 行 / 40MB，A股扩展后 ticker 数将 ×3。方案：日线只留近 2 年，更早降采样为周线；或整体挪 R2。同时补 `securityId` 关联（当前只有裸 ticker 字符串，换 ticker/退市会断链）。
-- [ ] **Supabase 容量监控**：当前 316MB / free tier 500MB 上限，曾出现 pooler ECHECKOUTTIMEOUT 和 Disk IO 告警。加容量告警，或直接升级 plan。
+- [ ] **容量治理小包（设计于 2026-06-13，待定稿后执行）**：目标 318MB → ~170MB，运营水位线 400MB。
+      实测构成：Chunk 86MB（逻辑仅 44MB，一半是膨胀）、FilingSection 53MB（content 压缩后 19MB，
+      全文已 100% 在 R2 textArtifact）、ExtSource 51MB（893 行 × 平均 43KB metadata）、
+      StockPrice 40MB（18.9 万行日线）、FilingArtifact 35MB（3.3 万行指针，暂不动）。
+      功能约束（已核实读路径）：pgvector 向量必须留 PG（聊天检索）；生成管线读 FilingSection.content
+      只取前 2.4KB（truncateText）；年报 tab 全文走 R2；PE 历史分位是统计量，周线采样结果几乎不变。
+      - [ ] ① **告警先行**：`check:db-size` 脚本（per-table + 总量，warn 400MB / critical 450MB 非零退出）
+            + GitHub Actions 每周 cron 超阈值自动开/更新 Issue + 批量生成脚本前置检查（>460MB 拒绝跑批）。
+      - [ ] ② **ExtSource 瘦身（51→~5MB，最大单笔）**：metadata 裁剪到 app 实际读取字段
+            （实现前先 grep 审计，含 tocJson 去向），完整 JSON 下沉 R2 artifact；import 管线同步改写裁剪版。
+      - [ ] ③ **膨胀回收（~60MB）**：FilingSection.content 截断至 3KB 上限（无消费方受损）；
+            Chunk / FilingSection / ExtSource 跑 VACUUM FULL（表小，低流量窗口执行，注意锁表）。
+      - [ ] ④ **StockPrice 降采样（40→~18MB）**：日线留近 2 年，更早聚合周线 OHLC
+            （open=首日/high/low=极值/close=末日/volume=求和），月K/季K渲染与 PE 分位不受影响；
+            价格抓取脚本写入策略同步修改防回填。`securityId` 关联补齐另行处理（换 ticker/退市断链问题）。
+      - [ ] ⑤ **GeneratedContentVersion 保留策略**：每 scope/artifact 留最近 2 版（当前 432KB 不是问题，
+            每波重生成 +0.5MB，规则先立）。
+      治理后预计 ~170MB，剩 330MB headroom；按每家公司增量 ~0.5MB，全量 126 家 + A股扩展空间充足。
+      待定稿问题：metadata/tocJson 精确读字段清单；Supabase 免费档 VACUUM FULL 锁表窗口实测。
 
 ## P2 — 一致性收口
 
