@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 /**
  * Valuation metrics computed from Financial (FY line items) + StockPrice.
  * All numbers are computed in code — the LLM only interprets them.
- * OCF is used as an FCF proxy (no CapEx line item yet, see TODOS P1).
+ * FCF = OCF - CapEx when CapEx data exists; falls back to OCF proxy otherwise.
  */
 
 export type AnnualFundamentals = {
@@ -12,6 +12,8 @@ export type AnnualFundamentals = {
   netIncome: number | null;
   epsDiluted: number | null;
   operatingCashFlow: number | null;
+  capex: number | null;
+  freeCashFlow: number | null;
   shareholdersEquity: number | null;
   roePct: number | null;
   netMarginPct: number | null;
@@ -45,7 +47,9 @@ export type ValuationMetrics = {
   latestFiscalYear: number | null;
   fundamentals: AnnualFundamentals[];
   pe: PeStats;
-  priceToOcf: number | null; // market cap proxy: price / OCF per share
+  priceToOcf: number | null; // price / OCF per share (always computed)
+  priceToFcf: number | null; // price / FCF per share, null when CapEx missing
+  fcfBasis: "fcf" | "ocf_proxy"; // which basis downstream display/narrative should use
   revenueCagrPct: number | null;
   netIncomeCagrPct: number | null;
   scenarioHorizonYears: number;
@@ -66,6 +70,16 @@ function round(value: number | null, digits = 2): number | null {
 function cagrPct(first: number | null, last: number | null, years: number): number | null {
   if (first == null || last == null || first <= 0 || last <= 0 || years <= 0) return null;
   return round(((last / first) ** (1 / years) - 1) * 100);
+}
+
+/**
+ * FCF = OCF - CapEx. CapEx is stored as a payment magnitude
+ * (us-gaap PaymentsToAcquirePropertyPlantAndEquipment is positive),
+ * abs() guards against sources that store it signed.
+ */
+export function computeFcf(ocf: number | null, capex: number | null): number | null {
+  if (ocf == null || capex == null) return null;
+  return ocf - Math.abs(capex);
 }
 
 export async function fetchAnnualFundamentals(entityId: string): Promise<AnnualFundamentals[]> {
@@ -89,12 +103,16 @@ export async function fetchAnnualFundamentals(entityId: string): Promise<AnnualF
       const netIncome = items.NetIncome ?? null;
       const equity = items.ShareholdersEquity ?? null;
       const revenue = items.Revenue ?? null;
+      const ocf = items.OperatingCashFlow ?? null;
+      const capex = items.CapEx ?? null;
       return {
         year,
         revenue,
         netIncome,
         epsDiluted: items.EPSDiluted ?? null,
-        operatingCashFlow: items.OperatingCashFlow ?? null,
+        operatingCashFlow: ocf,
+        capex,
+        freeCashFlow: computeFcf(ocf, capex),
         shareholdersEquity: equity,
         roePct: netIncome != null && equity ? round((netIncome / equity) * 100) : null,
         netMarginPct: netIncome != null && revenue ? round((netIncome / revenue) * 100) : null,
@@ -168,6 +186,10 @@ export async function computeValuationMetrics(params: {
       : null;
   const priceToOcf =
     latestPrice != null && ocfPerShare != null && ocfPerShare > 0 ? latestPrice / ocfPerShare : null;
+  const fcfPerShare =
+    shares != null && shares > 0 && latestFY.freeCashFlow != null ? latestFY.freeCashFlow / shares : null;
+  const priceToFcf =
+    latestPrice != null && fcfPerShare != null && fcfPerShare > 0 ? latestPrice / fcfPerShare : null;
 
   const span = fundamentals.length - 1;
   const first = fundamentals[0];
@@ -180,6 +202,8 @@ export async function computeValuationMetrics(params: {
     fundamentals,
     pe,
     priceToOcf: round(priceToOcf),
+    priceToFcf: round(priceToFcf),
+    fcfBasis: priceToFcf != null ? "fcf" : "ocf_proxy",
     revenueCagrPct: cagrPct(first.revenue, latestFY.revenue, span),
     netIncomeCagrPct: cagrPct(first.netIncome, latestFY.netIncome, span),
     scenarioHorizonYears: 5,

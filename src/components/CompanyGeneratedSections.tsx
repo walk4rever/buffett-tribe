@@ -49,6 +49,8 @@ type ValuationPayload = {
     latestFiscalYear: number | null;
     pe: { current: number | null; min: number | null; max: number | null; median: number | null; percentile: number | null };
     priceToOcf: number | null;
+    priceToFcf: number | null;
+    fcfBasis: "fcf" | "ocf_proxy";
     revenueCagrPct: number | null;
     netIncomeCagrPct: number | null;
   };
@@ -157,6 +159,8 @@ export function parseValuationPayload(payload: unknown): ValuationPayload | null
         percentile: numOrNull(pe.percentile),
       },
       priceToOcf: numOrNull(metrics.priceToOcf),
+      priceToFcf: numOrNull(metrics.priceToFcf),
+      fcfBasis: metrics.fcfBasis === "fcf" ? "fcf" : "ocf_proxy",
       revenueCagrPct: numOrNull(metrics.revenueCagrPct),
       netIncomeCagrPct: numOrNull(metrics.netIncomeCagrPct),
     },
@@ -271,7 +275,9 @@ export function ValuationAnalysisSection({ artifact }: { artifact: GeneratedArti
     { label: `当前 PE（FY${metrics.latestFiscalYear ?? "—"}）`, value: fmt(metrics.pe.current) },
     { label: "历史区间 低/中/高", value: `${fmt(metrics.pe.min)} / ${fmt(metrics.pe.median)} / ${fmt(metrics.pe.max)}` },
     { label: "历史分位", value: fmt(metrics.pe.percentile, "%") },
-    { label: "P/OCF", value: fmt(metrics.priceToOcf) },
+    metrics.fcfBasis === "fcf"
+      ? { label: "P/FCF", value: fmt(metrics.priceToFcf) }
+      : { label: "P/OCF", value: fmt(metrics.priceToOcf) },
   ];
 
   return (
@@ -351,7 +357,8 @@ export function ValuationAnalysisSection({ artifact }: { artifact: GeneratedArti
       </div>
 
       <p className="company-gen-disclaimer">
-        数字由系统从财务与价格数据计算（OCF 近似 FCF，数据截至 {metrics.asOfDate}），叙述由 AI 生成，不构成任何投资建议。
+        数字由系统从财务与价格数据计算（{metrics.fcfBasis === "fcf" ? "FCF = OCF − CapEx" : "OCF 近似 FCF"}，数据截至{" "}
+        {metrics.asOfDate}），叙述由 AI 生成，不构成任何投资建议。
       </p>
     </>
   );

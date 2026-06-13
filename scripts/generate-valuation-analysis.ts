@@ -110,18 +110,24 @@ function parsePayload(raw: string): LlmValuation {
 }
 
 function buildMetricsText(m: ValuationMetrics) {
+  const inB = (v: number | null) => (v != null ? (v / 1e9).toFixed(2) + "B" : "-");
   const fundamentals = m.fundamentals
     .map(
       (f) =>
-        `  FY${f.year}: Revenue ${f.revenue != null ? (f.revenue / 1e9).toFixed(2) + "B" : "-"} | NetIncome ${f.netIncome != null ? (f.netIncome / 1e9).toFixed(2) + "B" : "-"} | EPS ${f.epsDiluted ?? "-"} | OCF ${f.operatingCashFlow != null ? (f.operatingCashFlow / 1e9).toFixed(2) + "B" : "-"} | ROE ${f.roePct ?? "-"}% | NetMargin ${f.netMarginPct ?? "-"}%`
+        `  FY${f.year}: Revenue ${inB(f.revenue)} | NetIncome ${inB(f.netIncome)} | EPS ${f.epsDiluted ?? "-"} | OCF ${inB(f.operatingCashFlow)} | CapEx ${inB(f.capex)} | FCF ${inB(f.freeCashFlow)} | ROE ${f.roePct ?? "-"}% | NetMargin ${f.netMarginPct ?? "-"}%`
     )
     .join("\n");
+
+  const cashFlowLine =
+    m.fcfBasis === "fcf"
+      ? `- Price / FCF per share: ${m.priceToFcf} (FCF = OCF - CapEx)`
+      : `- Price / OCF per share: ${m.priceToOcf} (OCF used as FCF proxy, no CapEx data)`;
 
   return `Computed valuation metrics (as of ${m.asOfDate}, price $${m.latestPrice}):
 - Current PE (FY${m.latestFiscalYear} diluted EPS): ${m.pe.current}
 - Historical daily PE range over ${m.pe.sampleDays} trading days: min ${m.pe.min} / median ${m.pe.median} / max ${m.pe.max}
 - Current PE percentile within history: ${m.pe.percentile}% (lower = cheaper vs own history)
-- Price / OCF per share: ${m.priceToOcf} (OCF used as FCF proxy, no CapEx data)
+${cashFlowLine}
 - Revenue CAGR (${m.fundamentals[0]?.year}-${m.latestFiscalYear}): ${m.revenueCagrPct}%
 - Net income CAGR: ${m.netIncomeCagrPct}%
 
