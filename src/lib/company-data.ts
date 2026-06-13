@@ -693,21 +693,6 @@ export async function getBusinessCanvas(entityId: string) {
   };
 }
 
-export type CompanyAnnualFilingSection = {
-  section: string;
-  content: string;
-  rawHtml: string | null;
-  outlineJson: Prisma.JsonValue | null;
-  blocksJson: Prisma.JsonValue | null;
-  contentPreview: string | null;
-  contentTextLength: number;
-  blockCount: number;
-  extractionVersion: number;
-  textArtifactId: string | null;
-  blocksArtifactId: string | null;
-  htmlArtifactId: string | null;
-};
-
 export type CompanyAnnualFilingOutlineNode = {
   title: string;
   level: number;
@@ -782,7 +767,6 @@ export type CompanyAnnualFiling = {
   filedAt: Date | null;
   url: string | null;
   metadata: Prisma.JsonValue | null;
-  sections: CompanyAnnualFilingSection[];
   attachments: Array<{
     sequence: string;
     description: string;
@@ -802,23 +786,6 @@ const COMPANY_ANNUAL_FILING_SELECT = {
   periodYear: true,
   periodQuarter: true,
   metadata: true,
-  sections: {
-    select: {
-      section: true,
-      content: true,
-      rawHtml: true,
-      outlineJson: true,
-      blocksJson: true,
-      contentPreview: true,
-      contentTextLength: true,
-      blockCount: true,
-      extractionVersion: true,
-      textArtifactId: true,
-      blocksArtifactId: true,
-      htmlArtifactId: true,
-    },
-    orderBy: [{ section: "asc" }],
-  },
   attachments: {
     select: {
       sequence: true,

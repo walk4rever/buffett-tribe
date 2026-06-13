@@ -73,7 +73,9 @@
     "compact:table": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/compact-table.ts",
     "compact:server": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/compact-table-serverside.ts",
     "rewrite:r2-html-urls": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/rewrite-r2-primary-html-urls.ts",
-    "rewrite:r2-html-urls:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/rewrite-r2-primary-html-urls.ts --dry-run"
+    "rewrite:r2-html-urls:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/rewrite-r2-primary-html-urls.ts --dry-run",
+    "cleanup:section-artifacts": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/cleanup-section-artifacts.ts",
+    "cleanup:section-artifacts:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/cleanup-section-artifacts.ts --dry-run"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
