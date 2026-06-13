@@ -102,6 +102,13 @@ export const LINE_ITEMS: LineItemConfig[] = [
     periodType: "duration",
   },
   {
+    key: "CapEx",
+    tagsUsGaap: ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsToAcquireProductiveAssets"],
+    tagsIfrs: ["PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities"],
+    unitCandidates: ["USD"],
+    periodType: "duration",
+  },
+  {
     key: "TotalAssets",
     tagsUsGaap: ["Assets"],
     tagsIfrs: ["Assets"],
