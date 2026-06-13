@@ -11,7 +11,6 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { buildAnnualReportToc } from "../src/lib/annual-report-html";
 import { fetchFilingIndexFiles, fetchSecText } from "./lib/filing-archive";
 import { ImportTimer } from "./lib/import-timer";
 import {
@@ -260,7 +259,6 @@ async function importEdgarToolsAnnualReports(params: {
       async () => filing.html || await fetchSecText(primaryUrl),
       (body) => `bytes=${Buffer.byteLength(body, "utf8").toLocaleString()}`,
     );
-    const tocJson = filingTimer.timeSync("build toc", () => buildAnnualReportToc(html));
     const inlineDoc = filingTimer.timeSync(
       "parse inline facts",
       () => parseInlineXbrlDocument(html),
@@ -328,7 +326,8 @@ async function importEdgarToolsAnnualReports(params: {
         data: {
           metadata: {
             ...(extSource.metadata as Record<string, unknown>),
-            tocJson,
+            // tocJson is intentionally not stored: reader TOC comes from
+            // FilingSection.outlineJson; inlining it here ballooned ExtSource to 51MB.
             importedBy: "import-10k-edgartools",
             edgartools: {
               version: extracted.toolVersion,

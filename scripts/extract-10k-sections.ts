@@ -12,7 +12,6 @@
 import { pathToFileURL } from "node:url";
 import prisma from "../src/lib/prisma";
 import { extractTargetSections } from "./lib/extract-10k-sections";
-import { buildAnnualReportToc } from "../src/lib/annual-report-html";
 import { buildStoredFilingSectionData, FILING_SECTION_EXTRACTION_VERSION } from "./lib/filing-section-storage";
 import { Prisma } from "@prisma/client";
 import { getR2ObjectBuffer } from "../src/lib/r2";
@@ -161,7 +160,6 @@ export async function processSource(
 
     console.log(`  ${label}: extracting from ${html.length.toLocaleString()} bytes`);
     const sections = extractTargetSections(html, source.url, source.kind as "10k" | "20f" | "40f");
-    const tocJson = buildAnnualReportToc(html);
     let upserted = 0;
     const keys = Object.keys(sections);
     console.log(`  ${label}: extracted ${keys.length} sections`);
@@ -211,23 +209,22 @@ export async function processSource(
       upserted++;
     }
 
-    if (tocJson.length) {
-      await prisma.extSource.update({
-        where: { id: source.id },
-        data: {
-          metadata: {
-            ...(source.metadata && typeof source.metadata === "object" && !Array.isArray(source.metadata) ? source.metadata : {}),
-            tocJson,
-            filingSectionExtraction: {
-              version: FILING_SECTION_EXTRACTION_VERSION,
-              status: "success",
-              sectionCount: upserted,
-              attemptedAt: new Date().toISOString(),
-            },
+    // tocJson is intentionally not stored: reader TOC comes from
+    // FilingSection.outlineJson; inlining it here ballooned ExtSource to 51MB.
+    await prisma.extSource.update({
+      where: { id: source.id },
+      data: {
+        metadata: {
+          ...(source.metadata && typeof source.metadata === "object" && !Array.isArray(source.metadata) ? source.metadata : {}),
+          filingSectionExtraction: {
+            version: FILING_SECTION_EXTRACTION_VERSION,
+            status: "success",
+            sectionCount: upserted,
+            attemptedAt: new Date().toISOString(),
           },
         },
-      });
-    }
+      },
+    });
 
     return { sections: upserted, skipped: false };
   } catch (err) {
