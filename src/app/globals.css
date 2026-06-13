@@ -12549,3 +12549,142 @@ body {
     border-radius: 16px;
   }
 }
+
+/* ── Filing reader: iframe mode ── */
+
+.filing-reader-main--frame {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.filing-reader-frame {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+  display: block;
+}
+
+.filing-reader-frame-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  height: 100%;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.filing-reader-frame-empty a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--apple-blue);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+/* ── Filing reader: TOC sidebar ── */
+
+.filing-reader-toc-loading {
+  margin: 0;
+  padding: 0.6rem 0.2rem;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+
+.filing-reader-toc {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0.1rem 0;
+}
+
+.filing-reader-toc-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.32rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: #475569;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.13s, color 0.13s;
+}
+
+.filing-reader-toc-item:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+}
+
+.filing-reader-toc-item--active {
+  background: rgba(183, 150, 98, 0.12);
+  color: #7c5d31;
+  font-weight: 600;
+}
+
+.filing-reader-toc-item--h1 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #1e293b;
+  padding-left: 0.6rem;
+  margin-top: 0.25rem;
+}
+
+.filing-reader-toc-item--h2 {
+  padding-left: 1.1rem;
+}
+
+.filing-reader-toc-item--h3 {
+  padding-left: 1.7rem;
+  font-size: 0.69rem;
+  color: #64748b;
+}
+
+/* ── Filing reader: attachments in sidebar ── */
+
+.filing-reader-sidebar-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(132, 146, 166, 0.14);
+  margin-top: 0.5rem;
+}
+
+.filing-reader-sidebar-attachments-label {
+  margin: 0 0 0.2rem;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #8c7761;
+}
+
+.filing-reader-sidebar-attachment-link {
+  display: block;
+  padding: 0.28rem 0.6rem;
+  border-radius: 7px;
+  font-size: 0.7rem;
+  color: #475569;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.13s, color 0.13s;
+}
+
+.filing-reader-sidebar-attachment-link:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+}
