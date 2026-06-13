@@ -24,8 +24,8 @@ export type PeStats = {
   min: number | null;
   max: number | null;
   median: number | null;
-  percentile: number | null; // 0-100, position of current PE in daily history
-  sampleDays: number;
+  percentile: number | null; // 0-100, position of current PE in weekly-sampled history
+  sampleDays: number; // number of weekly samples (field name kept for payload compatibility)
 };
 
 export type ScenarioInput = {
@@ -156,11 +156,25 @@ export async function computeValuationMetrics(params: {
     return null;
   }
 
-  const dailyPe: number[] = [];
+  // Uniform weekly sampling for the PE distribution: history older than 2y is
+  // stored downsampled to weekly rows, so sampling recent dailies to weekly too
+  // keeps every period equally weighted in the percentile.
+  const lastPerWeek = new Map<string, { date: Date; close: number }>();
   for (const p of prices) {
-    const eps = trailingEps(p.date);
     const close = toNum(p.close);
-    if (eps != null && close != null) dailyPe.push(close / eps);
+    if (close == null) continue;
+    const d = p.date;
+    const dayOfWeek = (d.getUTCDay() + 6) % 7; // Monday = 0
+    const monday = new Date(d.getTime() - dayOfWeek * 86400000);
+    const weekKey = monday.toISOString().slice(0, 10);
+    const existing = lastPerWeek.get(weekKey);
+    if (!existing || d > existing.date) lastPerWeek.set(weekKey, { date: d, close });
+  }
+
+  const dailyPe: number[] = [];
+  for (const p of lastPerWeek.values()) {
+    const eps = trailingEps(p.date);
+    if (eps != null) dailyPe.push(p.close / eps);
   }
 
   const latestEps = epsByYear.length ? epsByYear[epsByYear.length - 1].eps : null;

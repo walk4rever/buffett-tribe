@@ -6,7 +6,7 @@ import argparse
 import json
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -25,7 +25,15 @@ def parse_args() -> argparse.Namespace:
         default="AAPL",
         help="Comma-separated ticker list, e.g. AAPL,MSFT",
     )
-    parser.add_argument("--start", default="2020-01-01", help="Start date, inclusive, YYYY-MM-DD")
+    # Default start = 2 years ago: older history is stored downsampled to
+    # weekly (downsample-stock-prices.ts); a fixed early default would
+    # re-backfill the deleted daily rows on every run.
+    two_years_ago = datetime.now(timezone.utc) - timedelta(days=730)
+    parser.add_argument(
+        "--start",
+        default=two_years_ago.strftime("%Y-%m-%d"),
+        help="Start date, inclusive, YYYY-MM-DD (default: 2 years ago)",
+    )
     parser.add_argument("--end", default=None, help="End date, exclusive, YYYY-MM-DD")
     parser.add_argument(
         "--out-dir",

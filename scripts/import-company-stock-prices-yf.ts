@@ -21,11 +21,20 @@ function getArgValue(argv: string[], name: string): string | undefined {
   return prefixed ? prefixed.slice(name.length + 1) : undefined;
 }
 
+// Default start = 2 years ago: history older than that is stored downsampled
+// to weekly (downsample-stock-prices.ts); a fixed early default would
+// re-backfill the deleted daily rows on every run.
+function defaultStartDate(): string {
+  const d = new Date();
+  d.setUTCFullYear(d.getUTCFullYear() - 2);
+  return d.toISOString().slice(0, 10);
+}
+
 function parseArgs(): ParsedArgs {
   const argv = process.argv.slice(2);
   return {
     batchSize: Number(getArgValue(argv, "--batch-size") ?? "10"),
-    start: getArgValue(argv, "--start") ?? "2020-01-01",
+    start: getArgValue(argv, "--start") ?? defaultStartDate(),
     end: getArgValue(argv, "--end") ?? null,
     outDir: getArgValue(argv, "--out-dir") ?? "/tmp/stock-prices-yf",
     checkpointFile:
