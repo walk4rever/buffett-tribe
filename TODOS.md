@@ -49,7 +49,12 @@
 ## P1 — 扩展前置与容量
 
 - [ ] **Entity 标识层泛化（A股/港股前置）**：新增 `market` + `code`，CIK 降级为美股专属属性。必须先于 akshare 数据接入完成，否则每条管线要打两遍补丁。注意：A 股无 XBRL，`Financial` 需接受第三方表格直写（用已有 `confidence` 字段标记低置信来源）。
-- [ ] **容量治理小包（设计于 2026-06-13，待定稿后执行）**：目标 318MB → ~170MB，运营水位线 400MB。
+- [x] **容量治理小包 ①-④（2026-06-13 执行完毕）**：实际 333MB → **209MB**（ExtSource 53→1MB、
+      StockPrice 49→19MB、Chunk 90→60MB 余 pgvector 索引、FilingSection 69→48MB 余 outlineJson）。
+      全功能验证通过：年报阅读器 R2 全文（86KB API vs 3KB DB cap）、K线图周线+日线混合渲染、PE 分位周采样口径统一。
+      ⑤ GeneratedContentVersion 保留策略未做（用户只批了 1-4）。
+      可选后续：FilingSection.outlineJson 与 FilingArtifact（35MB 指针表）进一步瘦身，优先级低。
+      原设计记录：目标 318MB → ~170MB，运营水位线 400MB。
       实测构成：Chunk 86MB（逻辑仅 44MB，一半是膨胀）、FilingSection 53MB（content 压缩后 19MB，
       全文已 100% 在 R2 textArtifact）、ExtSource 51MB（893 行 × 平均 43KB metadata）、
       StockPrice 40MB（18.9 万行日线）、FilingArtifact 35MB（3.3 万行指针，暂不动）。

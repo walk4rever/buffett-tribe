@@ -2,7 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-## [v0.37.5] - 2026-06-13
+## [v0.37.6] - 2026-06-13
+
+### Added
+- 数据库容量告警：`check:db-size` 脚本（warn 400MB / critical 450MB），GitHub Actions 每周自动检查并在超阈值时开 Issue，批量内容生成前置容量检查（>460MB 拒绝跑批）。
+
+### Changed
+- 数据库容量治理：333MB → 209MB。ExtSource 元数据裁剪至必要字段（748 行完整 JSON 归档 R2，53MB→1MB）；FilingSection 预览字段截断至 3KB（全文继续走 R2，阅读器不受影响）；2 年前的股价日线降采样为周线 OHLC（K线图月K/季K与近期日K不变）；PE 历史分位统一为周采样口径，远近期权重一致。
+- 股价抓取脚本默认起始日期改为动态 2 年前，避免重新回填已降采样的远期日线。
+
+### Notes
+- 远期日线数据已删除（不可逆），如需恢复可从价格源重新抓取。
 
 ### Added
 - 管理分析 / 估值分析扩量至全部部落成员持仓公司：55 家公司（5 位成员最新季度 13F 持仓）生成管理分析，51 家生成估值分析；无正 EPS 或缺价格数据的公司（SNOW、TEM、CRCL、CRWV、LLYVK）保持「构建中」占位。

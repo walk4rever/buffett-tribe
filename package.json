@@ -1,6 +1,6 @@
 {
   "name": "buffett-tribe",
-  "version": "0.37.5",
+  "version": "0.37.6",
   "private": true,
   "type": "module",
   "scripts": {
@@ -62,6 +62,10 @@
     "generate:valuation-analysis:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-valuation-analysis.ts --dry-run",
     "generate:home-signals": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-home-signals.ts",
     "generate:home-signals:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-home-signals.ts --dry-run",
+    "check:db-size": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/check-db-size.ts",
+    "db:slim-ext-source": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/slim-ext-source-metadata.ts",
+    "db:vacuum": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/vacuum-bloated-tables.ts",
+    "db:downsample-prices": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/downsample-stock-prices.ts",
     "check:db": "node --env-file=.env.local ./node_modules/.bin/ts-node --esm --experimentalSpecifierResolution=node scripts/check-db.ts",
     "cleanup:financial-facts": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/cleanup-financial-facts.ts",
     "vacuum:tables": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/vacuum-tables.ts",
