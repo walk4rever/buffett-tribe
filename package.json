@@ -1,6 +1,6 @@
 {
   "name": "buffett-tribe",
-  "version": "0.37.4",
+  "version": "0.37.5",
   "private": true,
   "type": "module",
   "scripts": {
@@ -32,6 +32,8 @@
     "migrate:filing-sections:artifacts": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/migrate-filing-sections-to-artifacts.ts",
     "import:stock-prices:yf": "sh -c 'PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python; exec \"$PY\" scripts/fetch-stock-prices-yf.py \"$@\"' sh",
     "import:company-stock-prices:yf": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-company-stock-prices-yf.ts",
+    "backfill:capex": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-capex.ts",
+    "backfill:capex:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-capex.ts --dry-run",
     "backfill:security:company-links": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-security-company-links.ts",
     "backfill:security:company-links:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-security-company-links.ts --dry-run",
     "backfill:company:profiles": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-profiles.ts",

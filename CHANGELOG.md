@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.37.5] - 2026-06-13
+
+### Added
+- 管理分析 / 估值分析扩量至全部部落成员持仓公司：55 家公司（5 位成员最新季度 13F 持仓）生成管理分析，51 家生成估值分析；无正 EPS 或缺价格数据的公司（SNOW、TEM、CRCL、CRWV、LLYVK）保持「构建中」占位。
+- CapEx 数据接入：财务提取管线新增 CapEx 科目（XBRL PaymentsToAcquirePropertyPlantAndEquipment 等），`backfill:capex` 脚本用 SEC companyfacts API 一次性回填存量公司 618 行年度 CapEx。
+
+### Changed
+- 估值分析从 OCF 近似切换为真实自由现金流：FCF = OCF − CapEx，指标卡显示 P/FCF；CapEx 数据缺失的公司（如银行类）自动回退 P/OCF 口径并在免责声明中如实标注。重资产公司口径修正显著（如 OXY：P/OCF 8.2 vs P/FCF 21.1）。
+
 ## [v0.37.4] - 2026-06-13
 
 ### Added

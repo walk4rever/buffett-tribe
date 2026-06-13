@@ -24,11 +24,15 @@
       代码算隐含回报。合规：不输出"买入/卖出/目标价"，只输出区间与假设。（v0.37.4 2026-06-13）
 - [x] **公司页渲染**：management/valuation tab 读 GeneratedContentVersion 最新版渲染，
       标注"AI 生成 + 生成时间 + 数据来源"；无数据回退占位卡。（v0.37.4 2026-06-13，MCO 浏览器验收通过）
-- [ ] **MCO 验收后扩量**：先只跑部落成员实际持仓公司，不急于全量 126 家。
+- [x] **MCO 验收后扩量**：55 家部落成员（5 位）最新季度持仓公司全部生成，管理分析 55 家、估值分析 51 家
+      （SNOW/TEM/CRCL/CRWV/LLYVK 无正 EPS 或缺价格数据，回退占位卡）。OXY 抽查验证 FCF 口径
+      （P/OCF 8.22 vs P/FCF 21.08，重资产公司口径修正显著）。（v0.37.5 2026-06-13）
 
 ### P1 — 数据缺口
 
-- [ ] **CapEx / FCF lineItem 规整**：估值层目前用 OCF 近似，补 CapEx 后切换真 FCF。
+- [x] **CapEx / FCF lineItem 规整**：LINE_ITEMS 新增 CapEx（us-gaap PaymentsToAcquirePropertyPlantAndEquipment 等），
+      `backfill:capex` 用 companyfacts API 回填存量 618 行（106 个年度无 capex facts，多为银行类，自动回退 OCF 口径）；
+      valuation-metrics 切换真 FCF（`fcfBasis: fcf | ocf_proxy`），页面与 LLM 提示词随 basis 动态标注。（2026-06-13）
 - [ ] **回购股数序列**：从 item_5_market 或 XBRL 提取逐年回购，资本配置卡需要。
 
 ### P2 — 数据缺口（不阻塞试点）
