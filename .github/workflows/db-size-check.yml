@@ -1,0 +1,60 @@
+name: DB Size Check
+
+on:
+  schedule:
+    - cron: "0 1 * * 1" # Monday 01:00 UTC, weekly
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Check database size
+        id: dbsize
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: |
+          set +e
+          OUTPUT=$(npx tsx scripts/check-db-size.ts 2>&1)
+          CODE=$?
+          echo "$OUTPUT"
+          echo "exit_code=$CODE" >> "$GITHUB_OUTPUT"
+          {
+            echo "report<<EOF"
+            echo "$OUTPUT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Open or update alert issue
+        if: steps.dbsize.outputs.exit_code != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT: ${{ steps.dbsize.outputs.report }}
+        run: |
+          LEVEL=$([ "${{ steps.dbsize.outputs.exit_code }}" = "2" ] && echo "CRITICAL" || echo "WARN")
+          TITLE="[$LEVEL] Supabase DB size over threshold"
+          BODY="Weekly check on $(date -u +%Y-%m-%d):
+
+          \`\`\`
+          $REPORT
+          \`\`\`
+
+          Capacity governance plan: see TODOS.md「容量治理小包」."
+          EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --search "Supabase DB size in:title" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$GITHUB_REPOSITORY" --body "$BODY"
+            gh issue edit "$EXISTING" --repo "$GITHUB_REPOSITORY" --title "$TITLE"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$BODY"
+          fi

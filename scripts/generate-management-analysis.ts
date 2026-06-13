@@ -9,6 +9,7 @@
 import "dotenv/config";
 import {
   AI_MODEL,
+  assertDbCapacityForBatch,
   buildFinancialHistoryText,
   callJsonLLM,
   createGeneratedContentVersion,
@@ -207,6 +208,7 @@ async function main() {
   }
 
   console.log(`Found ${companies.length} company(s) to process\n`);
+  await assertDbCapacityForBatch(companies.length);
 
   for (const company of companies) {
     const label = `${company.canonicalName}${company.ticker ? ` (${company.ticker})` : ""}`;

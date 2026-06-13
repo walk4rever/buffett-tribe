@@ -439,4 +439,24 @@ export async function disconnectPrisma() {
   await prisma.$disconnect();
 }
 
+/**
+ * Refuse batch generation when the database is near the Supabase free-tier
+ * limit, so bulk runs cannot push it over. Single-company runs are exempt.
+ */
+export async function assertDbCapacityForBatch(companyCount: number) {
+  if (companyCount <= 3) return;
+  const blockMb = Number(process.env.DB_SIZE_BLOCK_MB ?? 460);
+  const rows = await prisma.$queryRawUnsafe<Array<{ bytes: bigint }>>(
+    `SELECT pg_database_size(current_database()) AS bytes`,
+  );
+  const totalMb = Number(rows[0].bytes) / 1e6;
+  if (totalMb > blockMb) {
+    throw new Error(
+      `Database is ${totalMb.toFixed(0)}MB (> ${blockMb}MB block threshold). ` +
+        `Refusing batch generation for ${companyCount} companies. ` +
+        `Run capacity governance (TODOS.md) or raise DB_SIZE_BLOCK_MB explicitly.`,
+    );
+  }
+}
+
 export { prisma };

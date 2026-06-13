@@ -11,6 +11,7 @@
 import "dotenv/config";
 import {
   AI_MODEL,
+  assertDbCapacityForBatch,
   callJsonLLM,
   createGeneratedContentVersion,
   disconnectPrisma,
@@ -125,7 +126,7 @@ function buildMetricsText(m: ValuationMetrics) {
 
   return `Computed valuation metrics (as of ${m.asOfDate}, price $${m.latestPrice}):
 - Current PE (FY${m.latestFiscalYear} diluted EPS): ${m.pe.current}
-- Historical daily PE range over ${m.pe.sampleDays} trading days: min ${m.pe.min} / median ${m.pe.median} / max ${m.pe.max}
+- Historical PE range over ${m.pe.sampleDays} weekly samples: min ${m.pe.min} / median ${m.pe.median} / max ${m.pe.max}
 - Current PE percentile within history: ${m.pe.percentile}% (lower = cheaper vs own history)
 ${cashFlowLine}
 - Revenue CAGR (${m.fundamentals[0]?.year}-${m.latestFiscalYear}): ${m.revenueCagrPct}%
@@ -153,6 +154,7 @@ async function main() {
   }
 
   console.log(`Found ${companies.length} company(s) to process\n`);
+  await assertDbCapacityForBatch(companies.length);
 
   for (const company of companies) {
     const label = `${company.canonicalName}${company.ticker ? ` (${company.ticker})` : ""}`;
