@@ -18,6 +18,7 @@ import {
   fetchSecText,
   SEC_HEADERS,
 } from "./filing-archive";
+import { rewriteSecHtmlUrls } from "./sec-html-rewriter";
 import {
   buildStoredFilingSectionData,
   buildStoredTextOnlyFilingSectionData,
@@ -506,7 +507,7 @@ export async function archiveFilingArtifacts(params: {
       accession,
       originalName: primaryDocument,
       contentType: "text/html; charset=utf-8",
-      body: Buffer.from(primaryHtml, "utf8"),
+      body: Buffer.from(rewriteSecHtmlUrls(primaryHtml, primaryUrl), "utf8"),
       sourceUrl: primaryUrl,
       metadata: {
         entityId,
