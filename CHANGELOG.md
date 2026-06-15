@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.37.9] - 2026-06-15
+
+### Changed
+- 洞见列表重排版：左列改为两行日期（"Jun 26 / 2026"，水平居中）；来源胶囊移至与标题同行（baseline 对齐）；移除「第xx篇」编号与阅读时长。
+
 ## [v0.37.8] - 2026-06-15
 
 ### Added

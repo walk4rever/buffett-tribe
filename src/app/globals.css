@@ -10280,8 +10280,8 @@ body {
 
 .insight-row {
   display: flex;
-  align-items: flex-start;
-  gap: 0.85rem;
+  align-items: center;
+  gap: 1rem;
   padding: 1rem 1.15rem;
   background: #fff;
   color: inherit;
@@ -10295,14 +10295,27 @@ body {
 
 .insight-row-num {
   flex-shrink: 0;
-  width: 3rem;
-  padding-top: 1.15rem;
+  width: 4.2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.18rem;
   color: rgba(0, 0, 0, 0.28);
-  font-size: 0.72rem;
-  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  text-align: right;
+  text-align: center;
   line-height: 1;
+}
+
+.insight-row-num-md {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.insight-row-num-yr {
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: rgba(0, 0, 0, 0.28);
 }
 
 .insight-row-body {
@@ -10332,7 +10345,7 @@ body {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
-  max-width: min(42%, 220px);
+  max-width: min(30%, 180px);
   padding: 0 0.65rem;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 999px;
@@ -10376,8 +10389,24 @@ body {
   color: #a34c70;
 }
 
+.insight-row-title-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+}
+
+.insight-row-title-line h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
 .insight-row h2 {
-  margin: 0.3rem 0 0;
+  margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
   line-height: 1.35;
@@ -10416,12 +10445,6 @@ body {
 }
 
 @media (max-width: 640px) {
-  .insight-row-top {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.45rem;
-  }
-
   .insight-row-source-pill {
     max-width: 100%;
   }

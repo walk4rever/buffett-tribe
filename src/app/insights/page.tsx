@@ -1,8 +1,8 @@
+import React from "react";
 import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { SiteNav } from "@/components/SiteNav";
-import { estimateReadingMinutes } from "@/lib/insights";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +22,7 @@ export default async function InsightsPage() {
           {posts.length === 0 ? (
             <div className="insights-empty">暂无文章</div>
           ) : (
-            posts.map((post, index) => {
-              const articleNumber = posts.length - index;
+            posts.map((post) => {
               const sourceLabel = post.source || "Buffett Tribe";
 
               return (
@@ -32,16 +31,14 @@ export default async function InsightsPage() {
                   href={`/insights/${post.slug}`}
                   className="insight-row"
                 >
-                  <span className="insight-row-num">第{articleNumber}篇</span>
+                  <span className="insight-row-num">
+                    {formatDateTwoLine(post.publishedAt ?? post.updatedAt)}
+                  </span>
                   <div className="insight-row-body">
-                    <div className="insight-row-top">
-                      <div className="insight-row-meta">
-                        <span>{post.publishedAt ? formatDate(post.publishedAt) : formatDate(post.updatedAt)}</span>
-                        <span>{estimateReadingMinutes(post.contentRaw)} min</span>
-                      </div>
+                    <div className="insight-row-title-line">
+                      <h2>{post.title}</h2>
                       <span className={`insight-row-source-pill ${getInsightSourcePillClass(sourceLabel)}`}>{sourceLabel}</span>
                     </div>
-                    <h2>{post.title}</h2>
                     {post.description ? <p>{post.description}</p> : null}
                     {post.tags.length > 0 ? (
                       <div className="insight-row-tags">
@@ -75,7 +72,6 @@ async function getInsightPosts() {
         author: true,
         publishedAt: true,
         tags: true,
-        contentRaw: true,
         updatedAt: true,
       },
       orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
@@ -96,6 +92,17 @@ function formatDate(date: Date): string {
     month: "2-digit",
     day: "2-digit",
   }).format(date);
+}
+
+function formatDateTwoLine(date: Date): React.ReactNode {
+  const monthDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
+  const year = date.getFullYear();
+  return (
+    <>
+      <span className="insight-row-num-md">{monthDay}</span>
+      <span className="insight-row-num-yr">{year}</span>
+    </>
+  );
 }
 
 function getInsightSourcePillClass(source: string): string {
