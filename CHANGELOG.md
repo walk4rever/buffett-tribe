@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.37.8] - 2026-06-15
+
+### Added
+- 回购数据接入：LINE_ITEMS 新增 `ShareRepurchaseAmt`（XBRL PaymentsForRepurchaseOfCommonStock 等），`backfill:share-repurchase` 脚本用 SEC companyfacts API 回填全部公司（604 条 FY 年度数据，126 个年度无回购事实）。
+- Document 表：8 个大师文档（巴菲特/段永平/李录 PDF）从代码硬编码迁移到数据库，新增文档无需发版。
+- Chunk 补 embedding：`backfill-chunk-embeddings.ts` 脚本，122 个缺嵌向量全部补齐（0 失败）。
+- GCV 保留策略：`prune-gcv.ts` 脚本（keep=2，`npm run db:prune-gcv`），防止重生成累积历史版本。
+
+### Changed
+- Entity 标识层泛化：新增 `market`（'us'|'hk'|'cn'）和 `code` 字段及复合索引，为 A 股/港股数据接入做前置准备；CIK 注释降级为美股专属属性。
+- FinancialFact 模型删除：表已为 0 行，从 schema 中清理；`Financial.sourceFactIds` 注释更新为指向 R2 data_file artifact objectKeys。
+- 生成内容版本管理决策：三套并存（CompanyAnalysis / BusinessCanvas / GCV），新内容统一走 GCV，旧路径维持原状。
+- `src/lib/documents.ts` 改为从 DB 异步读取，所有调用方更新为 await。
+
 ## [v0.37.6] - 2026-06-13
 
 ### Added
