@@ -289,7 +289,7 @@ export default async function PersonHubPage({ params }: Props) {
   const currentKeySet = new Set(fullHoldings.map((h) => holdingKey(h)));
   const soldOutRows = prevHoldings.filter((h) => !currentKeySet.has(holdingKey(h)));
   const documentOwner = id === "buffett" || id === "duan" || id === "lilu" ? id : null;
-  const documents = documentOwner ? getDocumentsForOwner(documentOwner) : [];
+  const documents = documentOwner ? await getDocumentsForOwner(documentOwner) : [];
   const bookDoc = id === "buffett" ? documents[0] ?? null : null;
   const isAlphaMaster = member.category === "alpha";
 

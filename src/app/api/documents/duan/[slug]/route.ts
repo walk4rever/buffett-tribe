@@ -17,7 +17,7 @@ export async function GET(
   const docId = slugToDocId[slug];
   if (!docId) return new Response("not found", { status: 404 });
 
-  const doc = getDocumentById(docId);
+  const doc = await getDocumentById(docId);
   if (!doc) return new Response("not found", { status: 404 });
 
   const r2Key = "buffett-tribe/" + doc.rawPath.replace(/^data\/documents\/raw\//, "");

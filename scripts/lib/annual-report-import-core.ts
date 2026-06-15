@@ -144,6 +144,18 @@ export const LINE_ITEMS: LineItemConfig[] = [
     unitCandidates: ["USD/shares", "USD-per-shares", "pure"],
     periodType: "duration",
   },
+  {
+    key: "ShareRepurchaseAmt",
+    tagsUsGaap: [
+      "PaymentsForRepurchaseOfCommonStock",
+      "PaymentsForRepurchaseOfEquity",
+      "TreasuryStockValueAcquiredCostMethod",
+      "StockRepurchasedDuringPeriodValue",
+    ],
+    tagsIfrs: [],
+    unitCandidates: ["USD"],
+    periodType: "duration",
+  },
 ];
 
 const TICKER_ALIASES: Record<string, string> = {

@@ -158,16 +158,17 @@ model Entity {
   type          String // 'company' | 'security' | 'master' | 'concept'
   canonicalName String
   aliases       String[] @default([])
-  cik           String?  @unique // SEC Central Index Key (companies + filers)
+  cik           String?  @unique // SEC Central Index Key (US companies + filers)
   tribeId       String?  @unique // 'buffett' | 'lilu' | 'duan' — links to TRIBE_MEMBERS
   ticker        String?
+  market        String? // 'us' | 'hk' | 'cn' — exchange market; cik is us-only
+  code          String? // exchange-specific code: 'AAPL' (us), '00700' (hk), '600519' (cn)
   sector        String?
   metadata      Json?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   financials             Financial[]
-  facts                  FinancialFact[]
   filingSections         FilingSection[]
   filingAttachments      FilingAttachment[]
   holdingsAsHolder       Holding[]               @relation("HolderEntity")
@@ -180,6 +181,7 @@ model Entity {
 
   @@index([type])
   @@index([ticker])
+  @@index([market, code])
 }
 
 model Security {
@@ -218,7 +220,6 @@ model ExtSource {
   filer       Entity?            @relation(fields: [filerEntityId], references: [id], onDelete: SetNull)
   financials  Financial[]
   holdings    Holding[]
-  facts       FinancialFact[]
   sections    FilingSection[]
   attachments FilingAttachment[]
   artifacts   FilingArtifact[]
@@ -267,7 +268,7 @@ model Financial {
   value         Decimal?
   unit          String?
   rawXbrlTag    String?
-  sourceFactIds String[] @default([]) // 关联哪些 FinancialFact 参与计算
+  sourceFactIds String[] @default([]) // R2 data_file artifact objectKeys (blood lineage)
   mappingRule   String? // 如 "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax"
   confidence    Float    @default(1) // 1 = 直接映射，0.5 = 多事实聚合/推断
   createdAt     DateTime @default(now())
@@ -277,53 +278,6 @@ model Financial {
 
   @@unique([entityId, periodEnd, periodType, lineItem])
   @@index([entityId, periodEnd])
-}
-
-// ============================================================================
-// Truth of Source — raw 10-K data layer
-// All XBRL facts, filing text sections, and attachments preserved as-is.
-// ============================================================================
-
-model FinancialFact {
-  id       String @id @default(cuid())
-  entityId String
-  sourceId String // 关联 ExtSource
-
-  // XBRL 身份
-  taxonomy String // "us-gaap" | "ifrs-full" | "dei" | "srt"
-  concept  String // 原始 concept 名
-
-  // 数值
-  value    Decimal?
-  valueRaw String // 原始字符串，保留精度
-
-  // 单位
-  unit    String // "USD" | "USD/shares" | "shares" | "pure"
-  unitRef String? // 原始 unitRef
-
-  // 时间维度（XBRL context）
-  periodType String // "duration" | "instant"
-  startDate  DateTime? // duration 类型有 startDate
-  endDate    DateTime // duration endDate 或 instant date
-
-  // SEC 档案信息
-  form      String // "10-K" | "10-K/A"
-  accession String
-  filedAt   DateTime?
-
-  // 原始数据完整保留
-  rawFactJson    Json // 原始 fact JSON
-  rawContextJson Json // 原始 context JSON
-
-  createdAt DateTime @default(now())
-
-  entity Entity    @relation(fields: [entityId], references: [id], onDelete: Cascade)
-  source ExtSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-
-  @@unique([sourceId, concept, endDate, unit])
-  @@index([entityId, concept, endDate])
-  @@index([entityId, endDate])
-  @@index([sourceId])
 }
 
 model FilingSection {
@@ -565,4 +519,24 @@ model StockPrice {
   updatedAt     DateTime @updatedAt
 
   @@unique([ticker, date])
+}
+
+// ============================================================================
+// Document — master PDF / speech / article library (formerly hardcoded in src/lib/documents.ts)
+// ============================================================================
+
+model Document {
+  id         String   @id @default(cuid())
+  ownerId    String // 'buffett' | 'duan' | 'lilu' — links to TRIBE_MEMBERS
+  title      String
+  subtitle   String?
+  badge      String? // '书籍' | '演讲' | '文章'
+  rawPath    String // R2 object key for the raw PDF
+  readerPath String // Next.js reader route, e.g. /documents/buffett/unscripted
+  apiPath    String // API route, e.g. /api/documents/buffett/unscripted
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([ownerId])
 }

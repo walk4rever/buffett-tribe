@@ -34,6 +34,8 @@
     "import:company-stock-prices:yf": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-company-stock-prices-yf.ts",
     "backfill:capex": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-capex.ts",
     "backfill:capex:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-capex.ts --dry-run",
+    "backfill:share-repurchase": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-share-repurchase.ts",
+    "backfill:share-repurchase:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-share-repurchase.ts --dry-run",
     "backfill:security:company-links": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-security-company-links.ts",
     "backfill:security:company-links:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-security-company-links.ts --dry-run",
     "backfill:company:profiles": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-profiles.ts",
@@ -75,7 +77,12 @@
     "rewrite:r2-html-urls": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/rewrite-r2-primary-html-urls.ts",
     "rewrite:r2-html-urls:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/rewrite-r2-primary-html-urls.ts --dry-run",
     "cleanup:section-artifacts": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/cleanup-section-artifacts.ts",
-    "cleanup:section-artifacts:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/cleanup-section-artifacts.ts --dry-run"
+    "cleanup:section-artifacts:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/cleanup-section-artifacts.ts --dry-run",
+    "db:prune-gcv": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/prune-gcv.ts --apply",
+    "db:prune-gcv:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/prune-gcv.ts",
+    "db:seed-documents": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/seed-documents.ts",
+    "backfill:embeddings": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-chunk-embeddings.ts --apply",
+    "backfill:embeddings:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-chunk-embeddings.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

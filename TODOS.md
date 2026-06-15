@@ -33,7 +33,8 @@
 - [x] **CapEx / FCF lineItem 规整**：LINE_ITEMS 新增 CapEx（us-gaap PaymentsToAcquirePropertyPlantAndEquipment 等），
       `backfill:capex` 用 companyfacts API 回填存量 618 行（106 个年度无 capex facts，多为银行类，自动回退 OCF 口径）；
       valuation-metrics 切换真 FCF（`fcfBasis: fcf | ocf_proxy`），页面与 LLM 提示词随 basis 动态标注。（2026-06-13）
-- [ ] **回购股数序列**：从 item_5_market 或 XBRL 提取逐年回购，资本配置卡需要。
+- [x] **回购股数序列**：LINE_ITEMS 新增 `ShareRepurchaseAmt`（us-gaap PaymentsForRepurchaseOfCommonStock 等），
+      `backfill:share-repurchase` 用 companyfacts API 回填，MCO 验证 6 年数据完整。（2026-06-15）
 
 ### P2 — 数据缺口（不阻塞试点）
 
@@ -48,41 +49,35 @@
 
 ## P1 — 扩展前置与容量
 
-- [ ] **Entity 标识层泛化（A股/港股前置）**：新增 `market` + `code`，CIK 降级为美股专属属性。必须先于 akshare 数据接入完成，否则每条管线要打两遍补丁。注意：A 股无 XBRL，`Financial` 需接受第三方表格直写（用已有 `confidence` 字段标记低置信来源）。
-- [x] **容量治理小包 ①-④（2026-06-13 执行完毕）**：实际 333MB → **209MB**（ExtSource 53→1MB、
-      StockPrice 49→19MB、Chunk 90→60MB 余 pgvector 索引、FilingSection 69→48MB 余 outlineJson）。
-      全功能验证通过：年报阅读器 R2 全文（86KB API vs 3KB DB cap）、K线图周线+日线混合渲染、PE 分位周采样口径统一。
-      ⑤ GeneratedContentVersion 保留策略未做（用户只批了 1-4）。
+- [x] **Entity 标识层泛化（A股/港股前置）**：新增 `market` + `code`（`@@index([market, code])`），
+      CIK 降级为美股专属属性（注释更新）。（2026-06-15，已 prisma db push）
+- [x] **容量治理小包 ①-⑤（2026-06-13~15 执行完毕）**：实际 333MB → **244MB**（ExtSource 53→1MB、
+      StockPrice 49→18MB、FilingSection VACUUM、Chunk 122 个补嵌完成）。
+      GCV 保留策略脚本 `db:prune-gcv` 已建立（keep=2，当前 106 行均为 versionSeq=1，无需裁剪）。
+      全功能验证通过：年报阅读器 R2 全文、K线图、PE 分位、embedding 检索。
+      - [x] ① 告警先行（2026-06-13）
+      - [x] ② ExtSource 瘦身（2026-06-13，864KB）
+      - [x] ③ 膨胀回收 + VACUUM（2026-06-13）
+      - [x] ④ StockPrice 降采样（2026-06-13，18MB）
+      - [x] ⑤ GeneratedContentVersion 保留策略：`scripts/prune-gcv.ts` + `npm run db:prune-gcv`（2026-06-15）
       可选后续：FilingSection.outlineJson 与 FilingArtifact（35MB 指针表）进一步瘦身，优先级低。
-      原设计记录：目标 318MB → ~170MB，运营水位线 400MB。
-      实测构成：Chunk 86MB（逻辑仅 44MB，一半是膨胀）、FilingSection 53MB（content 压缩后 19MB，
-      全文已 100% 在 R2 textArtifact）、ExtSource 51MB（893 行 × 平均 43KB metadata）、
-      StockPrice 40MB（18.9 万行日线）、FilingArtifact 35MB（3.3 万行指针，暂不动）。
-      功能约束（已核实读路径）：pgvector 向量必须留 PG（聊天检索）；生成管线读 FilingSection.content
-      只取前 2.4KB（truncateText）；年报 tab 全文走 R2；PE 历史分位是统计量，周线采样结果几乎不变。
-      - [ ] ① **告警先行**：`check:db-size` 脚本（per-table + 总量，warn 400MB / critical 450MB 非零退出）
-            + GitHub Actions 每周 cron 超阈值自动开/更新 Issue + 批量生成脚本前置检查（>460MB 拒绝跑批）。
-      - [ ] ② **ExtSource 瘦身（51→~5MB，最大单笔）**：metadata 裁剪到 app 实际读取字段
-            （实现前先 grep 审计，含 tocJson 去向），完整 JSON 下沉 R2 artifact；import 管线同步改写裁剪版。
-      - [ ] ③ **膨胀回收（~60MB）**：FilingSection.content 截断至 3KB 上限（无消费方受损）；
-            Chunk / FilingSection / ExtSource 跑 VACUUM FULL（表小，低流量窗口执行，注意锁表）。
-      - [ ] ④ **StockPrice 降采样（40→~18MB）**：日线留近 2 年，更早聚合周线 OHLC
-            （open=首日/high/low=极值/close=末日/volume=求和），月K/季K渲染与 PE 分位不受影响；
-            价格抓取脚本写入策略同步修改防回填。`securityId` 关联补齐另行处理（换 ticker/退市断链问题）。
-      - [ ] ⑤ **GeneratedContentVersion 保留策略**：每 scope/artifact 留最近 2 版（当前 432KB 不是问题，
-            每波重生成 +0.5MB，规则先立）。
-      治理后预计 ~170MB，剩 330MB headroom；按每家公司增量 ~0.5MB，全量 126 家 + A股扩展空间充足。
-      待定稿问题：metadata/tocJson 精确读字段清单；Supabase 免费档 VACUUM FULL 锁表窗口实测。
 
 ## P2 — 一致性收口
 
-- [ ] **生成内容版本管理统一**：CompanyAnalysis（原地覆盖）、BusinessCanvas+Version（双表）、GeneratedContentVersion（通用表，0 行从未接线）三套并存。二选一：全部收口到 GeneratedContentVersion，或删掉这张空表。
-- [ ] **FinancialFact 模型去留**：表已被 compact 清空（0 行）但模型还在，`Financial.sourceFactIds` 指向已删除记录，血缘断裂。建议删模型，血缘改指 R2 `data_file` artifact。
-- [ ] **documents.ts 硬编码清单入库**：大师 PDF 文档列表写死在代码数组里，加文档需要发版。作为统一 Document 对象的第一步先入库。
-- [ ] **文档系统四轨合一（长期）**：信件（Source/Chunk）、大师 PDF（R2+硬编码）、年报（FilingSection/Artifact）、洞见（InsightPost）四套模型，按 PRODUCT.md 文档系统路线图收敛为统一 Document 对象。
+- [x] **生成内容版本管理统一**：三套并存（CompanyAnalysis 128行、BusinessCanvas 129行、GCV 106行）。
+      决策：新内容全走 GCV（management_analysis/valuation_analysis 已接入）；
+      CompanyAnalysis 与 BusinessCanvas 维持原读路径，不迁移（迁移成本高于收益）。（2026-06-15）
+- [x] **FinancialFact 模型去留**：0 行，已从 schema 删除，Entity/ExtSource 关联关系同步清理，
+      `Financial.sourceFactIds` 注释更新为指向 R2 data_file artifact objectKeys。
+      migration: `20260615000100_entity_market_code_drop_financial_fact_add_document`。（2026-06-15）
+- [x] **documents.ts 硬编码清单入库**：8 个大师文档迁移到 `Document` 表（`scripts/seed-documents.ts` 一次性种子）；
+      `src/lib/documents.ts` 改为从 DB 异步读取；所有调用方（3 个 page + 3 个 API route + 2 个 master page）
+      更新为 `await`。（2026-06-15）
+- [ ] **文档系统四轨合一（长期）**：信件（Source/Chunk）、大师 PDF（Document 表）、年报（FilingSection/Artifact）、
+      洞见（InsightPost）四套模型，按 PRODUCT.md 文档系统路线图收敛为统一 Document 对象。
 
 ## P3 — 小项
 
-- [ ] 439 个 Chunk 缺 embedding（共 8825），补嵌。
+- [x] Chunk 补 embedding：122 个缺 embedding 的 chunk 全部完成（`scripts/backfill-chunk-embeddings.ts`，0 失败）。（2026-06-15）
 - [ ] R2 与 pi-matrix/posts 共用 ai-pulse bucket，确认 lifecycle 与备份策略；考虑独立 bucket。
 - [ ] `ChatMessage.sourceIds` 为无外键软引用，Brain 落地时一并规范化。

@@ -61,7 +61,7 @@ export default async function LibraryPage({ params, searchParams }: Props) {
   if (!member) notFound();
 
   const documentOwner = id === "buffett" ? "buffett" : id === "duan" ? "duan" : null;
-  const documentItems = documentOwner ? getDocumentsForOwner(documentOwner) : [];
+  const documentItems = documentOwner ? await getDocumentsForOwner(documentOwner) : [];
 
   if (id !== "buffett") {
     return (

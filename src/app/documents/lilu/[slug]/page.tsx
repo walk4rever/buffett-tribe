@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
 import { SiteNav } from "@/components/SiteNav";
-import { getDocumentsForOwner } from "@/lib/documents";
+import { getDocumentById } from "@/lib/documents";
 import PdfViewer from "@/components/PdfViewer";
 
-const docs = getDocumentsForOwner("lilu");
 const slugToDocId: Record<string, string> = {
   "global-value-investing-2024": "lilu-global-value-investing-2024",
   "value-investing-china-2015": "lilu-value-investing-china-2015",
@@ -14,7 +13,7 @@ const slugToDocId: Record<string, string> = {
 
 export default async function LiluPdfPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const doc = docs.find((d) => d.id === slugToDocId[slug]);
+  const doc = await getDocumentById(slugToDocId[slug]);
   if (!doc) notFound();
 
   return (

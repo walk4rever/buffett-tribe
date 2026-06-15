@@ -14,7 +14,7 @@ const SLUG_TO_ID: Record<string, string> = {
 
 export default async function DuanPdfPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const doc = getDocumentById(SLUG_TO_ID[slug]);
+  const doc = await getDocumentById(SLUG_TO_ID[slug]);
   if (!doc) notFound();
 
   return (
