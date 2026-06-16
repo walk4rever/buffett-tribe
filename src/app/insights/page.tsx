@@ -86,14 +86,6 @@ async function getInsightPosts() {
   }
 }
 
-function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-}
-
 function formatDateTwoLine(date: Date): React.ReactNode {
   const monthDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
   const year = date.getFullYear();

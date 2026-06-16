@@ -12711,3 +12711,50 @@ body {
   background: rgba(15, 23, 42, 0.06);
   color: #0f172a;
 }
+
+/* ── Insight detail: related entities ─────────────────────────────── */
+.insight-related-entities {
+  max-width: 720px;
+  margin: 2.5rem auto 0;
+  padding: 1.5rem 0 0;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.insight-related-entities-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  margin-bottom: 0.75rem;
+}
+
+.insight-related-entities-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.insight-entity-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.05);
+  color: #1e293b;
+  font-size: 0.8rem;
+  text-decoration: none;
+  transition: background 0.13s;
+}
+
+a.insight-entity-chip:hover {
+  background: rgba(15, 23, 42, 0.1);
+}
+
+.insight-entity-ticker {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748b;
+}
+

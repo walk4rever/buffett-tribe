@@ -1048,8 +1048,10 @@ export default async function CompanyPage({ params, searchParams }: Props) {
               <p className="company-empty">暂无 10-K 归档资料。可先运行 `import:10k` 脚本。</p>
             )}
           </section>
+
         </CompanySectionTabs>
       </div>
     </div>
   );
 }
+

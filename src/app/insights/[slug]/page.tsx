@@ -21,6 +21,7 @@ export default async function InsightDetailPage({ params }: Props) {
   const format = isInsightFormat(post.format) ? post.format : "markdown";
   const dateLabel = post.publishedAt ? formatDate(post.publishedAt) : formatDate(post.updatedAt);
   const overview = extractInsightOverviewShareContent(post.contentRaw, post.description ?? undefined);
+  const relatedEntities = post.entityIds.length > 0 ? await getEntitiesByIds(post.entityIds) : [];
 
   return (
     <div className="home-v2 insight-detail-page">
@@ -51,6 +52,31 @@ export default async function InsightDetailPage({ params }: Props) {
             />
           )}
         />
+
+        {relatedEntities.length > 0 && (
+          <aside className="insight-related-entities">
+            <h2 className="insight-related-entities-title">相关公司</h2>
+            <div className="insight-related-entities-list">
+              {relatedEntities.map((entity) => {
+                const meta = (entity.metadata ?? {}) as { nameZh?: string };
+                const nameZh = meta.nameZh ?? entity.canonicalName;
+                const href = entity.cik ? `/company/cik-${entity.cik}` : null;
+                const ticker = entity.ticker ?? entity.code;
+                return href ? (
+                  <a key={entity.id} href={href} className="insight-entity-chip">
+                    {ticker && <span className="insight-entity-ticker">{ticker}</span>}
+                    <span>{nameZh}</span>
+                  </a>
+                ) : (
+                  <span key={entity.id} className="insight-entity-chip">
+                    {ticker && <span className="insight-entity-ticker">{ticker}</span>}
+                    <span>{nameZh}</span>
+                  </span>
+                );
+              })}
+            </div>
+          </aside>
+        )}
       </main>
     </div>
   );
@@ -70,6 +96,7 @@ async function getInsightPost(slug: string) {
         author: true,
         publishedAt: true,
         tags: true,
+        entityIds: true,
         format: true,
         contentRaw: true,
         updatedAt: true,
@@ -83,6 +110,13 @@ async function getInsightPost(slug: string) {
     }
     throw err;
   }
+}
+
+async function getEntitiesByIds(ids: string[]) {
+  return prisma.entity.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, canonicalName: true, ticker: true, cik: true, code: true, metadata: true },
+  });
 }
 
 function formatDate(date: Date): string {

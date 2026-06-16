@@ -83,6 +83,7 @@ model InsightPost {
   author      String?
   publishedAt DateTime?
   tags        String[]  @default([])
+  entityIds   String[]  @default([])
   format      String    @default("markdown")
   contentRaw  String
   contentHtml String?
