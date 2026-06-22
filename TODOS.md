@@ -1,93 +1,61 @@
 # TODOS — 数据架构优化清单
 
-## 接入 pi-coding-agent（设计确认 2026-06-16）
+## 接入 pi-coding-agent（v0.38.0，2026-06-22 完成）
 
-> **架构原则**：buffett-tribe 做投资研究平台，pi 做独立 agent 界面，air7 是长进程计算层。
-> 代码全部在 buffett-tribe repo；部署分两路：Next.js → Vercel，gateway + SPA → air7。
-> 现有 `/idea`（RAG + 火山引擎）完全不动。
-
-### 目标架构
+### 运行时架构
 
 ```
-buffett-tribe repo（本机开发）
-├── src/                        ← Next.js 主应用，部署 Vercel
-│   └── components/SiteNav      ←   加 "Agent →" 外链入口
-├── services/pi-gateway/        ← Node.js 长进程，部署 air7（port 3456）
-└── packages/pi-web-ui/         ← Vite SPA，本机 build → scp dist 到 air7
-
-运行时：
-  用户浏览器
-    → buffett-tribe.com（Vercel）
-    → relay.air7.fun/pi-app/（nginx 静态）
-    → relay.air7.fun/pi/chat（nginx proxy → gateway :3456）
-    → pi-coding-agent SDK → LLM
-    → search_letters tool → Supabase DB
+用户浏览器
+  └─► buffett-tribe.com/agent（Vercel，Next.js）
+        └─► /api/pi（Next.js 代理，AGENT_SECRET 留服务端）
+              └─► relay.air7.fun/pi/chat（nginx → :3456）
+                    └─► pi-gateway（PM2，Express SSE）
+                          ├─► @earendil-works/pi-coding-agent → DeepSeek API
+                          └─► search_letters tool → Supabase pgvector（8825 chunks）
 ```
 
-### 待完成任务
+### 关键文件
 
-#### Step 1 — 本机：搭建 services/pi-gateway/
+| 路径 | 说明 |
+|---|---|
+| `services/pi-gateway/` | Express SSE 服务，部署 air7 port 3456 |
+| `services/pi-gateway/ecosystem.config.cjs` | PM2 配置，`tsx --env-file=.env` 启动 |
+| `services/pi-gateway/src/tools/search-letters.ts` | pgvector RAG tool |
+| `services/pi-gateway/AGENTS.md` | Agent system prompt（投研助手定位） |
+| `src/app/agent/page.tsx` | `/agent` 页面 |
+| `src/components/AgentChat.tsx` | React chat 组件（SSE 流、markdown 渲染、⌘Enter 发送） |
+| `src/app/api/pi/route.ts` | Next.js 代理路由 |
 
-- [x] **新建 `services/pi-gateway/` 目录**（独立 package.json，不影响主应用）
-  - 依赖：`@earendil-works/pi-coding-agent` v0.79.6（latest）、`express`、`pg`、`typebox` 1.1.38、`tsx`
-  - `src/server.ts`：Express HTTP，端口 3456；`POST /chat`（SSE 流）+ `GET /health`
-  - `src/session-manager.ts`：userId → AgentSession Map，TTL 30min 自动驱逐；匿名每次新建
-  - `src/tools/search-letters.ts`：pi ToolDefinition，直连 Postgres（DIRECT_URL）向量检索
-  - `src/stream.ts`：subscribe → SSE（`event: delta / tool_start / tool_end / done / error`）
-  - `src/auth.ts`：校验 `X-Agent-Secret` header
-  - `.env.example`、`AGENTS.md`（投研 system prompt）、`pi-gateway.service`（systemd 模板）
-  - `noTools: "builtin"` — 禁用 bash/read/write/edit，agent 只有 `search_letters`（安全隔离）
-  - TypeScript 编译：零错误
-- [x] **本机冒烟**：填写 `.env`，`npm run dev`，`curl -N` 验证 SSE 流通（修复了 pg SSL 证书验证问题）
+### 已完成
 
-#### Step 2 — 部署 gateway 到 air7
+- [x] `services/pi-gateway/` 搭建与本机冒烟（修复 pg SSL 证书验证）
+- [x] gateway 部署 air7，PM2 管理，开机自启
+- [x] nginx `relay.air7.fun/pi/` → `:3456` 路由
+- [x] `/agent` 页嵌入主站，SiteNav "对话" 链接指向 `/agent`
+- [x] Next.js 代理路由 `/api/pi`，AGENT_SECRET 不暴露给浏览器
+- [x] `buffett-tribe.com/agent` 本地验证通过（`PI_GATEWAY_URL` 指向 air7）
+- [x] v0.38.0 发布，代码推送 GitHub，Vercel 自动部署触发
+- [ ] **Vercel 控制台添加环境变量**：`PI_GATEWAY_URL` + `PI_AGENT_SECRET`（待操作）
+- [ ] **生产验证**：`buffett-tribe.com/agent` 实际对话测试
 
-- [ ] **打包上传**：`rsync -av --exclude node_modules services/pi-gateway/ ubuntu@air7:~/pi-gateway/`
-- [ ] **air7 安装依赖**：`cd ~/pi-gateway && npm ci`
-- [ ] **写 `.env`**：填入 Supabase 连接串、AGENT_SECRET、LLM API Key
-- [ ] **PM2 启动**：`pm2 start ecosystem.config.cjs && pm2 save && pm2 startup`
-- [ ] **验证**：`curl -N https://relay.air7.fun/pi/health` 返回 200
-
-#### Step 3 — air7: nginx 路由
-
-- [ ] `relay.air7.fun.conf` 新增一段（只需 gateway，不再需要静态 SPA）：
-  ```nginx
-  location /pi/ {
-      proxy_pass         http://127.0.0.1:3456/;
-      proxy_buffering    off;
-      proxy_read_timeout 120s;
-  }
-  ```
-- [ ] `nginx -t && systemctl reload nginx`
-
-#### Step 4 — buffett-tribe: 嵌入主站（不再独立部署 SPA）
-
-- [x] **`src/app/agent/page.tsx`**：新 `/agent` 页面，复用 SiteNav + idea-screen 布局
-- [x] **`src/components/AgentChat.tsx`**：React chat 组件，SSE 对接 `/api/pi`
-- [x] **`src/app/api/pi/route.ts`**：Next.js 代理路由，AGENT_SECRET 留服务端
-- [x] **SiteNav**：加 "Agent" 链接 → `/agent`
-- [ ] **Vercel 环境变量**：`PI_GATEWAY_URL=https://relay.air7.fun/pi`，`PI_AGENT_SECRET=<secret>`
-- [ ] **验证**：`buffett-tribe.com/agent` 能正常对话
-
-### 关键决策（已确认）
+### 关键决策
 
 | 决策点 | 结论 |
 |---|---|
-| 代码位置 | 全在 buffett-tribe repo（`services/` 子目录） |
-| 部署分路 | Next.js → Vercel；gateway → air7 手动 rsync/PM2 |
 | UI 位置 | 嵌入 Next.js 主站 `/agent`，用户不离开 buffett-tribe.com |
-| 进程管理 | PM2（`ecosystem.config.cjs`），`pm2 startup` 保证开机自启 |
-| pi 包 | `@earendil-works/pi-coding-agent` v0.79.6 |
-| Web UI | React 组件（`AgentChat.tsx`），无独立 SPA |
-| RAG | 做成 pi tool（`search_letters`），agent 自主调用 |
-| DB 连接 | gateway 直连 Supabase（不经 Vercel） |
-| 默认工具 | 保留（bash/read/write/grep/find/ls） |
-| 会话 | 登录用户持久化，匿名无记忆 |
-| 认证 | `X-Agent-Secret` header |
-| 现有 `/idea` | 完全不动 |
+| 进程管理 | PM2（非 systemd），`ecosystem.config.cjs` |
+| 认证 | `X-Agent-Secret` header，secret 仅存 Vercel 环境变量 |
+| LLM | DeepSeek（直连 api.deepseek.com），非火山引擎 ark |
+| RAG | pi tool `search_letters`，agent 自主决定何时调用 |
+| 工具隔离 | `noTools: "builtin"` 禁用 bash/read/write，只开放 `search_letters` |
+| 现有 `/idea` | 保留不动，后续视情况迁移或下线 |
 
-> 来源：2026-06-12 数据架构全局 review（Postgres / R2 / Neo4j / 本地管线）。
-> 完成一项就在条目上标记，并把结论沉淀回 PRODUCT.md 对应章节。
+### 后续方向
+
+- [ ] Agent system prompt 扩展：支持多位大师（李录、段永平），不只是巴菲特
+- [ ] 接入公司页："用 Agent 分析此公司" 按钮，带 company context 初始化对话
+- [ ] 会话持久化：登录用户跨刷新保留对话历史
+- [ ] 流量监控：PM2 logs + Langfuse 观测 pi-gateway 调用情况
 
 ## 公司页生成内容 — 管理分析 / 估值分析 LLM 化（2026-06-12 评估，MCO 试点）
 
