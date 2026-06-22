@@ -1,0 +1,23 @@
+{
+  "name": "pi-gateway",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/server.ts",
+    "start": "tsx --env-file=.env src/server.ts"
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "^0.79.6",
+    "express": "^4",
+    "pg": "^8",
+    "typebox": "1.1.38"
+  },
+  "devDependencies": {
+    "@types/express": "^4",
+    "@types/node": "^22",
+    "@types/pg": "^8",
+    "tsx": "^4",
+    "typescript": "^5"
+  }
+}

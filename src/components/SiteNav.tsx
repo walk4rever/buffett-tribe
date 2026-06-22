@@ -39,7 +39,7 @@ export function SiteNav() {
           <Link href="/company" className="home-nav-link">
             公司
           </Link>
-          <Link href="/idea" className="home-nav-link">
+          <Link href="/agent" className="home-nav-link">
             对话
           </Link>
           <Link href="/insights" className="home-nav-link">

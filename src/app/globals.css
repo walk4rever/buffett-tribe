@@ -12758,3 +12758,49 @@ a.insight-entity-chip:hover {
   color: #64748b;
 }
 
+/* ── Agent chat ─────────────────────────────────────────────────────────────── */
+
+.agent-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.agent-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--secondary) transparent;
+}
+
+/* Override .messages max-width for agent (slightly wider) */
+.agent-chat .messages {
+  max-width: 720px;
+}
+
+/* Tool call indicator */
+.agent-tool-call {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background: var(--background);
+  border: 0.5px solid var(--secondary);
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.agent-msg-error { color: #c0392b; }
+
+@keyframes agent-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.agent-typing { animation: agent-blink 1s step-end infinite; color: var(--text-muted); }
+
+/* Textarea variant of chat-input */
+.agent-chat .chat-input {
+  resize: none;
+  height: 52px;
+  line-height: 1.5;
+}
+

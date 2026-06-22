@@ -1,0 +1,13 @@
+{
+  "providers": {
+    "deepseek": {
+      "baseUrl": "https://api.deepseek.com",
+      "apiKey": "FILL_IN_DEEPSEEK_API_KEY",
+      "api": "openai-completions",
+      "models": [
+        { "id": "deepseek-v4-flash" },
+        { "id": "deepseek-v4-pro" }
+      ]
+    }
+  }
+}
