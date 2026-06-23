@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { homedir } from "os";
 import { searchLettersTool } from "./tools/search-letters.js";
+import { searchWisdomTool } from "./tools/search-wisdom.js";
 
 const GATEWAY_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -38,7 +39,7 @@ async function makeSession(): Promise<AgentSession> {
     agentDir: PI_AGENT_DIR,   // loads models.json (custom providers) from here
     sessionManager: SessionManager.inMemory(),
     noTools: "builtin",       // disable bash/read/write/edit for security
-    customTools: [searchLettersTool],
+    customTools: [searchLettersTool, searchWisdomTool],
   });
   return session;
 }

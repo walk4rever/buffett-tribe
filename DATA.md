@@ -20,7 +20,7 @@ In this project, `fund` means the SEC 13F filer or fund vehicle linked to a mast
 
 | Category | Data / artifact | Source | Canonical table / files | Script / command | Current status | Needs follow-up |
 |---|---|---|---|---|---|---|
-| Masters | Master entities (`buffett`, `lilu`, `duan`, `gavin-baker`) | Code / seed data | `Entity(type=master)` | `npm run import:13f`, `scripts/neo4j-seed-mvp.ts` | Core masters remain the primary tribe; Gavin Baker is the first `alpha` master and is displayed separately. | Keep `tribeId` stable; add new masters only with explicit profile, category, and source plan. |
+| Masters | Master entities (`buffett`, `lilu`, `duan`, `gavin-baker`) | Code / seed data | `Entity(type=master)` | `npm run import:13f` | Core masters remain the primary tribe; Gavin Baker is the first `alpha` master and is displayed separately. | Keep `tribeId` stable; add new masters only with explicit profile, category, and source plan. |
 | Fund / filer identity | Master-linked 13F reporting entity / fund vehicle | SEC filer metadata + project mapping | `Entity(type=master)`, `ExtSource.filerEntityId` | `npm run import:13f` | Current model treats the reporting filer as the master-linked fund/filer identity. | If one master has multiple filers, add explicit mapping before importing. |
 | 13F filings | Quarterly holdings filings | SEC EDGAR 13F | `ExtSource(kind=13f)`, `Holding`, `Security`, `Entity` | `npm run import:13f`, `npm run pipeline:13f` | Core pipeline exists. Atreides Management, LP is mapped to `gavin-baker` with CIK `0001777813`. | Periodically run latest quarter and integrity checks. |
 | 13F company links | Security to company entity links | 13F + ticker/name maps | `Security.companyEntityId`, `CompanyNameMap` | `npm run backfill:security:company-links`, `npm run sync:company-name-map` | Existing repair scripts available. | Run after new 13F imports; inspect unresolved issuers. |
@@ -54,7 +54,6 @@ In this project, `fund` means the SEC 13F filer or fund vehicle linked to a mast
 | Buffett partnership letters | Partnership-era letters | Local markdown | `data/partnership/*.md`, `Source`, `Chunk` | `scripts/import-markdown.ts` | Local corpus present. | Maintain source provenance and date metadata. |
 | Annual meeting transcripts | Buffett meeting transcripts | Local markdown | `data/annual_meeting/raw_en/*.md`, `Source`, `Chunk` | `scripts/import-markdown.ts` | Local corpus present for many years. | Track translation/cleanup status if adding bilingual views. |
 | Master PDFs | Li Lu / Duan / Buffett PDFs | Local raw PDFs + R2 | `data/documents/raw/**`, document routes | `scripts/upload-documents-to-r2.ts` | Raw document upload script exists. | Maintain per-document upload/checksum status. |
-| Graph extraction | Concept/company/person graph triples | Source text chunks | Neo4j | `scripts/neo4j-extract-triplets.ts`, `scripts/neo4j-import-shareholder-range.ts` | Experimental / operational scripts exist. | Add graph import coverage by source type/year. |
 
 ## Operational Checks
 

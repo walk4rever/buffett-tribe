@@ -52,10 +52,57 @@
 
 ### 后续方向
 
-- [ ] Agent system prompt 扩展：支持多位大师（李录、段永平），不只是巴菲特
+- [ ] GBrain 知识层接入后，search_wisdom 替代 search_letters（见上方 GBrain 节）
 - [ ] 接入公司页："用 Agent 分析此公司" 按钮，带 company context 初始化对话
 - [ ] 会话持久化：登录用户跨刷新保留对话历史
 - [ ] 流量监控：PM2 logs + Langfuse 观测 pi-gateway 调用情况
+
+## GBrain 知识层接入（下一优先级，2026-06 决策）
+
+> **决策**：引入 GBrain 作为项目的知识大脑，部署在 air7，后端接现有 Supabase。
+> agent 获得 Takes / Links / Timeline 等结构化知识能力，从"检索段落"升级为"理解观点"。
+
+### 架构
+
+```
+两层分工：
+
+GBrain（知识层，air7 port 3457）
+├── 内容：大师信件、年会记录、Master PDF
+├── 能力：takes（大师立场）/ links（关联图谱）/ timeline（时间演变）
+└── 接口：HTTP MCP 服务，agent 通过工具调用
+
+Supabase 现有表（数据层，不动）
+├── FilingSection：公司年报全文
+├── Holding / Financial：持仓与财务数据
+└── 接口：agent 通过 search_filings 工具查询
+```
+
+### 任务
+
+- [x] air7 初始化 GBrain：`gbrain init --supabase`，接入现有 Supabase（hosts 绑定绕过 IPv6 限制）
+- [x] air7 跑成 HTTP 服务：`gbrain serve --http --port 3457`，PM2 管理，开机自启（`/root/gbrain-ecosystem.config.cjs`）
+- [x] nginx 配置 `relay.air7.fun/gbrain/` → `:3457` 路由
+- [x] Embedding 方案确定：OpenAI `text-embedding-3-large`（doubao 视觉端点不兼容标准 /embeddings 路径）
+- [x] 导入测试：1994 年会 markdown → GBrain，26 chunks，语义搜索验证通过
+- [x] 批量导入：30 年年会记录（1994–2023，503 chunks，全部 embed）— unscripted PDF 完整内容
+- [ ] 批量导入：股东信、合伙人信（`gbrain import`，需加 frontmatter）
+- [ ] 导入 Master PDF：Li Lu / Duan / Buffett（提取文字 → 加 frontmatter → `gbrain import`）
+- [x] pi-gateway 新增工具：`search_wisdom`（GBrain 语义召回，OpenAI 1536d embedding，pgvector 直查）
+- [ ] pi-gateway 新增工具：`search_filings`（公司年报，走现有 Supabase SQL）
+- [ ] 废弃 `search_letters`，更新 agent system prompt
+- [ ] agent 验收：测试跨大师对比、时间线追踪、观点 + 公司联动查询
+
+### 关键决策
+
+| 决策点 | 结论 |
+|---|---|
+| GBrain 后端 | Supabase（与主站共用，GBrain 建自己的表，互不干扰） |
+| 文件存储 | R2（现有方案，GBrain files 走 R2 bucket） |
+| 服务端口 | air7 port 3457，HTTP MCP 模式 |
+| Embedding 模型 | OpenAI text-embedding-3-large（doubao 视觉端点不支持标准路径）|
+| 年报处理 | 不走 GBrain，维持现有 FilingSection + pgvector 方案 |
+| 内容迁移 | 现有 Source/Chunk 保留不动；新内容优先走 GBrain |
 
 ## 公司页生成内容 — 管理分析 / 估值分析 LLM 化（2026-06-12 评估，MCO 试点）
 

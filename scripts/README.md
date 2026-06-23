@@ -236,25 +236,7 @@ npm run generate:portfolio-insight -- --master buffett
 - 命令：`npm run sync:company-name-map`
 - 作用：同步 `CompanyNameMap`。
 
-## 13. Neo4j 图谱入口
-
-- 文件：[neo4j-schema-v2.ts](/Users/rafael/R129/buffett-tribe/scripts/neo4j-schema-v2.ts)
-- 命令：`npm run neo4j:schema:v2`
-- 作用：初始化 / 重建 Neo4j 图谱 schema。
-
-- 文件：[neo4j-extract-triplets.ts](/Users/rafael/R129/buffett-tribe/scripts/neo4j-extract-triplets.ts)
-- 命令：`npm run neo4j:extract`
-- 作用：抽取关系 triplets。
-
-- 文件：[neo4j-import-shareholder-range.ts](/Users/rafael/R129/buffett-tribe/scripts/neo4j-import-shareholder-range.ts)
-- 命令：`npm run neo4j:import:2020-2025`
-- 作用：批量导入股东信 / 资料范围到图谱。
-
-- 文件：[neo4j-smoke-test.ts](/Users/rafael/R129/buffett-tribe/scripts/neo4j-smoke-test.ts)
-- 命令：`npm run neo4j:smoke`
-- 作用：Neo4j 联通性 smoke test。
-
-## 14. 价格历史导入入口
+## 13. 价格历史导入入口
 
 - 文件：[fetch-stock-prices-yf.py](/Users/rafael/R129/buffett-tribe/scripts/fetch-stock-prices-yf.py)
 - 命令：`npm run import:stock-prices:yf`

@@ -655,11 +655,12 @@ Apple HIG 精简风格：
 | 持仓数据 | SEC EDGAR 13F-HR |
 | 财务数据 | SEC EDGAR XBRL（CompanyFacts + filing-level inline XBRL fallback） |
 | 原始文件 | Cloudflare R2（PDF、SEC filing HTML、index、附件、data files） |
-| 检索 | pgvector 语义检索 + tsvector 关键词混合（Neo4j 图谱实验已于 2026-06-12 退役） |
+| 知识层 | GBrain（air7 HTTP 服务，Supabase 后端）— 大师知识图谱，Takes / Links / Timeline |
+| 检索 | GBrain recall（大师内容）+ pgvector + tsvector（公司年报 / 财务数据） |
 | 市场数据 | Yahoo Finance 导入脚本 + `StockPrice` |
 | 产品分析 | PostHog（前端事件，仍在补齐事件体系） |
 | 认证 | NextAuth.js |
-| 部署 | Vercel |
+| 部署 | Vercel（主站）+ air7（pi-gateway + GBrain） |
 
 ### 路由结构
 
@@ -903,7 +904,7 @@ Apple HIG 精简风格：
 - 13F 导入与增量对比的工程主键使用 `Holding.securityId`；`ticker` 主要用于展示和价格图早期查询。
 - `Security` 通过 `companyEntityId` 关联公司实体；同一公司可以有多个 `Security`。
 - `ExtSource` 对 SEC filing 使用 `(filerEntityId, accessionNumber)` 去重，避免同一份 filing 重复入库。A 股/港股暂无 filing 归档，ExtSource 相关表对其不适用。
-- 文本关系抽取当前不落任何存储；`Mention` / `EntityRelation`（Postgres）与 Neo4j 图谱链路均已下线，检索统一为 pgvector + tsvector 混合。结构化关系沉淀待 Company Brain（Claim 表）承接，见 `TODOS.md`。
+- 文本关系抽取当前不落任何存储；`Mention` / `EntityRelation`（Postgres）与 Neo4j 图谱链路均已下线。结构化知识沉淀路径：大师内容走 GBrain（Takes / Links / Timeline），公司维度沉淀待 Company Brain（Claim 表）承接，见 `TODOS.md`。
 - 原始 filing 文件通过 `FilingArtifact` 归档到 R2，结构化事实和章节通过 `FinancialFact` / `FilingSection` 保留可追溯数据。
 - 非美市场公司的查询主键：`{ market, code }` 组合（A 股/港股），`{ cik }` 继续用于美股。URL 路由层统一解析为 `companyId`，下游按 `market` 分发查询策略。
 

@@ -169,8 +169,10 @@ export function AgentChat() {
               ) : (
                 <div key={i} className="msg msg--assistant">
                   <div className="msg-body">
-                    {(msg.toolCalls ?? []).map((_, j) => (
-                      <div key={j} className="agent-tool-call">🔍 搜索致股东信…</div>
+                    {(msg.toolCalls ?? []).map((name, j) => (
+                      <div key={j} className="agent-tool-call">
+                        {name === "search_wisdom" ? "🧠 搜索年会记录…" : "🔍 搜索致股东信…"}
+                      </div>
                     ))}
                     {msg.text ? (
                       streaming && i === messages.length - 1 ? (
