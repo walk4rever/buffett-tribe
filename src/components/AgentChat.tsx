@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ComponentPropsWithoutRef } from "react";
@@ -15,10 +15,18 @@ const mdComponents = {
   },
 };
 
+interface ToolCall {
+  id: string;
+  name: string;
+  query?: string;
+  count?: number;
+  done: boolean;
+}
+
 interface Message {
   role: "user" | "assistant";
   text: string;
-  toolCalls?: string[];
+  toolCalls?: ToolCall[];
   error?: boolean;
 }
 
@@ -35,6 +43,17 @@ export function AgentChat() {
   const [streaming, setStreaming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const sessionIdRef = useRef<string>("");
+
+  useEffect(() => {
+    const key = "bt_agent_session_id";
+    let id = sessionStorage.getItem(key);
+    if (!id) {
+      id = crypto.randomUUID();
+      sessionStorage.setItem(key, id);
+    }
+    sessionIdRef.current = id;
+  }, []);
 
   function scrollToBottom() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -60,7 +79,7 @@ export function AgentChat() {
       const res = await fetch("/api/pi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, userId: sessionIdRef.current }),
         signal: ctrl.signal,
       });
 
@@ -102,13 +121,33 @@ export function AgentChat() {
               );
               scrollToBottom();
             } else if (eventType === "tool_start") {
+              const id = typeof data.id === "string" ? data.id : String(Date.now());
               const name = typeof data.name === "string" ? data.name : "tool";
+              const args = data.args as Record<string, unknown> | undefined;
+              const query = typeof args?.query === "string" ? args.query : undefined;
+              const toolCall: ToolCall = { id, name, query, done: false };
               setMessages((prev) =>
                 prev.map((m, i) =>
-                  i === assistantIndex ? { ...m, toolCalls: [...(m.toolCalls ?? []), name] } : m,
+                  i === assistantIndex ? { ...m, toolCalls: [...(m.toolCalls ?? []), toolCall] } : m,
                 ),
               );
               scrollToBottom();
+            } else if (eventType === "tool_end") {
+              const id = typeof data.id === "string" ? data.id : "";
+              const details = data.details as { count?: number } | null;
+              const count = details?.count;
+              setMessages((prev) =>
+                prev.map((m, i) =>
+                  i === assistantIndex
+                    ? {
+                        ...m,
+                        toolCalls: (m.toolCalls ?? []).map((tc) =>
+                          tc.id === id ? { ...tc, done: true, count } : tc,
+                        ),
+                      }
+                    : m,
+                ),
+              );
             } else if (eventType === "error") {
               const msg = typeof data.message === "string" ? data.message : "未知错误";
               setMessages((prev) =>
@@ -169,9 +208,21 @@ export function AgentChat() {
               ) : (
                 <div key={i} className="msg msg--assistant">
                   <div className="msg-body">
-                    {(msg.toolCalls ?? []).map((name, j) => (
-                      <div key={j} className="agent-tool-call">
-                        {name === "search_wisdom" ? "🧠 搜索年会记录…" : "🔍 搜索致股东信…"}
+                    {(msg.toolCalls ?? []).map((tc, j) => (
+                      <div key={j} className={`agent-tool-call${tc.done ? " agent-tool-call--done" : ""}`}>
+                        <span className="agent-tool-icon">
+                          {tc.name === "search_wisdom" ? "🧠" : "🔍"}
+                        </span>
+                        <span className="agent-tool-label">
+                          {tc.name === "search_wisdom" ? "搜索年会记录" : "搜索致股东信"}
+                        </span>
+                        {tc.query && (
+                          <span className="agent-tool-query">&ldquo;{tc.query}&rdquo;</span>
+                        )}
+                        {tc.done && tc.count !== undefined && (
+                          <span className="agent-tool-count">{tc.count} 条</span>
+                        )}
+                        {!tc.done && <span className="agent-tool-spinner">…</span>}
                       </div>
                     ))}
                     {msg.text ? (

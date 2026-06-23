@@ -21,11 +21,13 @@ export async function streamPrompt(session: AgentSession, message: string, res: 
         break;
       }
       case "tool_execution_start":
-        sse(res, "tool_start", { name: event.toolName });
+        sse(res, "tool_start", { id: event.toolCallId, name: event.toolName, args: event.args });
         break;
-      case "tool_execution_end":
-        sse(res, "tool_end", { name: event.toolName, error: event.isError });
+      case "tool_execution_end": {
+        const details = (event.result as { details?: unknown } | null)?.details ?? null;
+        sse(res, "tool_end", { id: event.toolCallId, name: event.toolName, error: event.isError, details });
         break;
+      }
     }
   });
 
