@@ -1775,13 +1775,14 @@ body.layout-no-header {
 .msg-markdown h2,
 .msg-markdown h3,
 .msg-markdown h4 {
-  margin: 0.6em 0 0.3em;
+  margin: 0.8em 0 0.3em;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
-.msg-markdown h1 { font-size: 1.05em; }
-.msg-markdown h2 { font-size: 1em; }
+.msg-markdown h1 { font-size: 1.1em; }
+.msg-markdown h2 { font-size: 1.05em; }
 .msg-markdown h3,
-.msg-markdown h4 { font-size: 0.95em; }
+.msg-markdown h4 { font-size: 0.95em; color: rgba(0,0,0,0.7); }
 
 .msg-table-wrap {
   width: 100%;
