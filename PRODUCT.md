@@ -656,7 +656,7 @@ Apple HIG 精简风格：
 | 财务数据 | SEC EDGAR XBRL（CompanyFacts + filing-level inline XBRL fallback） |
 | 原始文件 | Cloudflare R2（PDF、SEC filing HTML、index、附件、data files） |
 | 知识层 | GBrain（air7 HTTP 服务，Supabase 后端）— 大师知识图谱，Takes / Links / Timeline |
-| 检索 | GBrain recall（大师内容）+ pgvector + tsvector（公司年报 / 财务数据） |
+| 检索 | `search_wisdom` → GBrain（大师内容）/ `search_filings` → pgvector+tsvector（年报）/ `get_holdings` → SQL（持仓） |
 | 市场数据 | Yahoo Finance 导入脚本 + `StockPrice` |
 | 产品分析 | PostHog（前端事件，仍在补齐事件体系） |
 | 认证 | NextAuth.js |

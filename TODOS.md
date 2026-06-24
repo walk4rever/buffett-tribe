@@ -52,57 +52,60 @@
 
 ### 后续方向
 
-- [ ] GBrain 知识层接入后，search_wisdom 替代 search_letters（见上方 GBrain 节）
 - [ ] 接入公司页："用 Agent 分析此公司" 按钮，带 company context 初始化对话
-- [ ] 会话持久化：登录用户跨刷新保留对话历史
+- [ ] 会话持久化：登录用户跨刷新保留对话历史（当前 sessionStorage，30min TTL）
 - [ ] 流量监控：PM2 logs + Langfuse 观测 pi-gateway 调用情况
 
-## GBrain 知识层接入（下一优先级，2026-06 决策）
+## Agent 工具终态设计（2026-06 决策）
 
-> **决策**：引入 GBrain 作为项目的知识大脑，部署在 air7，后端接现有 Supabase。
-> agent 获得 Takes / Links / Timeline 等结构化知识能力，从"检索段落"升级为"理解观点"。
-
-### 架构
+### 三工具架构
 
 ```
-两层分工：
+search_wisdom   → GBrain          大师说了什么
+                                   信件 / 年会 / 书 / 文章
+                                   语义搜索，master 过滤
 
-GBrain（知识层，air7 port 3457）
-├── 内容：大师信件、年会记录、Master PDF
-├── 能力：takes（大师立场）/ links（关联图谱）/ timeline（时间演变）
-└── 接口：HTTP MCP 服务，agent 通过工具调用
+get_holdings    → Supabase SQL    大师买了什么
+                                   Holding 表，结构化持仓查询
 
-Supabase 现有表（数据层，不动）
-├── FilingSection：公司年报全文
-├── Holding / Financial：持仓与财务数据
-└── 接口：agent 通过 search_filings 工具查询
+search_filings  → Supabase SQL    公司披露了什么
+                                   FilingSection pgvector + Financial 表
 ```
 
-### 任务
+### 大师范围（当前）
 
-- [x] air7 初始化 GBrain：`gbrain init --supabase`，接入现有 Supabase（hosts 绑定绕过 IPv6 限制）
-- [x] air7 跑成 HTTP 服务：`gbrain serve --http --port 3457`，PM2 管理，开机自启（`/root/gbrain-ecosystem.config.cjs`）
-- [x] nginx 配置 `relay.air7.fun/gbrain/` → `:3457` 路由
-- [x] Embedding 方案确定：OpenAI `text-embedding-3-large`（doubao 视觉端点不兼容标准 /embeddings 路径）
-- [x] 导入测试：1994 年会 markdown → GBrain，26 chunks，语义搜索验证通过
-- [x] 批量导入：30 年年会记录（1994–2023，503 chunks，全部 embed）— unscripted PDF 完整内容
-- [ ] 批量导入：股东信、合伙人信（`gbrain import`，需加 frontmatter）
-- [ ] 导入 Master PDF：Li Lu / Duan / Buffett（提取文字 → 加 frontmatter → `gbrain import`）
-- [x] pi-gateway 新增工具：`search_wisdom`（GBrain 语义召回，OpenAI 1536d embedding，pgvector 直查）
-- [ ] pi-gateway 新增工具：`search_filings`（公司年报，走现有 Supabase SQL）
-- [ ] 废弃 `search_letters`，更新 agent system prompt
-- [ ] agent 验收：测试跨大师对比、时间线追踪、观点 + 公司联动查询
+| master slug | 内容来源 |
+|---|---|
+| `buffett` | 年会记录（1994–2023，巴菲特 + 芒格共同回答）、股东信、合伙人信 |
+| `munger` | 无独立 slug；芒格回答包含在 `buffett` 内容中，搜索时用 `master: buffett` 即可覆盖 |
+| `lilu` | 李录书籍与演讲 PDF（5 份） |
+| `duanyongping` | 雪球问答录商业/投资逻辑篇 |
+
+> 未来新增大师时，只需导入内容并添加对应 master slug frontmatter，工具层无需改动。
+
+### GBrain 知识层建设（进行中）
+
+- [x] air7 初始化 GBrain，Supabase 后端，hosts 绑定绕过 IPv6
+- [x] HTTP 服务（port 3457），PM2 管理，nginx `/gbrain/` 代理
+- [x] Embedding：OpenAI text-embedding-3-large 1536d
+- [x] 导入巴菲特年会记录 1994–2023（503 chunks）— 来源：《Unscripted》（Alex Crippen 编）；精选问答，非完整官方记录；巴菲特 + 芒格共同回答，frontmatter 标 `master: buffett`
+- [x] 导入段永平问答录·商业 + 投资逻辑篇（290 chunks）
+- [x] `search_wisdom` 工具接入 pi-gateway，验证通过
+- [x] 导入李录 PDF（5 份，151 chunks，全部 embed）
+- [ ] 导入巴菲特股东信 + 合伙人信（从 Source/Chunk 表导出）→ 废弃 `search_letters`
+- [ ] 新增 `get_holdings` 工具（Supabase Holding 表 SQL）
+- [ ] 新增 `search_filings` 工具（FilingSection pgvector + Financial SQL）
+- [ ] agent 验收：跨大师对比 / 时间线 / 观点 + 公司联动
 
 ### 关键决策
 
 | 决策点 | 结论 |
 |---|---|
-| GBrain 后端 | Supabase（与主站共用，GBrain 建自己的表，互不干扰） |
-| 文件存储 | R2（现有方案，GBrain files 走 R2 bucket） |
-| 服务端口 | air7 port 3457，HTTP MCP 模式 |
-| Embedding 模型 | OpenAI text-embedding-3-large（doubao 视觉端点不支持标准路径）|
-| 年报处理 | 不走 GBrain，维持现有 FilingSection + pgvector 方案 |
-| 内容迁移 | 现有 Source/Chunk 保留不动；新内容优先走 GBrain |
+| GBrain 定位 | 知识层（大师文字内容），不存结构化数据 |
+| 年报 / 持仓 | 留在 Supabase，分别由 search_filings / get_holdings 访问 |
+| Embedding 模型 | OpenAI text-embedding-3-large 1536d |
+| 年报入 GBrain？ | 否：体量过大，已有 pgvector 索引，结构化数据 SQL 更精准 |
+| 信件迁移时机 | 李录导入完成后，再迁信件 → 届时废弃 search_letters |
 
 ## 公司页生成内容 — 管理分析 / 估值分析 LLM 化（2026-06-12 评估，MCO 试点）
 

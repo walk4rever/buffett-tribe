@@ -75,13 +75,13 @@ export const searchWisdomTool = defineTool({
   name: "search_wisdom",
   label: "Search Wisdom Library",
   description:
-    "Search the master investors' knowledge library — annual meeting transcripts, PDFs, and key documents. Use this to find what Buffett, Li Lu, Duan Yongping, or Gavin Baker said on any topic.",
+    "Search the master investors' knowledge library — annual meeting transcripts, PDFs, and key documents. Use this to find what Buffett, Munger, Li Lu, or Duan Yongping said on any topic.",
   promptSnippet: "search_wisdom(query, master?) → relevant passages from master investor documents",
   parameters: Type.Object({
     query: Type.String({ description: "Topic or question to search for" }),
     master: Type.Optional(
       Type.String({
-        description: "Filter by master: buffett | lilu | duanyongping | gavinbaker",
+        description: "Filter by master: buffett | munger | lilu | duanyongping",
       }),
     ),
   }),
