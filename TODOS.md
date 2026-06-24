@@ -92,7 +92,7 @@ search_filings  → Supabase SQL    公司披露了什么
 - [x] 导入段永平问答录·商业 + 投资逻辑篇（290 chunks）
 - [x] `search_wisdom` 工具接入 pi-gateway，验证通过
 - [x] 导入李录 PDF（5 份，151 chunks，全部 embed）
-- [ ] 导入巴菲特股东信 + 合伙人信（从 Source/Chunk 表导出）→ 废弃 `search_letters`
+- [x] 导入巴菲特股东信（1965–2025）+ 合伙人信（1958–1970，94 封，1712 chunks，全部 embed）→ 废弃 `search_letters`
 - [ ] 新增 `get_holdings` 工具（Supabase Holding 表 SQL）
 - [ ] 新增 `search_filings` 工具（FilingSection pgvector + Financial SQL）
 - [ ] agent 验收：跨大师对比 / 时间线 / 观点 + 公司联动

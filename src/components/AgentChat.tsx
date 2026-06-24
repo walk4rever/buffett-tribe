@@ -210,12 +210,8 @@ export function AgentChat() {
                   <div className="msg-body">
                     {(msg.toolCalls ?? []).map((tc, j) => (
                       <div key={j} className={`agent-tool-call${tc.done ? " agent-tool-call--done" : ""}`}>
-                        <span className="agent-tool-icon">
-                          {tc.name === "search_wisdom" ? "🧠" : "🔍"}
-                        </span>
-                        <span className="agent-tool-label">
-                          {tc.name === "search_wisdom" ? "搜索年会记录" : "搜索致股东信"}
-                        </span>
+                        <span className="agent-tool-icon">🧠</span>
+                        <span className="agent-tool-label">搜索大师资料库</span>
                         {tc.query && (
                           <span className="agent-tool-query">&ldquo;{tc.query}&rdquo;</span>
                         )}
