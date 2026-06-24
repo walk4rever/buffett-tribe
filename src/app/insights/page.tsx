@@ -6,8 +6,18 @@ import { SiteNav } from "@/components/SiteNav";
 
 export const dynamic = "force-dynamic";
 
-export default async function InsightsPage() {
-  const posts = await getInsightPosts();
+interface Props {
+  searchParams: Promise<{ source?: string }>;
+}
+
+export default async function InsightsPage({ searchParams }: Props) {
+  const sp = await searchParams;
+  const selectedSource = sp.source?.trim() || null;
+
+  const [posts, sources] = await Promise.all([
+    getInsightPosts(selectedSource),
+    getInsightSources(),
+  ]);
 
   return (
     <div className="home-v2 insights-page">
@@ -17,6 +27,26 @@ export default async function InsightsPage() {
           <h1>洞见</h1>
           <p className="insights-lede">关于公司、商业模式、技术演进与资本配置的深度观察。</p>
         </header>
+
+        {sources.length > 0 && (
+          <div className="insights-filter-bar" aria-label="按栏目筛选">
+            <Link
+              href="/insights"
+              className={`insights-filter-pill${!selectedSource ? " insights-filter-pill--active" : ""}`}
+            >
+              全部
+            </Link>
+            {sources.map((source) => (
+              <Link
+                key={source}
+                href={`/insights?source=${encodeURIComponent(source)}`}
+                className={`insights-filter-pill insights-filter-pill--${getInsightSourcePillKey(source)}${selectedSource === source ? ` insights-filter-pill--active` : ""}`}
+              >
+                {source}
+              </Link>
+            ))}
+          </div>
+        )}
 
         <section className="insights-list" aria-label="文章列表">
           {posts.length === 0 ? (
@@ -58,11 +88,29 @@ export default async function InsightsPage() {
   );
 }
 
-async function getInsightPosts() {
+async function getInsightSources(): Promise<string[]> {
+  try {
+    const rows = await prisma.insightPost.findMany({
+      where: { status: "published", source: { not: null } },
+      select: { source: true },
+      distinct: ["source"],
+      orderBy: { source: "asc" },
+    });
+    return rows.map((r) => r.source).filter((s): s is string => Boolean(s));
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2021") {
+      return [];
+    }
+    throw err;
+  }
+}
+
+async function getInsightPosts(source: string | null) {
   try {
     return await prisma.insightPost.findMany({
       where: {
         status: "published",
+        ...(source ? { source } : {}),
       },
       select: {
         slug: true,
@@ -97,11 +145,15 @@ function formatDateTwoLine(date: Date): React.ReactNode {
   );
 }
 
-function getInsightSourcePillClass(source: string): string {
+function getInsightSourcePillKey(source: string): string {
   const normalized = source.trim().toLowerCase();
-  if (normalized === "invest like the best") return "insight-row-source-pill--iltb";
-  if (normalized === "acquired") return "insight-row-source-pill--acquired";
-  if (normalized === "business breakdowns") return "insight-row-source-pill--breakdowns";
-  if (normalized === "founders") return "insight-row-source-pill--founders";
-  return "insight-row-source-pill--default";
+  if (normalized === "invest like the best") return "iltb";
+  if (normalized === "acquired") return "acquired";
+  if (normalized === "business breakdowns") return "breakdowns";
+  if (normalized === "founders") return "founders";
+  return "default";
+}
+
+function getInsightSourcePillClass(source: string): string {
+  return `insight-row-source-pill--${getInsightSourcePillKey(source)}`;
 }

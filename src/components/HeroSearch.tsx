@@ -1,8 +1,5 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-
 const EXAMPLE_QUESTIONS = [
   "巴菲特为什么持有BAC这么久？",
   "李录重仓中国的逻辑是什么？",
@@ -11,47 +8,23 @@ const EXAMPLE_QUESTIONS = [
 ];
 
 export function HeroSearch() {
-  const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [query, setQuery] = useState("");
-
-  function submit() {
-    if (query.trim()) {
-      router.push(`/idea?ask=${encodeURIComponent(query.trim())}`);
-    } else {
-      router.push("/idea");
-    }
-  }
-
-  function fillExample(text: string) {
-    setQuery(text);
-    inputRef.current?.focus();
-  }
-
   return (
-    <div className="hero-search" style={{ position: 'relative', zIndex: 2 }}>
-      {/* Search input */}
+    <div className="hero-search">
       <div className="hero-input-wrap">
         <input
-          ref={inputRef}
           className="hero-input"
           type="text"
           placeholder="研究一家公司，或向大师提问"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
+          readOnly
+          tabIndex={-1}
         />
-        <button className="hero-input-btn" onClick={submit} aria-label="提问">
-          <span className="hero-input-enter" aria-hidden="true">↵</span>
-        </button>
+        <span className="hero-input-btn" aria-hidden="true">
+          <span className="hero-input-enter">↵</span>
+        </span>
       </div>
-
-      {/* Example chips */}
       <div className="hero-examples">
         {EXAMPLE_QUESTIONS.map((q) => (
-          <button key={q} className="hero-example" onClick={() => fillExample(q)}>
-            {q}
-          </button>
+          <span key={q} className="hero-example">{q}</span>
         ))}
       </div>
     </div>

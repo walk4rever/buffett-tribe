@@ -71,7 +71,7 @@ export default async function Home() {
 
       {/* Hero search */}
       <section className="home-hero">
-        <Link href="/idea" className="home-hero-hitbox" aria-label="进入对话研究室" />
+        <Link href="/agent" className="home-hero-hitbox" aria-label="进入对话研究室" />
         <h1 className="home-hero-brand">买股票就是买公司</h1>
         <p className="home-hero-sub home-hero-sub--compact">
           用大师的框架，看懂一家公司
