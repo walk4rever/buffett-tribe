@@ -18,7 +18,7 @@ const mdComponents = {
 interface ToolCall {
   id: string;
   name: string;
-  query?: string;
+  detail?: string;
   count?: number;
   done: boolean;
 }
@@ -35,6 +35,25 @@ const TOOL_META: Record<string, { icon: string; label: string }> = {
   search_holdings: { icon: "📊", label: "查询持仓明细" },
   search_filings:  { icon: "📄", label: "查询公司年报" },
 };
+
+function resolveToolDetail(name: string, args: Record<string, unknown> | undefined): string | undefined {
+  if (!args) return undefined;
+  const str = (k: string) => typeof args[k] === "string" ? args[k] as string : undefined;
+  const num = (k: string) => typeof args[k] === "number" ? args[k] as number : undefined;
+
+  if (name === "search_wisdom") {
+    return str("query");
+  }
+  if (name === "search_holdings") {
+    const parts = [str("master"), str("company"), num("year") && num("quarter") ? `Q${num("quarter")} ${num("year")}` : num("year") ? String(num("year")) : undefined].filter(Boolean);
+    return parts.join(" · ") || undefined;
+  }
+  if (name === "search_filings") {
+    const parts = [str("company"), str("section"), num("year") ? String(num("year")) : undefined, str("keyword") ? `"${str("keyword")}"` : undefined].filter(Boolean);
+    return parts.join(" · ") || undefined;
+  }
+  return str("query");
+}
 
 const SUGGESTIONS = [
   "如何判断一家公司是否有真正的护城河？",
@@ -130,8 +149,8 @@ export function AgentChat() {
               const id = typeof data.id === "string" ? data.id : String(Date.now());
               const name = typeof data.name === "string" ? data.name : "tool";
               const args = data.args as Record<string, unknown> | undefined;
-              const query = typeof args?.query === "string" ? args.query : undefined;
-              const toolCall: ToolCall = { id, name, query, done: false };
+              const detail = resolveToolDetail(name, args);
+              const toolCall: ToolCall = { id, name, detail, done: false };
               setMessages((prev) =>
                 prev.map((m, i) =>
                   i === assistantIndex ? { ...m, toolCalls: [...(m.toolCalls ?? []), toolCall] } : m,
@@ -218,8 +237,8 @@ export function AgentChat() {
                       <div key={j} className={`agent-tool-call${tc.done ? " agent-tool-call--done" : ""}`}>
                         <span className="agent-tool-icon">{TOOL_META[tc.name]?.icon ?? "🔧"}</span>
                         <span className="agent-tool-label">{TOOL_META[tc.name]?.label ?? tc.name}</span>
-                        {tc.query && (
-                          <span className="agent-tool-query">&ldquo;{tc.query}&rdquo;</span>
+                        {tc.detail && (
+                          <span className="agent-tool-query">&ldquo;{tc.detail}&rdquo;</span>
                         )}
                         {tc.done && tc.count !== undefined && (
                           <span className="agent-tool-count">{tc.count} 条</span>
