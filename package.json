@@ -14,6 +14,7 @@
     "eval:retrieval:v2": "node --loader ts-node/esm scripts/eval-retrieval-v2.ts",
     "eval:mvp:benchmark": "node --loader ts-node/esm scripts/eval-mvp-benchmark.ts",
     "eval:mvp:compare": "node --loader ts-node/esm scripts/compare-mvp-benchmark.ts",
+    "send:announcement": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/send-announcement.ts",
     "import:insight": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-insight.ts",
     "migrate:insight:callouts": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/migrate-insight-callouts.ts",
     "import:13f": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-13f-edgartools.ts",
