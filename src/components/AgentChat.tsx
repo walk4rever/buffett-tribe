@@ -30,6 +30,11 @@ interface Message {
   error?: boolean;
 }
 
+const TOOL_META: Record<string, { icon: string; label: string }> = {
+  search_wisdom:   { icon: "🧠", label: "搜索大师资料库" },
+  search_holdings: { icon: "📊", label: "查询持仓数据" },
+};
+
 const SUGGESTIONS = [
   "如何判断一家公司是否有真正的护城河？",
   "大师们如何看待管理层的诚信与能力？",
@@ -210,8 +215,8 @@ export function AgentChat() {
                   <div className="msg-body">
                     {(msg.toolCalls ?? []).map((tc, j) => (
                       <div key={j} className={`agent-tool-call${tc.done ? " agent-tool-call--done" : ""}`}>
-                        <span className="agent-tool-icon">🧠</span>
-                        <span className="agent-tool-label">搜索大师资料库</span>
+                        <span className="agent-tool-icon">{TOOL_META[tc.name]?.icon ?? "🔧"}</span>
+                        <span className="agent-tool-label">{TOOL_META[tc.name]?.label ?? tc.name}</span>
                         {tc.query && (
                           <span className="agent-tool-query">&ldquo;{tc.query}&rdquo;</span>
                         )}
