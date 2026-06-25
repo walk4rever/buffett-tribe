@@ -39,7 +39,7 @@ async function queryHoldings(
   if (company != null) {
     params.push(company.toUpperCase());
     params.push(`%${company}%`);
-    filters.push(`(UPPER(ce.ticker) = $${params.length - 1} OR UPPER(s.ticker) = $${params.length - 1} OR ce.name ILIKE $${params.length})`);
+    filters.push(`(UPPER(ce.ticker) = $${params.length - 1} OR UPPER(s.ticker) = $${params.length - 1} OR ce."canonicalName" ILIKE $${params.length})`);
   }
 
   // If no year/quarter specified, default to the most recent available quarter
@@ -68,7 +68,7 @@ async function queryHoldings(
       h."asOfDate"::text              AS as_of_date,
       s.ticker                        AS security_ticker,
       s."titleOfClass"                AS title_of_class,
-      ce.name                         AS company_name,
+      ce."canonicalName"              AS company_name,
       ce.ticker                       AS company_ticker,
       es."periodYear"                 AS period_year,
       es."periodQuarter"              AS period_quarter
