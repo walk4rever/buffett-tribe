@@ -31,9 +31,9 @@ interface Message {
 }
 
 const TOOL_META: Record<string, { icon: string; label: string }> = {
-  search_wisdom:   { icon: "🧠", label: "查询大师资料库" },
-  search_holdings: { icon: "📊", label: "查询持仓数据" },
-  search_filings:  { icon: "📄", label: "查询公司年报数据" },
+  search_wisdom:   { icon: "🧠", label: "查询资料库" },
+  search_holdings: { icon: "📊", label: "查询持仓明细" },
+  search_filings:  { icon: "📄", label: "查询公司年报" },
 };
 
 const SUGGESTIONS = [
