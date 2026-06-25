@@ -2,7 +2,7 @@
 
 # 巴菲特部落 · Buffett Tribe — 产品设计文档
 
-> 最后更新：2026-06-04（v0.37.0）
+> 最后更新：2026-06-25（v0.38.8）
 
 ---
 
@@ -40,21 +40,28 @@
 
 ## 产品定位
 
-**买股票就是买公司。巴菲特部落用价值投资大师的框架帮你理解一家公司。**
+**知识库 + Agent 驱动的价值投资研究平台。用价值投资大师的框架，帮助用户更好地理解和分析一家公司。**
 
 用户来这里不是为了读懂巴菲特，而是为了用巴菲特的方式看一家公司：
 护城河在哪里？管理层可信吗？现在的价格有安全边际吗？
 
-大师原文、13F 持仓、财务数据——这些是分析的燃料，不是产品的终点。
+Agent 是核心入口。三层知识驱动 Agent 自主决定如何回答：
+- **`search_wisdom`**：大师说了什么 — 年会记录、股东信、演讲、书（GBrain 知识图谱，语义检索）
+- **`search_holdings`**：大师买了什么 — 巴菲特 / 李录 / 段永平 13F 持仓（Supabase SQL）
+- **`search_filings`**：公司披露了什么 — 10-K / 20-F 年报章节（FilingSection，约 120 家，2020–2025）
+
+大师原文、13F 持仓、财务数据、年报——这些是分析的燃料，不是产品的终点。
 
 ---
 
 ## 产品体验与核心页面
 
 ```
-/master   大师         核心大师（巴菲特、李录、段永平）与 Alpha 投资人的资料、持仓
-/company  公司         任意一家公司的研究画布（Canvas）
-/idea     对话研究室    与大师思想对话，自动触发公司分析
+/agent    投资研究 Agent   三工具驱动，知识库 + 持仓 + 年报联动（主入口）
+/master   大师             核心大师（巴菲特、李录、段永平）的资料、持仓
+/company  公司             任意一家公司的研究画布（6 Tab Canvas）
+/insights 投资洞见         播客 / 栏目文章，按来源过滤
+/idea     对话研究室        旧版对话入口，待迁移或下线
 ```
 
 ### /master — 大师
@@ -82,15 +89,22 @@ Canvas 的数据来自两个渠道：
 
 当前公司页已经接通真实数据源与批处理入库流程，不再是纯 Mock 页面。
 
-### /idea — 对话研究室
+### /agent — 投资研究 Agent
 
-全站唯一的对话界面。左侧与大师思想对话，右侧实时显示对应公司的研究画布。
+全站核心对话入口。SSE 流式输出，实时显示工具调用指示器（工具名 · 参数摘要 · 返回条数）。
 
-**默认状态**：右侧展示 Apple 画布（冷启动占位），左侧空对话等待提问。
+Agent 由 pi-gateway（Express SSE，air7，PM2）驱动，使用 `@earendil-works/pi-coding-agent` 框架，LLM 为 DeepSeek。
 
-**对话触发 Canvas 更新**：用户在对话中提到公司名（泡泡玛特、比亚迪、Apple…），右侧 Canvas 自动切换到该公司。
+三个工具：
+- **`search_wisdom`** 查询资料库：GBrain 语义检索，OpenAI text-embedding-3-large 1536d
+- **`search_holdings`** 查询持仓明细：Supabase SQL，Holding → Security → Entity 联表
+- **`search_filings`** 查询公司年报：FilingSection 结构化抽取，section alias 映射，keyword excerpt
 
-**原文跳读**：对话引用原文时，点击来源芯片可展开原文阅读模式。
+AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投研定位、三工具用法、回答格式（分析 + 引用分层）。
+
+### /idea — 对话研究室（旧版）
+
+旧版对话界面，左侧对话 + 右侧公司 Canvas 联动。待迁移或下线，现阶段保留不动。
 
 ---
 
@@ -651,44 +665,64 @@ Apple HIG 精简风格：
 | 前端 | Next.js 16 App Router · TypeScript · React |
 | 样式 | 手写 CSS（globals.css），无 Tailwind |
 | 数据库 | PostgreSQL via Prisma (Supabase) |
-| AI | OpenAI-compatible Chat API（对话 + 分析生成）· Langfuse 观测 |
+| Agent 服务 | pi-gateway（Express SSE，air7 :3456，PM2）· `@earendil-works/pi-coding-agent` |
+| Agent LLM | DeepSeek（对话）· Claude API（批量生成分析内容） |
+| 知识层 | GBrain（air7 :3457，Supabase 后端，pgvector 1536d）— 大师知识图谱 |
+| Agent 工具 | `search_wisdom` → GBrain / `search_holdings` → Supabase SQL / `search_filings` → FilingSection SQL |
 | 持仓数据 | SEC EDGAR 13F-HR |
 | 财务数据 | SEC EDGAR XBRL（CompanyFacts + filing-level inline XBRL fallback） |
 | 原始文件 | Cloudflare R2（PDF、SEC filing HTML、index、附件、data files） |
-| 知识层 | GBrain（air7 HTTP 服务，Supabase 后端）— 大师知识图谱，Takes / Links / Timeline |
-| 检索 | `search_wisdom` → GBrain（大师内容）/ `search_filings` → pgvector+tsvector（年报）/ `get_holdings` → SQL（持仓） |
 | 市场数据 | Yahoo Finance 导入脚本 + `StockPrice` |
 | 产品分析 | PostHog（前端事件，仍在补齐事件体系） |
 | 认证 | NextAuth.js |
-| 部署 | Vercel（主站）+ air7（pi-gateway + GBrain） |
+| 部署 | Vercel（主站）· air7（pi-gateway + GBrain） |
 
 ### 路由结构
 
 ```
-/                   首页（信号流 + 大师入口 + Hero Search）
+/                   首页（信号流 + 大师入口 + Hero Search → /agent）
+/agent              投资研究 Agent（主入口，三工具 SSE 流）
 /master/[id]        大师主页（资料库卡片 + 持仓）
 /master/[id]/library  资料阅读（左侧年份/文章列表，右侧正文）
 /master/[id]/holdings 持仓快照
 /company/[id]       公司研究画布（id 格式：CIK... / cn-600519 / hk-9992）
 /company/[id]/annual-report  年度报告默认入口（跳转到最新可读年份）
 /company/[id]/annual-report/[year]  年度报告阅读
-/idea               对话研究室（左：对话，右：Canvas）
+/insights           投资洞见（文章列表，?source= 按栏目过滤）
+/idea               对话研究室（旧版，保留待迁移）
 /login              登录
 /reset-password     重置密码
-/retrieval-compare  检索对比实验页
-/documents/*         PDF 全屏阅读器（年度会议、书籍、演讲、文章）
+/documents/*        PDF 全屏阅读器（年度会议、书籍、演讲、文章）
 ```
 
 ---
 
-## 当前实现状态（v0.37.0）
+## 当前实现状态（v0.38.8）
 
-### v0.37.0 变更（计划中）
+### v0.38.x 变更（2026-06，当前）
+
+- **投资研究 Agent 上线**（`/agent`）：pi-gateway（Express SSE）+ `@earendil-works/pi-coding-agent`，DeepSeek LLM，PM2 管理，nginx 代理。
+- **三工具架构**：`search_wisdom`（GBrain 语义检索）、`search_holdings`（13F 持仓 SQL）、`search_filings`（年报章节 SQL）全部上线验证。
+- **工具调用指示器**：AgentChat 实时显示工具名 · 参数摘要 · 返回条数，三个工具各有独立 label 和细节格式。
+- **GBrain 知识库**：巴菲特年会 1994–2023（503 chunks）、股东信 1965–2025 + 合伙人信（1712 chunks）、段永平问答录（290 chunks）、李录 PDF（151 chunks），OpenAI text-embedding-3-large 1536d。
+- **FilingSection 覆盖**：约 120 家公司 2020–2025，10-K / 20-F / 40-F 标准 SEC item 章节，`search_filings` 支持 section alias、keyword excerpt、公司名/ticker 检索。
+- **首页跳转统一**：首页 Hero 区域点击任意位置跳转 `/agent`，Hero 为纯装饰组件。
+- **Insights 过滤**：`/insights?source=` 按播客/栏目过滤，URL 参数驱动，服务端渲染。
+- **deploy.sh**：`services/pi-gateway/deploy.sh`，rsync → npm install → pm2 restart，支持 `--restart-only`。
+
+### v0.37.5 变更（2026-06-13）
+
+- **管理分析 / 估值分析 LLM 化**：55 家公司全部生成管理分析 + 估值分析，公司页 tab 渲染真实 LLM 内容。
+- **CapEx / FCF lineItem 规整**：`backfill:capex` 回填，valuation-metrics 切换真 FCF / OCF proxy，页面动态标注口径。
+- **回购股数序列**：`ShareRepurchaseAmt` lineItem，管理分析"资本配置"卡完整。
+
+### v0.37.0 变更（2026-06-04~15）
 
 - **A 股与港股覆盖扩展**：新增 `Entity.market` 和 `Entity.code` 字段，支持 A 股（cn-600519）和港股（hk-9992）公司接入。
 - **公司页路由泛化**：`/company/[cik]` 改为 `/company/[id]`，支持 `CIK...`、`cn-...`、`hk-...` 三种标识格式。
-- **akshare 数据接入**：新增 A 股/港股公司基础信息和财务数据导入脚本。
-- **多货币财务展示**：`Financial` 表支持 `CNY` / `HKD` 单位，前端按市场展示对应货币符号。
+- **FinancialFact 删除**：0 行，从 schema 删除，`Financial.sourceFactIds` 注释指向 R2 data_file artifact。
+- **Document 表入库**：8 个大师 PDF 从硬编码 `documents.ts` 迁入 `Document` 表。
+- **容量治理**：数据库从 333MB 降至 244MB，ExtSource 瘦身、StockPrice 降采样、GCV 保留策略脚本建立。
 
 ### v0.36.7 变更
 
@@ -760,23 +794,27 @@ Apple HIG 精简风格：
 
 | 功能 | 状态 |
 |------|------|
+| /agent 投资研究 Agent | ✅ 已上线（v0.38.0+） |
 | /master 大师页面 | ✅ 已上线 |
-| /idea 对话界面 | ✅ 已上线 |
-| /company/[cik] 公司页 | ✅ 已上线 |
+| /company/[id] 公司页 | ✅ 已上线（含 A 股/港股路由） |
+| /insights 洞见过滤 | ✅ 已上线（v0.38.x，?source= 过滤） |
 | Company Canvas（6 Tab UI） | ✅ 已实现 |
+| 管理分析 / 估值分析 Tab（LLM） | ✅ 已上线（v0.37.5，55 家） |
 | 年度报告 Tab | ✅ 已上线 |
 | 10-K / 20-F / 40-F 标准目录阅读 | ✅ 已上线 |
 | 价格历史图 | 🟡 已上线 ticker 口径，securityId 与事件 marker 待补 |
+| search_wisdom 工具（GBrain） | ✅ 已上线 |
+| search_holdings 工具（13F SQL） | ✅ 已上线 |
+| search_filings 工具（年报章节） | ✅ 已上线 |
+| GBrain 知识库 | ✅ 已上线（4 位大师，2656 chunks） |
+| FilingSection 年报章节 | ✅ 已上线（约 120 家，2020–2025） |
 | ChatMessage 对话记录 | ✅ 已实现 |
-| 对话评分 | ✅ 已实现 |
 | PostHog 前端埋点 | 🟡 已接入 provider 与 chat_sent，事件体系待补齐 |
 | 等候名单 | ✅ 已实现 |
-| 数字人 / 语音实验 | ❌ 已下线（2026-06-11 范围收缩，只保留文字对话） |
-| Company Analysis 批量入库 | ✅ 已实现 |
-| Canvas 实时生成（RAG → AI） | 🟡 部分实现，仍在迭代 |
-| Company Brain 写回 | 🟡 部分实现 |
-| Fact Fetch Pipeline | 🟡 已有批处理脚本，持续补齐 |
+| Company Brain 写回（Claim） | ❌ 未实现（P0 待办，飞轮的轴） |
+| 数字人 / 语音实验 | ❌ 已下线（2026-06-11 范围收缩） |
 | 持仓数据更新 | 🟡 以季度批处理为主 |
+| /idea 对话研究室 | 🟡 旧版保留，待迁移或下线 |
 
 ### 已完成基础能力
 

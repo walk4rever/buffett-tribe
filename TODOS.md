@@ -1,6 +1,6 @@
 # TODOS — 数据架构优化清单
 
-## 接入 pi-coding-agent（v0.38.0，2026-06-22 完成）
+## 接入 pi-coding-agent（v0.38.0，2026-06-22 完成；三工具 v0.38.x 完成）
 
 ### 运行时架构
 
@@ -11,7 +11,9 @@
               └─► relay.air7.fun/pi/chat（nginx → :3456）
                     └─► pi-gateway（PM2，Express SSE）
                           ├─► @earendil-works/pi-coding-agent → DeepSeek API
-                          └─► search_letters tool → Supabase pgvector（8825 chunks）
+                          ├─► search_wisdom → GBrain（air7 :3457，pgvector 1536d）
+                          ├─► search_holdings → Supabase（Holding SQL）
+                          └─► search_filings → Supabase（FilingSection SQL）
 ```
 
 ### 关键文件
@@ -20,10 +22,14 @@
 |---|---|
 | `services/pi-gateway/` | Express SSE 服务，部署 air7 port 3456 |
 | `services/pi-gateway/ecosystem.config.cjs` | PM2 配置，`tsx --env-file=.env` 启动 |
-| `services/pi-gateway/src/tools/search-letters.ts` | pgvector RAG tool |
-| `services/pi-gateway/AGENTS.md` | Agent system prompt（投研助手定位） |
+| `services/pi-gateway/src/tools/search-wisdom.ts` | GBrain 语义检索 tool |
+| `services/pi-gateway/src/tools/search-holdings.ts` | 13F 持仓 SQL tool |
+| `services/pi-gateway/src/tools/search-filings.ts` | 年报章节 SQL tool |
+| `services/pi-gateway/src/db.ts` | 共享 pg Pool（DIRECT_URL，SSL） |
+| `services/pi-gateway/AGENTS.md` | Agent system prompt（投研定位 + 三工具说明 + 回答格式） |
+| `services/pi-gateway/deploy.sh` | 部署脚本（rsync → npm install → pm2 restart） |
 | `src/app/agent/page.tsx` | `/agent` 页面 |
-| `src/components/AgentChat.tsx` | React chat 组件（SSE 流、markdown 渲染、⌘Enter 发送） |
+| `src/components/AgentChat.tsx` | React chat 组件（SSE 流、工具调用指示器、Markdown 渲染） |
 | `src/app/api/pi/route.ts` | Next.js 代理路由 |
 
 ### 已完成
@@ -33,10 +39,13 @@
 - [x] nginx `relay.air7.fun/pi/` → `:3456` 路由
 - [x] `/agent` 页嵌入主站，SiteNav "对话" 链接指向 `/agent`
 - [x] Next.js 代理路由 `/api/pi`，AGENT_SECRET 不暴露给浏览器
-- [x] `buffett-tribe.com/agent` 本地验证通过（`PI_GATEWAY_URL` 指向 air7）
 - [x] v0.38.0 发布，代码推送 GitHub，Vercel 自动部署触发
-- [ ] **Vercel 控制台添加环境变量**：`PI_GATEWAY_URL` + `PI_AGENT_SECRET`（待操作）
-- [ ] **生产验证**：`buffett-tribe.com/agent` 实际对话测试
+- [x] `search_wisdom` 工具（GBrain 语义检索，master 过滤）
+- [x] `search_holdings` 工具（13F 持仓 SQL，最新季度默认）
+- [x] `search_filings` 工具（FilingSection SQL，section alias，keyword excerpt）
+- [x] 三工具调用指示器（label + 参数摘要 + 返回条数，v0.38.8）
+- [x] AGENTS.md 完整定义三工具用法和回答格式
+- [x] deploy.sh 可重复运行部署脚本
 
 ### 关键决策
 
@@ -45,9 +54,9 @@
 | UI 位置 | 嵌入 Next.js 主站 `/agent`，用户不离开 buffett-tribe.com |
 | 进程管理 | PM2（非 systemd），`ecosystem.config.cjs` |
 | 认证 | `X-Agent-Secret` header，secret 仅存 Vercel 环境变量 |
-| LLM | DeepSeek（直连 api.deepseek.com），非火山引擎 ark |
-| RAG | pi tool `search_letters`，agent 自主决定何时调用 |
-| 工具隔离 | `noTools: "builtin"` 禁用 bash/read/write，只开放 `search_letters` |
+| LLM | DeepSeek（直连 api.deepseek.com） |
+| 工具命名 | 统一 `search_` 前缀：search_wisdom / search_holdings / search_filings |
+| 工具隔离 | `noTools: "builtin"` 禁用 bash/read/write，只开放三个自定义工具 |
 | 现有 `/idea` | 保留不动，后续视情况迁移或下线 |
 
 ### 后续方向
@@ -55,21 +64,24 @@
 - [ ] 接入公司页："用 Agent 分析此公司" 按钮，带 company context 初始化对话
 - [ ] 会话持久化：登录用户跨刷新保留对话历史（当前 sessionStorage，30min TTL）
 - [ ] 流量监控：PM2 logs + Langfuse 观测 pi-gateway 调用情况
+- [ ] search_filings 覆盖扩展：finer-grained 财务报表 / notes 章节，HK/A 股年报
 
-## Agent 工具终态设计（2026-06 决策）
+## Agent 工具终态设计（2026-06 决策，三工具已上线 v0.38.x）
 
 ### 三工具架构
 
 ```
 search_wisdom   → GBrain          大师说了什么
                                    信件 / 年会 / 书 / 文章
-                                   语义搜索，master 过滤
+                                   语义搜索，master 过滤，1536d pgvector
 
-get_holdings    → Supabase SQL    大师买了什么
-                                   Holding 表，结构化持仓查询
+search_holdings → Supabase SQL    大师买了什么
+                                   Holding → Security → Entity 联表
+                                   默认最新季度，支持 master/company/year/quarter 过滤
 
 search_filings  → Supabase SQL    公司披露了什么
-                                   FilingSection pgvector + Financial 表
+                                   FilingSection，section alias 映射，keyword excerpt
+                                   覆盖约 120 家公司，2020–2025
 ```
 
 ### 大师范围（当前）
@@ -83,7 +95,7 @@ search_filings  → Supabase SQL    公司披露了什么
 
 > 未来新增大师时，只需导入内容并添加对应 master slug frontmatter，工具层无需改动。
 
-### GBrain 知识层建设（进行中）
+### GBrain 知识层建设（已完成）
 
 - [x] air7 初始化 GBrain，Supabase 后端，hosts 绑定绕过 IPv6
 - [x] HTTP 服务（port 3457），PM2 管理，nginx `/gbrain/` 代理
@@ -93,19 +105,20 @@ search_filings  → Supabase SQL    公司披露了什么
 - [x] `search_wisdom` 工具接入 pi-gateway，验证通过
 - [x] 导入李录 PDF（5 份，151 chunks，全部 embed）
 - [x] 导入巴菲特股东信（1965–2025）+ 合伙人信（1958–1970，94 封，1712 chunks，全部 embed）→ 废弃 `search_letters`
-- [ ] 新增 `get_holdings` 工具（Supabase Holding 表 SQL）
-- [ ] 新增 `search_filings` 工具（FilingSection pgvector + Financial SQL）
-- [ ] agent 验收：跨大师对比 / 时间线 / 观点 + 公司联动
+- [x] 新增 `search_holdings` 工具（Supabase Holding 表 SQL，v0.38.x）
+- [x] 新增 `search_filings` 工具（FilingSection SQL，section alias，keyword excerpt，v0.38.x）
+- [x] 三工具工具调用指示器（tool label + 参数摘要 + 返回条数，v0.38.8）
+- [ ] agent 扩展验收：跨大师对比 / 时间线 / 观点 + 公司持仓 + 年报联动
 
 ### 关键决策
 
 | 决策点 | 结论 |
 |---|---|
 | GBrain 定位 | 知识层（大师文字内容），不存结构化数据 |
-| 年报 / 持仓 | 留在 Supabase，分别由 search_filings / get_holdings 访问 |
+| 年报 / 持仓 | 留在 Supabase，分别由 search_filings / search_holdings 访问 |
 | Embedding 模型 | OpenAI text-embedding-3-large 1536d |
-| 年报入 GBrain？ | 否：体量过大，已有 pgvector 索引，结构化数据 SQL 更精准 |
-| 信件迁移时机 | 李录导入完成后，再迁信件 → 届时废弃 search_letters |
+| 年报入 GBrain？ | 否：体量过大，已有 FilingSection SQL，结构化数据更精准 |
+| 工具命名 | 统一 search_ 前缀：search_wisdom / search_holdings / search_filings |
 
 ## 公司页生成内容 — 管理分析 / 估值分析 LLM 化（2026-06-12 评估，MCO 试点）
 
