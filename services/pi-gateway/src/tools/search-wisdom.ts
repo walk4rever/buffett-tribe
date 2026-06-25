@@ -1,17 +1,9 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import pg from "pg";
+import { pool } from "../db.js";
 
-const { Pool } = pg;
-
-const DIRECT_URL = process.env.DIRECT_URL;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
-if (!DIRECT_URL) throw new Error("DIRECT_URL env var is required");
 if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY env var is required");
-
-const cleanUrl = DIRECT_URL.replace(/[?&]sslmode=[^&]*/g, "").replace(/[?&]sslaccept=[^&]*/g, "");
-const pool = new Pool({ connectionString: cleanUrl, ssl: { rejectUnauthorized: false } });
 
 async function getEmbedding(text: string): Promise<number[]> {
   const res = await fetch("https://api.openai.com/v1/embeddings", {
