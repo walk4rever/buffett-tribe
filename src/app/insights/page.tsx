@@ -150,7 +150,7 @@ function getInsightSourcePillKey(source: string): string {
   if (normalized === "invest like the best") return "iltb";
   if (normalized === "acquired") return "acquired";
   if (normalized === "business breakdowns") return "breakdowns";
-  if (normalized === "founders") return "founders";
+  if (normalized === "capital allocators") return "capitalallocators";
   return "default";
 }
 

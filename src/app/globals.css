@@ -10318,9 +10318,9 @@ body {
   color: #fff;
 }
 
-.insights-filter-pill--founders.insights-filter-pill--active {
-  border-color: #a34c70;
-  background: #a34c70;
+.insights-filter-pill--capitalallocators.insights-filter-pill--active {
+  border-color: #5b3ec7;
+  background: #5b3ec7;
   color: #fff;
 }
 
@@ -10447,10 +10447,10 @@ body {
   color: #237346;
 }
 
-.insight-row-source-pill--founders {
-  border-color: rgba(171, 73, 112, 0.16);
-  background: #fff2f7;
-  color: #a34c70;
+.insight-row-source-pill--capitalallocators {
+  border-color: rgba(91, 62, 199, 0.16);
+  background: #f4f1ff;
+  color: #5b3ec7;
 }
 
 .insight-row-title-line {
