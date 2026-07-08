@@ -78,3 +78,7 @@ skills-lock.json
 
 # One-off development scripts
 /scratch/
+
+# Generated copy — source of truth is scripts/lib/extract-10k-sections.ts,
+# synced by services/pi-gateway/scripts/sync-shared-lib.sh
+/services/pi-gateway/src/shared/

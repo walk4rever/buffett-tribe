@@ -16,6 +16,9 @@ for arg in "$@"; do
 done
 
 if [[ "$RESTART_ONLY" == false ]]; then
+  echo "→ Syncing shared filing-section extraction lib from repo root ..."
+  bash "${SCRIPT_DIR}/scripts/sync-shared-lib.sh"
+
   echo "→ Syncing files to ${REMOTE}:${REMOTE_DIR} ..."
   rsync -az --delete \
     --exclude='node_modules' \

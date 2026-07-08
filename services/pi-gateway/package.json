@@ -4,11 +4,13 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --env-file=.env src/server.ts",
-    "start": "tsx --env-file=.env src/server.ts"
+    "sync:shared": "bash scripts/sync-shared-lib.sh",
+    "dev": "npm run sync:shared && tsx watch --env-file=.env src/server.ts",
+    "start": "npm run sync:shared && tsx --env-file=.env src/server.ts"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "^0.79.6",
+    "cheerio": "^1.2.0",
     "express": "^4",
     "pg": "^8",
     "tsx": "^4",

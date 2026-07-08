@@ -1,6 +1,7 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { pool } from "../db.js";
+import { extractTargetSections, type FilingKind } from "../shared/extract-10k-sections.js";
 
 // Friendly alias → one or more exact section keys (ordered by priority)
 const SECTION_ALIASES: Record<string, string[]> = {
@@ -28,7 +29,12 @@ type SectionRow = {
   period_year: number | null;
   company_name: string | null;
   ticker: string | null;
+  source_id: string;
+  filing_kind: string;
+  source_url: string | null;
 };
+
+const FULL_TEXT_FETCH_TIMEOUT_MS = 15_000;
 
 type AvailableSection = {
   section: string;
@@ -113,7 +119,8 @@ async function querySections(
   const r = await pool.query<SectionRow>(
     `SELECT fs.section, fs.content, fs."contentTextLength" AS content_text_length,
             es."periodYear" AS period_year,
-            ce."canonicalName" AS company_name, ce.ticker
+            ce."canonicalName" AS company_name, ce.ticker,
+            es.id AS source_id, es.kind AS filing_kind, es.url AS source_url
      FROM "FilingSection" fs
      JOIN "ExtSource" es ON es.id = fs."sourceId"
      JOIN "Entity" ce ON ce.id = fs."entityId"
@@ -126,6 +133,46 @@ async function querySections(
     params,
   );
   return r.rows;
+}
+
+async function fetchPrimaryHtmlUrl(sourceId: string): Promise<string | null> {
+  const r = await pool.query<{ public_url: string | null }>(
+    `SELECT "publicUrl" AS public_url
+     FROM "FilingArtifact"
+     WHERE "sourceId" = $1 AND kind = 'primary_html'
+     ORDER BY "createdAt" ASC
+     LIMIT 1`,
+    [sourceId],
+  );
+  return r.rows[0]?.public_url ?? null;
+}
+
+// FilingSection.content is a lightweight preview/legacy field, not guaranteed
+// to hold the full section text (see incident notes: section-level R2
+// artifacts were retired once the reader moved to an iframe over the
+// original filing, and `content` was separately truncated for large
+// sections). Re-derive full text on demand from the original filing HTML,
+// which is never truncated, using the same parser used at import time.
+async function fetchFullSectionContent(
+  row: Pick<SectionRow, "source_id" | "section" | "filing_kind" | "source_url">,
+  signal: AbortSignal | undefined,
+): Promise<string | null> {
+  try {
+    const publicUrl = await fetchPrimaryHtmlUrl(row.source_id);
+    if (!publicUrl) return null;
+
+    const timeoutSignal = AbortSignal.timeout(FULL_TEXT_FETCH_TIMEOUT_MS);
+    const combinedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+
+    const res = await fetch(publicUrl, { signal: combinedSignal });
+    if (!res.ok) return null;
+    const html = await res.text();
+
+    const sections = extractTargetSections(html, row.source_url ?? undefined, row.filing_kind as FilingKind);
+    return sections[row.section]?.content ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export const searchFilingsTool = defineTool({
@@ -211,11 +258,12 @@ export const searchFilingsTool = defineTool({
       };
     }
 
-    const parts = rows.map((row) => {
+    const parts = await Promise.all(rows.map(async (row) => {
       const label = formatSectionLabel(row.section);
-      const excerpt = extractExcerpt(row.content, keyword ?? null);
+      const fullContent = await fetchFullSectionContent(row, signal);
+      const excerpt = extractExcerpt(fullContent ?? row.content, keyword ?? null);
       return `**${row.company_name ?? company} · ${label} · ${row.period_year}**\n\n${excerpt}`;
-    });
+    }));
 
     const text = parts.join("\n\n---\n\n");
     return { content: [{ type: "text" as const, text: text }], details: { count: rows.length } };
