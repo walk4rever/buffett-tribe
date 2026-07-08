@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "pi-gateway",
+      name: "pi-gateway-buffett-tribe",
       script: "node_modules/.bin/tsx",
       args: "--env-file=.env src/server.ts",
       cwd: __dirname,

@@ -6,7 +6,7 @@
 set -euo pipefail
 
 REMOTE="air7"
-REMOTE_DIR="/root/pi-gateway"
+REMOTE_DIR="/root/pi-gateway-buffett-tribe"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # --restart-only: skip file sync, just restart PM2
@@ -31,10 +31,10 @@ if [[ "$RESTART_ONLY" == false ]]; then
 fi
 
 echo "→ Restarting pi-gateway via PM2 ..."
-ssh "$REMOTE" "pm2 restart pi-gateway --update-env"
+ssh "$REMOTE" "pm2 restart pi-gateway-buffett-tribe --update-env"
 
 echo "→ Status:"
-ssh "$REMOTE" "pm2 show pi-gateway | grep -E 'status|uptime|restarts|pid'"
+ssh "$REMOTE" "pm2 show pi-gateway-buffett-tribe | grep -E 'status|uptime|restarts|pid'"
 
 echo ""
 echo "✓ Deploy complete."
