@@ -126,6 +126,12 @@ Supabase、R2、DeepSeek、Yahoo Finance、GBrain），真正的风险集中在*
       - 顺带发现 R2 全文拉取延迟波动极大（同一个 6MB 文件本地测试遇到过从 <1 秒到 2 分钟不等），给
         `fetchFullSectionContent` 加了一次重试（`FULL_TEXT_FETCH_ATTEMPTS = 2`），测试超时相应放宽到
         120 秒以覆盖最坏情况
+      - 首次真实 CI 跑红了两轮，本地"零密钥跑通"不代表"全新 checkout 跑得通"——
+        ① `services/pi-gateway` 是独立 package，root `npm ci` 不会装它自己的依赖
+        （`@earendil-works/pi-coding-agent` 等），CI 需要单独一步 `npm ci --prefix services/pi-gateway`；
+        ② `services/pi-gateway/src/shared/extract-10k-sections.ts` 是 git-ignored 的生成文件，本地一直
+        有是因为之前手动跑过 `sync:shared`，全新 checkout 没有，CI 需要单独跑一次 `npm run sync:shared`。
+        两个都修完后 CI 实测全绿（`gh run watch` 验证）。
 4. [ ] **L4**：现有零散脚本（`check-financial-integrity`/`check-security-integrity`/
       `check-latest-holdings-company-coverage`/`verify-10k-edgartools`）统一纳入一个每周定时 workflow，
       顺带新增 `FilingSection.content` 完整性检查；同时清掉 `typecheck:scripts` 的历史遗留错误
