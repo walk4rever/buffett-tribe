@@ -2,25 +2,7 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { pool } from "../db.js";
 import { extractTargetSections, type FilingKind } from "../shared/extract-10k-sections.js";
-
-// Friendly alias → one or more exact section keys (ordered by priority)
-const SECTION_ALIASES: Record<string, string[]> = {
-  business:    ["item_1_business", "item_4_company_information"],
-  risk:        ["item_1a_risk_factors"],
-  mda:         ["item_7_mda", "item_5_operating_financial_review", "management_discussion_and_analysis"],
-  financial:   ["item_8_financial_statements", "item_8_financial_information", "item_17_financial_statements", "item_18_financial_statements_us_gaap"],
-  notes:       ["item_8_notes"],
-  cybersecurity: ["item_1c_cybersecurity", "item_16k_cybersecurity"],
-  compensation: ["item_11_compensation"],
-  governance:  ["item_16g_corporate_governance"],
-  market_risk: ["item_7a_market_risk", "item_11_market_risk"],
-  properties:  ["item_2_properties"],
-  legal:       ["item_3_legal"],
-};
-
-
-const MAX_CONTENT_CHARS = 4000;
-const EXCERPT_WINDOW = 1800;
+import { resolveSectionKeys, extractExcerpt, formatSectionLabel } from "./search-filings-format.js";
 
 type SectionRow = {
   section: string;
@@ -34,46 +16,17 @@ type SectionRow = {
   source_url: string | null;
 };
 
-const FULL_TEXT_FETCH_TIMEOUT_MS = 15_000;
+// Primary filing HTML can be several MB; observed R2 fetch+body-read latency
+// varies widely (sub-second to 2+ minutes depending on network conditions),
+// so this errs generous — a slow fetch still falls back to the content
+// preview rather than failing the tool call outright.
+const FULL_TEXT_FETCH_TIMEOUT_MS = 45_000;
 
 type AvailableSection = {
   section: string;
   content_text_length: number;
   period_year: number | null;
 };
-
-function resolveSectionKeys(section: string | null): string[] | null {
-  if (!section) return null;
-  const alias = section.toLowerCase().trim().replace(/[\s-]/g, "_");
-  return SECTION_ALIASES[alias] ?? [alias];
-}
-
-function extractExcerpt(content: string, keyword: string | null): string {
-  if (!keyword) {
-    return content.length <= MAX_CONTENT_CHARS
-      ? content
-      : content.slice(0, MAX_CONTENT_CHARS) + `\n\n[… 内容已截断，共 ${content.length} 字]`;
-  }
-
-  const idx = content.toLowerCase().indexOf(keyword.toLowerCase());
-  if (idx === -1) {
-    return content.slice(0, MAX_CONTENT_CHARS) + (content.length > MAX_CONTENT_CHARS ? `\n\n[… 未找到关键词"${keyword}"，显示开头内容]` : "");
-  }
-
-  const start = Math.max(0, idx - EXCERPT_WINDOW / 2);
-  const end = Math.min(content.length, idx + EXCERPT_WINDOW / 2);
-  const excerpt = content.slice(start, end);
-  const prefix = start > 0 ? "[…] " : "";
-  const suffix = end < content.length ? " […]" : "";
-  return prefix + excerpt + suffix;
-}
-
-function formatSectionLabel(key: string): string {
-  return key
-    .replace(/^item_\d+[a-z]?_/, "")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 async function getAvailableSections(entityId: string, year: number | null): Promise<AvailableSection[]> {
   const params: unknown[] = [entityId];

@@ -1,5 +1,128 @@
 # TODOS — 数据架构优化清单
 
+## 测试体系设计（2026-07-08，从零搭建——重启 session 请先看这里）
+
+> 这个项目从第一行代码开始就没有设计过测试体系：13F/10-K 导入管线、7 条 LLM 生成内容管线（公司概览/
+> 商业模式/价值分析/管理分析/估值分析/大师画像/持仓洞见）、Agent 三工具、财务计算、两套独立部署的运行
+> 环境（Vercel + air7 PM2）——没有一处有系统性的测试覆盖。现有的 5 个 vitest 文件是零散补的，从未接入
+> CI；`tests/evals/` 是检索质量基准，不是正确性测试；`@playwright/test` 装了依赖但零测试文件。这不是
+> 某次事故才暴露的问题，是结构性缺口，要按整个系统的风险面重新设计，不是针对某个 bug 打补丁。
+>
+> 案例参考（不是设计的起因，只是一个已发生、能说明"为什么某些层比其他层更重要"的真实例子）：
+> `search_filings` 曾经长期只能搜到章节前 3000 字——`FilingSection.content` 被一次没有留痕的手工操作
+> 截断，且章节级 R2 归档从未在生产真正生效过，静默运行了一个多月没人发现。这类"生产数据自己漂移、代码
+> 逻辑本身没问题"的失败模式，只有对着真实数据跑的测试才能抓到——这是下面 L3/L4 权重高的原因。修复本身
+> 记在「接入 pi-coding-agent」节的已完成清单里。
+
+### 这个项目的风险面（先枚举完整，再决定测什么）
+
+| 风险类别 | 具体指什么 | 一旦出错的后果 |
+|---|---|---|
+| 财务计算正确性 | `valuation-metrics.ts`（PE 分位、FCF/OCF 口径切换、情景回报数学） | 直接影响用户看到的数字；合规要求"不输出买入/卖出/目标价"，算错是严重问题 |
+| 数据导入管线 | 13F（`import-13f-edgartools.ts`）、10-K/20-F/40-F（`import-10k-edgartools.ts` 等）、股价（yfinance）、CapEx/回购回填 | 源头到入库任一环悄悄失败，下游财务/估值/管理分析全部基于错误数据生成 |
+| 数据关联完整性 | `Entity`/`Security`/`Holding`/`CompanyNameMap` 图谱一致性 | 持仓链接错公司、重复实体、ticker 冲突 |
+| LLM 生成内容 | 7 条生成管线（company_profile/business_overview/value_analysis/management_analysis/valuation_analysis/master_profile/portfolio_insight），`GeneratedContentVersion` 版本化 | 输出格式漂移、prompt 版本和实际内容对不上、静默生成空/占位内容 |
+| Agent 工具契约 | `search_wisdom`/`search_holdings`/`search_filings`——产品唯一的实时交互面 | 用户直接看到工具返回错误/残缺结果，且不报错，只是"答得不对" |
+| 双部署环境一致性 | Vercel（Next.js 主站）与 air7（pi-gateway + GBrain，PM2 管理）各自独立发布 | "主站能跑、pi-gateway 那边没同步"——这次修复靠手动跑 air7 冒烟才验证到，不然会误以为部署完就万事大吉 |
+| 数据库容量/成本 | Supabase 存储、R2 对象存储 | 已有 `db-size-check.yml` 部分监控 |
+
+### 测试设计原则（风险对应优先，不是覆盖率优先）
+
+不追求"80% 覆盖率"这类抽象指标。这个代码库的核心特征是：大量代码在和外部系统交互（SEC EDGAR、
+Supabase、R2、DeepSeek、Yahoo Finance、GBrain），真正的风险集中在**数据从外部进来、流经管线、最终
+呈现给用户**这条链路的完整性和正确性，不是纯算法逻辑错误。测试设计要按这条链路的每一环分层，不是
+无差别堆单元测试。
+
+### 六层测试金字塔——4 层必需，2 层延后
+
+不是六层同等重要。按这个项目的实际风险（数据管线漂移 + Agent 是产品唯一交互面），L0/L1/L3/L4 是
+**必需**的核心骨架；L2/L5 是**明确延后**的可选项，不在当前这一轮里做（L2 要先从零搭测试库基础设施，
+成本明显更高且边际风险低于 L3/L4；L5 是内容展示型网站，E2E 边际价值和维护成本比不上抓数据/工具层
+问题划算）。L6 已存在，不算新建。
+
+| 层 | 状态 | 测什么 | 触发时机 | 现状 |
+|---|---|---|---|---|
+| L0 静态检查 | **必需** | `tsc --noEmit`（主应用 + scripts）、`eslint`、`prisma validate` | 每次 push | lint 能跑但没进 CI；`typecheck:scripts` 有历史遗留错误（`financialFact` 等，见下方步骤 4），需先清掉才能当真 gate |
+| L1 单元测试 | **必需** | 纯函数 + fixture：解析类（`extract-10k-sections` 等）、计算类（`valuation-metrics`，合规敏感区，优先级最高）、格式化类（`search-filings.ts` 的 `resolveSectionKeys`/`extractExcerpt`） | 每次 push | 5 个 vitest 文件，没进 CI；覆盖零散，很多纯函数（如 `search-filings.ts`）零覆盖 |
+| L2 集成测试 | 延后 | Prisma 查询（`CompanyNameMap` 同步、`Security↔Entity` 回填幂等性、`GeneratedContentVersion` 版本递增）、API route（`/api/filing-section` 等） | 每次 push / PR | 无——需先定测试库方案（本地 pglite / Supabase 分支），成本高于 L3/L4，边际风险更低 |
+| L3 Agent 工具契约测试 | **必需** | `search_wisdom`（GBrain 语义检索）/`search_holdings`（13F SQL）/`search_filings`（10-K SQL+R2），各挑跨管线的真实 case 断言 | 每次 push 或每日 | 无——产品唯一实时交互面完全没有回归测试，最高优先级 |
+| L4 数据管线健康检查 | **必需** | 已有零散脚本：`check-financial-integrity`、`check-security-integrity`、`check-latest-holdings-company-coverage`、`verify-10k-edgartools`、`check-db-size`；待补：`FilingSection.content` 完整性 | 每周定时（统一进一个 workflow，仿 `db-size-check.yml`）+ 大版本发布前 | 每个脚本各自为战，没有统一定时/告警，也不是发版门槛 |
+| L5 E2E 冒烟 | 延后 | Playwright：`/agent` 问答 + 工具指示器、`/company/[cik]` 六 tab、年报阅读器 iframe、`/master/[id]` | 大版本发布前 | `@playwright/test` 已装依赖，零测试文件——写起来最贵、维护成本最高，此项目边际价值低于 L3/L4 |
+| L6 LLM 质量评估 | 已存在 | `tests/evals/` 检索质量基准 | prompt/检索逻辑变更时 | 已有，维持现状，不进常规 gate（有成本、非确定性） |
+
+### 测试基础设施决策（"从一开始该定好"但至今没定的部分）
+
+搭建测试体系前必须先拍板，不然每加一个测试都要重新纠结：
+
+- **测试数据源策略**：三个选项——① 本地 pglite/sqlite 影子库（快、可重复、CI 免费，但需要维护 schema
+  同步和种子数据，测不出真实数据漂移）② Supabase 分支（结构和生产一致，但有额外配置/维护成本）③ 直接对
+  生产库只读查询（零维护成本，能测出真实数据问题，但和生产数据强耦合）。**决定：L1 用 fixture，不依赖
+  任何真实库；L2 用本地 pglite 影子库；L3/L4 直接对生产只读查询**——L3/L4 存在的意义就是盯着真实数据，
+  脱离它就失去了这两层的价值。
+- **Golden case 维护**：L3 的"已知 case"挑选标准和更新责任要明确，不能挑一次就不管。建议固定挑 3-5 家
+  覆盖不同 filing kind（10-K/20-F/40-F）和不同大师（巴菲特/李录/段永平/Gavin Baker）的公司作为长期锚点，
+  变化频率低，公司退市/数据结构变化时才需要更新。
+- **外部依赖 mock 边界**：SEC EDGAR/R2/DeepSeek/Yahoo Finance/GBrain 在哪层该 mock、哪层该打真实——
+  L1/L2 一律 mock（纯逻辑/DB，不该依赖外部服务可用性），L3/L4 一律打真实（否则测不出这类问题），
+  L5 打真实但只在发版前跑（慢、有外部依赖，不适合每次 push）。
+- **测试存放约定**（映射到现有目录结构，新代码照此放）：
+  - `src/lib/*.ts`、`scripts/lib/*.ts` 纯函数 → `tests/*.test.ts`（沿用现状，如 `extract-10k-sections.test.ts`）
+  - Agent 工具契约 → 新建 `tests/agent-tools/*.test.ts`
+  - 数据完整性检查 → `scripts/check-*.ts`，纳入 L4 定时任务清单
+  - Playwright → 新建 `e2e/*.spec.ts`
+
+### 开发工作流集成（不然测试体系会重新荒废）
+
+搭完不是终点，要变成日常习惯，否则半年后又回到今天的状态：
+
+- 新增/修改纯函数（解析、计算、格式化）→ 必须同 PR 补 L1 测试
+- 新增/修改 Agent 工具或工具参数 → 必须同 PR 补/更新 L3 case
+- 新增数据导入脚本或修改现有导入逻辑 → 必须补充或跑一次对应 L4 完整性检查
+- 新增 LLM 生成管线 → 至少要有一个"生成内容非空且包含预期字段"的最低限度断言，挂在 L3 或 L4
+- 大版本（minor/major）发布前 → `npm run test:release` 跑 L2+L3+L4+L5，红了不打 tag（patch 直推、
+  minor/major 由用户决定的既有版本节奏不变）
+
+### CI 编排
+
+- 每次 push main：L0 + L1（免费、秒级）
+- 每周定时：L4
+- 大版本（minor/major）发布前，手动 `npm run test:release`：L2 + L3 + L4 + L5 全跑，红了不许打 tag
+- prompt 变更时：L6
+
+### 落地路线图——按投入产出比排的 4 个必需步骤
+
+1. [x] **L0**：`.github/workflows/test.yml`，push main / PR 自动跑 `npm run lint` + `npm run test`。
+      **`build` 有意不进这个 gate**：实测过（临时移开 `.env.local`，只给 `DATABASE_URL`/`DIRECT_URL`
+      两个已配置的 GH secret）`npm run build` 在 `/api/auth/forgot-password` 报
+      `Missing API key`（`RESEND_API_KEY` 缺失，build-time collect page data 阶段实例化 Resend 客户端），
+      后面大概率还有更多密钥缺口（NextAuth/R2/LLM 相关）。把生产凭证同步进 GitHub Secrets 是有安全影响的
+      操作，用户决定先不做——`build` 继续留在发版前手动跑（`npm run build` 本地验证）。
+2. [x] **L1**：`search-filings.ts` 的纯函数（`resolveSectionKeys`/`extractExcerpt`/`formatSectionLabel`）
+      拆到零依赖的 `services/pi-gateway/src/tools/search-filings-format.ts`（不再 import `../db.js`，
+      避免测试时因为 `DIRECT_URL` 未设置而在 import 阶段就抛错），补了 12 个 vitest 用例
+      （`search-filings-format.test.ts`）。**意外发现**：根目录 `vitest.config.ts` 默认扫描整个仓库，
+      `services/pi-gateway/` 下的测试文件会被根目录 `npm run test` 自动捡到，不需要给 pi-gateway 单独接
+      CI 步骤（`services/pi-gateway/package.json` 仍补了自己的 `vitest`/`test` script，方便单独在该目录
+      开发时跑）。全程验证零环境变量依赖。
+      顺带发现原 45 秒（原 15 秒）R2 全文拉取超时在网络变慢时可能不够（本地测试遇到过 6MB 文件读了 2
+      分钟），已放宽超时并重新部署 air7 验证 "Aspire" 仍正确命中。
+3. [ ] **L3**：新建 `tests/agent-tools/` harness + 3-5 个跨管线 golden case——不只 10-K，至少各挑一个
+      `search_holdings`/13F、`search_wisdom`/GBrain 的已知 case，覆盖面对应全部三个工具（最高优先级，
+      直接堵住这次这类问题重演）
+4. [ ] **L4**：现有零散脚本（`check-financial-integrity`/`check-security-integrity`/
+      `check-latest-holdings-company-coverage`/`verify-10k-edgartools`）统一纳入一个每周定时 workflow，
+      顺带新增 `FilingSection.content` 完整性检查；同时清掉 `typecheck:scripts` 的历史遗留错误
+      （`financialFact` 相关，`FinancialFact` 表已从 schema 删除但
+      `cleanup-financial-facts.ts`/`dedupe-ext-source-filings.ts`/`merge-duplicate-entity.ts` 等脚本仍
+      引用），否则 L0 的 typecheck gate 一直是红的没有意义
+
+### 明确延后（不在当前这轮）
+
+- [ ] L2 集成测试：先决定测试库方案（本地 pglite 影子库），再实际编写 Prisma 查询 + API route 测试
+- [ ] L5 Playwright 冒烟：覆盖 5-6 个核心用户路径（`/agent` 问答、公司页六 tab、年报阅读器、大师主页）
+- [ ] 重写 `tests/README.md`：现在引用的是另一个仓库（`talk-with-buffett`）的路径，内容完全过时，
+      和这个项目现在的功能面（13F/10-K/Agent/insights）对不上——次要，不阻塞上面 4 步
+
 ## 接入 pi-coding-agent（v0.38.0，2026-06-22 完成；三工具 v0.38.x 完成）
 
 ### 运行时架构
@@ -46,6 +169,13 @@
 - [x] 三工具调用指示器（label + 参数摘要 + 返回条数，v0.38.8）
 - [x] AGENTS.md 完整定义三工具用法和回答格式
 - [x] deploy.sh 可重复运行部署脚本
+- [x] **`search_filings` 全文修复**（v0.38.12，2026-07-08）：`FilingSection.content` 曾被一次没有留痕的
+      手工操作截断到 3000 字，且章节级 R2 归档从未在生产真正生效，命中章节现改为从
+      `FilingArtifact(kind=primary_html)`（从未被截断）现取原文，用 `extractTargetSections()` 现场解析，
+      `content` 降级为 fallback-only。不复活章节级 R2 归档（已确认阅读页走 iframe 不需要）。pi-gateway
+      新增 `scripts/sync-shared-lib.sh` 把 `scripts/lib/extract-10k-sections.ts` 同步进
+      `src/shared/`（git-ignored，deploy 前自动跑，源头仍是仓库根目录那份）。air7 部署后验证：DIS 2020
+      10-K `item_1_business` 关键词 "Aspire"（原文接近末尾）现在能正确命中。现有数据无需批量修复。
 
 ### 关键决策
 
