@@ -106,9 +106,26 @@ Supabase、R2、DeepSeek、Yahoo Finance、GBrain），真正的风险集中在*
       开发时跑）。全程验证零环境变量依赖。
       顺带发现原 45 秒（原 15 秒）R2 全文拉取超时在网络变慢时可能不够（本地测试遇到过 6MB 文件读了 2
       分钟），已放宽超时并重新部署 air7 验证 "Aspire" 仍正确命中。
-3. [ ] **L3**：新建 `tests/agent-tools/` harness + 3-5 个跨管线 golden case——不只 10-K，至少各挑一个
-      `search_holdings`/13F、`search_wisdom`/GBrain 的已知 case，覆盖面对应全部三个工具（最高优先级，
-      直接堵住这次这类问题重演）
+3. [x] **L3**：`tests/agent-tools/` harness，三个工具各一个 golden case 文件（覆盖面对应全部三个
+      工具，不只这次修的 `search_filings`）：
+      - `search-filings.test.ts`：DIS 2020 10-K + "Aspire"（这次事故的回归用例）+ 无 section 参数时列出
+        可用章节
+      - `search-holdings.test.ts`：AAPL 是 Berkshire 最新一期 13F 第一大重仓（只断言"存在"不断言具体
+        百分比，因为仓位会变），另加 top_n 排序和未知 master 拒绝的 case
+      - `search-wisdom.test.ts`："circle of competence"（巴菲特/芒格反复提及的概念，语义检索预期总能
+        命中），只做存在性断言（`count > 0`），不做精确内容匹配
+      - 前置改动：`services/pi-gateway/src/db.ts` 的 `pool` 改成懒加载 Proxy（`DIRECT_URL` 校验从
+        import 时挪到首次真正查询时），`search-wisdom.ts` 的 `OPENAI_API_KEY` 校验同理挪进
+        `getEmbedding()` 内部——否则这些工具文件在没设置对应环境变量时**连 import 都会抛错**，
+        `describe.skipIf` 根本来不及生效
+      - 每个测试文件用 `describe.skipIf(!hasEnv)` 守卫：本地/CI 没有对应密钥时优雅跳过，不是失败
+      - CI 编排：`.github/workflows/test.yml` 传入 `DIRECT_URL`（已有的免费 secret），
+        `search_filings`/`search_holdings` 两个 case 因此在每次 push/PR 自动跑真实数据；`search_wisdom`
+        需要 `OPENAI_API_KEY`（真实按次计费的第三方密钥），**有意不加进 CI**，留在本地/发版前手动跑——
+        和 build 那个 secrets 决策同样的谨慎原则，不擅自把付费密钥同步进 CI
+      - 顺带发现 R2 全文拉取延迟波动极大（同一个 6MB 文件本地测试遇到过从 <1 秒到 2 分钟不等），给
+        `fetchFullSectionContent` 加了一次重试（`FULL_TEXT_FETCH_ATTEMPTS = 2`），测试超时相应放宽到
+        120 秒以覆盖最坏情况
 4. [ ] **L4**：现有零散脚本（`check-financial-integrity`/`check-security-integrity`/
       `check-latest-holdings-company-coverage`/`verify-10k-edgartools`）统一纳入一个每周定时 workflow，
       顺带新增 `FilingSection.content` 完整性检查；同时清掉 `typecheck:scripts` 的历史遗留错误

@@ -2,10 +2,11 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { pool } from "../db.js";
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY env var is required");
-
+// Read lazily (not at module load) so this file stays importable in tests
+// without OPENAI_API_KEY set — see db.ts for the same reasoning re: DIRECT_URL.
 async function getEmbedding(text: string): Promise<number[]> {
+  const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+  if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY env var is required");
   const res = await fetch("https://api.openai.com/v1/embeddings", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },

@@ -100,32 +100,43 @@ async function fetchPrimaryHtmlUrl(sourceId: string): Promise<string | null> {
   return r.rows[0]?.public_url ?? null;
 }
 
+const FULL_TEXT_FETCH_ATTEMPTS = 2;
+
 // FilingSection.content is a lightweight preview/legacy field, not guaranteed
 // to hold the full section text (see incident notes: section-level R2
 // artifacts were retired once the reader moved to an iframe over the
 // original filing, and `content` was separately truncated for large
 // sections). Re-derive full text on demand from the original filing HTML,
 // which is never truncated, using the same parser used at import time.
+//
+// The primary HTML can be several MB, and R2 body-read latency observed in
+// testing varies wildly (sub-second to 2+ minutes) even for the same file,
+// so one retry on timeout/network failure meaningfully improves reliability
+// over a single attempt without materially slowing the common case.
 async function fetchFullSectionContent(
   row: Pick<SectionRow, "source_id" | "section" | "filing_kind" | "source_url">,
   signal: AbortSignal | undefined,
 ): Promise<string | null> {
-  try {
-    const publicUrl = await fetchPrimaryHtmlUrl(row.source_id);
-    if (!publicUrl) return null;
+  const publicUrl = await fetchPrimaryHtmlUrl(row.source_id).catch(() => null);
+  if (!publicUrl) return null;
 
-    const timeoutSignal = AbortSignal.timeout(FULL_TEXT_FETCH_TIMEOUT_MS);
-    const combinedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+  for (let attempt = 1; attempt <= FULL_TEXT_FETCH_ATTEMPTS; attempt++) {
+    try {
+      const timeoutSignal = AbortSignal.timeout(FULL_TEXT_FETCH_TIMEOUT_MS);
+      const combinedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
 
-    const res = await fetch(publicUrl, { signal: combinedSignal });
-    if (!res.ok) return null;
-    const html = await res.text();
+      const res = await fetch(publicUrl, { signal: combinedSignal });
+      if (!res.ok) continue;
+      const html = await res.text();
 
-    const sections = extractTargetSections(html, row.source_url ?? undefined, row.filing_kind as FilingKind);
-    return sections[row.section]?.content ?? null;
-  } catch {
-    return null;
+      const sections = extractTargetSections(html, row.source_url ?? undefined, row.filing_kind as FilingKind);
+      const content = sections[row.section]?.content;
+      if (content) return content;
+    } catch {
+      // fall through to retry, or fall back to row.content after the last attempt
+    }
   }
+  return null;
 }
 
 export const searchFilingsTool = defineTool({
