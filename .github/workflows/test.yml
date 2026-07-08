@@ -17,6 +17,8 @@ jobs:
       - run: npm ci
       - run: npm ci
         working-directory: services/pi-gateway
+      - run: npm run sync:shared
+        working-directory: services/pi-gateway
       - run: npm run lint
       - run: npm run test
         env:
