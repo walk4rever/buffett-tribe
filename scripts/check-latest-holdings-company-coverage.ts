@@ -4,11 +4,13 @@ import { fetchAllAnnualFilings } from "./lib/sec-company-profile";
 
 const db = new PrismaClient();
 
-const INVESTORS = [
-  { tribeId: "buffett", label: "Buffett" },
-  { tribeId: "lilu", label: "Li Lu" },
-  { tribeId: "duan", label: "Duan Yongping" },
-] as const;
+async function getInvestors() {
+  const filers = await db.filer.findMany({
+    select: { tribeId: true, name: true },
+    orderBy: { tribeId: "asc" },
+  });
+  return filers.map((f) => ({ tribeId: f.tribeId, label: f.name }));
+}
 
 const json = process.argv.includes("--json");
 const strict = process.argv.includes("--strict");
@@ -101,7 +103,7 @@ async function main() {
     }>;
   }> = [];
 
-  for (const investor of INVESTORS) {
+  for (const investor of await getInvestors()) {
     const latest = await getLatestQuarter(investor.tribeId);
     if (!latest) {
       results.push({ investor: investor.label, latestQuarter: null, companies: [] });
@@ -151,7 +153,7 @@ async function main() {
     const familyEntities = normalizedTickers.length
       ? await db.entity.findMany({
           where: {
-            type: { in: ["company", "master"] },
+            type: "company",
             ticker: { in: normalizedTickers, mode: "insensitive" },
           },
           select: { id: true, ticker: true },

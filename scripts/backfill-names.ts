@@ -43,11 +43,11 @@ async function main() {
   }
 
   const entities = await db.entity.findMany({
-    where: { type: { in: ["company", "master", "security"] } },
+    where: { type: "company" },
     select: { id: true, canonicalName: true, ticker: true, metadata: true },
   });
 
-  console.log(`[backfill-names] found ${entities.length} company/security entities`);
+  console.log(`[backfill-names] found ${entities.length} company entities`);
 
   let updated = 0;
   let skipped = 0;

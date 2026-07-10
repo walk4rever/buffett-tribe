@@ -21,10 +21,10 @@
  *      c) Then prefer the row with the most attached children (sections,
  *         financials, attachments, artifacts).
  *      d) Then most recent id (cuid is roughly time-ordered).
- *   2. Reparent every loser row's children (Financial, FinancialFact,
- *      FilingSection, FilingAttachment, FilingArtifact, Holding) onto the
- *      winner's id. When a unique constraint would be violated, drop the
- *      loser's child row (the winner's row wins, since the data is identical).
+ *   2. Reparent every loser row's children (Financial, FilingSection,
+ *      FilingAttachment, FilingArtifact, Holding) onto the winner's id. When
+ *      a unique constraint would be violated, drop the loser's child row
+ *      (the winner's row wins, since the data is identical).
  *   3. Delete the loser rows.
  *   4. If the winner's `kind` disagrees with its metadata.form, fix kind.
  *
@@ -50,7 +50,6 @@ type Counts = {
   financials: number;
   holdings: number;
   sections: number;
-  facts: number;
 };
 
 type Row = {
@@ -86,7 +85,7 @@ function kindRank(kind: string): number {
 }
 
 function totalChildren(c: Counts): number {
-  return c.attachments + c.artifacts + c.financials + c.holdings + c.sections + c.facts;
+  return c.attachments + c.artifacts + c.financials + c.holdings + c.sections;
 }
 
 function pickWinner(rows: Row[]): Row {
@@ -137,7 +136,6 @@ async function loadAllRows(): Promise<Row[]> {
           financials: true,
           holdings: true,
           sections: true,
-          facts: true,
         },
       },
     },
@@ -199,7 +197,7 @@ function summarizePlan(plan: Plan) {
   console.log(`duplicate groups:        ${plan.duplicateGroups.length}`);
   const totalLosers = plan.duplicateGroups.reduce((n, g) => n + g.losers.length, 0);
   console.log(`rows to delete (losers): ${totalLosers}`);
-  const reparentTotals = { attachments: 0, artifacts: 0, financials: 0, holdings: 0, sections: 0, facts: 0 };
+  const reparentTotals = { attachments: 0, artifacts: 0, financials: 0, holdings: 0, sections: 0 };
   for (const g of plan.duplicateGroups) {
     for (const l of g.losers) {
       reparentTotals.attachments += l.counts.attachments;
@@ -207,12 +205,11 @@ function summarizePlan(plan: Plan) {
       reparentTotals.financials += l.counts.financials;
       reparentTotals.holdings += l.counts.holdings;
       reparentTotals.sections += l.counts.sections;
-      reparentTotals.facts += l.counts.facts;
     }
   }
   console.log(`children needing reparent:`);
   console.log(`  financials=${reparentTotals.financials} holdings=${reparentTotals.holdings} sections=${reparentTotals.sections}`);
-  console.log(`  facts=${reparentTotals.facts} attachments=${reparentTotals.attachments} artifacts=${reparentTotals.artifacts}`);
+  console.log(`  attachments=${reparentTotals.attachments} artifacts=${reparentTotals.artifacts}`);
   console.log(`kind-only fixes:         ${plan.kindFixes.length}`);
   console.log(`rows without accession:  ${plan.noAccession.length}`);
 
@@ -253,17 +250,17 @@ function summarizePlan(plan: Plan) {
  * (holderEntityId, securityId, asOfDate) — in practice losers carry 0 holdings
  * but we handle it defensively.
  *
- * FilingSection.(sourceId, section), FinancialFact.(sourceId, concept, endDate, unit),
- * FilingArtifact.objectKey (global), and FilingAttachment have no clashing
- * sourceId-less unique → bulk updateMany is safe.
+ * FilingSection.(sourceId, section), FilingArtifact.objectKey (global), and
+ * FilingAttachment have no clashing sourceId-less unique → bulk updateMany
+ * is safe.
  */
 async function reparentChildren(
   tx: Prisma.TransactionClient,
   loserId: string,
   winnerId: string,
 ): Promise<{ moved: Counts; droppedDueToCollision: Counts }> {
-  const moved: Counts = { attachments: 0, artifacts: 0, financials: 0, holdings: 0, sections: 0, facts: 0 };
-  const dropped: Counts = { attachments: 0, artifacts: 0, financials: 0, holdings: 0, sections: 0, facts: 0 };
+  const moved: Counts = { attachments: 0, artifacts: 0, financials: 0, holdings: 0, sections: 0 };
+  const dropped: Counts = { attachments: 0, artifacts: 0, financials: 0, holdings: 0, sections: 0 };
 
   // 1. Financial — has (entityId, periodEnd, periodType, lineItem) unique.
   const loserFinancials = await tx.financial.findMany({
@@ -333,15 +330,11 @@ async function reparentChildren(
     }
   }
 
-  // 4. FinancialFact — (sourceId, concept, endDate, unit) unique. Includes sourceId so bulk is fine.
-  const factsResult = await tx.financialFact.updateMany({ where: { sourceId: loserId }, data: { sourceId: winnerId } });
-  moved.facts = factsResult.count;
-
-  // 5. FilingAttachment — no problematic unique.
+  // 4. FilingAttachment — no problematic unique.
   const attResult = await tx.filingAttachment.updateMany({ where: { sourceId: loserId }, data: { sourceId: winnerId } });
   moved.attachments = attResult.count;
 
-  // 6. FilingArtifact — objectKey is globally unique, but doesn't conflict on reparent. Bulk safe.
+  // 5. FilingArtifact — objectKey is globally unique, but doesn't conflict on reparent. Bulk safe.
   const artResult = await tx.filingArtifact.updateMany({ where: { sourceId: loserId }, data: { sourceId: winnerId } });
   moved.artifacts = artResult.count;
 
@@ -351,8 +344,8 @@ async function reparentChildren(
 async function applyPlan(plan: Plan) {
   let groupsMerged = 0;
   let losersDeleted = 0;
-  const movedTotals: Counts = { attachments: 0, artifacts: 0, financials: 0, holdings: 0, sections: 0, facts: 0 };
-  const droppedTotals: Counts = { attachments: 0, artifacts: 0, financials: 0, holdings: 0, sections: 0, facts: 0 };
+  const movedTotals: Counts = { attachments: 0, artifacts: 0, financials: 0, holdings: 0, sections: 0 };
+  const droppedTotals: Counts = { attachments: 0, artifacts: 0, financials: 0, holdings: 0, sections: 0 };
   let kindFixed = 0;
 
   for (const g of plan.duplicateGroups) {

@@ -15,8 +15,6 @@ import { fetchFilingIndexFiles, fetchSecText } from "./lib/filing-archive";
 import { ImportTimer } from "./lib/import-timer";
 import {
   archiveFilingArtifacts,
-  batchUpsertFinancialFactsFromApi,
-  batchUpsertFinancialFactsFromInline,
   db,
   decimalFromNumber,
   findBestFactValue,
@@ -249,11 +247,6 @@ async function importEdgarToolsAnnualReports(params: {
     const extSource = await filingTimer.time("upsert source", () => upsertExtSource(companyEntity.id, cik, filing));
     const primaryUrl = filing.primaryUrl ?? `${filing.filingUrlBase}/${filing.primaryDocument}`;
 
-    const apiFactCount = await filingTimer.time(
-      "store companyfacts",
-      () => batchUpsertFinancialFactsFromApi(companyEntity.id, extSource.id, facts, filing),
-      (count) => `facts=${count}`,
-    );
     const html = await filingTimer.time(
       filing.html ? "load primary html from edgartools" : "fetch primary html",
       async () => filing.html || await fetchSecText(primaryUrl),
@@ -263,11 +256,6 @@ async function importEdgarToolsAnnualReports(params: {
       "parse inline facts",
       () => parseInlineXbrlDocument(html),
       (doc) => `facts=${doc.facts.length}, contexts=${doc.contexts.size}`,
-    );
-    const inlineFactCount = await filingTimer.time(
-      "store inline facts",
-      () => batchUpsertFinancialFactsFromInline(companyEntity.id, extSource.id, inlineDoc, filing),
-      (count) => `facts=${count}`,
     );
 
     const sectionCount = await filingTimer.time(
@@ -410,7 +398,7 @@ async function importEdgarToolsAnnualReports(params: {
     }, () => `derived=${upserted}, missing=${missing}, fallback=${fallbackUsed}`);
 
     console.log(
-      `  ${filing.reportDate} (${filing.accession}) -> facts(API ${apiFactCount}, Inline ${inlineFactCount}), sections ${sectionCount}+${attachmentSectionCount}, attachments ${attachmentCount}, derived ${upserted}, missing ${missing}, fallback ${fallbackUsed}`,
+      `  ${filing.reportDate} (${filing.accession}) -> sections ${sectionCount}+${attachmentSectionCount}, attachments ${attachmentCount}, derived ${upserted}, missing ${missing}, fallback ${fallbackUsed}`,
     );
   });
 }

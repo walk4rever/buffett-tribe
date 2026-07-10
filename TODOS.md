@@ -1,5 +1,82 @@
 # TODOS — 数据架构优化清单
 
+## 数据完备性排查（2026-07-10）
+
+### 13F 持仓历史
+
+追踪的投资人其实是 **5 位**，不是别处文档写的 3 位：`buffett`（Berkshire Hathaway）/`lilu`（Himalaya
+Capital）/`duan`（H&H International）之外，还有 `gavin-baker`（Atreides Management）和
+`alex-sacerdote`（Whale Rock Capital）——`scripts/lib/13f-import-core.ts` 的 `FILERS` 是准确来源。
+
+排查结果：每位从 2020Q1 到 2026Q1（当前应有的最新季度，2026Q2 要到 8 月才截止申报）连续无缺。原本发现
+3 处异常，**已全部修复**：
+- [x] **Atreides 2022Q2 持仓数据缺失**：SEC 原文件（`Atreides_13F_06302022.xml`，非常规文件名）实际有 42
+      条持仓，DB 里对应 `ExtSource` 却是 0 条。原因不明确（可能是当时 edgartools 版本对该文件名探测失败，
+      或一次性网络故障——现在直接用 `edgartools 5.35.0` 重新解析已能正确读到 42 条，不是持续性 bug）。用
+      `npm run import:13f -- --filer gavin-baker --quarter-list 2022Q2` 重新导入，复用原有 `ExtSource`
+      （按 accessionNumber 匹配，未产生重复行），40 条持仓写入（42 条原始行按 CUSIP 聚合后 40 条）。
+- [x] **Whale Rock 2021Q2 / Atreides 2021Q1 各一条空持仓重复行**：两条都是 13F-HR/A（`RESTATEMENT` 修正案）
+      被单独导入成的空 `ExtSource`（0 holdings），真实季度数据在同季度的正式 13F-HR 里已经完整存在。核实
+      两条 0-holdings 后直接删除（`db.extSource.delete`），未见级联数据丢失。
+- [x] 复查：5 位投资人现在都是「每季度恰好 1 条 `ExtSource`，无 0-holdings 行」。
+
+### 公司数据完备性（按投资人分化）
+
+用 `check:financial:integrity -- --investors <tribeId>` 逐个投资人跑（初次排查数字，修复前）：
+
+| 投资人 | 持仓涉及公司数 | 有 Financial FY 数据 | 缺口 |
+|---|---|---|---|
+| buffett | 89 | 89 | 0 |
+| lilu | 17 | 16 | 1（Berkshire，见下方 Filer/Company 拆分，已修复） |
+| duan | 39 | 38 | 1（Berkshire，同上，已修复） |
+| gavin-baker (Atreides) | 212 | 27 | **185（未处理，见下）** |
+| alex-sacerdote (Whale Rock) | 211 | 21 | **190（未处理，见下）** |
+
+- [ ] **Whale Rock / Atreides 组合缺口 375 家公司的 Financial/10-K 数据**：两家是成长股/科技股基金，
+      持仓broader、换手更频繁，和原本三位价值投资人的产品定位（价值投资深度分析）不同。看起来是加入 13F
+      追踪后从未同步扩展公司数据 pipeline，而不是单次故障。**用户决定先不处理，只记录**——是否批量
+      `import:10k` 补齐（SEC EDGAR 请求量 + 时间成本需要先评估）留待之后决定。
+
+### Filer / Company 拆分（2026-07-10，已完成）
+
+排查 lilu/duan 那 2 个「小缺口」时发现根因不是缺数据，是**重复 Entity + 下游查询把 filer 当成 company**：
+Berkshire Hathaway 是唯一一个"大师本体=公众公司"的特例（巴菲特没有单独基金 LP，直接用 Berkshire 本体做
+投资载体），产生了两条 Entity（`type=master, tribeId=buffett, cik=null` 的 filer 身份 + `type=company,
+cik=1067983` 的真实公司身份，59 条 Financial + 6 份 10-K + 1 份 CompanyAnalysis），Li Lu/Duan 持仓里的
+BRK-B/BRK-A 却链到了空的那条。根因是 4 处独立代码都把 `type="master"` 当成合法的"公司候选"（其中 3 处
+甚至给 master 打分比真实 CIK 还高），外加 2 处顺带产生的脏数据（Himalaya/H&H 被当成公司生成了
+CompanyAnalysis/BusinessCanvas）。完整调查与方案见 `/Users/rafael/.claude/plans/soft-cuddling-locket.md`。
+
+修复方案：新增 `Filer` 表（`tribeId` / `filerEntityId` / `companyEntityId` 可空 / `isMasterPersona`）作为
+"这个投资人是不是也是一家公司"的唯一权威来源，不改动 `Holding.holderEntityId`/`ExtSource.filerEntityId`
+的物理指向（风险太高，两个管线都在持续跑）。5 处 `type:{in:[...,"master"]}` 查询/打分逻辑全部改为只认
+`type="company"`；`upsertFilerEntity`/`upsertCompanyEntity` 加了守卫，以后新增的投资人如果也是公众公司，
+会自动写 `Filer.companyEntityId`，不会再产生同类重复。
+
+- [x] `prisma/migrations/20260710000100_add_filer_table` + `Filer` model
+- [x] `scripts/backfill-filer-table.ts`：5 位投资人全部建了 Filer 行，只有 buffett 的 `companyEntityId`
+      非空
+- [x] `scripts/fix-berkshire-entity-split.ts`：Li Lu/Duan 的 BRK-B/BRK-A 重新链到真实公司 entity；删除
+      Himalaya/H&H 的 2 条 CompanyAnalysis + Himalaya/H&H/master-Berkshire 的 3 条 BusinessCanvas
+- [x] 代码修复：`backfill-security-company-links.ts`（含新增 Filer 优先解析 + 反向回填守卫）、
+      `src/lib/company-data.ts`（两处查询+打分）、`company-generation.ts` `findCompanies()`、
+      `check-latest-holdings-company-coverage.ts`、`sync-company-name-map.ts`、
+      `compare-annual-report-fidelity.ts`、`backfill-names.ts`、`extract-10k-sections.ts`
+- [x] 顺带修复硬编码 3 投资人清单（之前发现的遗留问题）：`search-holdings.ts`（agent 工具，现在从
+      `Filer` 表动态读，支持全部 5 位）、`check-latest-holdings-company-coverage.ts` `INVESTORS`（现在从
+      `Filer` 表读）、`check-financial-integrity.ts` `--investors` 默认值（现在默认全部 5 位）——这意味着
+      2026-07-10 新建的 `data-integrity-check.yml` 每周 workflow 现在也自动覆盖全部 5 位了，不用额外改动
+- [x] 验证：`typecheck:scripts`/`lint`/`test` 全绿；`backfill:security:company-links:dry` 复查
+      `updated=0`（不会再把链接改回去）；`check:financial:integrity` 复查 lilu/duan 的 Berkshire 缺口归零；
+      `check-latest-holdings-company-coverage.ts --strict --json` 确认 5 位投资人都出现、Berkshire 对
+      lilu/duan 显示 `financeStatus: "ok"`；起本地 dev server 访问 `/company/CIK0001067983`（真实财务数据）、
+      `/master/lilu/holdings`（Berkshire 卡片正确链到 `/company/CIK0001067983`）、`/master/buffett`（未受
+      影响）全部 200
+
+**未做（明确留到以后，非阻塞）**：完全物理拆分（`Holding`/`ExtSource` 的 FK 从 `Entity` 改指向 `Filer`，
+`Entity.type` 彻底去掉 `"master"`）——只有出现第二个"大师本体=公众公司"的特例，或 filer 需要 company 表
+放不下的专属字段时才值得做，风险和收益都远高于现在这版。
+
 ## 测试体系设计（2026-07-08，从零搭建——重启 session 请先看这里）
 
 > 这个项目从第一行代码开始就没有设计过测试体系：13F/10-K 导入管线、7 条 LLM 生成内容管线（公司概览/
@@ -132,12 +209,50 @@ Supabase、R2、DeepSeek、Yahoo Finance、GBrain），真正的风险集中在*
         ② `services/pi-gateway/src/shared/extract-10k-sections.ts` 是 git-ignored 的生成文件，本地一直
         有是因为之前手动跑过 `sync:shared`，全新 checkout 没有，CI 需要单独跑一次 `npm run sync:shared`。
         两个都修完后 CI 实测全绿（`gh run watch` 验证）。
-4. [ ] **L4**：现有零散脚本（`check-financial-integrity`/`check-security-integrity`/
-      `check-latest-holdings-company-coverage`/`verify-10k-edgartools`）统一纳入一个每周定时 workflow，
-      顺带新增 `FilingSection.content` 完整性检查；同时清掉 `typecheck:scripts` 的历史遗留错误
-      （`financialFact` 相关，`FinancialFact` 表已从 schema 删除但
-      `cleanup-financial-facts.ts`/`dedupe-ext-source-filings.ts`/`merge-duplicate-entity.ts` 等脚本仍
-      引用），否则 L0 的 typecheck gate 一直是红的没有意义
+4. [x] **L4**（2026-07-10）：
+      - **清 `typecheck:scripts` 历史遗留错误**：不只是 `financialFact` 相关——排查发现
+        `import-10k-edgartools.ts`（生产 10-K/20-F/40-F 导入管线）从 2026-06-15 `FinancialFact` 表被删
+        那次迁移起**已完全跑不通**：每个 filing 处理流程第一步就是把原始 XBRL facts 写入
+        `FinancialFact`（`batchUpsertFinancialFactsFromApi`），这行直接抛异常，且在 sections/attachments/
+        artifacts/`Financial` 结构化数据写入**之前**执行、没有 try/catch 包裹，导致整个 filing 的导入直
+        接崩溃退出——不只是 facts 没存上，是这个 filing 什么都没存上。核实 `Financial`（PE/FCF 等计算真正
+        依赖的策展表）是从内存里的 API 响应直接算出来再写库的，不依赖这次归档，修复方式很干净：
+        `batchUpsertFinancialFactsFromApi`/`batchUpsertFinancialFactsFromInline` 纯属死代码（目标表已删，
+        不可能再运行成功），删掉两个函数和调用点即可，不影响真实数据路径。
+        - `scripts/lib/annual-report-import-core.ts`：删除上述两个死函数 + 未再使用的 `Prisma` import
+        - `scripts/import-10k-edgartools.ts`：删除对应调用点和汇总日志里的 `apiFactCount`/`inlineFactCount`
+        - `scripts/lib/company-generation.ts`：`fetchLatestFilingEvidence` 的 `facts` select（同样引用已删
+          表）和 `FilingEvidence.keyFacts` 字段一并移除——LLM prompt 里这段"Key facts"和 `financials` 参数
+          （策展后的核心科目）重复，不是唯一信息源
+        - `scripts/verify-10k-edgartools.ts`：`_count.select` 里的 `facts` 字段移除
+        - `scripts/dedupe-ext-source-filings.ts`/`scripts/merge-duplicate-entity.ts`：移除对 `financialFact`
+          的 reparent/count 逻辑
+        - `scripts/cleanup-financial-facts.ts`：整个删除（目标表已不存在，一次性迁移脚本不可能再运行成功），
+          package.json 对应 `cleanup:financial-facts` script 一并删除
+        - 顺带清掉两个和 `financialFact` 无关但同样让 gate 常红的遗留错误：`backfill-capex.ts`/
+          `backfill-share-repurchase.ts` 的 `LINE_ITEMS.find()` 结果在闭包里丢失窄化（TS 不会把模块顶层
+          `const` 的非空断言带进后面定义的函数体），改成一个显式返回非 undefined 类型的 `requireLineItem()`
+          辅助函数；`scripts/bench-live-asr-mixed.ts`/`bench-live-asr-ready.ts` 是 `a4f1648e`（移除
+          voice/digital-human 功能）漏删的孤儿基准脚本，直接删除；`slim-ext-source-metadata.ts` 的
+          `trimMetadata()` 返回值补 `Prisma.InputJsonValue` 类型
+        - 验证：`npm run typecheck:scripts` / `npm run lint` / `npm run test` 全绿
+      - **新增每周定时 workflow**：`.github/workflows/data-integrity-check.yml`（Monday 02:00 UTC，错开
+        `db-size-check.yml` 的 01:00），跑 4 个只读检查：
+        - `check-financial-integrity`/`check-security-integrity`：仅报告，无 pass/fail 阈值，原样保留
+        - `check-latest-holdings-company-coverage --strict --json`：`--strict` 时命中才 exit 1
+        - 新增 `scripts/check-filing-section-integrity.ts`（`check:filing-section:integrity` script）：
+          检查有真实抽取内容的 `FilingSection`（`contentTextLength > 100`）背后的 `ExtSource` 是否有
+          `FilingArtifact(kind=primary_html)`——这正是 `search_filings` 现在用来现场解析全文的来源；缺失
+          即意味着会静默退化回 `content` 那个轻量 preview 字段，和 2026-07-08 那次事故是同一类失败模式,
+          只是根因从"content 被截断"变成"primary_html 归档缺失"。air7 生产库实测：702 个有 section 的
+          filing，0 个缺 `primary_html`。
+        - **`verify-10k-edgartools` 有意排除**：和另外三个不同，它不是只读检查——会真的 spawn
+          `import-10k-edgartools.ts` 对生产库写入（重新导入 AAPL/PDD/SU）+ 打真实 SEC EDGAR API，每周无
+          人值守跑这个意味着每周对生产数据重新写入。用户确认排除，保留为发版前/改动导入器代码后的手动
+          冒烟工具，不进定时任务
+        - 告警：仿 `db-size-check.yml`，`coverage`/`filingsection` 任一 `--strict` 命中才开/更新一个
+          GitHub issue，正文附带全部 4 份报告（另外两份仅供参考）；没发现问题则 workflow 静默通过，不
+          每周都开 issue 制造噪音
 
 ### 明确延后（不在当前这轮）
 

@@ -36,7 +36,6 @@ export type FilingEvidence = {
   form: string | null;
   sections: Array<{ section: string; content: string }>;
   attachments: Array<{ sequence: string; documentType: string; documentName: string; description: string }>;
-  keyFacts: Array<{ concept: string; value: string; unit: string; endDate: string }>;
 };
 
 export function getArg(flag: string): string | undefined {
@@ -66,7 +65,7 @@ export async function findCompanies(query?: string): Promise<CompanyTarget[]> {
 
   if (!query) {
     return prisma.entity.findMany({
-      where: { type: { in: ["company", "master"] } },
+      where: { type: "company" },
       select,
       orderBy: { canonicalName: "asc" },
     }) as Promise<CompanyTarget[]>;
@@ -75,11 +74,11 @@ export async function findCompanies(query?: string): Promise<CompanyTarget[]> {
   const normalized = normalizeTicker(query) ?? query;
   const byTicker = await prisma.entity.findFirst({
     where: {
-      type: { in: ["company", "master"] },
+      type: "company",
       ticker: { equals: normalized, mode: "insensitive" },
     },
     select,
-    orderBy: [{ type: "desc" }, { updatedAt: "desc" }],
+    orderBy: { updatedAt: "desc" },
   });
   if (byTicker) return [byTicker as CompanyTarget];
 
@@ -94,7 +93,7 @@ export async function findCompanies(query?: string): Promise<CompanyTarget[]> {
 
   return prisma.entity.findMany({
     where: {
-      type: { in: ["company", "master"] },
+      type: "company",
       OR: [
         { canonicalName: { contains: query, mode: "insensitive" } },
         { ticker: { equals: query, mode: "insensitive" } },
@@ -246,16 +245,6 @@ export async function fetchLatestFilingEvidence(entityId: string): Promise<Filin
         },
         orderBy: [{ sequence: "asc" }],
       },
-      facts: {
-        select: {
-          concept: true,
-          value: true,
-          unit: true,
-          endDate: true,
-        },
-        orderBy: [{ endDate: "desc" }],
-        take: 80,
-      },
     },
   });
 
@@ -282,12 +271,6 @@ export async function fetchLatestFilingEvidence(entityId: string): Promise<Filin
       documentType: attachment.documentType,
       documentName: attachment.documentName,
       description: attachment.description,
-    })),
-    keyFacts: filing.facts.slice(0, 24).map((fact) => ({
-      concept: fact.concept,
-      value: fact.value?.toString() ?? "",
-      unit: fact.unit,
-      endDate: fact.endDate.toISOString().slice(0, 10),
     })),
   };
 }
@@ -339,9 +322,6 @@ ${filingEvidence.sections.map((section) => `- ${section.section}:\n${section.con
 
 Attachments:
 ${filingEvidence.attachments.map((attachment) => `- ${attachment.sequence} ${attachment.documentType} ${attachment.documentName} - ${attachment.description}`).join("\n")}
-
-Key facts:
-${filingEvidence.keyFacts.map((fact) => `- ${fact.concept} (${fact.unit}, ${fact.endDate}): ${fact.value}`).join("\n")}
 `;
 }
 

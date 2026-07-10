@@ -17,8 +17,13 @@ import {
   getCompanyFacts,
 } from "./lib/annual-report-import-core";
 
-const BUYBACK = LINE_ITEMS.find((item) => item.key === "ShareRepurchaseAmt");
-if (!BUYBACK) throw new Error("ShareRepurchaseAmt line item config missing in LINE_ITEMS");
+function requireLineItem(key: string): (typeof LINE_ITEMS)[number] {
+  const item = LINE_ITEMS.find((i) => i.key === key);
+  if (!item) throw new Error(`${key} line item config missing in LINE_ITEMS`);
+  return item;
+}
+
+const BUYBACK = requireLineItem("ShareRepurchaseAmt");
 
 function getArg(name: string): string | null {
   const index = process.argv.indexOf(name);

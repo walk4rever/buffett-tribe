@@ -17,12 +17,11 @@ const dryRun = process.argv.includes("--dry-run");
 
 async function main() {
   const companies = await db.entity.findMany({
-    where: { type: { in: ["company", "master"] } },
+    where: { type: "company" },
     select: { ticker: true, canonicalName: true, metadata: true, type: true, cik: true },
   });
   companies.sort((a, b) => {
-    const score = (x: (typeof companies)[number]) =>
-      (x.type === "master" ? 120 : 0) + (x.cik ? 100 : 0);
+    const score = (x: (typeof companies)[number]) => (x.cik ? 100 : 0);
     return score(b) - score(a);
   });
   const tickerRows = companies

@@ -12,6 +12,7 @@
  *   tsx scripts/slim-ext-source-metadata.ts
  */
 
+import { Prisma } from "@prisma/client";
 import prisma from "../src/lib/prisma";
 import { uploadToR2 } from "../src/lib/r2";
 
@@ -28,12 +29,12 @@ const KEEP_KEYS = [
 
 const SIZE_THRESHOLD_BYTES = 4096;
 
-function trimMetadata(metadata: Record<string, unknown>, archiveKey: string) {
+function trimMetadata(metadata: Record<string, unknown>, archiveKey: string): Prisma.InputJsonValue {
   const trimmed: Record<string, unknown> = { metaArchivedKey: archiveKey };
   for (const key of KEEP_KEYS) {
     if (key in metadata && metadata[key] != null) trimmed[key] = metadata[key];
   }
-  return trimmed;
+  return trimmed as Prisma.InputJsonValue;
 }
 
 async function main() {

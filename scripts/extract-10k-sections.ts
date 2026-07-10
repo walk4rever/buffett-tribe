@@ -273,7 +273,7 @@ async function main() {
     where.id = sourceIdArg;
   } else if (tickerArg) {
     const companies = await retryDb("find companies by ticker", () => prisma.entity.findMany({
-      where: { ticker: { equals: tickerArg, mode: "insensitive" } },
+      where: { type: "company", ticker: { equals: tickerArg, mode: "insensitive" } },
       select: { id: true },
     }));
     if (!companies.length) throw new Error(`Company not found: ${tickerArg}`);

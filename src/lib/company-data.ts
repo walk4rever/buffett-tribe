@@ -70,7 +70,7 @@ export async function getCompanyByTicker(ticker: string) {
   if (!normalizedTicker) return null;
   const rows = await db.entity.findMany({
     where: {
-      type: { in: ["company", "master"] },
+      type: "company",
       ticker: {
         equals: normalizedTicker,
         mode: "insensitive",
@@ -121,7 +121,6 @@ export async function getCompanyByTicker(ticker: string) {
 
   const best = [...rows].sort((a, b) => {
     const score = (x: (typeof rows)[number]) =>
-      (x.type === "master" ? 120 : 0) +
       (x.cik ? 100 : 0) +
       (x._count.financials > 0 ? 50 : 0);
     const diff = score(b) - score(a);
@@ -172,7 +171,7 @@ async function getEntityFamilyIds(entityId: string) {
 
   const siblings = await db.entity.findMany({
     where: {
-      type: { in: ["company", "master"] },
+      type: "company",
       ticker: {
         equals: normalizeTicker(base.ticker) ?? base.ticker,
         mode: "insensitive",
@@ -184,8 +183,7 @@ async function getEntityFamilyIds(entityId: string) {
   if (!siblings.length) return [entityId];
   return siblings
     .sort((a, b) => {
-      const score = (x: (typeof siblings)[number]) =>
-        (x.type === "master" ? 120 : 0) + (x.cik ? 100 : 0);
+      const score = (x: (typeof siblings)[number]) => (x.cik ? 100 : 0);
       return score(b) - score(a);
     })
     .map((s) => s.id);

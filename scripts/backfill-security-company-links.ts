@@ -86,8 +86,8 @@ function toJsonObject(value: Record<string, unknown>): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue;
 }
 
-function scoreCompanyCandidate(input: { type?: string; cik?: string | null }) {
-  return (input.type === "master" ? 120 : 0) + (input.cik ? 100 : 0);
+function scoreCompanyCandidate(input: { cik?: string | null }) {
+  return input.cik ? 100 : 0;
 }
 
 async function getTickerCikMap() {
@@ -129,7 +129,7 @@ async function main() {
   }
 
   const companies = await db.entity.findMany({
-    where: { type: { in: ["company", "master"] } },
+    where: { type: "company" },
     select: { id: true, ticker: true, cik: true, canonicalName: true, type: true },
   });
   const companyByTicker = new Map<string, { id: string; cik: string | null; type: string }>();
@@ -148,6 +148,23 @@ async function main() {
     }
     const key = issuerKey(c.canonicalName);
     if (!companyByIssuer.has(key)) companyByIssuer.set(key, c.id);
+  }
+
+  // A filer that is ALSO a public company (currently: buffett/Berkshire) is
+  // the one case where a security's ticker/CIK legitimately corresponds to
+  // a Filer's companyEntityId. Preload it so resolution never has to guess
+  // via scoring for this case — see TODOS.md「Filer / Company 拆分」.
+  const filerLinks = await db.filer.findMany({
+    where: { companyEntityId: { not: null } },
+    select: { filerCik: true, companyEntityId: true, companyEntity: { select: { ticker: true } } },
+  });
+  const filerCompanyByTicker = new Map<string, string>();
+  const filerCompanyByCik = new Map<string, string>();
+  for (const f of filerLinks) {
+    if (!f.companyEntityId) continue;
+    if (f.filerCik) filerCompanyByCik.set(f.filerCik, f.companyEntityId);
+    const ticker = normalizeTicker(f.companyEntity?.ticker ?? null);
+    if (ticker) filerCompanyByTicker.set(ticker, f.companyEntityId);
   }
 
   const rows = await db.security.findMany({
@@ -200,23 +217,30 @@ async function main() {
 
     const resolvedTicker = rawTickerCandidates.length ? normalizeTicker(rawTickerCandidates[0]) : null;
 
-    const candidateCompanyIds: string[] = [];
-    if (existingCompanyId && companyById.has(existingCompanyId)) {
-      candidateCompanyIds.push(existingCompanyId);
-    }
-    if (resolvedTicker) {
-      const byTicker = companyByTicker.get(resolvedTicker)?.id ?? null;
-      if (byTicker) candidateCompanyIds.push(byTicker);
-    }
-    const byIssuer = companyByIssuer.get(issuerK) ?? null;
-    if (byIssuer) candidateCompanyIds.push(byIssuer);
+    // A filer's own companyEntityId (set only when the filer is also a
+    // public company, e.g. Berkshire) always wins — no need to fall through
+    // to scoring/guessing for this case.
+    let companyId: string | null = resolvedTicker ? filerCompanyByTicker.get(resolvedTicker) ?? null : null;
 
-    let companyId =
-      [...new Set(candidateCompanyIds)].sort((a, b) => {
-        const left = companyMetaById.get(a) ?? {};
-        const right = companyMetaById.get(b) ?? {};
-        return scoreCompanyCandidate(right) - scoreCompanyCandidate(left);
-      })[0] ?? null;
+    if (!companyId) {
+      const candidateCompanyIds: string[] = [];
+      if (existingCompanyId && companyById.has(existingCompanyId)) {
+        candidateCompanyIds.push(existingCompanyId);
+      }
+      if (resolvedTicker) {
+        const byTicker = companyByTicker.get(resolvedTicker)?.id ?? null;
+        if (byTicker) candidateCompanyIds.push(byTicker);
+      }
+      const byIssuer = companyByIssuer.get(issuerK) ?? null;
+      if (byIssuer) candidateCompanyIds.push(byIssuer);
+
+      companyId =
+        [...new Set(candidateCompanyIds)].sort((a, b) => {
+          const left = companyMetaById.get(a) ?? {};
+          const right = companyMetaById.get(b) ?? {};
+          return scoreCompanyCandidate(right) - scoreCompanyCandidate(left);
+        })[0] ?? null;
+    }
 
     if (!companyId && resolvedTicker) {
       const secRef = tickerMap.get(resolvedTicker);
@@ -267,6 +291,20 @@ async function main() {
           companyMetaById.set(created.id, { cik: secRef.cik, type: "company" });
           companyByTicker.set(resolvedTicker, { id: created.id, cik: secRef.cik, type: "company" });
           createdCompany++;
+
+          // If this newly-created company shell's CIK belongs to one of our
+          // tracked filers, link it back so future runs never have to guess
+          // again — this is the guardrail that prevents the Berkshire class
+          // of bug from recurring for a future dual-natured filer.
+          const linkedFilerCompanyId = filerCompanyByCik.get(secRef.cik);
+          if (!linkedFilerCompanyId) {
+            await db.filer.updateMany({
+              where: { filerCik: secRef.cik, companyEntityId: null },
+              data: { companyEntityId: created.id },
+            });
+            filerCompanyByCik.set(secRef.cik, created.id);
+            filerCompanyByTicker.set(resolvedTicker, created.id);
+          }
         }
       }
     }

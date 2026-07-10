@@ -1,0 +1,126 @@
+name: Data Integrity Check
+
+on:
+  schedule:
+    - cron: "0 2 * * 1" # Monday 02:00 UTC, weekly (staggered after DB Size Check)
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx prisma generate
+
+      # Report-only: no pass/fail threshold, just a weekly data snapshot.
+      - name: Financial integrity report
+        id: financial
+        continue-on-error: true
+        run: |
+          OUTPUT=$(npx tsx scripts/check-financial-integrity.ts 2>&1)
+          echo "$OUTPUT"
+          {
+            echo "report<<EOF"
+            echo "$OUTPUT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # Report-only: no pass/fail threshold, just a weekly data snapshot.
+      - name: Security integrity report
+        id: security
+        continue-on-error: true
+        run: |
+          OUTPUT=$(npx tsx scripts/check-security-integrity.ts 2>&1)
+          echo "$OUTPUT"
+          {
+            echo "report<<EOF"
+            echo "$OUTPUT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # --strict: exits 1 when a tribe-member company is missing financial
+      # data or generated analysis for the expected window.
+      - name: Holdings/company coverage check
+        id: coverage
+        continue-on-error: true
+        run: |
+          set +e
+          OUTPUT=$(npx tsx scripts/check-latest-holdings-company-coverage.ts --strict --json 2>&1)
+          CODE=$?
+          echo "$OUTPUT"
+          echo "exit_code=$CODE" >> "$GITHUB_OUTPUT"
+          {
+            echo "report<<EOF"
+            echo "$OUTPUT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          exit 0
+
+      # --strict: exits 1 when a FilingSection has real extracted content but
+      # its parent filing has no primary_html artifact to re-derive full text
+      # from (see script header — same failure class as the 2026-07-08 incident).
+      - name: Filing section integrity check
+        id: filingsection
+        continue-on-error: true
+        run: |
+          set +e
+          OUTPUT=$(npx tsx scripts/check-filing-section-integrity.ts --strict 2>&1)
+          CODE=$?
+          echo "$OUTPUT"
+          echo "exit_code=$CODE" >> "$GITHUB_OUTPUT"
+          {
+            echo "report<<EOF"
+            echo "$OUTPUT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Open or update alert issue
+        if: steps.coverage.outputs.exit_code != '0' || steps.filingsection.outputs.exit_code != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FINANCIAL_REPORT: ${{ steps.financial.outputs.report }}
+          SECURITY_REPORT: ${{ steps.security.outputs.report }}
+          COVERAGE_REPORT: ${{ steps.coverage.outputs.report }}
+          FILING_SECTION_REPORT: ${{ steps.filingsection.outputs.report }}
+        run: |
+          TITLE="[WARN] Weekly data integrity check found gaps"
+          BODY="Weekly check on $(date -u +%Y-%m-%d). Failing checks are listed first; the other two are always-informational snapshots (no pass/fail threshold).
+
+          ### Holdings/company coverage (\`--strict\`)
+          \`\`\`
+          $COVERAGE_REPORT
+          \`\`\`
+
+          ### Filing section integrity (\`--strict\`)
+          \`\`\`
+          $FILING_SECTION_REPORT
+          \`\`\`
+
+          ### Financial integrity (informational)
+          \`\`\`
+          $FINANCIAL_REPORT
+          \`\`\`
+
+          ### Security integrity (informational)
+          \`\`\`
+          $SECURITY_REPORT
+          \`\`\`
+
+          See TODOS.md「L4 数据管线健康检查」for background."
+          EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --search "Weekly data integrity check in:title" --state open --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$GITHUB_REPOSITORY" --body "$BODY"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$BODY"
+          fi

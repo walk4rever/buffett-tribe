@@ -38,7 +38,6 @@ async function main() {
     select: { id: true, url: true },
   });
 
-  let migratedFacts = 0;
   let deletedFinancials = 0;
   let deletedSections = 0;
   let deletedSources = 0;
@@ -49,14 +48,6 @@ async function main() {
       console.warn(`  No matching main source for URL: ${ds.url}`);
       continue;
     }
-
-    // Migrate FinancialFact to main source / main entity
-    const factResult = await prisma.financialFact.updateMany({
-      where: { entityId: dupId, sourceId: ds.id },
-      data: { entityId: mainId, sourceId: mainSid },
-    });
-    migratedFacts += factResult.count;
-    console.log(`  Source ${ds.id.slice(0, 8)} -> ${mainSid.slice(0, 8)}: migrated ${factResult.count} facts`);
 
     // Delete duplicate Financial records (main already has them)
     const finResult = await prisma.financial.deleteMany({
@@ -76,21 +67,20 @@ async function main() {
   }
 
   // Check for any remaining data on dup entity
-  const remainingFacts = await prisma.financialFact.count({ where: { entityId: dupId } });
   const remainingFinancials = await prisma.financial.count({ where: { entityId: dupId } });
   const remainingSections = await prisma.filingSection.count({ where: { entityId: dupId } });
   const remainingSources = await prisma.extSource.count({ where: { filerEntityId: dupId } });
 
-  console.log(`\nRemaining on dup entity: facts=${remainingFacts}, financials=${remainingFinancials}, sections=${remainingSections}, sources=${remainingSources}`);
+  console.log(`\nRemaining on dup entity: financials=${remainingFinancials}, sections=${remainingSections}, sources=${remainingSources}`);
 
-  if (remainingFacts + remainingFinancials + remainingSections + remainingSources === 0) {
+  if (remainingFinancials + remainingSections + remainingSources === 0) {
     await prisma.entity.delete({ where: { id: dupId } });
     console.log(`Deleted duplicate entity ${dupId}`);
   } else {
     console.warn("Duplicate entity still has data; not deleting. Manual review required.");
   }
 
-  console.log(`\nSummary: migrated ${migratedFacts} facts, deleted ${deletedFinancials} financials, ${deletedSections} sections, ${deletedSources} sources.`);
+  console.log(`\nSummary: deleted ${deletedFinancials} financials, ${deletedSections} sections, ${deletedSources} sources.`);
 }
 
 main().catch((err) => {

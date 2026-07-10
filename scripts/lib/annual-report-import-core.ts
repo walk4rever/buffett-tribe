@@ -3,7 +3,7 @@
  *
  * Shared annual-report storage and parsing primitives.
  */
-import { Prisma, PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import * as cheerio from "cheerio";
 import { hasChineseText, issuerKey, normalizeEnglishName } from "../../src/lib/company-name-map";
 import { translateCompanyNameToZh, upsertNameMapEntries } from "./company-name-zh";
@@ -680,159 +680,6 @@ export function decimalFromNumber(value: number) {
   return value.toString();
 }
 
-function toJsonValue(value: unknown): Prisma.InputJsonValue {
-  return value as Prisma.InputJsonValue;
-}
-
-export async function batchUpsertFinancialFactsFromApi(
-  entityId: string,
-  sourceId: string,
-  facts: Awaited<ReturnType<typeof getCompanyFacts>>,
-  filing: { accession: string; filedAt: string; reportDate: string; form: string },
-) {
-  const allTaxonomies = facts.facts ?? {};
-  const records: Array<{
-    entityId: string;
-    sourceId: string;
-    taxonomy: string;
-    concept: string;
-    value: string | null;
-    valueRaw: string;
-    unit: string;
-    unitRef: string | null;
-    periodType: string;
-    startDate: Date | null;
-    endDate: Date;
-    form: string;
-    accession: string;
-    filedAt: Date;
-    rawFactJson: Prisma.InputJsonValue;
-    rawContextJson: Prisma.InputJsonValue;
-  }> = [];
-  const targetFy = new Date(filing.reportDate).getUTCFullYear();
-
-  for (const [taxonomy, concepts] of Object.entries(allTaxonomies)) {
-    for (const [concept, conceptData] of Object.entries(concepts)) {
-      const units = (conceptData as Record<string, unknown>)?.units as Record<string, QuarterFact[]> | undefined;
-      if (!units) continue;
-
-      for (const [unit, rows] of Object.entries(units)) {
-        if (!Array.isArray(rows)) continue;
-        for (const row of rows) {
-          if (row.val == null || typeof row.val !== "number") continue;
-          if (!ANNUAL_FORMS.has(row.form ?? filing.form)) continue;
-          if (row.accn) {
-            if (row.accn !== filing.accession) continue;
-          } else {
-            const rowEndYear = row.end ? new Date(row.end).getUTCFullYear() : null;
-            if (rowEndYear !== targetFy) continue;
-          }
-
-          const periodType = row.start ? "duration" : "instant";
-          const startDate = row.start ? new Date(row.start) : null;
-          const endDate = new Date(row.end ?? filing.reportDate);
-
-          records.push({
-            entityId,
-            sourceId,
-            taxonomy,
-            concept,
-            value: decimalFromNumber(row.val),
-            valueRaw: String(row.val),
-            unit: unit.toUpperCase(),
-            unitRef: null,
-            periodType,
-            startDate,
-            endDate,
-            form: row.form ?? filing.form,
-            accession: filing.accession,
-            filedAt: row.filed ? new Date(row.filed) : new Date(filing.filedAt),
-            rawFactJson: toJsonValue(row),
-            rawContextJson: toJsonValue({ start: row.start, end: row.end }),
-          });
-        }
-      }
-    }
-  }
-
-  if (records.length) {
-    await db.financialFact.createMany({ data: records, skipDuplicates: true });
-  }
-  return records.length;
-}
-
-export async function batchUpsertFinancialFactsFromInline(
-  entityId: string,
-  sourceId: string,
-  doc: InlineXbrlDocument,
-  filing: { accession: string; filedAt: string; reportDate: string; form: string },
-) {
-  const records: Array<{
-    entityId: string;
-    sourceId: string;
-    taxonomy: string;
-    concept: string;
-    value: string | null;
-    valueRaw: string;
-    unit: string;
-    unitRef: string | null;
-    periodType: string;
-    startDate: Date | null;
-    endDate: Date;
-    form: string;
-    accession: string;
-    filedAt: Date;
-    rawFactJson: Prisma.InputJsonValue;
-    rawContextJson: Prisma.InputJsonValue;
-  }> = [];
-
-  const targetFy = new Date(filing.reportDate).getUTCFullYear();
-
-  for (const fact of doc.facts) {
-    if (fact.value == null) continue;
-
-    const context = doc.contexts.get(fact.contextRef);
-    if (!context) continue;
-
-    const tag = fact.name.includes(":") ? fact.name.split(":").at(-1) ?? fact.name : fact.name;
-    const taxonomy = fact.name.includes(":") ? fact.name.split(":")[0] ?? "us-gaap" : "us-gaap";
-    const unit = normalizeInlineUnitRef(fact.unitRef) ?? "pure";
-    const endDate = context.endDate
-      ? new Date(context.endDate)
-      : context.instant
-        ? new Date(context.instant)
-        : new Date(filing.reportDate);
-    const startDate = context.startDate ? new Date(context.startDate) : null;
-
-    // 只存目标 FY 的数据（避免把 Q1-Q3 的也混进来）
-    if (endDate.getUTCFullYear() !== targetFy) continue;
-
-    records.push({
-      entityId,
-      sourceId,
-      taxonomy,
-      concept: tag,
-      value: decimalFromNumber(fact.value),
-      valueRaw: String(fact.value),
-      unit: unit.toUpperCase(),
-      unitRef: fact.unitRef,
-      periodType: context.periodType,
-      startDate,
-      endDate,
-      form: filing.form,
-      accession: filing.accession,
-      filedAt: new Date(filing.filedAt),
-      rawFactJson: toJsonValue({ name: fact.name, contextRef: fact.contextRef, unitRef: fact.unitRef, value: fact.value }),
-      rawContextJson: toJsonValue({ id: context.id, periodType: context.periodType, startDate: context.startDate, instant: context.instant, endDate: context.endDate }),
-    });
-  }
-
-  if (records.length) {
-    await db.financialFact.createMany({ data: records, skipDuplicates: true });
-  }
-  return records.length;
-}
-
 export async function upsertCompanyEntity(cik: string, ticker: string, title: string, profile: SecCompanyProfile) {
   // 1. Find by CIK (any type)
   const byCik = await db.entity.findFirst({
@@ -861,6 +708,15 @@ export async function upsertCompanyEntity(cik: string, ticker: string, title: st
         select: { id: true, metadata: true, type: true, cik: true, sector: true },
       });
     }
+  }
+
+  // Never retype/mutate a filer's Entity(type="master") row into a company —
+  // that's the exact collision that produced the Berkshire duplicate-entity
+  // bug (see TODOS.md「Filer / Company 拆分」). If resolution landed on a
+  // master row, treat it as "not found" and fall through to creating a
+  // proper company row; the Filer.companyEntityId link is written below.
+  if (target?.type === "master") {
+    target = null;
   }
 
   const existingMeta = (target?.metadata as Record<string, unknown> | null) ?? {};
@@ -907,41 +763,53 @@ export async function upsertCompanyEntity(cik: string, ticker: string, title: st
   };
   const sector = mapSectorFromSic(profile.sic, profile.sicDescription) ?? target?.sector ?? null;
 
-  if (target) {
-    const canSetCik = byCik == null || byCik.id === target.id;
-    const needsTypeUpgrade = target.type !== "company";
-    return db.entity.update({
-      where: { id: target.id },
-      data: {
-        type: needsTypeUpgrade ? "company" : target.type,
-        canonicalName: title,
-        cik: canSetCik ? cik : target.cik,
-        ticker,
-        sector,
-        metadata: {
-          ...nextMeta,
-          ...(canSetCik ? {} : { secCik: cik }),
-        },
-      },
-    });
-  }
+  const resolved = target
+    ? await (async () => {
+        const canSetCik = byCik == null || byCik.id === target.id;
+        const needsTypeUpgrade = target.type !== "company";
+        return db.entity.update({
+          where: { id: target.id },
+          data: {
+            type: needsTypeUpgrade ? "company" : target.type,
+            canonicalName: title,
+            cik: canSetCik ? cik : target.cik,
+            ticker,
+            sector,
+            metadata: {
+              ...nextMeta,
+              ...(canSetCik ? {} : { secCik: cik }),
+            },
+          },
+        });
+      })()
+    : await (async () => {
+        // CIK may already be occupied by a non-company entity (e.g. master/filer).
+        // Keep SEC CIK in metadata to avoid unique-key collision on Entity.cik.
+        const createCik = byCik == null ? cik : null;
+        return db.entity.create({
+          data: {
+            type: "company",
+            canonicalName: title,
+            cik: createCik,
+            ticker,
+            sector,
+            metadata: {
+              ...nextMeta,
+              ...(createCik ? {} : { secCik: cik }),
+            },
+          },
+        });
+      })();
 
-  // CIK may already be occupied by a non-company entity (e.g. master/filer).
-  // Keep SEC CIK in metadata to avoid unique-key collision on Entity.cik.
-  const createCik = byCik == null ? cik : null;
-  return db.entity.create({
-    data: {
-      type: "company",
-      canonicalName: title,
-      cik: createCik,
-      ticker,
-      sector,
-      metadata: {
-        ...nextMeta,
-        ...(createCik ? {} : { secCik: cik }),
-      },
-    },
+  // If this company's CIK belongs to one of our tracked filers (currently:
+  // Berkshire/buffett), link it back so future runs never have to guess via
+  // scoring again — see TODOS.md「Filer / Company 拆分」.
+  await db.filer.updateMany({
+    where: { filerCik: cik, companyEntityId: null },
+    data: { companyEntityId: resolved.id },
   });
+
+  return resolved;
 }
 
 export async function upsertExtSource(

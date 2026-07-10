@@ -108,12 +108,18 @@ function formatShares(raw: string | null): string {
   return String(n);
 }
 
-function formatHoldings(rows: HoldingRow[], master: string): string {
+async function getFilerLabels(): Promise<Map<string, string>> {
+  const result = await pool.query<{ tribeId: string; name: string }>(
+    `SELECT "tribeId", "name" FROM "Filer"`,
+  );
+  return new Map(result.rows.map((r) => [r.tribeId, r.name]));
+}
+
+function formatHoldings(rows: HoldingRow[], masterLabel: string): string {
   if (rows.length === 0) return "No holdings found matching the criteria.";
 
   const first = rows[0];
   const period = `Q${first.period_quarter} ${first.period_year}`;
-  const masterLabel = { buffett: "Buffett (Berkshire Hathaway)", lilu: "Li Lu (喜马拉雅资本)", duan: "Duan Yongping" }[master] ?? master;
 
   const lines = [`**${masterLabel} — 13F Holdings (${period})**\n`];
 
@@ -146,11 +152,11 @@ export const searchHoldingsTool = defineTool({
   name: "search_holdings",
   label: "Search 13F Holdings",
   description:
-    "Look up 13F portfolio holdings for master investors (Buffett, Li Lu, Duan Yongping). Returns position size, portfolio weight, and quarter-over-quarter change. Defaults to the most recent available quarter.",
+    "Look up 13F portfolio holdings for tracked investors (Buffett, Li Lu, Duan Yongping, Gavin Baker, Alex Sacerdote). Returns position size, portfolio weight, and quarter-over-quarter change. Defaults to the most recent available quarter.",
   promptSnippet: "search_holdings(master, company?, year?, quarter?) → 13F holdings data",
   parameters: Type.Object({
     master: Type.String({
-      description: "Which investor: buffett | lilu | duan",
+      description: "Which investor: buffett | lilu | duan | gavin-baker | alex-sacerdote",
     }),
     company: Type.Optional(Type.String({
       description: "Filter by company ticker (e.g. AAPL) or partial name. Omit to get full portfolio.",
@@ -169,9 +175,11 @@ export const searchHoldingsTool = defineTool({
     const { master, company, year, quarter, top_n } = params;
 
     const tribeId = master.toLowerCase().trim();
-    if (!["buffett", "lilu", "duan"].includes(tribeId)) {
+    const filerLabels = await getFilerLabels();
+    const masterLabel = filerLabels.get(tribeId);
+    if (!masterLabel) {
       return {
-        content: [{ type: "text" as const, text: `Unknown master "${master}". Use: buffett | lilu | duan` }],
+        content: [{ type: "text" as const, text: `Unknown master "${master}". Use: ${[...filerLabels.keys()].join(" | ")}` }],
         details: null,
       };
     }
@@ -197,7 +205,7 @@ export const searchHoldingsTool = defineTool({
     }
 
     return {
-      content: [{ type: "text" as const, text: formatHoldings(rows, tribeId) }],
+      content: [{ type: "text" as const, text: formatHoldings(rows, masterLabel) }],
       details: { count: rows.length },
     };
   },

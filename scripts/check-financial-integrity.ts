@@ -8,10 +8,10 @@ function getArg(flag: string): string | undefined {
 }
 
 async function main() {
-  const investors = (getArg("--investors") ?? "buffett,lilu,duan")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const investorsArg = getArg("--investors");
+  const investors = investorsArg
+    ? investorsArg.split(",").map((s) => s.trim()).filter(Boolean)
+    : (await db.filer.findMany({ select: { tribeId: true } })).map((f) => f.tribeId);
   const fromYear = Number(getArg("--from-year") ?? "2020");
 
   const holdings = await db.holding.findMany({

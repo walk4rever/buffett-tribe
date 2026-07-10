@@ -16,7 +16,6 @@ type SnapshotRow = {
   sections: number;
   attachments: number;
   artifacts: number;
-  facts: number;
   derived: number;
 };
 
@@ -95,7 +94,6 @@ async function snapshot(ticker: string, fromYear: number, toYear: number): Promi
           sections: true,
           attachments: true,
           artifacts: true,
-          facts: true,
           financials: true,
         },
       },
@@ -111,7 +109,6 @@ async function snapshot(ticker: string, fromYear: number, toYear: number): Promi
     sections: source._count.sections,
     attachments: source._count.attachments,
     artifacts: source._count.artifacts,
-    facts: source._count.facts,
     derived: source._count.financials,
   }));
 }
@@ -124,7 +121,7 @@ function printSnapshot(label: string, rows: SnapshotRow[]) {
   }
   for (const row of rows) {
     console.log(
-      `  ${row.ticker} ${row.year} ${row.kind} ${row.accession}: sections=${row.sections}, attachments=${row.attachments}, artifacts=${row.artifacts}, facts=${row.facts}, derived=${row.derived}`,
+      `  ${row.ticker} ${row.year} ${row.kind} ${row.accession}: sections=${row.sections}, attachments=${row.attachments}, artifacts=${row.artifacts}, derived=${row.derived}`,
     );
   }
 }

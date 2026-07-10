@@ -17,8 +17,13 @@ import {
   getCompanyFacts,
 } from "./lib/annual-report-import-core";
 
-const CAPEX = LINE_ITEMS.find((item) => item.key === "CapEx");
-if (!CAPEX) throw new Error("CapEx line item config missing in LINE_ITEMS");
+function requireLineItem(key: string): (typeof LINE_ITEMS)[number] {
+  const item = LINE_ITEMS.find((i) => i.key === key);
+  if (!item) throw new Error(`${key} line item config missing in LINE_ITEMS`);
+  return item;
+}
+
+const CAPEX = requireLineItem("CapEx");
 
 function getArg(name: string): string | null {
   const index = process.argv.indexOf(name);

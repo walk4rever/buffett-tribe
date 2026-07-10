@@ -230,7 +230,7 @@ async function fetchPrimaryHtml(publicUrl: string | null, sourceUrl: string | nu
 async function checkTicker(ticker: string, timeoutMs: number): Promise<FilingCheck> {
   const company = await db.entity.findFirst({
     where: {
-      type: { in: ["company", "master"] },
+      type: "company",
       ticker: { equals: ticker, mode: "insensitive" },
     },
     select: {

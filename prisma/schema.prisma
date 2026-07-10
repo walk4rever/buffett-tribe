@@ -179,10 +179,33 @@ model Entity {
   businessCanvas         BusinessCanvas?
   businessCanvasVersions BusinessCanvasVersion[]
   profile                MasterProfile?
+  filerAsFiler           Filer?                  @relation("FilerFilerEntity")
+  filerAsCompany         Filer?                  @relation("FilerCompanyEntity")
 
   @@index([type])
   @@index([ticker])
   @@index([market, code])
+}
+
+// Filer = a fund/investment vehicle that submits 13F on behalf of a tracked
+// investor. Kept as a companion table (not a physical FK retarget) so that
+// downstream "resolve a ticker/CIK to a company" queries never have to
+// consider a filer's Entity(type=master) row as a company candidate.
+// companyEntityId is set only when the filer is itself a public operating
+// company (currently: Berkshire Hathaway / buffett) — see TODOS.md.
+model Filer {
+  id              String   @id @default(cuid())
+  tribeId         String   @unique
+  name            String
+  filerCik        String?  @unique
+  filerEntityId   String   @unique
+  companyEntityId String?  @unique
+  isMasterPersona Boolean  @default(true) // true = buffett/lilu/duan (core, has wisdom + /master page); false = gavin-baker/alex-sacerdote (alpha, filer only)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  filerEntity   Entity  @relation("FilerFilerEntity", fields: [filerEntityId], references: [id], onDelete: Cascade)
+  companyEntity Entity? @relation("FilerCompanyEntity", fields: [companyEntityId], references: [id], onDelete: SetNull)
 }
 
 model Security {

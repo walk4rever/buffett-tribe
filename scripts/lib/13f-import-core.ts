@@ -7,6 +7,7 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { hasChineseText, issuerKey, resolveCompanyNamesFromMaps } from "../../src/lib/company-name-map";
 import { normalizeTicker } from "../../src/lib/ticker";
+import { TRIBE_MEMBERS } from "../../src/lib/tribe";
 import { translateCompanyNameToZh, upsertNameMapEntries } from "./company-name-zh";
 import { ImportTimer } from "./import-timer";
 
@@ -179,7 +180,7 @@ export const FILERS = [
   { tribeId: "alex-sacerdote", name: "Whale Rock Capital Management LLC", cik: "1387322" },
 ] as const;
 
-export type Filer = (typeof FILERS)[number];
+export type FilerConfig = (typeof FILERS)[number];
 
 export function quarterKey(year: number, quarter: number): string {
   return `${year}Q${quarter}`;
@@ -375,27 +376,48 @@ export async function preloadSecurityResolution(entries: InfoTableEntry[]) {
   };
 }
 
-export async function upsertFilerEntity(filer: Filer) {
+export async function upsertFilerEntity(filer: FilerConfig) {
   // Master entities are identified by tribeId (not CIK, which may belong to the company entity).
   const existing = await db.entity.findFirst({
     where: { tribeId: filer.tribeId },
     select: { id: true },
   });
 
-  if (existing) {
-    return db.entity.update({
-      where: { id: existing.id },
-      data: { type: "master", canonicalName: filer.name },
-    });
-  }
+  const entity = existing
+    ? await db.entity.update({
+        where: { id: existing.id },
+        data: { type: "master", canonicalName: filer.name },
+      })
+    : await db.entity.create({
+        data: {
+          type: "master",
+          canonicalName: filer.name,
+          tribeId: filer.tribeId,
+        },
+      });
 
-  return db.entity.create({
-    data: {
-      type: "master",
-      canonicalName: filer.name,
+  // Keep the Filer companion table in sync (see TODOS.md「Filer / Company
+  // 拆分」) so every filer is discoverable there the moment it's first
+  // imported, before any 10-K import for it ever runs.
+  const isMasterPersona = TRIBE_MEMBERS.find((m) => m.id === filer.tribeId)?.category === "core";
+  await db.filer.upsert({
+    where: { tribeId: filer.tribeId },
+    create: {
       tribeId: filer.tribeId,
+      name: filer.name,
+      filerCik: filer.cik,
+      filerEntityId: entity.id,
+      isMasterPersona,
+    },
+    update: {
+      name: filer.name,
+      filerCik: filer.cik,
+      filerEntityId: entity.id,
+      isMasterPersona,
     },
   });
+
+  return entity;
 }
 
 async function upsertSecurityEntity(entry: InfoTableEntry): Promise<SecuritySnapshot> {
