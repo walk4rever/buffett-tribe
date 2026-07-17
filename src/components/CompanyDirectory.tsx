@@ -54,7 +54,7 @@ export function CompanyDirectory({ companies }: { companies: CompanyDirectoryIte
                 <span className="companies-item-zh">{c.nameZh}</span>
                 <span className="companies-item-en">{c.nameEn}</span>
                 {c.tickers.length > 0 ? (
-                  <span className="companies-item-ticker">{c.tickers.join(" / ")}</span>
+                  <span className="companies-item-ticker">({c.tickers.join(" / ")})</span>
                 ) : null}
               </Link>
             ) : (
@@ -62,7 +62,7 @@ export function CompanyDirectory({ companies }: { companies: CompanyDirectoryIte
                 <span className="companies-item-zh">{c.nameZh}</span>
                 <span className="companies-item-en">{c.nameEn}</span>
                 {c.tickers.length > 0 ? (
-                  <span className="companies-item-ticker">{c.tickers.join(" / ")}</span>
+                  <span className="companies-item-ticker">({c.tickers.join(" / ")})</span>
                 ) : null}
               </span>
             )
