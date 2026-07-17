@@ -251,11 +251,8 @@ async function getTargets(limit?: number): Promise<ImportTarget[]> {
         ticker: true,
         cik: true,
         securitiesAsCompany: {
-          select: {
-            ticker: true,
-            isPrimary: true,
-          },
-          orderBy: [{ isPrimary: "desc" }, { ticker: "asc" }],
+          select: { ticker: true },
+          orderBy: { ticker: "asc" },
         },
       },
       orderBy: { canonicalName: "asc" },

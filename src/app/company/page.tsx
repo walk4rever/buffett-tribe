@@ -11,11 +11,32 @@ export const metadata: Metadata = {
   description: "巴菲特部落覆盖的全部公司，支持搜索与过滤。",
 };
 
+function uniqueTickers(values: Array<string | null | undefined>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const ticker = value?.trim().toUpperCase();
+    if (!ticker || seen.has(ticker)) continue;
+    seen.add(ticker);
+    result.push(ticker);
+  }
+  return result;
+}
+
 async function getCompanies(): Promise<CompanyDirectoryItem[]> {
   try {
     const rows = await prisma.entity.findMany({
       where: { type: "company", cik: { not: null } },
-      select: { canonicalName: true, cik: true, metadata: true },
+      select: {
+        canonicalName: true,
+        cik: true,
+        ticker: true,
+        metadata: true,
+        securitiesAsCompany: {
+          select: { ticker: true },
+          orderBy: { ticker: "asc" },
+        },
+      },
       orderBy: { canonicalName: "asc" },
     });
     return rows
@@ -25,10 +46,16 @@ async function getCompanies(): Promise<CompanyDirectoryItem[]> {
         const nameZh = (typeof meta?.nameZh === "string" && meta.nameZh.trim()) || row.canonicalName;
         const nameEn =
           (typeof meta?.nameEnShort === "string" && meta.nameEnShort.trim()) || row.canonicalName;
+        // Entity.ticker is the display-primary ticker; a company can also have
+        // multiple tradeable share classes (e.g. Berkshire BRK-A/BRK-B, Alphabet
+        // GOOG/GOOGL) recorded as separate Security rows under the same
+        // companyEntityId — merge both sources so search matches any of them.
+        const tickers = uniqueTickers([row.ticker, ...row.securitiesAsCompany.map((s) => s.ticker)]);
         return {
           cik: row.cik as string,
           nameZh,
           nameEn,
+          tickers,
           href: formatCompanyPathFromCik(row.cik),
         };
       });

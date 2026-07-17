@@ -27,6 +27,7 @@
     "import:10k:from13f": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-10k-from-13f.ts",
     "pipeline:10k": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/pipeline-10k.ts",
     "data:10k": "npm run pipeline:10k --",
+    "onboard:company": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/onboard-company.ts",
     "compare:10k:fidelity": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/compare-annual-report-fidelity.ts",
     "extract:10k:sections": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/extract-10k-sections.ts",
     "backfill:filing-section-jobs": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-filing-section-jobs.ts",

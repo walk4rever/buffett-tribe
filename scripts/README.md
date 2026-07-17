@@ -2,6 +2,24 @@
 
 当前脚本较多，这里只给运行面的主入口做编号总览。目标是让人先知道“从哪进”，而不是先翻完整个 `scripts/` 目录。
 
+## 00. 新公司一键 onboarding 入口
+
+- 文件：[onboard-company.ts](/Users/rafael/R129/buffett-tribe/scripts/onboard-company.ts)
+- 命令：`npm run onboard:company -- --ticker XXXX`
+- 作用：给一个不在任何大师 13F 持仓里的全新美股 ticker 建立完整公司页，按顺序编排 7 步（每步跑完都查库验证真正写入了数据，不只看子进程退出码——`generate:*` 系列脚本会内部捕获单公司错误后仍退出 0）：
+  1. `import:10k`（Entity + Financial + FilingSection + R2 归档）
+  2. `import:stock-prices:yf --import-db`（StockPrice，可用 `--skip-price` 跳过）
+  3-7. `generate:company-profile` / `generate:business-model` / `generate:value-analysis` / `generate:management-analysis` / `generate:valuation-analysis`（可用 `--skip-generation` 整体跳过）
+- 常用参数：
+  - `--ticker XXXX --from 2020 --to 2026`：ticker 和年份范围（默认 2020 到当前年）。
+  - `--price-start 2020-01-01`：股价起始日期（默认 `fetch-stock-prices-yf.py` 自身的近 2 年）。
+  - `--force`：透传给 5 个 `generate:*` 脚本，强制重新生成已存在的内容。
+  - `--skip-price` / `--skip-generation`：只跑核心数据导入，跳过股价或全部 LLM 生成。
+  - `--fresh`：忽略 checkpoint 从头开始。
+  - `--dry-run`：只打印将要执行的步骤列表。
+- Checkpoint：按 ticker 存到 `.cache/onboard-company/<TICKER>.json`，记录每步验证通过的完成时间；重跑默认跳过已完成步骤，某一步验证失败会在该步停止，修好后重跑同一条命令即可从断点续跑。
+- 2026-07-17 端到端验证：`--ticker ODFL --from 2024 --to 2024 --skip-price --skip-generation` 从零创建 Entity，10 条 `Financial` + 22 个 `FilingSection` 写入，R2 归档确认，checkpoint 断点续跑验证通过（生产库真实数据，非测试库）。
+
 ## 01. 13F 导入主入口
 
 - 文件：[pipeline-13f.ts](/Users/rafael/R129/buffett-tribe/scripts/pipeline-13f.ts)

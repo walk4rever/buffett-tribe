@@ -153,9 +153,8 @@ export async function getCompanySecurities(entityId: string) {
       shareClass: true,
       titleOfClass: true,
       exchange: true,
-      isPrimary: true,
     },
-    orderBy: [{ isPrimary: "desc" }, { ticker: "asc" }],
+    orderBy: { ticker: "asc" },
   });
 
   return rows;

@@ -2,7 +2,7 @@
 
 > 更新：2026-07-17（v0.38.15）。本文件只保留**未完成项**，按 P0–P3 排优先级；完成项的结论回写 `PRODUCT.md` 后从这里移除（详细过程见 git 历史）。产品定位、架构、数据口径、测试体系设计一律以 `PRODUCT.md` 为准。
 >
-> 当前队列于 2026-07-17 与用户讨论后重排：P0 两项是用户点名的紧急项（带完整现状诊断，可直接开工），P1 三项是围绕"Agent 是核心入口"主线的既定建议。
+> 当前队列于 2026-07-17 与用户讨论后重排：P0 项是用户点名的紧急项（带完整现状诊断，可直接开工），P1 三项是围绕"Agent 是核心入口"主线的既定建议。
 
 ## P0 — 下一步就做（用户点名，2026-07-17）
 
@@ -54,6 +54,7 @@
 
 ## 已完成归档（结论已回写 PRODUCT.md，过程见 git 历史）
 
+- **2026-07-17 · 新公司一键 onboarding 脚本**：`scripts/onboard-company.ts` / `npm run onboard:company -- --ticker XXXX`，把「导入 10-K → 导入股价 → 5 个 LLM 生成脚本」共 7 步编排为一条命令，每步跑完查库验证真正写入（不只看退出码，`generate:*` 脚本内部会捕获单公司错误仍退出 0），按 ticker checkpoint 到 `.cache/onboard-company/<TICKER>.json` 支持断点续跑。端到端验证：`--ticker ODFL` 从零创建 Entity + 10 条 Financial + 22 个 FilingSection，checkpoint 断点续跑验证通过（生产库真实数据，用户决定保留）。用法见 `scripts/README.md`「00. 新公司一键 onboarding 入口」。
 - **2026-07-10 · Filer / Company 身份拆分**：`Filer` 表 + Berkshire 双 Entity 修复 + 5 处查询收口 + 3 处硬编码投资人清单动态化 → PRODUCT.md「稳定主键原则」「v0.38.9–15 变更」。
 - **2026-07-10 · 13F 数据完备性排查**：确认追踪 5 位投资人（不是 3 位），2020Q1–2026Q1 每季连续无缺，3 处异常（Atreides 2022Q2 缺失、2 条 13F-HR/A 空重复行）已修复。
 - **2026-07-08~10 · 测试体系 L0/L1/L3/L4 落地**：`test.yml` push gate、pi-gateway 纯函数单测、`tests/agent-tools/` 三工具 golden cases、`data-integrity-check.yml` 每周巡检 + `check:filing-section:integrity`、`typecheck:scripts` 清零（顺带修复 `import-10k-edgartools.ts` 自 FinancialFact 删表后跑不通的问题）→ 设计与决策全文见 PRODUCT.md「测试体系」。

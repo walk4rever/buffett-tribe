@@ -483,8 +483,15 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     .filter(({ count }) => count > 0)
     .map(({ ticker }) => ticker);
 
-  const listedSecurities = securities.length
-    ? securities.map(formatSecurityLabel)
+  // Display order only: put the security matching Entity.ticker first so the
+  // canonical ticker leads the "Securities" label (e.g. "BRK-B / BRK-A").
+  const orderedSecurities = [...securities].sort((a, b) => {
+    const aMatch = a.ticker?.toUpperCase() === company.ticker?.toUpperCase() ? 0 : 1;
+    const bMatch = b.ticker?.toUpperCase() === company.ticker?.toUpperCase() ? 0 : 1;
+    return aMatch - bMatch;
+  });
+  const listedSecurities = orderedSecurities.length
+    ? orderedSecurities.map(formatSecurityLabel)
     : [company.ticker ?? "—"];
 
   const latest = financials[0];

@@ -4623,6 +4623,17 @@ body.layout-no-header {
   white-space: nowrap;
 }
 
+.companies-item-ticker {
+  font-size: 0.62rem;
+  font-family: var(--font-mono);
+  color: var(--graphite-text-secondary);
+  letter-spacing: 0;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .companies-empty {
   min-height: 140px;
   display: grid;

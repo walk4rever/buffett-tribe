@@ -1150,12 +1150,13 @@ FinancialFact
 
 ### 导入
 
+- `npm run onboard:company -- --ticker XXXX`：给全新美股公司（不在任何大师持仓里）一键建立完整公司页，编排导入 10-K/20-F/40-F + 股价 + 5 个 LLM 生成脚本共 7 步，每步验证真实写入、按 ticker checkpoint 支持断点续跑。用法见 `scripts/README.md`「00. 新公司一键 onboarding 入口」。
 - `npm run import:13f` / `npm run import:13f:range`：导入 13F 持仓
 - `npm run import:10k`：按 ticker / 年份导入 10-K、20-F、40-F 财务数据
 - `npm run import:stock-prices:yf`：按 ticker 从 Yahoo Finance 拉取日线价格，可选择写入 `StockPrice`
 - `npm run import:company-stock-prices:yf`：按公司批量补齐价格数据
 - `npm run import:10k:from13f`：从 13F 持仓反推需要补齐的公司财务
-- `npm run pipeline:13f` / `npm run pipeline:10k`：完整流水线封装
+- `npm run pipeline:13f` / `npm run pipeline:10k`：完整流水线封装（注意：`pipeline:10k` 只封装 13F 反推导入 + 财务巡检，不是任意新公司的入口，任意新公司请用 `onboard:company`）
 
 ### 回填与修复
 
@@ -1206,6 +1207,7 @@ FinancialFact
 
 ### 最常用
 
+- `npm run onboard:company -- --ticker XXXX`（新公司一键 onboarding，全新美股 ticker 首选入口）
 - `npm run import:13f`
 - `npm run import:10k -- --ticker TME --from 2025 --to 2025`
 - `npm run import:stock-prices:yf -- --ticker AAPL --start 2020-01-01 --import-db`

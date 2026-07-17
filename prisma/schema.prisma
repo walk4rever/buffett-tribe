@@ -216,7 +216,6 @@ model Security {
   shareClass      String?
   titleOfClass    String?
   exchange        String?
-  isPrimary       Boolean  @default(false)
   metadata        Json?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
