@@ -33,6 +33,8 @@
     "extract:10k:sections": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/extract-10k-sections.ts",
     "backfill:filing-section-jobs": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-filing-section-jobs.ts",
     "migrate:filing-sections:artifacts": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/migrate-filing-sections-to-artifacts.ts",
+    "backfill:filing-html-urls": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-filing-html-urls.ts",
+    "backfill:filing-html-urls:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-filing-html-urls.ts --dry-run",
     "import:stock-prices:yf": "sh -c 'PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python; exec \"$PY\" scripts/fetch-stock-prices-yf.py \"$@\"' sh",
     "import:company-stock-prices:yf": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-company-stock-prices-yf.ts",
     "backfill:capex": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-capex.ts",

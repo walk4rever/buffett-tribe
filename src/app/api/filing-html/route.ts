@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import db from "@/lib/prisma";
 import { getR2ObjectBuffer } from "@/lib/r2";
+import { proxySecImageUrls } from "@/lib/filing-html";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -20,7 +21,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "primary_html not found" }, { status: 404 });
   }
 
-  const html = await getR2ObjectBuffer(artifact.objectKey);
+  const rawHtml = await getR2ObjectBuffer(artifact.objectKey);
+  const html = Buffer.from(proxySecImageUrls(rawHtml.toString("utf8")), "utf8");
 
   return new Response(html.buffer as ArrayBuffer, {
     headers: {
