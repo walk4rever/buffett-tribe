@@ -2,7 +2,7 @@
 
 # 巴菲特部落 · Buffett Tribe — 产品设计文档
 
-> 最后更新：2026-06-25（v0.38.8）
+> 最后更新：2026-07-17（v0.38.15）
 
 ---
 
@@ -17,7 +17,7 @@
 | `CHANGELOG.md` | 发布记录 | 只记录已经发布的用户可见变化和重要修复 |
 | `APPLE-DESIGN.md` | 设计参考资料 | 可保留为参考，但设计决策和项目落地规范应摘要进 `PRODUCT.md` |
 
-原则：以后讨论“要做什么、为什么做、怎么做、数据从哪里来、设计口径是什么”，默认更新 `PRODUCT.md`；对外只更新 `README.md` 和 `CHANGELOG.md`。`NEXT.md` / `DATA_GLOSSARY.md` 的内容已经合并进本文档，不再作为单独入口维护。`TODOS.md` 自 2026-06-12 起恢复维护，专门承载数据架构优化清单（来源：数据架构全局 review），完成项的结论回写本文档。
+原则：以后讨论“要做什么、为什么做、怎么做、数据从哪里来、设计口径是什么”，默认更新 `PRODUCT.md`；对外只更新 `README.md` 和 `CHANGELOG.md`。`NEXT.md` / `DATA_GLOSSARY.md` 的内容已经合并进本文档，不再作为单独入口维护。`TODOS.md` 承载**活跃工作队列**（按 P0–P3 排优先级）：完成项的结论回写本文档后从清单移除，只保留未完成项和必要背景（2026-07-17 起口径）。
 
 ---
 
@@ -26,11 +26,11 @@
 1. [产品定位](#产品定位)
 2. [产品体验与核心页面](#产品体验与核心页面)
 3. [文档系统路线图](#文档系统路线图)
-4. [公司覆盖模型](#公司覆盖模型冷热演进)
-5. [公司研究闭环路线图](#公司研究闭环路线图)
-6. [A股与港股覆盖扩展](#a股与港股覆盖扩展)
-7. [设计与技术基线](#设计与技术基线)
-8. [当前实现状态](#当前实现状态v0370)
+4. [公司研究闭环路线图](#公司研究闭环路线图)
+5. [A股与港股覆盖扩展](#a股与港股覆盖扩展)
+6. [设计与技术基线](#设计与技术基线)
+7. [测试体系](#测试体系)
+8. [当前实现状态](#当前实现状态v03815)
 9. [数据字典与工程口径](#数据字典与工程口径)
 10. [公司页财务看板](#公司页财务看板truth-of-source-设计)
 11. [数据与脚本](#数据与脚本)
@@ -47,7 +47,7 @@
 
 Agent 是核心入口。三层知识驱动 Agent 自主决定如何回答：
 - **`search_wisdom`**：大师说了什么 — 年会记录、股东信、演讲、书（GBrain 知识图谱，语义检索）
-- **`search_holdings`**：大师买了什么 — 巴菲特 / 李录 / 段永平 13F 持仓（Supabase SQL）
+- **`search_holdings`**：大师买了什么 — 5 位投资人的 13F 持仓：核心 3 位（巴菲特 / 李录 / 段永平）+ Alpha 2 位（Gavin Baker / Alex Sacerdote）（Supabase SQL，从 `Filer` 表动态读取）
 - **`search_filings`**：公司披露了什么 — 10-K / 20-F 年报章节（FilingSection，约 120 家，2020–2025）
 
 大师原文、13F 持仓、财务数据、年报——这些是分析的燃料，不是产品的终点。
@@ -68,7 +68,7 @@ Agent 是核心入口。三层知识驱动 Agent 自主决定如何回答：
 
 价值投资大师的原始资料库：股东信、合伙人信、演讲、访谈。每位大师有独立页面，展示材料列表与 13F 持仓快照。材料全文可阅读，可跳转到 /idea 继续追问。
 
-Alpha 投资人作为独立分类展示，不进入核心大师主导航。第一位 Alpha master 是 Gavin Baker / Atreides Management, LP，用于承载科技成长、AI、半导体、crossover 等现代投资风格；其 13F 持仓页需要明确说明 13F 不代表完整组合。
+Alpha 投资人作为独立分类展示，不进入核心大师主导航。第一位 Alpha master 是 Gavin Baker / Atreides Management, LP，用于承载科技成长、AI、半导体、crossover 等现代投资风格；第二位是 Alex Sacerdote / Whale Rock Capital Management（科技成长）。Alpha 投资人有 master 页与 13F 持仓页，但没有 wisdom 资料内容（`Filer.isMasterPersona = false`）；其持仓页需要明确说明 13F 不代表完整组合。
 
 ### /company — 公司
 
@@ -83,9 +83,9 @@ Alpha 投资人作为独立分类展示，不进入核心大师主导航。第�
 | 估值分析 | 当前为占位 + 价格历史图，后续接估值模型 |
 | 年度报告 | 10-K / 20-F / 40-F 年报列表与阅读入口 |
 
-Canvas 的数据来自两个渠道：
-- 结构化事实层（财务数据，来自 EDGAR / 市场数据 API）
-- 对话沉淀层（Company Brain，随用户对话写回积累）
+Canvas 的数据来自结构化事实层（财务数据，来自 EDGAR / 市场数据 API）+ 批量 LLM 生成内容（GeneratedContentVersion 等）。
+
+> 曾规划的"对话沉淀层"（Company Brain：用户对话写回 Claim，Canvas 越用越厚）已于 2026-07-17 从计划中移除——方向没有想清楚，暂不做。
 
 当前公司页已经接通真实数据源与批处理入库流程，不再是纯 Mock 页面。
 
@@ -97,7 +97,7 @@ Agent 由 pi-gateway（Express SSE，air7，PM2）驱动，使用 `@earendil-wor
 
 三个工具：
 - **`search_wisdom`** 查询资料库：GBrain 语义检索，OpenAI text-embedding-3-large 1536d
-- **`search_holdings`** 查询持仓明细：Supabase SQL，Holding → Security → Entity 联表
+- **`search_holdings`** 查询持仓明细：Supabase SQL，Holding → Security → Entity 联表，覆盖全部 5 位投资人（从 `Filer` 表动态读取）
 - **`search_filings`** 查询公司年报：FilingSection 结构化抽取，section alias 映射，keyword excerpt
 
 AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投研定位、三工具用法、回答格式（分析 + 引用分层）。
@@ -276,32 +276,6 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 
 ---
 
-## 公司覆盖模型：冷→热演进
-
-```
-第 1 个用户引入新公司
-  ↓
-系统新建 company 记录 → LLM 基于实时搜索回答 → 对话结束写回首批 Claim
-  ↓（同时）
-Cron Job 触发 Fact Fetch Pipeline
-  → 财务数据 / 基本面写入（次日生效）
-
-第 2 个用户
-  ↓
-已有初始 Fact 层 + 第 1 轮沉淀 Claim → Canvas 有初始内容
-  ↓
-对话结束再次写回 → Brain 进一步丰富
-
-第 N 个用户
-  ↓
-多轮沉淀：Claim/Evidence/Counter-Evidence
-置信度随讨论次数收敛，Canvas 开箱即用
-```
-
-覆盖范围不限于大师持仓——任何用户引入的公司都成为 Brain 节点。
-
----
-
 ## 公司研究闭环路线图
 
 下一阶段的核心不是继续堆数据，而是把现有数据变成更强的公司研究体验。优先推进三件互相咬合的能力：
@@ -355,6 +329,13 @@ Cron Job 触发 Fact Fetch Pipeline
 年报阅读页至少要支持：
 
 - 按年份切换
+- 10-K / 20-F / 40-F 标准目录
+- 右侧展示对应原始内容
+- 页码或章节锚点
+- 附件链接
+- 与财务数据联动跳转
+
+数据前提吃现有库里的 `ExtSource`、`FilingSection`、`FilingAttachment`、`FilingArtifact`、`Financial`，不另起一套孤立模型。
 
 ### 待办：13F 历史证券承接页
 
@@ -369,13 +350,6 @@ Cron Job 触发 Fact Fetch Pipeline
 - 大师持仓表证券展示优先级统一为 `security.ticker -> company.ticker -> historicalTicker -> issuer short name -> cusip`，永远不显示内部 id。
 - 新增 `/security/[id]` 或等价承接页，用于无法归并到标准 company 的历史证券。
 - 将 orphan security 巡检纳入 `check:security:integrity`，并通过脚本化 backfill 修复，不手工改库。
-- 10-K / 20-F / 40-F 标准目录
-- 右侧展示对应原始内容
-- 页码或章节锚点
-- 附件链接
-- 与财务数据联动跳转
-
-数据前提吃现有库里的 `ExtSource`、`FinancialFact`、`FilingSection`、`FilingAttachment`、`Financial`，不另起一套孤立模型。
 
 ### 价格数据
 
@@ -442,6 +416,8 @@ Cron Job 触发 Fact Fetch Pipeline
 ## A股与港股覆盖扩展
 
 当前系统深度绑定 SEC EDGAR 体系（CIK、XBRL、10-K/20-F/40-F），公司页路由、Entity 模型、财务导入链路、年报阅读器都围绕这一体系构建。下一阶段需要扩展支持 A 股和港股公司，首批以贵州茅台（600519.SS）和泡泡玛特（9992.HK）为验证目标。
+
+> **实施状态（2026-07-17 核对）**：仅完成 schema 前置——`Entity.market` / `Entity.code` 字段与复合索引（2026-06-15）。路由泛化（`/company/[id]`）、akshare 导入脚本（`import:cn-financials` / `import:cn-company-info`）、公司页适配均**尚未开始**，路由仍为 `/company/[cik]`。本节其余内容是实施方案，不是现状。
 
 ### 扩展动机
 
@@ -677,6 +653,33 @@ Apple HIG 精简风格：
 | 认证 | NextAuth.js |
 | 部署 | Vercel（主站）· air7（pi-gateway + GBrain） |
 
+### Agent 运行时链路
+
+```
+用户浏览器
+  └─► buffett-tribe.com/agent（Vercel，Next.js）
+        └─► /api/pi（Next.js 代理，AGENT_SECRET 留服务端）
+              └─► relay.air7.fun/pi/chat（nginx → :3456）
+                    └─► pi-gateway（PM2，Express SSE）
+                          ├─► @earendil-works/pi-coding-agent → DeepSeek API
+                          ├─► search_wisdom → GBrain（air7 :3457，pgvector 1536d）
+                          ├─► search_holdings → Supabase（Holding SQL，Filer 表动态投资人清单）
+                          └─► search_filings → Supabase（FilingSection SQL + FilingArtifact primary_html 现场解析）
+```
+
+关键文件：
+
+| 路径 | 说明 |
+|---|---|
+| `services/pi-gateway/` | Express SSE 服务，部署 air7 port 3456 |
+| `services/pi-gateway/ecosystem.config.cjs` | PM2 配置，`tsx --env-file=.env` 启动 |
+| `services/pi-gateway/src/tools/search-*.ts` | 三个工具实现 |
+| `services/pi-gateway/src/db.ts` | 共享 pg Pool（DIRECT_URL，SSL，懒加载） |
+| `services/pi-gateway/AGENTS.md` | Agent system prompt（投研定位 + 三工具说明 + 回答格式） |
+| `services/pi-gateway/deploy.sh` | 部署脚本（sync:shared → rsync → npm install → pm2 restart） |
+| `src/app/api/pi/route.ts` | Next.js 代理路由 |
+| `src/components/AgentChat.tsx` | React chat 组件（SSE 流、工具调用指示器、Markdown 渲染） |
+
 ### 路由结构
 
 ```
@@ -685,9 +688,10 @@ Apple HIG 精简风格：
 /master/[id]        大师主页（资料库卡片 + 持仓）
 /master/[id]/library  资料阅读（左侧年份/文章列表，右侧正文）
 /master/[id]/holdings 持仓快照
-/company/[id]       公司研究画布（id 格式：CIK... / cn-600519 / hk-9992）
-/company/[id]/annual-report  年度报告默认入口（跳转到最新可读年份）
-/company/[id]/annual-report/[year]  年度报告阅读
+/company            公司库（全部有 CIK 的公司，中英文名搜索过滤）
+/company/[cik]      公司研究画布（当前仅美股 CIK；cn-/hk- 路由为规划，见「A股与港股覆盖扩展」）
+/company/[cik]/annual-report  年度报告默认入口（跳转到最新可读年份）
+/company/[cik]/annual-report/[year]  年度报告阅读
 /insights           投资洞见（文章列表，?source= 按栏目过滤）
 /idea               对话研究室（旧版，保留待迁移）
 /login              登录
@@ -697,9 +701,55 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.38.8）
+## 测试体系
 
-### v0.38.x 变更（2026-06，当前）
+> 2026-07-08 从零设计，L0/L1/L3/L4 已于 v0.38.13~15 落地；设计与落地过程记录见 git 历史（`TODOS.md` 2026-07 版本）。
+
+按数据链路风险分层设计，**风险对应优先，不追求覆盖率指标**。这个代码库的风险集中在"数据从外部进来（SEC EDGAR / Supabase / R2 / DeepSeek / GBrain / Yahoo Finance）、流经管线、呈现给用户"这条链路的完整性上，不是纯算法错误；生产数据自身漂移（如 `FilingSection.content` 被无留痕截断的事故）只有对真实数据跑的测试才能抓到——这是 L3/L4 权重高的原因。
+
+### 六层金字塔
+
+| 层 | 状态 | 内容 | 触发 |
+|---|---|---|---|
+| L0 静态检查 | ✅ | `lint` + `typecheck`（含 `typecheck:scripts`，历史遗留已清零） | 每次 push / PR（`test.yml`） |
+| L1 单元测试 | ✅ | 纯函数 + fixture：`valuation-metrics`、`extract-10k-sections`、pi-gateway `search-filings-format` 等 | 每次 push / PR |
+| L2 集成测试 | ⏸ 延后 | Prisma 查询 / API route，本地 pglite 影子库 | — |
+| L3 Agent 工具契约 | ✅ | `tests/agent-tools/` 三工具各一组 golden case，对生产库只读真跑 | 每次 push（`search_wisdom` 除外，见下） |
+| L4 数据管线健康 | ✅ | `data-integrity-check.yml` 每周一 02:00 UTC 跑 4 个只读检查（financial / security / holdings-coverage / filing-section），`--strict` 命中才开 GitHub issue | 每周 + 发版前 |
+| L5 E2E 冒烟 | ⏸ 延后 | Playwright 核心用户路径 | — |
+| L6 LLM 质量评估 | ✅ 已有 | `tests/evals/` 检索质量基准，非确定性，不进常规 gate | prompt / 检索逻辑变更时 |
+
+### 关键决策
+
+- **数据源策略**：L1 用 fixture 零外部依赖；L2（未来）用 pglite 影子库；L3/L4 直接对生产库只读——这两层存在的意义就是盯真实数据漂移，脱离生产数据就失去价值。
+- **`npm run build` 有意不进 CI gate**：build-time 需要 RESEND / NextAuth / R2 / LLM 等生产密钥，不把生产凭证同步进 GitHub Secrets；发版前本地跑。
+- **`search_wisdom` 的 L3 case 有意不进 CI**：需要按次计费的 `OPENAI_API_KEY`，留在本地 / 发版前手动跑。`search_filings` / `search_holdings` 只需 `DIRECT_URL`，每次 push 自动跑。
+- **`verify-10k-edgartools` 有意排除在每周巡检外**：它会对生产库写入（重导 AAPL/PDD/SU）+ 打真实 SEC API，只作发版前 / 改导入器代码后的手动冒烟。
+- **Golden case 锚点**：固定挑覆盖不同 filing kind（10-K/20-F/40-F）和不同投资人的公司作为长期锚点，公司退市或数据结构变化时才更新。
+- **测试存放约定**：纯函数 → `tests/*.test.ts`；Agent 工具契约 → `tests/agent-tools/`；数据完整性 → `scripts/check-*.ts` 纳入 L4 清单；Playwright（未来）→ `e2e/*.spec.ts`。
+
+### 工作流约定（防止体系荒废）
+
+- 新增/修改纯函数（解析、计算、格式化）→ 同 PR 补 L1 测试。
+- 新增/修改 Agent 工具或参数 → 同 PR 补/更新 L3 case。
+- 新增或修改数据导入逻辑 → 补充或跑一次对应 L4 完整性检查。
+- 新增 LLM 生成管线 → 至少一个"生成内容非空且含预期字段"断言。
+- 大版本（minor/major）发布前跑全量（L2/L5 落地后含集成与 E2E），红了不打 tag；patch 直推的既有版本节奏不变。
+
+---
+
+## 当前实现状态（v0.38.15）
+
+### v0.38.9–v0.38.15 变更（2026-06-26 ~ 2026-07-14，当前）
+
+- **Filer / Company 身份拆分**（v0.38.15）：新增 `Filer` 表（`tribeId` / `filerEntityId` / `companyEntityId` / `isMasterPersona`）作为"这个投资人是不是也是一家公司"的唯一权威来源。修复 Berkshire 双 Entity（filer 身份 + 公司身份）导致李录/段永平持仓里 BRK-A/BRK-B 链到空实体的问题；5 处把 `type="master"` 当公司候选的查询/打分逻辑全部收口为只认 `type="company"`；`search_holdings` 等 3 处硬编码 3 投资人清单改为从 `Filer` 表动态读取。
+- **13F 追踪范围核准为 5 位投资人**：核心 3 位（buffett / lilu / duan）+ Alpha 2 位（gavin-baker = Atreides、alex-sacerdote = Whale Rock）。2020Q1–2026Q1 每季连续无缺（3 处历史异常已排查修复：Atreides 2022Q2 缺失重导、2 条 13F-HR/A 空重复行删除）。
+- **测试体系 L0/L1/L3/L4 落地**（v0.38.13~15）：CI push gate（`test.yml`：lint + vitest）、pi-gateway 纯函数单测、三个 Agent 工具 golden case 契约测试（`tests/agent-tools/`，对生产库只读真跑）、每周数据完整性巡检 workflow（`data-integrity-check.yml`）+ 新增 `check:filing-section:integrity`。`typecheck:scripts` 历史遗留错误清零——顺带发现并修复 `import-10k-edgartools.ts` 自 FinancialFact 删表后完全跑不通的问题（死代码调用点删除）。详见「测试体系」节。
+- **search_filings 全文修复**（v0.38.12）：`FilingSection.content` 曾被一次无留痕手工操作截断到 3000 字，命中章节改为从 `FilingArtifact(kind=primary_html)` 现取原文、`extractTargetSections()` 现场解析，`content` 降级为 fallback-only。
+- **注册用户邮件公告**（v0.38.10）：`npm run send:announcement` 批量邮件脚本。
+- **pi-gateway 运维收口**（v0.38.14）：air7 目录与 PM2 进程名按项目命名空间化，移除遗留 systemd unit；`tests/` 排除出 app tsconfig 修复 Vercel build。
+
+### v0.38.0–v0.38.8 变更（2026-06）
 
 - **投资研究 Agent 上线**（`/agent`）：pi-gateway（Express SSE）+ `@earendil-works/pi-coding-agent`，DeepSeek LLM，PM2 管理，nginx 代理。
 - **三工具架构**：`search_wisdom`（GBrain 语义检索）、`search_holdings`（13F 持仓 SQL）、`search_filings`（年报章节 SQL）全部上线验证。
@@ -718,8 +768,7 @@ Apple HIG 精简风格：
 
 ### v0.37.0 变更（2026-06-04~15）
 
-- **A 股与港股覆盖扩展**：新增 `Entity.market` 和 `Entity.code` 字段，支持 A 股（cn-600519）和港股（hk-9992）公司接入。
-- **公司页路由泛化**：`/company/[cik]` 改为 `/company/[id]`，支持 `CIK...`、`cn-...`、`hk-...` 三种标识格式。
+- **A 股与港股覆盖前置**：新增 `Entity.market` 和 `Entity.code` 字段与复合索引，为 A 股/港股接入做 schema 准备（路由泛化与 akshare 导入未实施，见「A股与港股覆盖扩展」实施状态）。
 - **FinancialFact 删除**：0 行，从 schema 删除，`Financial.sourceFactIds` 注释指向 R2 data_file artifact。
 - **Document 表入库**：8 个大师 PDF 从硬编码 `documents.ts` 迁入 `Document` 表。
 - **容量治理**：数据库从 333MB 降至 244MB，ExtSource 瘦身、StockPrice 降采样、GCV 保留策略脚本建立。
@@ -796,22 +845,25 @@ Apple HIG 精简风格：
 |------|------|
 | /agent 投资研究 Agent | ✅ 已上线（v0.38.0+） |
 | /master 大师页面 | ✅ 已上线 |
-| /company/[id] 公司页 | ✅ 已上线（含 A 股/港股路由） |
+| /company/[cik] 公司页 | ✅ 已上线（美股 CIK） |
+| A 股/港股覆盖 | ❌ 仅 schema 前置（market/code 字段），路由与导入未实施 |
 | /insights 洞见过滤 | ✅ 已上线（v0.38.x，?source= 过滤） |
 | Company Canvas（6 Tab UI） | ✅ 已实现 |
 | 管理分析 / 估值分析 Tab（LLM） | ✅ 已上线（v0.37.5，55 家） |
 | 年度报告 Tab | ✅ 已上线 |
-| 10-K / 20-F / 40-F 标准目录阅读 | ✅ 已上线 |
+| 10-K / 20-F / 40-F 标准目录阅读 | 🟡 原文 iframe 阅读可用；侧栏目录靠 h1-h3 启发式抽取常为空、退化为附件列表，改造中（TODOS P0-①） |
 | 价格历史图 | 🟡 已上线 ticker 口径，securityId 与事件 marker 待补 |
 | search_wisdom 工具（GBrain） | ✅ 已上线 |
-| search_holdings 工具（13F SQL） | ✅ 已上线 |
+| search_holdings 工具（13F SQL） | ✅ 已上线（5 位投资人，Filer 表动态读取） |
 | search_filings 工具（年报章节） | ✅ 已上线 |
 | GBrain 知识库 | ✅ 已上线（4 位大师，2656 chunks） |
 | FilingSection 年报章节 | ✅ 已上线（约 120 家，2020–2025） |
 | ChatMessage 对话记录 | ✅ 已实现 |
+| 测试体系（L0/L1/L3/L4 + CI） | ✅ 已上线（v0.38.13~15，L2/L5 延后） |
+| Filer / Company 身份拆分 | ✅ 已完成（v0.38.15，Filer 表） |
 | PostHog 前端埋点 | 🟡 已接入 provider 与 chat_sent，事件体系待补齐 |
 | 等候名单 | ✅ 已实现 |
-| Company Brain 写回（Claim） | ❌ 未实现（P0 待办，飞轮的轴） |
+| Company Brain 写回（Claim） | ❌ 已从计划移除（2026-07-17 决策：方向未想清楚，暂不做） |
 | 数字人 / 语音实验 | ❌ 已下线（2026-06-11 范围收缩） |
 | 持仓数据更新 | 🟡 以季度批处理为主 |
 | /idea 对话研究室 | 🟡 旧版保留，待迁移或下线 |
@@ -843,12 +895,12 @@ Apple HIG 精简风格：
 
 ### 当前工作队列
 
-目标：完整的对话 + 阅读体验 + 数据追踪 + 支付链路，可以交给种子用户。
+**活跃工作队列与优先级以 `TODOS.md` 为准**（当前 P0：年报阅读器导航修复、A 股/港股 Phase 1；P1：Agent 接入公司页等 Agent 主线三项）。以下为产品层 backlog，未纳入当前排期：
 
-#### 收尾任务
+#### 体验收尾
 
-- 对话质量验收：准备 30 个测试问题，验证检索召回率和引用命中率（范围：股东信 + 合伙人信）。
-- 移动端体验打磨：阅读页、工作区在手机上的交互细节。
+- 对话质量验收：准备 30 个测试问题，验证 Agent 三工具的召回与引用质量。
+- 移动端体验打磨：阅读页、公司页在手机上的交互细节。
 
 #### 用户数据 + 增长 / 商业化
 
@@ -912,7 +964,7 @@ Apple HIG 精简风格：
 | `40-F` | 加拿大公司等外国私人发行人年度报告 | 年报阅读，重点依赖 `EX-99` 附件抽取 AIF / MD&A 等章节 |
 | `年报 (A 股)` | A 股上市公司年度报告（PDF） | 年报原文阅读（Phase 3 可选），来源：巨潮资讯网 |
 | `年报 (港股)` | 港股上市公司年度报告（PDF） | 年报原文阅读（Phase 3 可选），来源：港交所披露易 |
-| `XBRL` | 结构化财报标记语言 | `FinancialFact` 原始事实层和 `Financial` 标准化项目（仅美股） |
+| `XBRL` | 结构化财报标记语言 | `Financial` 标准化项目（仅美股）；原始 facts 归档为 R2 data_file artifact（`FinancialFact` 表已于 2026-06-15 删除） |
 | `EDGAR` | SEC 披露系统 | filing discovery、submissions、companyfacts、原文归档 |
 | `akshare` | 中文金融数据 Python 库 | A 股/港股公司信息、财务报表、股价数据获取 |
 
@@ -921,7 +973,7 @@ Apple HIG 精简风格：
 | 字段 | 含义 | 示例 | 所属模型 |
 |------|------|------|----------|
 | `asOfDate` | 持仓生效报告日，通常对应报告期末 | `2026-03-31` | `Holding.asOfDate` |
-| `filedAt` | 向 SEC 实际提交日期 | `2026-05-15` | `ExtSource.filedAt` / `FinancialFact.filedAt` |
+| `filedAt` | 向 SEC 实际提交日期 | `2026-05-15` | `ExtSource.filedAt` |
 | `periodYear` | 报告期年份 | `2026` | `ExtSource.periodYear` |
 | `periodQuarter` | 报告期季度 | `1` | `ExtSource.periodQuarter` |
 | `FY` / `Q1..Q4` | 财报周期类型 | `FY`, `Q1` | `Financial.periodType` |
@@ -934,16 +986,16 @@ Apple HIG 精简风格：
 | `shares` | 持股数量 | `1200000` | `Holding.shares` |
 | `valueUsd` | 持仓市值，美元 | `350000000` | `Holding.valueUsd` |
 | `percentOfPortfolio` | 该标的占组合比例 | `12.4` | `Holding.percentOfPortfolio` |
-| `value` / `valueRaw` | XBRL 事实数值与原始字符串 | `391035000000` | `FinancialFact` |
 | `open/high/low/close/volume` | 日线价格 OHLCV | `open=190.1` | `StockPrice` |
 
 ### 稳定主键原则
 
 - 13F 导入与增量对比的工程主键使用 `Holding.securityId`；`ticker` 主要用于展示和价格图早期查询。
 - `Security` 通过 `companyEntityId` 关联公司实体；同一公司可以有多个 `Security`。
+- 投资人（filer）身份与公司（company）身份通过 `Filer` 表拆分（`tribeId` / `filerEntityId` / `companyEntityId` / `isMasterPersona`），它是"这个投资人是不是也是一家公司"的唯一权威来源。Berkshire 是目前唯一 filer=company 的特例；公司候选查询一律只认 `type="company"`，禁止把 `type="master"` Entity 当公司候选（2026-07-10 收口，v0.38.15）。`Holding.holderEntityId` / `ExtSource.filerEntityId` 的物理指向不变。
 - `ExtSource` 对 SEC filing 使用 `(filerEntityId, accessionNumber)` 去重，避免同一份 filing 重复入库。A 股/港股暂无 filing 归档，ExtSource 相关表对其不适用。
-- 文本关系抽取当前不落任何存储；`Mention` / `EntityRelation`（Postgres）与 Neo4j 图谱链路均已下线。结构化知识沉淀路径：大师内容走 GBrain（Takes / Links / Timeline），公司维度沉淀待 Company Brain（Claim 表）承接，见 `TODOS.md`。
-- 原始 filing 文件通过 `FilingArtifact` 归档到 R2，结构化事实和章节通过 `FinancialFact` / `FilingSection` 保留可追溯数据。
+- 文本关系抽取当前不落任何存储；`Mention` / `EntityRelation`（Postgres）与 Neo4j 图谱链路均已下线。结构化知识沉淀路径：大师内容走 GBrain（Takes / Links / Timeline）；公司维度无对话沉淀层（Company Brain / Claim 方向已于 2026-07-17 从计划移除）。
+- 原始 filing 文件通过 `FilingArtifact` 归档到 R2，结构化章节通过 `FilingSection` 保留可追溯数据；原始 XBRL facts 以 R2 data_file artifact 形式归档。
 - 非美市场公司的查询主键：`{ market, code }` 组合（A 股/港股），`{ cik }` 继续用于美股。URL 路由层统一解析为 `companyId`，下游按 `market` 分发查询策略。
 
 ---
@@ -1100,8 +1152,6 @@ FinancialFact
 
 - `npm run import:13f` / `npm run import:13f:range`：导入 13F 持仓
 - `npm run import:10k`：按 ticker / 年份导入 10-K、20-F、40-F 财务数据
-- `npm run import:cn-financials`：按 code / market 从 akshare 导入 A 股/港股财务报表（新增）
-- `npm run import:cn-company-info`：从 akshare 获取 A 股/港股公司基础信息并写入 Entity（新增）
 - `npm run import:stock-prices:yf`：按 ticker 从 Yahoo Finance 拉取日线价格，可选择写入 `StockPrice`
 - `npm run import:company-stock-prices:yf`：按公司批量补齐价格数据
 - `npm run import:10k:from13f`：从 13F 持仓反推需要补齐的公司财务
@@ -1118,9 +1168,11 @@ FinancialFact
 ### 巡检
 
 - `npm run check:security:integrity`：检查 security 关联完整性
-- `npm run check:financial:integrity`：检查财务数据完整性
+- `npm run check:financial:integrity`：检查财务数据完整性（默认覆盖全部 5 位投资人）
+- `npm run check:filing-section:integrity`：检查有抽取内容的 FilingSection 背后 primary_html 归档是否齐全（search_filings 全文来源）
 - `npm run check:db`：数据库健康检查
 - `scripts/check-all-company-financials.ts`：全量公司财务巡检
+- `.github/workflows/data-integrity-check.yml`：每周一自动跑上述只读巡检，`--strict` 命中才开 issue
 
 ### 自动补齐
 
@@ -1130,8 +1182,9 @@ FinancialFact
 - `npm run generate:business-model`：批量生成并入库业务概览与商业画布
 - `npm run generate:value-analysis`：批量生成并入库价值分析
 - `scripts/import-10k-edgartools.ts`：用 edgartools 获取 annual filing，支持 `companyfacts + filing-level inline XBRL fallback`，并归档 SEC 原始文件到 `FilingArtifact`
-- `scripts/import-cn-financials.ts`：akshare 财务数据导入，含中文指标 → LINE_ITEMS 映射，支持 CNY/HKD 单位写入
-- `scripts/import-cn-company-info.ts`：akshare 公司信息导入，创建/更新 A 股/港股 Entity，自动翻译中文名
+- `npm run send:announcement`：给注册用户批量发邮件公告
+
+> A 股/港股 akshare 导入脚本（`import:cn-financials` / `import:cn-company-info`）为规划项，尚未实现，方案见「A股与港股覆盖扩展」。
 
 ### 实验与基准
 
@@ -1163,8 +1216,6 @@ FinancialFact
 - `npm run generate:business-model -- --company AAPL --force`
 - `npm run generate:value-analysis -- --company AAPL --force`
 - `npm run generate:home-signals`
-- `npm run import:cn-company-info -- --market cn --code 600519`
-- `npm run import:cn-financials -- --market cn --code 600519 --years 5`
 
 ### 数据修复
 
@@ -1177,6 +1228,7 @@ FinancialFact
 
 - `npm run check:security:integrity`
 - `npm run check:financial:integrity`
+- `npm run check:filing-section:integrity`
 - `npm run check:db`
 - `scripts/check-all-company-financials.ts`
 

@@ -2,6 +2,91 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.38.15] - 2026-07-10
+
+### Fixed
+- Filer / Company 身份拆分：新增 `Filer` 表（`tribeId` / `filerEntityId` / `companyEntityId` / `isMasterPersona`）作为"投资人是否也是一家公司"的唯一权威来源；修复 Berkshire 双 Entity 导致李录/段永平持仓里 BRK-A/BRK-B 链到空实体的问题；5 处把 `type="master"` 当公司候选的查询/打分逻辑收口为只认 `type="company"`。
+- `search_holdings`、`check-latest-holdings-company-coverage`、`check-financial-integrity` 三处硬编码 3 投资人清单改为从 `Filer` 表动态读取，覆盖全部 5 位（含 Atreides、Whale Rock）。
+- `typecheck:scripts` 历史遗留错误清零：修复 `import-10k-edgartools.ts` 自 FinancialFact 删表后完全跑不通的问题（删除死代码调用点），顺带清理孤儿基准脚本与类型窄化问题。
+
+### Added
+- 每周数据完整性巡检 workflow `data-integrity-check.yml`（周一 02:00 UTC，4 个只读检查，`--strict` 命中才开 GitHub issue）。
+- 新增 `check:filing-section:integrity`：检查有抽取内容的 FilingSection 背后 `primary_html` 归档是否齐全（search_filings 全文来源）。
+- 13F 数据完备性排查：5 位投资人 2020Q1–2026Q1 每季连续无缺；修复 Atreides 2022Q2 缺失（重导 40 条持仓）、删除 2 条 13F-HR/A 空重复行。
+
+## [v0.38.14] - 2026-07-08
+
+### Fixed
+- `tests/` 排除出 app tsconfig，修复 Vercel build。
+
+### Changed
+- pi-gateway 的 air7 部署目录与 PM2 进程名按项目命名空间化；移除遗留 systemd unit 文件。
+
+## [v0.38.13] - 2026-07-08
+
+### Added
+- 测试体系 L0/L1/L3 落地：CI push/PR gate（`test.yml`：lint + vitest）；`search-filings` 纯函数拆出零依赖模块并补 12 个单测；`tests/agent-tools/` 三个 Agent 工具各一组 golden case 契约测试（对生产库只读真跑，`search_wisdom` 需付费 key 留本地）。
+
+### Fixed
+- CI 首跑两处修复：`services/pi-gateway` 独立依赖需单独 `npm ci`；git-ignored 的共享库副本需先跑 `sync:shared`。
+
+## [v0.38.12] - 2026-07-08
+
+### Fixed
+- `search_filings` 全文修复：`FilingSection.content` 曾被无留痕手工操作截断到 3000 字，命中章节改为从 `FilingArtifact(kind=primary_html)` 现取原文、现场解析章节，`content` 降级为 fallback-only；R2 拉取加重试。
+
+## [v0.38.11] - 2026-07-03
+
+### Changed
+- Insights 来源胶囊：Capital Allocators 独立配色。
+
+## [v0.38.10] - 2026-06-25
+
+### Added
+- 注册用户批量邮件公告脚本（`npm run send:announcement`）。
+
+## [v0.38.9] - 2026-06-25
+
+### Changed
+- Agent 工具调用指示器显示参数摘要（工具名 · 参数 · 返回条数）。
+- README / PRODUCT / TODOS 同步 v0.38.x Agent 架构。
+
+## [v0.38.8] - 2026-06-25
+
+### Added
+- `search_filings` 工具：FilingSection 年报章节检索（section alias 映射、keyword excerpt、公司名/ticker 检索），约 120 家公司 2020–2025。
+
+### Changed
+- 工具调用指示器按工具名区分 label 与细节格式。
+
+## [v0.38.7] - 2026-06-25
+
+### Added
+- `search_holdings` 工具：13F 持仓 SQL 检索（Holding → Security → Entity 联表，默认最新季度，支持 master/company/year/quarter 过滤）。
+
+## [v0.38.6] - 2026-06-24
+
+### Changed
+- Agent 回答格式增强（分析 + 引用分层）；新增 `services/pi-gateway/deploy.sh` 可重复部署脚本（rsync → npm install → pm2 restart）。
+
+## [v0.38.3 – v0.38.5] - 2026-06-24
+
+### Changed
+- 单工具架构：`search_letters` 并入 `search_wisdom`，统一 GBrain 语义检索入口；接入李录内容并支持 master 过滤。
+- Insights 支持 `?source=` 按播客/栏目过滤；首页 Hero 区简化为整体点击跳转 `/agent`。
+
+## [v0.38.1 – v0.38.2] - 2026-06-23
+
+### Added
+- `search_wisdom` 工具：GBrain 知识层语义检索（OpenAI text-embedding-3-large 1536d）。
+- Agent 会话记忆（sessionStorage，30min TTL）与工具调用指示器。
+
+## [v0.38.0] - 2026-06-22
+
+### Added
+- 投资研究 Agent 上线 `/agent`：接入 `@earendil-works/pi-coding-agent`，pi-gateway（Express SSE）部署 air7（PM2 + nginx relay），Next.js `/api/pi` 代理路由（AGENT_SECRET 留服务端），LLM 为 DeepSeek。
+- InsightPost 通过 `entityIds` 关联 Entity，洞见详情页展示相关公司。
+
 ## [v0.37.9] - 2026-06-15
 
 ### Changed
