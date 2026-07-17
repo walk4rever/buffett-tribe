@@ -1021,32 +1021,31 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                     ? `${filing.periodYear}${filing.periodQuarter ? ` Q${filing.periodQuarter}` : ""}`
                     : "—";
                   const filedLabel = formatFilingDate(filing.filedAt ?? filing.ts);
-                  return (
-                    <article key={filing.id} className="company-reference-card">
-                      <div className="company-reference-card-head">
-                        <div>
-                          <h3>
-                            {periodLabel} · {form}
-                          </h3>
-                          <p>
-                            Filed {filedLabel}
-                            {filing.ts ? ` · Report date ${formatFilingDate(filing.ts)}` : ""} · {filing.artifacts.length} files
-                          </p>
-                        </div>
+                  const cardHead = (
+                    <div className="company-reference-card-head">
+                      <div>
+                        <h3>
+                          {periodLabel} · {form}
+                        </h3>
+                        <p>
+                          Filed {filedLabel}
+                          {filing.ts ? ` · Report date ${formatFilingDate(filing.ts)}` : ""} · {filing.artifacts.length} files
+                        </p>
                       </div>
+                    </div>
+                  );
 
-                      <div className="company-reference-links">
-                        {filing.periodYear ? (
-                          <Link className="company-reference-links-primary" href={`${formatCompanyCikUrl(company.cik) ?? `/company/${company.cik ?? ""}`}/annual-report/${filing.periodYear}`}>
-                            阅读年报
-                          </Link>
-                        ) : null}
-                        {filing.url ? (
-                          <a href={filing.url} target="_blank" rel="noreferrer">
-                            SEC 原文
-                          </a>
-                        ) : null}
-                      </div>
+                  return filing.periodYear ? (
+                    <Link
+                      key={filing.id}
+                      className="company-reference-card company-reference-card--clickable"
+                      href={`${formatCompanyCikUrl(company.cik) ?? `/company/${company.cik ?? ""}`}/annual-report/${filing.periodYear}`}
+                    >
+                      {cardHead}
+                    </Link>
+                  ) : (
+                    <article key={filing.id} className="company-reference-card">
+                      {cardHead}
                     </article>
                   );
                 })}

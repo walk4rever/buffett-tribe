@@ -6562,10 +6562,22 @@ body.layout-no-header {
 }
 
 .company-reference-card {
+  display: block;
   border: 1px solid var(--company-border-soft);
   border-radius: 14px;
   background: linear-gradient(180deg, #ffffff 0%, #f6f9fd 100%);
   padding: 0.78rem 0.85rem;
+  text-decoration: none;
+}
+
+.company-reference-card--clickable {
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.company-reference-card--clickable:hover {
+  border-color: rgba(0, 113, 227, 0.35);
+  box-shadow: 0 2px 10px rgba(0, 113, 227, 0.08);
 }
 
 .company-reference-card-head {
@@ -6591,31 +6603,6 @@ body.layout-no-header {
   font-size: 0.68rem;
   color: #64748b;
   white-space: nowrap;
-}
-
-.company-reference-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.42rem;
-  margin-top: 0.72rem;
-}
-
-.company-reference-links a {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.38rem 0.7rem;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 113, 227, 0.18);
-  background: rgba(0, 113, 227, 0.06);
-  color: #0066cc;
-  text-decoration: none;
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.company-reference-links a:hover {
-  background: rgba(0, 113, 227, 0.1);
 }
 
 .filing-reader-backcrumb {
