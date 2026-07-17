@@ -25,6 +25,12 @@ export function CompanyDirectory({ companies }: { companies: CompanyDirectoryIte
     );
   }, [companies, query]);
 
+  // The grid's column count is responsive (6 / 4 / 2, see globals.css breakpoints);
+  // padding to a multiple of 12 (their LCM) keeps the last row full at every
+  // breakpoint, so the per-cell border-top/border-left lines never break
+  // partway through a short final row.
+  const fillerCount = (12 - (filtered.length % 12)) % 12;
+
   return (
     <>
       <div className="companies-search">
@@ -61,6 +67,9 @@ export function CompanyDirectory({ companies }: { companies: CompanyDirectoryIte
               </span>
             )
           )}
+          {Array.from({ length: fillerCount }, (_, i) => (
+            <span key={`filler-${i}`} aria-hidden="true" className="companies-item companies-item--filler" />
+          ))}
         </div>
       )}
     </>

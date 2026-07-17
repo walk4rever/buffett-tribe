@@ -4604,6 +4604,16 @@ body.layout-no-header {
   box-shadow: inset 2px 0 0 transparent;
 }
 
+.companies-item--filler {
+  cursor: default;
+  pointer-events: none;
+}
+
+.companies-item--filler:hover {
+  background: var(--graphite-surface);
+  box-shadow: inset 2px 0 0 transparent;
+}
+
 .companies-item-zh {
   font-size: 0.78rem;
   font-weight: 600;
