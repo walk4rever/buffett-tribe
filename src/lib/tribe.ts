@@ -102,6 +102,23 @@ export const TRIBE_MEMBERS: TribeMember[] = [
     hasData: true,
     icon: "A",
   },
+  {
+    id: "leopold-aschenbrenner",
+    category: "alpha",
+    displayGroup: "Alpha 投资人",
+    name: "Leopold Aschenbrenner",
+    nameZh: "Leopold Aschenbrenner",
+    firm: "Situational Awareness LP",
+    color: "#d97706",
+    initials: "LA",
+    aum: "$1.5B",
+    materialLabel: "访谈与观点",
+    materialSub: "建设中",
+    materialHref: "/master/leopold-aschenbrenner#library",
+    holdingsHref: "/master/leopold-aschenbrenner/holdings",
+    hasData: true,
+    icon: "A",
+  },
 ];
 
 export const CORE_TRIBE_MEMBERS = TRIBE_MEMBERS.filter((m) => m.category === "core");
