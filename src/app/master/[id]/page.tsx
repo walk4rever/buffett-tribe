@@ -324,10 +324,15 @@ export default async function PersonHubPage({ params }: Props) {
               <h1 className="person-name">{member.nameZh}</h1>
               <p className="person-firm">{member.firm}</p>
               {isAlphaMaster ? (
-                <div className="person-alpha-note">
-                  <span>Alpha 投资人</span>
-                  <span>科技成长 / Crossover / SEC 13F</span>
-                </div>
+                <>
+                  <div className="person-alpha-note">
+                    <span>Alpha 投资人</span>
+                    <span>科技成长 / Crossover / SEC 13F</span>
+                  </div>
+                  <p className="person-alpha-disclaimer">
+                    数据历史较短，投资风格偏科技成长与动量交易，与巴菲特部落的经典价值投资框架存在方法论差异，仅供参考。
+                  </p>
+                </>
               ) : null}
               <p className="person-intro">{intro}</p>
               {timeline.length > 0 && (

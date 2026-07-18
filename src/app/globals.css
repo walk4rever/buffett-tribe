@@ -5176,6 +5176,7 @@ body.layout-no-header {
 .person-firm { margin: 0.28rem 0 0; font-size: 0.9375rem; color: var(--apple-body); }
 .person-alpha-note { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.65rem; }
 .person-alpha-note span { font-size: 0.72rem; color: #4c1d95; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.22); border-radius: 999px; padding: 0.22rem 0.62rem; font-weight: 600; }
+.person-alpha-disclaimer { margin: 0.5rem 0 0; font-size: 0.75rem; color: #6d28d9; opacity: 0.85; line-height: 1.5; }
 .person-intro { margin: 0.9rem 0 0; font-size: 0.9375rem; color: var(--apple-near-black); line-height: 1.58; }
 .person-framework { margin-top: 0.85rem; display: grid; gap: 0.46rem; }
 .person-framework-item { font-size: 0.8125rem; color: var(--apple-body); padding-left: 1.1rem; position: relative; line-height: 1.5; }
