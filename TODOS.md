@@ -1,8 +1,8 @@
 # TODOS — 活跃工作队列
 
-> 更新：2026-07-17（v0.38.15）。本文件只保留**未完成项**，按 P0–P3 排优先级；完成项的结论回写 `PRODUCT.md` 后从这里移除（详细过程见 git 历史）。产品定位、架构、数据口径、测试体系设计一律以 `PRODUCT.md` 为准。
+> 更新：2026-07-18（v0.39.9）。本文件只保留**未完成项**，按 P0–P3 排优先级；完成项的结论回写 `PRODUCT.md` 后从这里移除（详细过程见 git 历史）。产品定位、架构、数据口径、测试体系设计一律以 `PRODUCT.md` 为准。
 >
-> 当前队列于 2026-07-17 与用户讨论后重排：P0 项是用户点名的紧急项（带完整现状诊断，可直接开工），P1 三项是围绕"Agent 是核心入口"主线的既定建议。
+> 当前队列于 2026-07-17 与用户讨论后重排：P0 项是用户点名的紧急项（带完整现状诊断，可直接开工），P1 三项是围绕"Agent 是核心入口"主线的既定建议。2026-07-18 新增两项来自 `anthropics/financial-services` 仓库调研的建议（P2）。
 
 ## P0 — 下一步就做（用户点名，2026-07-17）
 
@@ -28,6 +28,8 @@
 
 ## P2 — 待评估 / 择机
 
+- [ ] **Thesis Tracker 化投资论点跟踪**（来源：2026-07-18 读 `anthropics/financial-services` 仓库 `thesis-tracker` skill 后讨论）：现在 `MasterProfile.flagshipCases`（thesis/outcome/stillHolding）和 `generate-portfolio-insight.ts` 的季度点评都是每次让 LLM 重新写一段叙事文字，没有版本化的"论点是否还成立"记分卡。`thesis-tracker` skill 的纪律是"thesis 必须可证伪"——建仓时写清楚支撑 pillar + 会推翻论点的 risk，之后每次更新都要判断新数据是强化/削弱/推翻了哪个 pillar，并像追踪确认证据一样认真追踪证伪证据。改造思路：`generate-master-profile.ts` 的 flagshipCases schema 加 `invalidationCriteria` 字段；`generate-portfolio-insight.ts` 生成时对照检查本季持仓变化对每个 thesis 的影响，输出结构化的 `thesisStatus`（intact/weakening/broken）而不只是一段叙事。只改两个已有生成脚本的 prompt/schema，不需要新数据源，三个建议里成本最低、见效最快。
+- [ ] **Catalyst Calendar 重仓股事件日历**（来源同上，`catalyst-calendar` skill）：现在网站完全被动——13F 季度披露后约 45 天延迟才能看到调仓，两次披露之间没有新内容。可以给每位投资人的前 10 大重仓股维护一个"未来两周有什么"小模块（财报日、行业会议、监管决定等），填补季度空窗，让网站从纯回顾变成有前瞻性。需要新数据源（财报日历/新闻），项目目前没有接入渠道，是三项里成本最高的一个，需要先确认数据源再评估。
 - [ ] **13F 历史证券承接页**（2026-07-17 从 P1 顺延）：`Security.ticker = null` 且 `companyEntityId = null` 的历史证券无可访问页面。产品口径与处理方案见 PRODUCT.md「待办：13F 历史证券承接页」（company shell 补齐 / `/security/[id]` 承接页 / orphan 巡检纳入 `check:security:integrity`）。
 - [ ] **L2 集成测试**（2026-07-17 从 P1 顺延）：Prisma 查询（CompanyNameMap 同步、Security↔Entity 回填幂等性、GCV 版本递增）+ API route。测试库方案已定：本地 pglite 影子库。落地后 `test:release`（发版前全量跑 L2+L3+L4+L5）才成立。
 - [ ] **Whale Rock / Atreides 组合 375 家公司 Financial/10-K 缺口**（2026-07-10 排查发现）：两家成长股基金加入 13F 追踪后从未同步扩展公司数据 pipeline（gavin-baker 212 家持仓仅 27 家有 FY 数据，alex-sacerdote 211 家仅 21 家）。**用户已决定先不处理，只记录**；若要补，先评估 SEC EDGAR 请求量与时间成本，再决定是否批量 `import:10k`。
@@ -50,6 +52,7 @@
 
 ## 已移除的方向（记录决策，防止无意识捡回）
 
+- **2026-07-18 · `anthropics/financial-services` 仓库调研，三项评估后不做**：读了 Anthropic 官方给金融机构的 agent/skill 库（pitch deck、DCF 建模、KYC、GL 对账等），评估对 buffett-tribe 的可吸收点。**决定不做**：① 公司页接入 DCF/comps 估值 skill——需要实时股价、WACC 假设等现在没有的数据管道，且给内容网站读者一个"合理估值"容易越界成投资建议，与网站"讲清楚大师在想什么"的定位不符；② LSEG/S&P Global 数据连接器——机构级付费数据订阅，个人项目不划算，SEC EDGAR 现有免费路径已够用；③ xlsx-author/pptx-author/KYC/GL 对账全套——面向机构内部合规/财务团队工作流，与内容网站场景无关。采纳的两项见 P2「Thesis Tracker 化投资论点跟踪」「Catalyst Calendar 重仓股事件日历」。
 - **2026-07-17 · Company Brain 最小闭环（Claim 表）**：原 P0（2026-06-12 定），"对话→写回 Claim→Canvas 越用越厚"的飞轮方向**没有想清楚，从计划中移除，暂不做**。PRODUCT.md 中的冷→热演进章节已一并撤下；若将来重新立项，需要先重新论证再进队列。
 
 ## 已完成归档（结论已回写 PRODUCT.md，过程见 git 历史）
