@@ -12,6 +12,7 @@
 
 import { Prisma, PrismaClient } from "@prisma/client";
 import "dotenv/config";
+import { TRIBE_MEMBERS } from "@/lib/tribe";
 
 const db = new PrismaClient();
 
@@ -516,8 +517,7 @@ async function upsertInsight(
 // ---------------------------------------------------------------------------
 
 async function generateFor(masterId: string, dryRun: boolean, targetQuarter?: QuarterPoint) {
-  const nameMap: Record<string, string> = { buffett: "巴菲特", lilu: "李录", duan: "段永平" };
-  const name = nameMap[masterId] ?? masterId;
+  const name = TRIBE_MEMBERS.find((m) => m.id === masterId)?.nameZh ?? masterId;
 
   console.log(`\n📋 ${name} (${masterId})`);
 
@@ -596,7 +596,7 @@ async function main() {
     process.exit(0);
   }
 
-  const masters = all ? ["buffett", "lilu", "duan"] : [master!];
+  const masters = all ? TRIBE_MEMBERS.map((m) => m.id) : [master!];
   for (const id of masters) {
     await generateFor(id, dryRun, targetQuarter);
   }

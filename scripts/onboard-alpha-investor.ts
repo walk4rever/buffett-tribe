@@ -12,7 +12,12 @@
  *                                 FALLBACK_BRIEF entry either and shows a generic
  *                                 placeholder instead of real content — skippable with
  *                                 --skip-generation)
- *   5. report_holdings          -> lists tickers held that have no Entity/Financial data yet;
+ *   5. generate_portfolio_insight -> npm run generate:portfolio-insight -- --master <id>
+ *                                 (LLM quarterly holdings commentary, written to
+ *                                 PortfolioInsight; without this the "持仓洞察" section
+ *                                 on the profile page stays empty — skippable with
+ *                                 --skip-generation)
+ *   6. report_holdings          -> lists tickers held that have no Entity/Financial data yet;
  *                                 with --onboard-holdings, runs onboard:company for each
  *
  * Usage:
@@ -43,6 +48,7 @@ type StepId =
   | "register_tribe_member"
   | "import_13f"
   | "generate_master_profile"
+  | "generate_portfolio_insight"
   | "report_holdings";
 
 type Checkpoint = {
@@ -219,7 +225,7 @@ async function main() {
 
   // Step 1: register filer for 13F import
   {
-    const label = "[1/5] 注册 filer（scripts/lib/13f-import-core.ts::FILERS）";
+    const label = "[1/6] 注册 filer（scripts/lib/13f-import-core.ts::FILERS）";
     if (checkpoint.completed.register_filer) {
       console.log(`${label} — already completed`);
       summary.push({ step: label, status: "already_done" });
@@ -241,7 +247,7 @@ async function main() {
 
   // Step 2: register tribe member for UI
   {
-    const label = '[2/5] 注册 tribe member（src/lib/tribe.ts::TRIBE_MEMBERS, category: "alpha"）';
+    const label = '[2/6] 注册 tribe member（src/lib/tribe.ts::TRIBE_MEMBERS, category: "alpha"）';
     if (checkpoint.completed.register_tribe_member) {
       console.log(`${label} — already completed`);
       summary.push({ step: label, status: "already_done" });
@@ -263,7 +269,7 @@ async function main() {
 
   // Step 3: import 13F holdings
   {
-    const label = "[3/5] 导入 13F 持仓（Entity + Security + Holding）";
+    const label = "[3/6] 导入 13F 持仓（Entity + Security + Holding）";
     if (skipImport) {
       console.log(`${label} — skipped (flag)`);
       summary.push({ step: label, status: "skipped" });
@@ -295,7 +301,7 @@ async function main() {
 
   // Step 4: generate LLM investment profile (intro/framework/timeline/etc.)
   {
-    const label = "[4/5] 生成投资档案（generate:master-profile -> MasterProfile）";
+    const label = "[4/6] 生成投资档案（generate:master-profile -> MasterProfile）";
     if (skipGeneration) {
       console.log(`${label} — skipped (flag)`);
       summary.push({ step: label, status: "skipped" });
@@ -322,9 +328,38 @@ async function main() {
     }
   }
 
-  // Step 5: report (and optionally onboard) portfolio companies missing from the DB
+  // Step 5: generate quarterly portfolio insight (持仓洞察)
   {
-    const label = "[5/5] 检查持仓公司数据缺口";
+    const label = "[5/6] 生成持仓洞察（generate:portfolio-insight -> PortfolioInsight）";
+    if (skipGeneration) {
+      console.log(`${label} — skipped (flag)`);
+      summary.push({ step: label, status: "skipped" });
+    } else if (checkpoint.completed.generate_portfolio_insight) {
+      console.log(`${label} — already completed`);
+      summary.push({ step: label, status: "already_done" });
+    } else if (dryRun) {
+      console.log(`${label} — would run`);
+    } else {
+      console.log(`\n${label}`);
+      await runNpmScript("generate:portfolio-insight", ["--master", input.id]);
+
+      const filerEntity = await findFilerEntity(input.id);
+      const insight = filerEntity
+        ? await prisma.portfolioInsight.findFirst({ where: { masterId: input.id } })
+        : null;
+      if (!insight) {
+        summary.push({ step: label, status: "failed" });
+        console.error(`${label} — ran but no PortfolioInsight row found for masterId "${input.id}"`);
+        return finish(summary);
+      }
+      console.log(`  -> verified PortfolioInsight for ${insight.year}Q${insight.quarter}`);
+      await markDone("generate_portfolio_insight", label);
+    }
+  }
+
+  // Step 6: report (and optionally onboard) portfolio companies missing from the DB
+  {
+    const label = "[6/6] 检查持仓公司数据缺口";
     console.log(`\n${label}`);
     if (dryRun) {
       console.log(`${label} — would run`);
