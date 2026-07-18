@@ -5,7 +5,12 @@ function sse(res: Response, event: string, data: unknown) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
-export async function streamPrompt(session: AgentSession, message: string, res: Response): Promise<void> {
+export async function streamPrompt(
+  session: AgentSession,
+  message: string,
+  res: Response,
+  contextPrefix?: string,
+): Promise<void> {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -31,8 +36,10 @@ export async function streamPrompt(session: AgentSession, message: string, res: 
     }
   });
 
+  const promptText = contextPrefix ? `${contextPrefix}\n\n${message}` : message;
+
   try {
-    await session.prompt(message);
+    await session.prompt(promptText);
     sse(res, "done", {});
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

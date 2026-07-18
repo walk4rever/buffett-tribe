@@ -62,7 +62,28 @@ const SUGGESTIONS = [
   "怎么用价值投资框架分析一家公司？",
 ];
 
-export function AgentChat() {
+interface AgentContext {
+  masterId: string;
+  masterName: string;
+}
+
+interface AgentChatProps {
+  /** Scopes the conversation to a specific investor page — the server keys the session
+   *  per (userId, masterId) and seeds a one-time context note on the first turn. */
+  context?: AgentContext;
+  suggestions?: string[];
+  emptyTitle?: string;
+  emptySubtitle?: string;
+  placeholder?: string;
+}
+
+export function AgentChat({
+  context,
+  suggestions = SUGGESTIONS,
+  emptyTitle = "理解一家公司",
+  emptySubtitle = "以价值投资大师的视角，看穿公司的本质",
+  placeholder = "问关于巴菲特投资哲学、具体公司、历年决策的问题… (⌘Enter 发送)",
+}: AgentChatProps = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -104,7 +125,7 @@ export function AgentChat() {
       const res = await fetch("/api/pi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, userId: sessionIdRef.current }),
+        body: JSON.stringify({ message: text, userId: sessionIdRef.current, context }),
         signal: ctrl.signal,
       });
 
@@ -211,10 +232,10 @@ export function AgentChat() {
       <div className="agent-scroll-area">
         {messages.length === 0 ? (
           <div className="empty-chat">
-            <p className="empty-chat-title">理解一家公司</p>
-            <p className="empty-chat-sub">以价值投资大师的视角，看穿公司的本质</p>
+            <p className="empty-chat-title">{emptyTitle}</p>
+            <p className="empty-chat-sub">{emptySubtitle}</p>
             <div className="starter-grid">
-              {SUGGESTIONS.map((q) => (
+              {suggestions.map((q) => (
                 <button key={q} className="starter-chip" onClick={() => sendMessage(q)}>
                   {q}
                 </button>
@@ -277,7 +298,7 @@ export function AgentChat() {
         <div className="chat-input-bar">
           <textarea
             className="chat-input"
-            placeholder="问关于巴菲特投资哲学、具体公司、历年决策的问题… (⌘Enter 发送)"
+            placeholder={placeholder}
             rows={2}
             value={input}
             disabled={streaming}

@@ -3549,6 +3549,115 @@ body.layout-no-header {
   }
 }
 
+/* ── Master AI 解读 dialog ── */
+.master-agent-fab {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.75rem;
+  z-index: 150;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.7rem 1.15rem;
+  border: none;
+  border-radius: 999px;
+  background: #1a1a1a;
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.master-agent-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+}
+
+@media (max-width: 640px) {
+  .master-agent-fab {
+    right: 1rem;
+    bottom: 1rem;
+    padding: 0.6rem 1rem;
+    font-size: 0.8rem;
+  }
+}
+
+.master-agent-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 1rem;
+}
+
+.master-agent-modal {
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 640px;
+  height: min(720px, 86vh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.master-agent-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e8e0d0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #2D2A1E;
+  flex-shrink: 0;
+}
+
+.master-agent-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b6050;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.master-agent-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Match the send button's height (42px) instead of the taller /agent-page textarea.
+   Higher specificity than .agent-chat .chat-input (52px, content-box) so it actually wins. */
+.master-agent-modal-body .agent-chat .chat-input {
+  box-sizing: border-box;
+  height: 42px;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .master-agent-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .master-agent-modal {
+    height: 88vh;
+    border-radius: 16px 16px 0 0;
+    max-width: 100%;
+  }
+}
+
 /* ── Canvas excerpt highlight ── */
 .canvas-highlight {
   background: rgba(212, 175, 55, 0.18);

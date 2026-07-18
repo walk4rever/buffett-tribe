@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CompanyDisplayName } from "@/components/CompanyDisplayName";
+import { MasterAgentDialog } from "@/components/MasterAgentDialog";
 import { SiteNav } from "@/components/SiteNav";
 import { formatCompanyPathFromCik } from "@/lib/cik";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
@@ -309,6 +310,7 @@ export default async function PersonHubPage({ params }: Props) {
   return (
     <div className="person-page">
       <SiteNav />
+      <MasterAgentDialog masterId={id} masterName={member.nameZh} />
 
       <div className="person-wrap">
         <section className="person-hero">

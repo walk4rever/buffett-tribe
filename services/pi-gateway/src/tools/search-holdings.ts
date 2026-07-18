@@ -152,11 +152,11 @@ export const searchHoldingsTool = defineTool({
   name: "search_holdings",
   label: "Search 13F Holdings",
   description:
-    "Look up 13F portfolio holdings for tracked investors (Buffett, Li Lu, Duan Yongping, Gavin Baker, Alex Sacerdote). Returns position size, portfolio weight, and quarter-over-quarter change. Defaults to the most recent available quarter.",
+    "Look up 13F portfolio holdings for tracked investors (Buffett, Li Lu, Duan Yongping, Gavin Baker, Alex Sacerdote, Leopold Aschenbrenner). Returns position size, portfolio weight, and quarter-over-quarter change. Defaults to the most recent available quarter.",
   promptSnippet: "search_holdings(master, company?, year?, quarter?) → 13F holdings data",
   parameters: Type.Object({
     master: Type.String({
-      description: "Which investor: buffett | lilu | duan | gavin-baker | alex-sacerdote",
+      description: "Which investor: buffett | lilu | duan | gavin-baker | alex-sacerdote | leopold-aschenbrenner",
     }),
     company: Type.Optional(Type.String({
       description: "Filter by company ticker (e.g. AAPL) or partial name. Omit to get full portfolio.",

@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       "Content-Type": "application/json",
       "X-Agent-Secret": AGENT_SECRET,
     },
-    body: JSON.stringify({ message: body.message, userId: body.userId }),
+    body: JSON.stringify({ message: body.message, userId: body.userId, context: body.context }),
     signal: AbortSignal.timeout(85000),
   });
 

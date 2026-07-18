@@ -14,7 +14,25 @@ const GATEWAY_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 // Production: set to ~/pi-gateway/.pi-agent after filling in real API keys.
 const PI_AGENT_DIR = process.env.PI_AGENT_DIR ?? join(homedir(), ".pi", "agent");
 
-// userId → session. Anonymous sessions are not cached (key = undefined).
+export interface SessionContext {
+  masterId?: string;
+  masterName?: string;
+}
+
+export interface SessionResult {
+  session: AgentSession;
+  /** True when this session was just created (no prior turns) — used to decide whether to seed context. */
+  isNew: boolean;
+}
+
+// Session key: userId alone, or userId scoped to a master's context so switching
+// investor pages starts a fresh conversation instead of bleeding context across masters.
+function sessionKey(userId: string | undefined, context?: SessionContext): string | undefined {
+  if (!userId) return undefined;
+  return context?.masterId ? `${userId}:${context.masterId}` : userId;
+}
+
+// session key → session. Anonymous sessions are not cached (key = undefined).
 const sessions = new Map<string, AgentSession>();
 
 // TTL: evict idle sessions after 30 minutes
@@ -45,18 +63,20 @@ async function makeSession(): Promise<AgentSession> {
   return session;
 }
 
-export async function getSession(userId: string | undefined): Promise<AgentSession> {
-  // Anonymous: always a fresh in-memory session
-  if (!userId) return makeSession();
+export async function getSession(userId: string | undefined, context?: SessionContext): Promise<SessionResult> {
+  const key = sessionKey(userId, context);
 
-  const existing = sessions.get(userId);
+  // Anonymous: always a fresh in-memory session
+  if (!key) return { session: await makeSession(), isNew: true };
+
+  const existing = sessions.get(key);
   if (existing) {
-    lastUsed.set(userId, Date.now());
-    return existing;
+    lastUsed.set(key, Date.now());
+    return { session: existing, isNew: false };
   }
 
   const session = await makeSession();
-  sessions.set(userId, session);
-  lastUsed.set(userId, Date.now());
-  return session;
+  sessions.set(key, session);
+  lastUsed.set(key, Date.now());
+  return { session, isNew: true };
 }
