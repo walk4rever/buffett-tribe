@@ -219,9 +219,9 @@ function buildPrompt(params: {
     .map((t) => `  ${t.label}: ${t.count}只持仓, 前5集中度=${t.top5Pct}%, 前10=${t.top10Pct}%`)
     .join("\n");
 
-  const matLines = params.materials
-    .map((m) => `  ${m.type}: ${m.count}篇 (${m.range})`)
-    .join("\n");
+  const matLines = params.materials.length
+    ? params.materials.map((m) => `  ${m.type}: ${m.count}篇 (${m.range})`).join("\n")
+    : "  无内部资料库收录（暂无信件、访谈等一手资料），请勿在 timeline 或 intro 中编造资料库相关内容。";
 
   return `你是一位资深的价值投资研究分析师。请基于以下数据，为投资大师 ${params.masterNameZh}（${params.masterName}）生成结构化的投资档案。
 
@@ -390,7 +390,11 @@ async function main() {
     const { label: latestLabel, rows: holdings } = await fetchLatestHoldings(entity.id);
     const sectors = sectorBreakdown(holdings);
     const trend = await fetchPortfolioTrend(entity.id);
-    const materials = await fetchMaterialCounts();
+    // The Source table only ever holds Buffett's shareholder/partnership letters
+    // (no owner column) — only pull it in for the core members it actually
+    // describes, or the LLM attributes Buffett's letter archive to whoever
+    // else we're profiling.
+    const materials = tribeId in masterNames ? await fetchMaterialCounts() : [];
 
     console.log(`  Holdings: ${holdings.length} (${latestLabel})`);
     console.log(`  Sectors: ${sectors.length}`);

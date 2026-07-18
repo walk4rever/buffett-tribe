@@ -236,6 +236,19 @@ const FALLBACK_BRIEF: Record<
   },
 };
 
+// Used only when a master has neither a generated MasterProfile nor a
+// hand-written FALLBACK_BRIEF entry yet (e.g. right after onboarding, before
+// `generate:master-profile` has run) — must never silently borrow another
+// investor's bio.
+function genericFallback(member: NonNullable<ReturnType<typeof getTribeMember>>) {
+  return {
+    intro: `${member.nameZh}，${member.firm}。投资档案生成中，完整介绍即将上线。`,
+    framework: [] as string[],
+    tags: [] as string[],
+    timeline: [] as string[],
+  };
+}
+
 export default async function PersonHubPage({ params }: Props) {
   const { id } = await params;
   const member = getTribeMember(id);
@@ -247,7 +260,7 @@ export default async function PersonHubPage({ params }: Props) {
     getMasterProfile(id),
   ]);
 
-  const fallback = FALLBACK_BRIEF[id] ?? FALLBACK_BRIEF.buffett;
+  const fallback = FALLBACK_BRIEF[id] ?? genericFallback(member);
   const profile = profileResult?.profile;
   const intro = profile?.intro ?? fallback.intro;
   const framework = profile?.framework ?? fallback.framework;

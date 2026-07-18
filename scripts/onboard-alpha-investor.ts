@@ -1,12 +1,18 @@
 /**
  * One-shot onboarding for a brand-new Alpha investor (a 13F filer shown under
  * "Alpha 投资人", distinct from the core tribe members). Chains the steps that
- * today require hand-editing two source files and running a separate import:
+ * today require hand-editing two source files and running two separate scripts:
  *
- *   1. register_filer        -> FILERS entry in scripts/lib/13f-import-core.ts
- *   2. register_tribe_member -> TRIBE_MEMBERS entry in src/lib/tribe.ts (category: "alpha")
- *   3. import_13f             -> npm run import:13f -- --filer <id> (Entity + Holding)
- *   4. report_holdings        -> lists tickers held that have no Entity/Financial data yet;
+ *   1. register_filer          -> FILERS entry in scripts/lib/13f-import-core.ts
+ *   2. register_tribe_member   -> TRIBE_MEMBERS entry in src/lib/tribe.ts (category: "alpha")
+ *   3. import_13f               -> npm run import:13f -- --filer <id> (Entity + Holding)
+ *   4. generate_master_profile -> npm run generate:master-profile -- --master <id>
+ *                                 (LLM bio/timeline/framework, written to MasterProfile;
+ *                                 without this the profile page has no hand-written
+ *                                 FALLBACK_BRIEF entry either and shows a generic
+ *                                 placeholder instead of real content — skippable with
+ *                                 --skip-generation)
+ *   5. report_holdings          -> lists tickers held that have no Entity/Financial data yet;
  *                                 with --onboard-holdings, runs onboard:company for each
  *
  * Usage:
@@ -32,7 +38,12 @@ import {
   type AlphaInvestorInput,
 } from "./lib/alpha-investor-registration";
 
-type StepId = "register_filer" | "register_tribe_member" | "import_13f" | "report_holdings";
+type StepId =
+  | "register_filer"
+  | "register_tribe_member"
+  | "import_13f"
+  | "generate_master_profile"
+  | "report_holdings";
 
 type Checkpoint = {
   id: string;
@@ -184,6 +195,7 @@ async function main() {
   const fromQuarter = getArg("--from");
   const toQuarter = getArg("--to");
   const skipImport = hasFlag("--skip-import");
+  const skipGeneration = hasFlag("--skip-generation");
   const onboardHoldings = hasFlag("--onboard-holdings");
   const onboardLimitArg = getArg("--onboard-limit");
   const onboardLimit = onboardLimitArg ? Number.parseInt(onboardLimitArg, 10) : undefined;
@@ -207,7 +219,7 @@ async function main() {
 
   // Step 1: register filer for 13F import
   {
-    const label = "[1/4] 注册 filer（scripts/lib/13f-import-core.ts::FILERS）";
+    const label = "[1/5] 注册 filer（scripts/lib/13f-import-core.ts::FILERS）";
     if (checkpoint.completed.register_filer) {
       console.log(`${label} — already completed`);
       summary.push({ step: label, status: "already_done" });
@@ -229,7 +241,7 @@ async function main() {
 
   // Step 2: register tribe member for UI
   {
-    const label = '[2/4] 注册 tribe member（src/lib/tribe.ts::TRIBE_MEMBERS, category: "alpha"）';
+    const label = '[2/5] 注册 tribe member（src/lib/tribe.ts::TRIBE_MEMBERS, category: "alpha"）';
     if (checkpoint.completed.register_tribe_member) {
       console.log(`${label} — already completed`);
       summary.push({ step: label, status: "already_done" });
@@ -251,7 +263,7 @@ async function main() {
 
   // Step 3: import 13F holdings
   {
-    const label = "[3/4] 导入 13F 持仓（Entity + Security + Holding）";
+    const label = "[3/5] 导入 13F 持仓（Entity + Security + Holding）";
     if (skipImport) {
       console.log(`${label} — skipped (flag)`);
       summary.push({ step: label, status: "skipped" });
@@ -281,9 +293,38 @@ async function main() {
     }
   }
 
-  // Step 4: report (and optionally onboard) portfolio companies missing from the DB
+  // Step 4: generate LLM investment profile (intro/framework/timeline/etc.)
   {
-    const label = "[4/4] 检查持仓公司数据缺口";
+    const label = "[4/5] 生成投资档案（generate:master-profile -> MasterProfile）";
+    if (skipGeneration) {
+      console.log(`${label} — skipped (flag)`);
+      summary.push({ step: label, status: "skipped" });
+    } else if (checkpoint.completed.generate_master_profile) {
+      console.log(`${label} — already completed`);
+      summary.push({ step: label, status: "already_done" });
+    } else if (dryRun) {
+      console.log(`${label} — would run`);
+    } else {
+      console.log(`\n${label}`);
+      await runNpmScript("generate:master-profile", ["--master", input.id]);
+
+      const filerEntity = await findFilerEntity(input.id);
+      const profile = filerEntity
+        ? await prisma.masterProfile.findUnique({ where: { entityId: filerEntity.id } })
+        : null;
+      if (!profile) {
+        summary.push({ step: label, status: "failed" });
+        console.error(`${label} — ran but no MasterProfile row found for tribeId "${input.id}"`);
+        return finish(summary);
+      }
+      console.log(`  -> verified MasterProfile v${profile.version}`);
+      await markDone("generate_master_profile", label);
+    }
+  }
+
+  // Step 5: report (and optionally onboard) portfolio companies missing from the DB
+  {
+    const label = "[5/5] 检查持仓公司数据缺口";
     console.log(`\n${label}`);
     if (dryRun) {
       console.log(`${label} — would run`);
