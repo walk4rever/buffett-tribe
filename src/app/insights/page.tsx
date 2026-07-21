@@ -146,11 +146,12 @@ function formatDateTwoLine(date: Date): React.ReactNode {
 }
 
 function getInsightSourcePillKey(source: string): string {
-  const normalized = source.trim().toLowerCase();
+  const normalized = source.trim().toLowerCase().replace(/-/g, " ");
   if (normalized === "invest like the best") return "iltb";
   if (normalized === "acquired") return "acquired";
   if (normalized === "business breakdowns") return "breakdowns";
   if (normalized === "capital allocators") return "capitalallocators";
+  if (normalized === "buffett tribe") return "buffetttribe";
   return "default";
 }
 

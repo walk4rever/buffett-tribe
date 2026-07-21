@@ -10451,6 +10451,12 @@ body {
   color: #fff;
 }
 
+.insights-filter-pill--buffetttribe.insights-filter-pill--active {
+  border-color: #8a5a14;
+  background: #8a5a14;
+  color: #fff;
+}
+
 .insights-list {
   display: flex;
   flex-direction: column;
@@ -10578,6 +10584,12 @@ body {
   border-color: rgba(91, 62, 199, 0.16);
   background: #f4f1ff;
   color: #5b3ec7;
+}
+
+.insight-row-source-pill--buffetttribe {
+  border-color: rgba(138, 90, 20, 0.18);
+  background: #fdf6ea;
+  color: #8a5a14;
 }
 
 .insight-row-title-line {

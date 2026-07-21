@@ -124,4 +124,60 @@ tags: [旧标签]
     const args = parseInsightImportArgs(["a.md", "--date", "not-a-date"]);
     expect(() => buildInsightImportData("正文内容", args)).toThrow("Invalid date");
   });
+
+  it("recovers a known show name from `author:` when `source:` holds the episode URL", () => {
+    const args = parseInsightImportArgs(["/tmp/GA56 test.md"]);
+    const data = buildInsightImportData(
+      `---
+title: 测试文章
+source: https://www.youtube.com/watch?v=abc123
+author: Generating Alpha
+---
+正文`,
+      args,
+    );
+
+    expect(data.source).toBe("Generating Alpha");
+    expect(data.sourceUrl).toBe("https://www.youtube.com/watch?v=abc123");
+    expect(data.author).toBeNull();
+  });
+
+  it("leaves a genuine personal byline alone when author isn't a known show name", () => {
+    const args = parseInsightImportArgs(["/tmp/blog-post.md"]);
+    const data = buildInsightImportData(
+      `---
+title: 测试文章
+source: https://lilianweng.github.io/posts/example/
+author: lilian-weng
+---
+正文`,
+      args,
+    );
+
+    expect(data.source).toBeNull();
+    expect(data.sourceUrl).toBe("https://lilianweng.github.io/posts/example/");
+    expect(data.author).toBe("lilian-weng");
+  });
+
+  it("lets --source and --author CLI overrides win over the known-show recovery", () => {
+    const args = parseInsightImportArgs([
+      "/tmp/GA56 test.md",
+      "--source",
+      "CLI Source",
+      "--author",
+      "CLI Author",
+    ]);
+    const data = buildInsightImportData(
+      `---
+title: 测试文章
+source: https://www.youtube.com/watch?v=abc123
+author: Generating Alpha
+---
+正文`,
+      args,
+    );
+
+    expect(data.source).toBe("CLI Source");
+    expect(data.author).toBe("CLI Author");
+  });
 });
