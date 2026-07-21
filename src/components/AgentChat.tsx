@@ -62,14 +62,13 @@ const SUGGESTIONS = [
   "怎么用价值投资框架分析一家公司？",
 ];
 
-interface AgentContext {
-  masterId: string;
-  masterName: string;
-}
+type AgentContext =
+  | { masterId: string; masterName: string }
+  | { companyName: string; ticker?: string; periodYear?: number };
 
 interface AgentChatProps {
-  /** Scopes the conversation to a specific investor page — the server keys the session
-   *  per (userId, masterId) and seeds a one-time context note on the first turn. */
+  /** Scopes the conversation to a specific investor or filing page — the server keys
+   *  the session per (userId, context) and seeds a one-time context note on the first turn. */
   context?: AgentContext;
   suggestions?: string[];
   emptyTitle?: string;

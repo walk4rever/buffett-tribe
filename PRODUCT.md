@@ -326,14 +326,15 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 - `/company/[cik]/annual-report`
 - `/company/[cik]/annual-report/[year]`
 
-年报阅读页至少要支持：
+年报阅读页当前设计（v0.39.12 起）：
 
 - 按年份切换
-- 10-K / 20-F / 40-F 标准目录
-- 右侧展示对应原始内容
-- 页码或章节锚点
-- 附件链接
-- 与财务数据联动跳转
+- 原始 HTML 全文（iframe 直出，不做目录/附件侧栏）
+- 字体大小 / 行间距可调（右上角两个循环切换按钮，偏好存 `localStorage`）
+- AI 解读：右侧固定宽度分栏面板（非弹窗），带公司/年份上下文
+- 与财务数据联动跳转（TODO，未实施）
+
+左侧目录 + 附件清单曾是设计目标，**已确认不可行而移除**：目录原计划扫描 iframe 内 `h1/h2/h3` 生成，但 SEC inline XBRL 渲染的年报几乎不用语义化标题标签（法拉利 2025 20-F 实测 0 个 h1/h2/h3，正文标题靠纯样式 `div`/`span` 模拟）；按 `Item N` 编号扫描对标准格式 filer 可行，但对法拉利这类"欧洲法定年报与 20-F 合并"的版式仍然落空（正文里"Item N"字样完全不出现，只在最前面的监管对照表里出现一次）。抽取问题详见 `TODOS.md` P0 ①-b。
 
 数据前提吃现有库里的 `ExtSource`、`FilingSection`、`FilingAttachment`、`FilingArtifact`、`Financial`，不另起一套孤立模型。
 
@@ -738,9 +739,21 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.38.15）
+## 当前实现状态（v0.39.12）
 
-### v0.38.9–v0.38.15 变更（2026-06-26 ~ 2026-07-14，当前）
+### v0.39.12 变更（2026-07-21，当前）
+
+- **年报阅读页重做**：移除左侧目录 + 附件侧栏（原因见「年报阅读」节）；新增字体大小 / 行间距可调控件（iframe 内用 `zoom` 缩放字体、`!important` 覆盖内联 `line-height` 且排除 `<table>`，偏好 `localStorage` 持久化，用 `useSyncExternalStore` 读取以避免 SSR/客户端首屏文字不一致的 hydration mismatch）；新增 AI 解读入口，不复用大师页的居中弹窗（`MasterAgentDialog`），改为新建 `FilingAgentPanel` 左右分栏停靠（右侧固定 420px），`AgentChat` 的 `context` 类型从只认 `{masterId,masterName}` 扩展为联合类型，新增 `{companyName,ticker?,periodYear?}` 分支。
+- **两个真实 bug 修复**（均为浏览器实测发现，非猜测）：
+  - 字体/行间距控件原挂在 iframe 的 `load` 事件上；法拉利这份年报内嵌 40 张图片，全部经 `/api/filing-image` 代理转发，部分单张耗时 1–3.5 分钟，导致 `load` 事件迟迟不触发、控件长时间"点了没反应"。改为轮询 iframe `contentDocument.readyState`，DOM 解析完即生效，不等图片。`/api/filing-image` 本身的代理延迟未处理，可能值得单独排查（未纳入本次改动）。
+  - 双栏模式下宽表格（SEC 年报常见 `display:inline-table;width:100%` 但内容撑破容器）导致正文横向滚动：只在 `<body>` 设 `overflow-x:hidden` 不够，实测该内联 XBRL 文档的滚动元素是 `<html>`，body 的 overflow 未按预期传导到 viewport；改为 `html,body{overflow-x:hidden}` 同时锁定 + `table{max-width:100%;overflow-x:auto}`。
+- **20-F 目录表识别修正**（`scripts/lib/extract-10k-sections.ts`）：`is20FTocTable`/`normalize20FItemCell` 支持 EU 合并版年报（法拉利等）用"Cross Reference"作表头、`Item 1.`带前缀的写法，向后兼容，未影响现有 GOTU/JOYY 两家 20-F filer。**未解决**法拉利 2022–2025 四年 `FilingSection` 抽取仍为 0（正文标题与 `Item N` 编号完全脱钩，TOC 表格页码也定位不到内容），详见 `TODOS.md` P0 ①-b。
+
+### v0.38.16–v0.39.11 变更（未记录）
+
+版本号已推进但此区间的逐条变更未回写本文档，如需还原请查 git 历史（`git log v0.38.15..v0.39.11`）。
+
+### v0.38.9–v0.38.15 变更（2026-06-26 ~ 2026-07-14）
 
 - **Filer / Company 身份拆分**（v0.38.15）：新增 `Filer` 表（`tribeId` / `filerEntityId` / `companyEntityId` / `isMasterPersona`）作为"这个投资人是不是也是一家公司"的唯一权威来源。修复 Berkshire 双 Entity（filer 身份 + 公司身份）导致李录/段永平持仓里 BRK-A/BRK-B 链到空实体的问题；5 处把 `type="master"` 当公司候选的查询/打分逻辑全部收口为只认 `type="company"`；`search_holdings` 等 3 处硬编码 3 投资人清单改为从 `Filer` 表动态读取。
 - **13F 追踪范围核准为 5 位投资人**：核心 3 位（buffett / lilu / duan）+ Alpha 2 位（gavin-baker = Atreides、alex-sacerdote = Whale Rock）。2020Q1–2026Q1 每季连续无缺（3 处历史异常已排查修复：Atreides 2022Q2 缺失重导、2 条 13F-HR/A 空重复行删除）。

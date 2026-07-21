@@ -760,19 +760,27 @@ function isUnavailableReference(text: string) {
 
 function is20FTocTable(tableText: string) {
   const normalized = normalizeHeadingText(tableText);
+  const lower = normalized.toLowerCase();
   return (
     (
-      normalized.includes("Form 20-F caption") ||
-      normalized.includes("Required item in Form 20-F") ||
-      normalized.includes("Cross reference to Form 20-F")
+      lower.includes("form 20-f caption") ||
+      lower.includes("required item in form 20-f") ||
+      lower.includes("cross reference to form 20-f") ||
+      // EU-style combined "Annual Report and Form 20-F" filers (e.g. Ferrari
+      // N.V.) title this table "Form 20-F Cross Reference" with a plain
+      // "Cross Reference" column header instead of the phrasing above.
+      lower.includes("cross reference")
     ) &&
-    normalized.includes("Item") &&
+    lower.includes("item") &&
     /Page(\(s\))?/i.test(normalized)
   );
 }
 
 function normalize20FItemCell(text: string) {
-  return normalizeHeadingText(text).replace(/\.$/, "").toUpperCase();
+  return normalizeHeadingText(text)
+    .replace(/^item\s+/i, "")
+    .replace(/\.$/, "")
+    .toUpperCase();
 }
 
 function parse20FPageReferences(text: string) {

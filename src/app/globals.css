@@ -6785,29 +6785,25 @@ body.layout-no-header {
   flex-wrap: wrap;
 }
 
-.filing-reader-mobile-menu,
-.filing-reader-desktop-toggle {
-  width: 34px;
+.filing-reader-tool-btn {
   height: 34px;
+  padding: 0 0.65rem;
   border: 0;
   border-radius: 10px;
   background: rgba(35, 42, 52, 0.06);
   color: #334155;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.32rem;
+  font-size: 0.74rem;
+  font-weight: 600;
   cursor: pointer;
   transition: background 0.18s ease, color 0.18s ease;
 }
 
-.filing-reader-mobile-menu:hover,
-.filing-reader-desktop-toggle:hover {
+.filing-reader-tool-btn:hover {
   background: rgba(35, 42, 52, 0.12);
   color: #0f172a;
-}
-
-.filing-reader-mobile-menu {
-  display: none;
 }
 
 .filing-reader-bar-copy {
@@ -6872,36 +6868,15 @@ body.layout-no-header {
 }
 
 .filing-reader-body {
-  display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  display: flex;
+  justify-content: center;
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  transition: grid-template-columns 0.22s ease;
 }
 
-.filing-reader-body--sidebar-collapsed {
-  grid-template-columns: 0 minmax(0, 1fr);
-}
-
-.filing-reader-sidebar {
-  background: rgba(247, 243, 236, 0.86);
-  border-right: 1px solid rgba(132, 146, 166, 0.15);
-  padding: 1rem 0.85rem 1rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-  min-width: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.filing-reader-body--sidebar-collapsed .filing-reader-sidebar {
-  opacity: 0;
-  pointer-events: none;
-  padding-left: 0;
-  padding-right: 0;
-  border-right: 0;
+.filing-reader-body--split {
+  justify-content: flex-start;
 }
 
 .filing-reader-sidebar-head {
@@ -7209,10 +7184,74 @@ body.layout-no-header {
 }
 
 .filing-reader-main {
+  flex: 1;
   min-width: 0;
+  max-width: 1100px;
   overflow-y: auto;
   padding: 1.15rem 1.2rem 1.5rem;
   background: linear-gradient(180deg, #f5f5f7 0%, #ececf1 100%);
+}
+
+.filing-reader-body--split .filing-reader-main {
+  max-width: none;
+}
+
+/* ── Filing reader: docked AI panel ── */
+
+.filing-reader-ai-panel {
+  flex: 0 0 420px;
+  max-width: 42vw;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid rgba(103, 118, 138, 0.14);
+  background: #ffffff;
+}
+
+.filing-reader-ai-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e8e0d0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #2D2A1E;
+  flex-shrink: 0;
+}
+
+.filing-reader-ai-panel-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b6050;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.filing-reader-ai-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.filing-reader-ai-panel-body .agent-chat .chat-input {
+  box-sizing: border-box;
+  height: 42px;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+  .filing-reader-ai-panel {
+    position: fixed;
+    inset: 0;
+    flex: none;
+    max-width: 100%;
+    z-index: 200;
+  }
 }
 
 .filing-reader-hero {
@@ -8350,20 +8389,6 @@ body.layout-no-header {
     justify-content: flex-start;
   }
 
-  .filing-reader-body,
-  .filing-reader-body--sidebar-collapsed {
-    grid-template-columns: 1fr;
-  }
-
-  .filing-reader-sidebar,
-  .filing-reader-body--sidebar-collapsed .filing-reader-sidebar {
-    opacity: 1;
-    pointer-events: auto;
-    padding: 0.9rem 1rem;
-    border-right: 0;
-    border-bottom: 1px solid rgba(132, 146, 166, 0.15);
-  }
-
   .filing-reader-hero {
     flex-direction: column;
     align-items: stretch;
@@ -8527,23 +8552,6 @@ body.layout-no-header {
 
   .filing-reader-bar-name {
     font-size: 0.92rem;
-  }
-
-  .filing-reader-mobile-menu {
-    display: inline-flex;
-  }
-
-  .filing-reader-desktop-toggle {
-    display: none;
-  }
-
-  .filing-reader-sidebar,
-  .filing-reader-body--sidebar-collapsed .filing-reader-sidebar {
-    padding: 0.8rem;
-  }
-
-  .filing-reader-body--sidebar-collapsed .filing-reader-sidebar {
-    display: none;
   }
 
   .filing-reader-main {
@@ -12792,107 +12800,6 @@ body {
   color: var(--apple-blue);
   text-decoration: none;
   font-size: 0.85rem;
-}
-
-/* ── Filing reader: TOC sidebar ── */
-
-.filing-reader-toc-loading {
-  margin: 0;
-  padding: 0.6rem 0.2rem;
-  font-size: 0.72rem;
-  color: #94a3b8;
-  letter-spacing: 0.04em;
-}
-
-.filing-reader-toc {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding: 0.1rem 0;
-}
-
-.filing-reader-toc-item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.32rem 0.6rem;
-  border-radius: 8px;
-  font-size: 0.72rem;
-  line-height: 1.4;
-  color: #475569;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: background 0.13s, color 0.13s;
-}
-
-.filing-reader-toc-item:hover {
-  background: rgba(15, 23, 42, 0.06);
-  color: #0f172a;
-}
-
-.filing-reader-toc-item--active {
-  background: rgba(183, 150, 98, 0.12);
-  color: #7c5d31;
-  font-weight: 600;
-}
-
-.filing-reader-toc-item--h1 {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #1e293b;
-  padding-left: 0.6rem;
-  margin-top: 0.25rem;
-}
-
-.filing-reader-toc-item--h2 {
-  padding-left: 1.1rem;
-}
-
-.filing-reader-toc-item--h3 {
-  padding-left: 1.7rem;
-  font-size: 0.69rem;
-  color: #64748b;
-}
-
-/* ── Filing reader: attachments in sidebar ── */
-
-.filing-reader-sidebar-attachments {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid rgba(132, 146, 166, 0.14);
-  margin-top: 0.5rem;
-}
-
-.filing-reader-sidebar-attachments-label {
-  margin: 0 0 0.2rem;
-  font-size: 0.62rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: #8c7761;
-}
-
-.filing-reader-sidebar-attachment-link {
-  display: block;
-  padding: 0.28rem 0.6rem;
-  border-radius: 7px;
-  font-size: 0.7rem;
-  color: #475569;
-  text-decoration: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: background 0.13s, color 0.13s;
-}
-
-.filing-reader-sidebar-attachment-link:hover {
-  background: rgba(15, 23, 42, 0.06);
-  color: #0f172a;
 }
 
 /* ── Insight detail: related entities ─────────────────────────────── */
