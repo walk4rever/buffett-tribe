@@ -1,3 +1,5 @@
+import { CALLOUT_TAG_PATTERN, calloutBaseType, calloutInlineStyle, getCalloutConfig } from "./callout-types";
+
 export const INSIGHT_FORMATS = ["markdown", "html"] as const;
 export type InsightFormat = (typeof INSIGHT_FORMATS)[number];
 
@@ -15,34 +17,6 @@ export interface ParsedInsightContent {
   content: string;
   metadata: InsightFrontmatter;
 }
-
-const CALLOUT_LABELS: Record<string, string> = {
-  note: "NOTE",
-  tip: "TIP",
-  important: "IMPORTANT",
-  warning: "WARNING",
-  caution: "CAUTION",
-  overview: "OVERVIEW",
-  tips: "TIPS",
-  facts: "FACTS",
-  value: "VALUE",
-  inverse: "INVERSE",
-  takeaway: "TAKEAWAY",
-};
-
-const CALLOUT_CONFIGS: Record<string, { label: string; defaultTitle: string; baseType: string }> = {
-  overview: { label: "Overview", defaultTitle: "背景概览", baseType: "overview" },
-  tips: { label: "Tips", defaultTitle: "知识科普", baseType: "tips" },
-  tip: { label: "Tips", defaultTitle: "知识科普", baseType: "tips" },
-  facts: { label: "Facts", defaultTitle: "时空复盘", baseType: "facts" },
-  important: { label: "Facts", defaultTitle: "时空复盘", baseType: "facts" },
-  value: { label: "Value", defaultTitle: "价值视角", baseType: "value" },
-  inverse: { label: "Inverse", defaultTitle: "反向思考", baseType: "inverse" },
-  warning: { label: "Inverse", defaultTitle: "反向思考", baseType: "inverse" },
-  takeaway: { label: "Takeaway", defaultTitle: "实操启示", baseType: "takeaway" },
-  caution: { label: "Takeaway", defaultTitle: "实操启示", baseType: "takeaway" },
-  note: { label: "Note", defaultTitle: "NOTE", baseType: "note" },
-};
 
 export function isInsightFormat(value: unknown): value is InsightFormat {
   return typeof value === "string" && (INSIGHT_FORMATS as readonly string[]).includes(value);
@@ -145,7 +119,7 @@ export function normalizeInsightLegacyCallouts(raw: string): string {
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
-    const match = /^(>\s*)\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|OVERVIEW|FACTS|TIPS|VALUE|INVERSE|TAKEAWAY)\]\s*(.*)$/i.exec(line);
+    const match = new RegExp(`^(>\\s*)\\[!(${CALLOUT_TAG_PATTERN})\\]\\s*(.*)$`, "i").exec(line);
     if (!match) {
       normalized.push(line);
       continue;
@@ -315,7 +289,7 @@ function splitBlockquoteChildren(children: HastElement[]): HastElement[][] {
   const groups: HastElement[][] = [];
   let currentGroup: HastElement[] = [];
 
-  const calloutRegex = /^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|OVERVIEW|FACTS|TIPS|VALUE|INVERSE|TAKEAWAY)\]/i;
+  const calloutRegex = new RegExp(`^\\s*\\[!(${CALLOUT_TAG_PATTERN})\\]`, "i");
 
   for (const child of children) {
     let isNewCalloutStart = false;
@@ -361,7 +335,7 @@ function shouldTransformGroup(group: HastElement[]): boolean {
   if (firstParagraph.type !== "element" || firstParagraph.tagName !== "p") return false;
   const firstText = firstParagraph.children?.find((c) => c.type === "text");
   if (!firstText || typeof firstText.value !== "string") return false;
-  return /^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|OVERVIEW|FACTS|TIPS|VALUE|INVERSE|TAKEAWAY)\]/i.test(firstText.value);
+  return new RegExp(`^\\s*\\[!(${CALLOUT_TAG_PATTERN})\\]`, "i").test(firstText.value);
 }
 
 function createCalloutFromGroup(group: HastElement[]): HastElement {
@@ -371,21 +345,17 @@ function createCalloutFromGroup(group: HastElement[]): HastElement {
     throw new Error("Invalid callout node structure");
   }
   
-  const match = /^\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|OVERVIEW|FACTS|TIPS|VALUE|INVERSE|TAKEAWAY)\][ \t]*(.*?)(?:\r?\n|$)/i.exec(firstText.value);
+  const match = new RegExp(`^\\s*\\[!(${CALLOUT_TAG_PATTERN})\\][ \\t]*(.*?)(?:\\r?\\n|$)`, "i").exec(firstText.value);
   const type = match ? match[1].toLowerCase() : "note";
-  const title = match ? (match[2].trim() || CALLOUT_LABELS[type] || type.toUpperCase()) : "NOTE";
+  const title = match ? (match[2].trim() || type.toUpperCase()) : "NOTE";
 
   // Slice callout prefix from the first text node
   if (match) {
     firstText.value = firstText.value.slice(match[0].length);
   }
 
-  // Find config for this type
-  const config = CALLOUT_CONFIGS[type] || {
-    label: type.charAt(0).toUpperCase() + type.slice(1),
-    defaultTitle: type.toUpperCase(),
-    baseType: type,
-  };
+  const config = getCalloutConfig(type);
+  const baseType = calloutBaseType(config);
 
   // Clean title: extract text inside parentheses if present (e.g. "（算力重构与资本回报率）" -> "算力重构与资本回报率")
   let displayTitle = title.trim();
@@ -455,11 +425,12 @@ function createCalloutFromGroup(group: HastElement[]): HastElement {
     properties: {
       className: [
         "insight-callout",
-        `insight-callout--${config.baseType}`,
+        `insight-callout--${baseType}`,
         `insight-callout--type-${type}`,
       ].filter(Boolean),
       "data-callout": type,
-      "data-base-callout": config.baseType,
+      "data-base-callout": baseType,
+      style: calloutInlineStyle(config),
     },
     children: finalChildren,
   };

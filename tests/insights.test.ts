@@ -513,4 +513,43 @@ date: "2026-06-09"
     expect(secondAside.children[0].children[1].children[0].value).toBe("Second Callout");
     expect(secondAside.children[1].children[0].value).toBe("Note content.");
   });
+
+  it("rehypeInsightCallouts recognizes the Highlights type with its localized default title", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockTree: any = {
+      type: "root",
+      children: [
+        {
+          type: "element",
+          tagName: "blockquote",
+          properties: {},
+          children: [
+            {
+              type: "element",
+              tagName: "p",
+              properties: {},
+              children: [{ type: "text", value: "[!HIGHLIGHTS]\nTL;DR content." }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const transform = rehypeInsightCallouts();
+    transform(mockTree);
+
+    const aside = mockTree.children[0];
+    expect(aside.tagName).toBe("aside");
+    expect(aside.properties.className).toContain("insight-callout--highlights");
+    expect(aside.properties["data-base-callout"]).toBe("highlights");
+    expect(aside.properties.style).toContain("--insight-callout-accent-color: #dc2626");
+    expect(aside.properties.style).toContain("linear-gradient");
+
+    const titleDiv = aside.children[0];
+    expect(titleDiv.children[0].children[0].value).toBe("Highlights");
+    expect(titleDiv.children[1].children[0].value).toBe("核心看点");
+
+    const contentP = aside.children[1];
+    expect(contentP.children[0].value).toBe("TL;DR content.");
+  });
 });

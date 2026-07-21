@@ -42,6 +42,7 @@ const sanitizeSchema = {
       ["className"],
       ["data-callout"],
       ["data-base-callout"],
+      ["style"],
     ],
     div: [["className"]],
     span: [["className"]],
