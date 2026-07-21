@@ -1,10 +1,12 @@
 import * as fs from "fs";
+import * as path from "path";
 import prisma from "../src/lib/prisma";
 import {
   buildInsightImportData,
   getInsightImportUsage,
   parseInsightImportArgs,
 } from "./lib/insight-import";
+import { uploadInsightLocalImages } from "./lib/insight-media";
 
 async function main() {
   const args = parseInsightImportArgs(process.argv.slice(2));
@@ -24,6 +26,17 @@ async function main() {
   if (data.source) console.log(`[import-insight] Source: ${data.source}`);
   if (data.sourceUrl) console.log(`[import-insight] Source URL: ${data.sourceUrl}`);
   if (data.tags.length > 0) console.log(`[import-insight] Tags: ${data.tags.join(", ")}`);
+
+  const { content: contentWithUploadedImages, uploads } = await uploadInsightLocalImages(
+    data.contentRaw,
+    path.dirname(args.filePath),
+    data.slug,
+    { dryRun: args.dryRun },
+  );
+  data.contentRaw = contentWithUploadedImages;
+  for (const upload of uploads) {
+    console.log(`[import-insight] Image: ${upload.localRef} → ${upload.publicUrl}`);
+  }
 
   if (args.dryRun) {
     console.log("[import-insight] --dry-run: no database changes.");

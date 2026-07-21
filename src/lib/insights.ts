@@ -1,4 +1,5 @@
 import { CALLOUT_TAG_PATTERN, calloutBaseType, calloutInlineStyle, getCalloutConfig } from "./callout-types";
+import { matchEmbedPlatform, type EmbedPlatformConfig } from "./embed-platforms";
 
 export const INSIGHT_FORMATS = ["markdown", "html"] as const;
 export type InsightFormat = (typeof INSIGHT_FORMATS)[number];
@@ -235,6 +236,70 @@ function resolveInsightOverviewFallback(raw: string, fallbackDescription?: strin
 export function rehypeInsightCallouts() {
   return function transform(tree: unknown) {
     visitParent(tree as HastElement);
+  };
+}
+
+/** Turns a paragraph containing only a link to a known video/audio platform (a bare
+ *  URL or a titled link, alone on its own line) into a sandboxed iframe embed. Any
+ *  other <iframe> HTML an author might type stays stripped by rehype-sanitize —
+ *  this is the only path that ever produces one, see embed-platforms.ts. */
+export function rehypeInsightEmbeds() {
+  return function transform(tree: unknown) {
+    visitEmbedParent(tree as HastElement);
+  };
+}
+
+function visitEmbedParent(node: HastElement) {
+  if (!node || !Array.isArray(node.children)) return;
+
+  node.children = node.children.map((child) => {
+    visitEmbedParent(child);
+    if (child.type !== "element" || child.tagName !== "p") return child;
+    return tryCreateEmbedFromParagraph(child) ?? child;
+  });
+}
+
+function tryCreateEmbedFromParagraph(paragraph: HastElement): HastElement | null {
+  const meaningful = (paragraph.children ?? []).filter(
+    (c) => !(c.type === "text" && typeof c.value === "string" && !c.value.trim()),
+  );
+  if (meaningful.length !== 1) return null;
+
+  const [only] = meaningful;
+  if (only.type !== "element" || only.tagName !== "a") return null;
+  const href = only.properties?.href;
+  if (typeof href !== "string") return null;
+
+  const matched = matchEmbedPlatform(href);
+  return matched ? createEmbedNode(matched.config, matched.embedSrc) : null;
+}
+
+function createEmbedNode(config: EmbedPlatformConfig, embedSrc: string): HastElement {
+  const isVideo = config.kind === "video";
+  return {
+    type: "element",
+    tagName: "div",
+    properties: {
+      className: ["insight-embed", `insight-embed--${config.kind}`],
+      style: isVideo ? `aspect-ratio: ${config.aspectRatio}` : `height: ${config.height}px`,
+    },
+    children: [
+      {
+        type: "element",
+        tagName: "iframe",
+        properties: {
+          src: embedSrc,
+          title: config.title,
+          loading: "lazy",
+          frameBorder: "0",
+          allow: isVideo
+            ? "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            : "autoplay; clipboard-write; encrypted-media; picture-in-picture",
+          allowFullScreen: isVideo,
+        },
+        children: [],
+      },
+    ],
   };
 }
 

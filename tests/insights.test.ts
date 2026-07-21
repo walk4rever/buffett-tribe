@@ -6,8 +6,33 @@ import {
   markdownToHtmlMarkdown,
   estimateReadingMinutes,
   rehypeInsightCallouts,
+  rehypeInsightEmbeds,
   normalizeInsightLegacyCallouts,
 } from "../src/lib/insights";
+
+function paragraphWithLink(href: string, text = href) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mockTree: any = {
+    type: "root",
+    children: [
+      {
+        type: "element",
+        tagName: "p",
+        properties: {},
+        children: [
+          {
+            type: "element",
+            tagName: "a",
+            properties: { href },
+            children: [{ type: "text", value: text }],
+          },
+        ],
+      },
+    ],
+  };
+  rehypeInsightEmbeds()(mockTree);
+  return mockTree.children[0];
+}
 
 describe("insights helper library", () => {
   it("normalizeInsightSlug normalizes slugs correctly", () => {
@@ -551,5 +576,82 @@ date: "2026-06-09"
 
     const contentP = aside.children[1];
     expect(contentP.children[0].value).toBe("TL;DR content.");
+  });
+
+  it("rehypeInsightEmbeds converts a bare YouTube link paragraph into a sandboxed video iframe", () => {
+    const embed = paragraphWithLink("https://youtu.be/dQw4w9WgXcQ");
+
+    expect(embed.tagName).toBe("div");
+    expect(embed.properties.className).toEqual(["insight-embed", "insight-embed--video"]);
+    expect(embed.properties.style).toBe("aspect-ratio: 16 / 9");
+
+    const iframe = embed.children[0];
+    expect(iframe.tagName).toBe("iframe");
+    expect(iframe.properties.src).toBe("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
+    expect(iframe.properties.allowFullScreen).toBe(true);
+  });
+
+  it("rehypeInsightEmbeds recognizes a full youtube.com/watch URL with extra query params", () => {
+    const embed = paragraphWithLink("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42s");
+    expect(embed.children[0].properties.src).toBe("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
+  });
+
+  it("rehypeInsightEmbeds converts a Spotify episode link into an audio iframe with a fixed height", () => {
+    const embed = paragraphWithLink("https://open.spotify.com/episode/4rOoJ6Egrf8K2IrywzwOMk");
+
+    expect(embed.properties.className).toEqual(["insight-embed", "insight-embed--audio"]);
+    expect(embed.properties.style).toBe("height: 232px");
+    expect(embed.children[0].properties.src).toBe("https://open.spotify.com/embed/episode/4rOoJ6Egrf8K2IrywzwOMk");
+    expect(embed.children[0].properties.allowFullScreen).toBe(false);
+  });
+
+  it("rehypeInsightEmbeds converts an Apple Podcasts link by prefixing the embed subdomain", () => {
+    const embed = paragraphWithLink("https://podcasts.apple.com/us/podcast/some-show/id123?i=456");
+    expect(embed.children[0].properties.src).toBe("https://embed.podcasts.apple.com/us/podcast/some-show/id123?i=456");
+  });
+
+  it("rehypeInsightEmbeds embeds even when the author gives the link custom text", () => {
+    const embed = paragraphWithLink("https://youtu.be/dQw4w9WgXcQ", "点这里看原视频");
+    expect(embed.tagName).toBe("div");
+  });
+
+  it("rehypeInsightEmbeds leaves an unrecognized link paragraph as a normal paragraph", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockTree: any = {
+      type: "root",
+      children: [
+        {
+          type: "element",
+          tagName: "p",
+          properties: {},
+          children: [
+            { type: "element", tagName: "a", properties: { href: "https://example.com/article" }, children: [{ type: "text", value: "https://example.com/article" }] },
+          ],
+        },
+      ],
+    };
+    rehypeInsightEmbeds()(mockTree);
+    expect(mockTree.children[0].tagName).toBe("p");
+  });
+
+  it("rehypeInsightEmbeds leaves a paragraph with a link plus surrounding text untouched", () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockTree: any = {
+      type: "root",
+      children: [
+        {
+          type: "element",
+          tagName: "p",
+          properties: {},
+          children: [
+            { type: "text", value: "参考视频：" },
+            { type: "element", tagName: "a", properties: { href: "https://youtu.be/dQw4w9WgXcQ" }, children: [{ type: "text", value: "https://youtu.be/dQw4w9WgXcQ" }] },
+          ],
+        },
+      ],
+    };
+    rehypeInsightEmbeds()(mockTree);
+    expect(mockTree.children[0].tagName).toBe("p");
+    expect(mockTree.children[0].children).toHaveLength(2);
   });
 });
