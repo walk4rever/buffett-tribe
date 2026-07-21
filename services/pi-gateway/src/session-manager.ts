@@ -17,6 +17,9 @@ const PI_AGENT_DIR = process.env.PI_AGENT_DIR ?? join(homedir(), ".pi", "agent")
 export interface SessionContext {
   masterId?: string;
   masterName?: string;
+  companyName?: string;
+  ticker?: string;
+  periodYear?: number;
 }
 
 export interface SessionResult {
@@ -25,11 +28,14 @@ export interface SessionResult {
   isNew: boolean;
 }
 
-// Session key: userId alone, or userId scoped to a master's context so switching
-// investor pages starts a fresh conversation instead of bleeding context across masters.
+// Session key: userId alone, or userId scoped to a master/company context so
+// switching investor or filing-reader pages starts a fresh conversation
+// instead of bleeding context across masters or companies.
 function sessionKey(userId: string | undefined, context?: SessionContext): string | undefined {
   if (!userId) return undefined;
-  return context?.masterId ? `${userId}:${context.masterId}` : userId;
+  if (context?.masterId) return `${userId}:${context.masterId}`;
+  if (context?.companyName) return `${userId}:${context.ticker ?? context.companyName}`;
+  return userId;
 }
 
 // session key → session. Anonymous sessions are not cached (key = undefined).
