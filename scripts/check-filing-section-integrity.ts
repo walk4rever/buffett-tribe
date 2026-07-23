@@ -13,6 +13,13 @@
  * would silently fall back to the same lightweight preview again. This
  * check flags exactly that gap.
  *
+ * It also flags the inverse gap (found via the Ferrari/RACE 20-F onboarding,
+ * 2026-07): a filing that imported successfully (has a primary_html
+ * artifact) but whose section extraction returned zero sections. That
+ * failure is silent — extractTargetSections() returns {} rather than
+ * throwing — so it's invisible to any check that only looks at filings
+ * which already have sections.
+ *
  * Usage:
  *   npm run check:filing-section:integrity
  *   npm run check:filing-section:integrity -- --strict   # exit 1 if any gaps found
@@ -52,12 +59,38 @@ async function main() {
     sectionCount: s._count.sections,
   }));
 
+  const zeroSectionSources = await db.extSource.findMany({
+    where: {
+      kind: { in: ["10k", "20f", "40f"] },
+      artifacts: { some: { kind: "primary_html" } },
+      sections: { none: {} },
+    },
+    select: {
+      id: true,
+      kind: true,
+      periodYear: true,
+      accessionNumber: true,
+      filer: { select: { canonicalName: true, ticker: true } },
+    },
+  });
+
+  const zeroSectionSamples = zeroSectionSources.slice(0, 30).map((s) => ({
+    sourceId: s.id,
+    ticker: s.filer?.ticker ?? null,
+    name: s.filer?.canonicalName ?? null,
+    kind: s.kind,
+    year: s.periodYear,
+    accession: s.accessionNumber,
+  }));
+
   console.log(
     JSON.stringify(
       {
         filingsWithSections: sources.length,
         filingsMissingPrimaryHtml: missingPrimaryHtml.length,
         samples,
+        filingsWithHtmlButZeroSections: zeroSectionSources.length,
+        zeroSectionSamples,
       },
       null,
       2,
@@ -66,7 +99,7 @@ async function main() {
 
   await db.$disconnect();
 
-  if (strict && missingPrimaryHtml.length > 0) {
+  if (strict && (missingPrimaryHtml.length > 0 || zeroSectionSources.length > 0)) {
     process.exitCode = 1;
   }
 }

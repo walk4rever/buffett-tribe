@@ -908,6 +908,65 @@ function collectReferencedPageNumbers(
   return [...pages].sort((a, b) => a - b);
 }
 
+// EU-style combined 20-F filers (e.g. Ferrari) render bare page numbers as a
+// centered <span> per top-level page container instead of "Page N" text, so
+// parsePageNumber() never matches and collectPageFragments() finds nothing.
+// This scans each top-level body <div> for that centered-digit footer
+// pattern and maps page number -> the div index that renders it, giving a
+// second, DOM-structural way to locate a page's content when the
+// text-pattern approach comes up empty.
+function isPageFooterSpan($: CheerioAPI, span: Element) {
+  const $span = $(span);
+  if ($span.children().length > 0) return false;
+  if (!/^\d{1,3}$/.test(normalizePlainText($span.text()))) return false;
+
+  const parent = $span.parent();
+  if (getNodeTag(parent.get(0) as Element) !== "div") return false;
+  if (!(parent.attr("style") ?? "").toLowerCase().includes("text-align:center")) return false;
+  if ($span.closest("table").length > 0) return false;
+
+  return true;
+}
+
+function collectPageFooterMarkers($: CheerioAPI, bodyDivs: Element[]): Map<number, number> {
+  const markers: Array<{ page: number; divIndex: number }> = [];
+
+  bodyDivs.forEach((div, divIndex) => {
+    $(div)
+      .find("span")
+      .each((_, span) => {
+        if (!isPageFooterSpan($, span)) return;
+        markers.push({ page: Number(normalizePlainText($(span).text())), divIndex });
+      });
+  });
+
+  // Keep only a strictly increasing run so a stray digit that happens to
+  // match the footer pattern can't desync the page -> div mapping.
+  const result = new Map<number, number>();
+  let lastPage = 0;
+  for (const marker of markers) {
+    if (marker.page <= lastPage) continue;
+    result.set(marker.page, marker.divIndex);
+    lastPage = marker.page;
+  }
+  return result;
+}
+
+function resolvePageDivRange(
+  pageNumber: number,
+  markers: Map<number, number>,
+  sortedPages: number[],
+): { start: number; end: number } | null {
+  const endDivIndex = markers.get(pageNumber);
+  if (endDivIndex === undefined) return null;
+
+  const pageIndex = sortedPages.indexOf(pageNumber);
+  const previousPage = pageIndex > 0 ? sortedPages[pageIndex - 1] : null;
+  const startDivIndex = previousPage !== null ? markers.get(previousPage)! + 1 : 0;
+
+  return { start: startDivIndex, end: endDivIndex };
+}
+
 function extractVia20FCrossReferenceTables(
   $: CheerioAPI,
   template: FilingTemplate,
@@ -923,6 +982,10 @@ function extractVia20FCrossReferenceTables(
       .map((page) => [page.pageNumber!, page])
   );
 
+  const bodyDivs = $("body").children("div").toArray();
+  const footerMarkers = collectPageFooterMarkers($, bodyDivs);
+  const footerPages = [...footerMarkers.keys()].sort((a, b) => a - b);
+
   const result: Record<string, ExtractedSection> = {};
 
   for (const section of template.sections) {
@@ -933,9 +996,23 @@ function extractVia20FCrossReferenceTables(
     const fragments = pageNumbers
       .map((pageNumber) => pagesByNumber.get(pageNumber)?.html ?? null)
       .filter((fragment): fragment is string => Boolean(fragment));
-    if (!fragments.length) continue;
 
-    const extracted = extractSectionFromFragment(fragments.join("\n"), section.key, sourceUrl);
+    let extracted = fragments.length
+      ? extractSectionFromFragment(fragments.join("\n"), section.key, sourceUrl)
+      : null;
+
+    if (!extracted && footerMarkers.size) {
+      const startRange = resolvePageDivRange(pageNumbers[0]!, footerMarkers, footerPages);
+      const endRange = resolvePageDivRange(pageNumbers[pageNumbers.length - 1]!, footerMarkers, footerPages);
+      if (startRange && endRange && startRange.start <= endRange.end) {
+        const fragment = bodyDivs
+          .slice(startRange.start, endRange.end + 1)
+          .map((div) => $.html(div))
+          .join("\n");
+        if (fragment) extracted = extractSectionFromFragment(fragment, section.key, sourceUrl);
+      }
+    }
+
     if (extracted) result[section.key] = extracted;
   }
 

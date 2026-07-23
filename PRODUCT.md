@@ -334,7 +334,7 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 - AI 解读：右侧固定宽度分栏面板（非弹窗），带公司/年份上下文
 - 与财务数据联动跳转（TODO，未实施）
 
-左侧目录 + 附件清单曾是设计目标，**已确认不可行而移除**：目录原计划扫描 iframe 内 `h1/h2/h3` 生成，但 SEC inline XBRL 渲染的年报几乎不用语义化标题标签（法拉利 2025 20-F 实测 0 个 h1/h2/h3，正文标题靠纯样式 `div`/`span` 模拟）；按 `Item N` 编号扫描对标准格式 filer 可行，但对法拉利这类"欧洲法定年报与 20-F 合并"的版式仍然落空（正文里"Item N"字样完全不出现，只在最前面的监管对照表里出现一次）。抽取问题详见 `TODOS.md` P0 ①-b。
+左侧目录 + 附件清单曾是设计目标，**已确认不可行而移除**：目录原计划扫描 iframe 内 `h1/h2/h3` 生成，但 SEC inline XBRL 渲染的年报几乎不用语义化标题标签（法拉利 2025 20-F 实测 0 个 h1/h2/h3，正文标题靠纯样式 `div`/`span` 模拟）；按 `Item N` 编号扫描对标准格式 filer 可行，但对法拉利这类"欧洲法定年报与 20-F 合并"的版式仍然落空（正文里"Item N"字样完全不出现，只在最前面的监管对照表里出现一次）。这是 iframe 内客户端扫描的问题，跟后端 `FilingSection` 抽取管线（章节数据库化，见下方「v0.39.17 变更」）是两回事——后者已修复。
 
 数据前提吃现有库里的 `ExtSource`、`FilingSection`、`FilingAttachment`、`FilingArtifact`、`Financial`，不另起一套孤立模型。
 
@@ -739,15 +739,20 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.39.12）
+## 当前实现状态（v0.39.17）
 
-### v0.39.12 变更（2026-07-21，当前）
+### v0.39.17 变更（2026-07-23，当前）
+
+- **Ferrari (RACE) 20-F `FilingSection` 抽取修复**（`scripts/lib/extract-10k-sections.ts`，解决 v0.39.12 遗留的"未解决"项）：根因是 EU 合并版 20-F（Dutch 法定年报 + SEC 20-F 合一）用居中 `<span>` 渲染裸页码（如 `<div style="text-align:center"><span>44</span></div>`），不含"Page 44"这类上下文文字，原有 `parsePageNumber()` 的文本正则完全命中不到；且该版式一页内容平均跨 ~18 个顶层 `<div>`，不满足既有"一个顶层 div = 一页"的假设。新增 `collectPageFooterMarkers()`：扫描每个顶层 div 内是否有"叶子 `<span>` + 纯数字文本 + 父级 `<div style="text-align:center">` + 不在 `<table>` 内"的居中页码 span，建立 `页码 → 顶层 div 索引` 映射（对法拉利 2022/2024 两份原文实测：299/296 个候选页码，4→302 / 4→299 严格递增，0 异常 0 重复）；再用 `resolvePageDivRange()` 把"某页码"解析成"上一个已知页码的 div 之后 → 本页码 div（含）"的顶层 div 区间，拼接区间内所有顶层 div 的 HTML 作为该 section 的原文片段。作为 `extractVia20FCrossReferenceTables()` 里逐 section 的 fallback（原有基于文本页码的路径失败时才触发），不影响 GOTU/JOYY 等已工作的 20-F filer（回归验证：两家 2024 年报仍分别抽出 29/30 个 section，和修复前一致）。修复后法拉利 2022–2025 四年 `FilingSection` 从 0 个恢复到 18–21 个，`onboard-company.ts` 剩余的 4 个生成脚本（company_profile / business_overview / value_analysis / management_analysis）已补跑完成；`generate:valuation-analysis` 因 RACE 缺 `StockPrice` 数据被跳过，见 `TODOS.md`。
+- **`check:filing-section:integrity` 补上"静默抽取失败"检测**（同一次排查发现的监控盲区，见 v0.39.12 的 P2 记录）：原巡检只检查"已有 section 的 filing 是否缺 `primary_html` artifact"，一个 filing 抽取返回 0 个 section（无异常，纯静默）完全不在检查范围内。新增第二个查询：有 `primary_html` artifact 但 `sections: { none: {} }` 的 filing，计入 `--strict` 判定。上线即命中 **65 个此前不可见的历史静默失败**（10-K 和 20-F 都有，样例含 GE/DEO/KHC/CHTR/DPZ/LEN/NVR/JEF/C-PR/INOD），根因未逐一排查，记入 `TODOS.md` P2 待处理；`data-integrity-check.yml` 周检从这次起会因此持续标红开 issue，直到清掉积压或加豁免清单。
+
+### v0.39.12 变更（2026-07-21）
 
 - **年报阅读页重做**：移除左侧目录 + 附件侧栏（原因见「年报阅读」节）；新增字体大小 / 行间距可调控件（iframe 内用 `zoom` 缩放字体、`!important` 覆盖内联 `line-height` 且排除 `<table>`，偏好 `localStorage` 持久化，用 `useSyncExternalStore` 读取以避免 SSR/客户端首屏文字不一致的 hydration mismatch）；新增 AI 解读入口，不复用大师页的居中弹窗（`MasterAgentDialog`），改为新建 `FilingAgentPanel` 左右分栏停靠（右侧固定 420px），`AgentChat` 的 `context` 类型从只认 `{masterId,masterName}` 扩展为联合类型，新增 `{companyName,ticker?,periodYear?}` 分支。
 - **两个真实 bug 修复**（均为浏览器实测发现，非猜测）：
   - 字体/行间距控件原挂在 iframe 的 `load` 事件上；法拉利这份年报内嵌 40 张图片，全部经 `/api/filing-image` 代理转发，部分单张耗时 1–3.5 分钟，导致 `load` 事件迟迟不触发、控件长时间"点了没反应"。改为轮询 iframe `contentDocument.readyState`，DOM 解析完即生效，不等图片。`/api/filing-image` 本身的代理延迟未处理，可能值得单独排查（未纳入本次改动）。
   - 双栏模式下宽表格（SEC 年报常见 `display:inline-table;width:100%` 但内容撑破容器）导致正文横向滚动：只在 `<body>` 设 `overflow-x:hidden` 不够，实测该内联 XBRL 文档的滚动元素是 `<html>`，body 的 overflow 未按预期传导到 viewport；改为 `html,body{overflow-x:hidden}` 同时锁定 + `table{max-width:100%;overflow-x:auto}`。
-- **20-F 目录表识别修正**（`scripts/lib/extract-10k-sections.ts`）：`is20FTocTable`/`normalize20FItemCell` 支持 EU 合并版年报（法拉利等）用"Cross Reference"作表头、`Item 1.`带前缀的写法，向后兼容，未影响现有 GOTU/JOYY 两家 20-F filer。**未解决**法拉利 2022–2025 四年 `FilingSection` 抽取仍为 0（正文标题与 `Item N` 编号完全脱钩，TOC 表格页码也定位不到内容），详见 `TODOS.md` P0 ①-b。
+- **20-F 目录表识别修正**（`scripts/lib/extract-10k-sections.ts`）：`is20FTocTable`/`normalize20FItemCell` 支持 EU 合并版年报（法拉利等）用"Cross Reference"作表头、`Item 1.`带前缀的写法，向后兼容，未影响现有 GOTU/JOYY 两家 20-F filer。当时**未解决**法拉利 2022–2025 四年 `FilingSection` 抽取仍为 0（正文标题与 `Item N` 编号完全脱钩，TOC 表格页码也定位不到内容）——已在 v0.39.17 修复，见上方「v0.39.17 变更」。
 
 ### v0.38.16–v0.39.11 变更（未记录）
 

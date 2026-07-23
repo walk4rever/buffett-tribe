@@ -1,6 +1,6 @@
 # TODOS — 活跃工作队列
 
-> 更新：2026-07-21（v0.39.12）。本文件只保留**未完成项**，按 P0–P3 排优先级；完成项的结论回写 `PRODUCT.md` 后从这里移除（详细过程见 git 历史）。产品定位、架构、数据口径、测试体系设计一律以 `PRODUCT.md` 为准。
+> 更新：2026-07-23（v0.39.17）。本文件只保留**未完成项**，按 P0–P3 排优先级；完成项的结论回写 `PRODUCT.md` 后从这里移除（详细过程见 git 历史）。产品定位、架构、数据口径、测试体系设计一律以 `PRODUCT.md` 为准。
 >
 > 当前队列于 2026-07-17 与用户讨论后重排：P0 项是用户点名的紧急项（带完整现状诊断，可直接开工），P1 三项是围绕"Agent 是核心入口"主线的既定建议。2026-07-18 新增两项来自 `anthropics/financial-services` 仓库调研的建议（P2）。
 
@@ -14,12 +14,6 @@
   - **下一步**：跟用户过一轮翻译方案的小样本对比（同一份 filing 分别跑方案 A/B 看效果），再定最终方案和排期。
 - [ ] **①-c `/api/filing-image` 代理延迟严重**（2026-07-21 排查字体/行间距控件失效时发现）：法拉利这份 20-F 内嵌 40 张图片全部经该接口代理转发 SEC.gov 原图，单张最长 3.5 分钟（`race-20251231_g5.jpg`），多张超过 1 分钟，无缓存。当前已通过"控件不再等 iframe `load` 事件"绕开了它对本功能的影响，但代理本身的延迟没有处理，值得单独排查是否要加缓存层（R2/CDN）或加超时+占位图。
 
-- [ ] **①-b Ferrari (RACE) onboarding 卡在 20-F 章节抽取，概念验证中断**（2026-07-19/20 发现，2026-07-21 补充排查，源于给 /company 页面设计"用户自助 onboarding"功能时的真实测试）：
-  - **现状**：Entity + Financial 已建（6 年，2020–2025，60 行财务数据完整）；`FilingSection` 只有 2020/2021 两年（55 个），2022–2025 四年是 0——不是报错，是静默抽不到。4 个依赖 filing 文字证据的 LLM 生成脚本**尚未跑**（`onboard-company.ts` 流程中断在这一步，等结论）。
-  - **根因**：Ferrari 从 2022 年报起把 Dutch 法定年报和 SEC 20-F 合并成一份文件。① 正文 TOC 不再超链接官方 Item 标签，标题匹配法失效；② 文件里有"Item→页码"对照表，但表头写法（"Cross Reference"）和 item 单元格格式（"Item 1."带前缀）跟代码原本认的三个固定短语/纯数字格式都不一致——**已修复并提交**（`scripts/lib/extract-10k-sections.ts` 的 `is20FTocTable` / `normalize20FItemCell`，改动小、向后兼容，未影响现有 GOTU/JOYY 两家 20-F filer）；③ 对照表读对了之后，"页码 → 具体 HTML 内容"这一步仍失败——`collectPageFragments` 假设"一个顶层 div = 一页"，Ferrari 这份文件是细粒度 inline XBRL 渲染，body 下 4814 个顶层 div，没有可识别的页码标记文本，定位不到内容。
-  - **2026-07-21 补充排查**（用户追问"为什么不直接用文件里那张真正的目录"引出）：法拉利文件里其实有**两张不同的表**——① 上面①提到的"Item→页码"监管对照表（已支持解析）；② 一张真正给读者看的目录（`Risk Factors | 13`、`Overview of Our Business | 44` 这种有意义的章节标题+页码），结构比①干净很多。但两张表最终都卡在同一个"页码 → HTML 位置"瓶颈上：`parsePageNumber()` 的正则只认"Page 44"这种带上下文的写法，实测该文件的页码是**裸露渲染的纯数字元素**（无任何前后文字），现有正则命中 0 次；但页码数字本身确实以孤立元素形式存在于文档里（1105 个"纯数字"叶子元素，其中包含与目录页码完全对应的 5/6/8/9/11/13/38/40/44/85/115/118/168/178...序列），另外章节标题本身也会作为运行页眉重复出现（如"Overview of Our Business"出现 11 次）——这两条线索理论上可以做确定性锚定（拿目录已知的页码序列去顺序匹配裸数字元素，或者直接用运行页眉首次出现位置定位章节起点），但**没有验证到底能不能完整跑通、首尾相接**，是否可靠仍需要实测。另外验证过"按 Item 编号扫描正文"这条路：对 GOTU 等标准格式 filer 有效（正文有 107 处"Item N. 标题"字样），但对法拉利完全无效——正文里"Item N"字样出现次数是 **0**，只在监管对照表里出现，说明这份文件的问题不是"扫描方法不够聪明"，是数据源本身在正文里就没有这个锚点。
-  - **讨论中的方向**：如果"已知页码序列锚定裸数字"或"运行页眉定位"两条确定性路径验证后跑不通，再退到 LLM 兜底——把清洗后的纯文本（或 block 列表）喂给 LLM，只要它标出"章节边界在哪个 block 序号"（不要复述内容，避免幻觉污染原文），真正摘取文字仍由确定性代码从原文切片；只在冷门排版触发，正常公司零成本、零额外调用。法拉利实测：清洗后全文约 27 万 token（3596 个 block），若不做候选预筛选、把全部 block 预览喂给 LLM，一次性调用量级可控。
-  - **待拍板**：a) 先花时间验证"页码序列锚定 / 运行页眉定位"这两条更便宜的确定性路径，还是直接跳到 LLM 兜底（工作量都是中等，前者收益是零成本但可能验证后发现此路不通，后者更通用但每次要花一次 LLM 调用）；b) Ferrari 当前"财务数据齐全但近 4 年无文字证据"的半成品状态，是先搁置、还是接受现状跑生成脚本（会导致"2025 年财务数字 + 2021 年文字叙述"拼在一个发布页面上，读者无感知——已在讨论中确认过这个风险）。
 - [ ] **② A 股/港股 Phase 1：茅台（cn-600519）+ 泡泡玛特（hk-9992）**（~2-3 天）
   - **现状**：只有 schema 前置落地（`Entity.market`/`code`，2026-06-15）；路由、导入、页面适配全部未开始。完整方案见 PRODUCT.md「A股与港股覆盖扩展」。
   - **四步最小路径**：
@@ -50,11 +44,12 @@
 - [ ] **pi-gateway 流量监控**：PM2 logs + Langfuse 观测调用情况。
 - [ ] **L5 Playwright E2E 冒烟**：5-6 个核心用户路径（`/agent` 问答、公司页六 tab、年报阅读器、大师主页）。写起来最贵、维护成本最高，边际价值低于 L3/L4，明确延后。
 - [ ] **重写 `tests/README.md`**：现在内容指向另一个仓库（talk-with-buffett），完全过时。
-- [ ] **`FilingSection` 抽取失败监控盲区**（2026-07-20 Ferrari onboarding 排查发现）：每周巡检 `check-filing-section-integrity.ts` 只检查"有 section 的 filing 是否有 `primary_html` artifact"，不检查"导入的 filing 有没有成功抽出任何 section"——像 Ferrari 那样抽取失败返回 0 而不是报错，巡检完全看不见，只能靠人工偶然发现（这次是因为要 onboard 新公司才撞见）。应该加一条"有 `primary_html` artifact 但 0 个 section"的检测，纳入现有巡检脚本。
+- [ ] **`check:filing-section:integrity` 新检测发现 65 家 filing 静默抽取失败**（2026-07-23，Ferrari 20-F 抽取修复后顺带补上的"有 `primary_html` 但 0 个 section"检测一上线就命中）：抽样看覆盖 10-K 和 20-F 两种 kind，涉及 GE / DEO / KHC / CHTR / DPZ / LEN / NVR / JEF / C-PR / INOD 等多家公司，尚未逐一排查根因，大概率是多种不同版式问题（不一定都是法拉利那种 EU 合并版 20-F）。`data-integrity-check.yml` 的 `--strict` 巡检现在会因此常态性失败并每周开 issue，需要尽快排查修复一批，或者先在巡检脚本里加一份已知豁免清单，避免 issue 噪音掩盖真正的新问题。
 - [ ] **生成脚本 filing evidence 选取行为不一致**（同上排查发现）：`fetchLatestFilingEvidence`（`scripts/lib/company-generation.ts`，company-profile/business-model/value-analysis 三个生成脚本共用）只认最新一年 `ExtSource`，若该年 section 为空，evidence 文本里 Sections 块直接留空、不回退旧年份；`generate-management-analysis.ts` 自己另写的 `fetchBuybackEvidence` 则会往旧年份回退，且诚实标注具体年份（`[10-K FY2021 ...]`）。同一套数据两种不统一的处理方式，值得决定一个统一策略（回退 + 标注年份 vs 不回退但提示证据缺失）。
 
 ## P3 — 长期 / 低优先
 
+- [ ] **Ferrari (RACE) 缺 `StockPrice`，估值分析 tab 空缺**（2026-07-23 onboarding 收尾时发现）：`generate:valuation-analysis` 需要 FY 财务 + 股价才能算，RACE 只做过 `import:10k`，没跑过 `import:stock-prices:yf`，导致该脚本判定"数据不足"直接跳过。补一次 `npm run import:stock-prices:yf -- --ticker RACE --import-db` 后重跑即可，工作量很小，不紧急。
 - [ ] **文档系统四轨合一**：信件（Source/Chunk）、大师 PDF（Document 表）、年报（FilingSection/Artifact）、洞见（InsightPost）四套模型，按 PRODUCT.md「文档系统路线图」收敛为统一 Document 对象。
 - [ ] **价格数据升级**：`StockPrice` 从 ticker 口径升级到 `securityId` 口径；财报日 / 年报日 marker；服务端周/月/年聚合。见 PRODUCT.md「价格数据」后续目标。
 - [ ] **同业估值对比**：需外部数据源，远期。
