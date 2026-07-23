@@ -25,7 +25,7 @@ export const CALLOUT_TYPES: CalloutTypeConfig[] = [
   {
     tag: "HIGHLIGHTS",
     label: "Highlights",
-    defaultTitle: "核心看点",
+    defaultTitle: "高光金句",
     color: "#dc2626",
     color2: "#d4a017",
     borderSide: "top",

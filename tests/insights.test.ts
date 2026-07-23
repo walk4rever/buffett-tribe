@@ -572,7 +572,7 @@ date: "2026-06-09"
 
     const titleDiv = aside.children[0];
     expect(titleDiv.children[0].children[0].value).toBe("Highlights");
-    expect(titleDiv.children[1].children[0].value).toBe("核心看点");
+    expect(titleDiv.children[1].children[0].value).toBe("高光金句");
 
     const contentP = aside.children[1];
     expect(contentP.children[0].value).toBe("TL;DR content.");
