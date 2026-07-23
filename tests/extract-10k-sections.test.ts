@@ -43,6 +43,39 @@ describe("extractTargetSections", () => {
     expect(sections.item_7_mda?.content).toContain("Revenue increased");
   });
 
+  it("detects 10-K item headings that print a trailing period (\"Item 1. Business.\")", () => {
+    // Common inline-XBRL print style: the heading itself ends in a period,
+    // like an ordinary sentence, e.g. GE/JPMorgan/Kraft Heinz/P&G filings.
+    // isLikelyHeadingText() used to reject anything ending in punctuation
+    // before ever checking the ITEM-number pattern, so these headings never
+    // became heading blocks and the whole item-boundary scan found nothing.
+    const html = `
+      <html>
+        <body>
+          <div><span>Item 1. Business.</span></div>
+          <div><p>The company develops and markets therapeutic products worldwide.</p></div>
+
+          <div><span>Item 1A. Risk Factors.</span></div>
+          <div><p>The business faces regulatory, clinical, and market risks.</p></div>
+
+          <div><span>Item 7. Management's Discussion and Analysis.</span></div>
+          <div><p>Revenue increased due to higher product demand.</p></div>
+        </body>
+      </html>
+    `;
+
+    const sections = extractTargetSections(html, undefined, "10k");
+
+    expect(Object.keys(sections)).toEqual([
+      "item_1_business",
+      "item_1a_risk_factors",
+      "item_7_mda",
+    ]);
+    expect(sections.item_1_business?.content).toContain("therapeutic products");
+    expect(sections.item_1a_risk_factors?.content).toContain("regulatory");
+    expect(sections.item_7_mda?.content).toContain("Revenue increased");
+  });
+
   it("extracts 20-F sections from three-column cross-reference tables with page ranges", () => {
     const rows = [
       ["3.", "Key information", "2-3"],

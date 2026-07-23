@@ -1,6 +1,6 @@
 # TODOS — 活跃工作队列
 
-> 更新：2026-07-23（v0.39.17）。本文件只保留**未完成项**，按 P0–P3 排优先级；完成项的结论回写 `PRODUCT.md` 后从这里移除（详细过程见 git 历史）。产品定位、架构、数据口径、测试体系设计一律以 `PRODUCT.md` 为准。
+> 更新：2026-07-23（v0.39.18）。本文件只保留**未完成项**，按 P0–P3 排优先级；完成项的结论回写 `PRODUCT.md` 后从这里移除（详细过程见 git 历史）。产品定位、架构、数据口径、测试体系设计一律以 `PRODUCT.md` 为准。
 >
 > 当前队列于 2026-07-17 与用户讨论后重排：P0 项是用户点名的紧急项（带完整现状诊断，可直接开工），P1 三项是围绕"Agent 是核心入口"主线的既定建议。2026-07-18 新增两项来自 `anthropics/financial-services` 仓库调研的建议（P2）。
 
@@ -44,12 +44,16 @@
 - [ ] **pi-gateway 流量监控**：PM2 logs + Langfuse 观测调用情况。
 - [ ] **L5 Playwright E2E 冒烟**：5-6 个核心用户路径（`/agent` 问答、公司页六 tab、年报阅读器、大师主页）。写起来最贵、维护成本最高，边际价值低于 L3/L4，明确延后。
 - [ ] **重写 `tests/README.md`**：现在内容指向另一个仓库（talk-with-buffett），完全过时。
-- [ ] **`check:filing-section:integrity` 新检测发现 65 家 filing 静默抽取失败**（2026-07-23，Ferrari 20-F 抽取修复后顺带补上的"有 `primary_html` 但 0 个 section"检测一上线就命中）：抽样看覆盖 10-K 和 20-F 两种 kind，涉及 GE / DEO / KHC / CHTR / DPZ / LEN / NVR / JEF / C-PR / INOD 等多家公司，尚未逐一排查根因，大概率是多种不同版式问题（不一定都是法拉利那种 EU 合并版 20-F）。`data-integrity-check.yml` 的 `--strict` 巡检现在会因此常态性失败并每周开 issue，需要尽快排查修复一批，或者先在巡检脚本里加一份已知豁免清单，避免 issue 噪音掩盖真正的新问题。
+- [ ] **65 家静默抽取失败的根因已查清并部分修复，待回填生产库**（2026-07-23，`check:filing-section:integrity` 新检测发现后逐个排查）：下载 20 家代表性公司原文直接跑现有代码复现，分四类：
+  - **① 代码 bug，已修复**（`isLikelyHeadingText()`，`scripts/lib/extract-10k-sections.ts`）：判断"是否以 ITEM/NOTE 开头"之前先无条件拒绝"以句号/冒号结尾"的文本，而"Item 1. Business."这种印刷体标题本身就以句号收尾，直接被误杀，导致整份文件的 item 边界扫描全部落空。改成先判 ITEM/NOTE 模式再判尾标点。本地验证覆盖 CHTR/DPZ/FND/HPQ/JEF/JPM-PM/KHC/MCK/MDLZ/MTB/NVR/PG 12 家公司，全部从 0 section 恢复到 20–23 个；反向验证法拉利/GOTU/JOYY 三家不受影响（它们走 20-F 专属路径，不经过这个函数）。**代码已修复，生产库尚未回填**——需要跑一次 `extract:10k:sections --needs-current-version`，范围是这 12 家公司名下几十条 filing，动作比法拉利单一家公司大，回填前需要确认。
+  - **② 内容确实"引用不含正文"，非 bug**：GE、C-PR（Citigroup）、SYF（Synchrony）——这几份 10-K 正文里"incorporated by reference"出现 56–175 次，Item 内容本来就没写在主文档里，引用的是单独的年报 exhibit。要修需要新增"抓取被引用 exhibit"的能力，范围完全不同，未着手。
+  - **③ 修正案文件，0 章节属正常**：BN（40-F/A）、GOLD 2021（10-K/A）、PG 2020 的 10-K/A 副本——本来就只覆盖局部内容，不需要处理。
+  - **④ 旧式 SGML 格式，孤例**：INOD 2020，文档根节点是 `<document>`，不是现代 inline-XBRL 渲染，优先级低。
+  - `data-integrity-check.yml` 的 `--strict` 巡检目前仍会因为②③④（以及①回填前）持续标红开 issue；①回填后应该能消掉多数噪音，②③④要么修复要么加豁免清单再评估。
 - [ ] **生成脚本 filing evidence 选取行为不一致**（同上排查发现）：`fetchLatestFilingEvidence`（`scripts/lib/company-generation.ts`，company-profile/business-model/value-analysis 三个生成脚本共用）只认最新一年 `ExtSource`，若该年 section 为空，evidence 文本里 Sections 块直接留空、不回退旧年份；`generate-management-analysis.ts` 自己另写的 `fetchBuybackEvidence` 则会往旧年份回退，且诚实标注具体年份（`[10-K FY2021 ...]`）。同一套数据两种不统一的处理方式，值得决定一个统一策略（回退 + 标注年份 vs 不回退但提示证据缺失）。
 
 ## P3 — 长期 / 低优先
 
-- [ ] **Ferrari (RACE) 缺 `StockPrice`，估值分析 tab 空缺**（2026-07-23 onboarding 收尾时发现）：`generate:valuation-analysis` 需要 FY 财务 + 股价才能算，RACE 只做过 `import:10k`，没跑过 `import:stock-prices:yf`，导致该脚本判定"数据不足"直接跳过。补一次 `npm run import:stock-prices:yf -- --ticker RACE --import-db` 后重跑即可，工作量很小，不紧急。
 - [ ] **文档系统四轨合一**：信件（Source/Chunk）、大师 PDF（Document 表）、年报（FilingSection/Artifact）、洞见（InsightPost）四套模型，按 PRODUCT.md「文档系统路线图」收敛为统一 Document 对象。
 - [ ] **价格数据升级**：`StockPrice` 从 ticker 口径升级到 `securityId` 口径；财报日 / 年报日 marker；服务端周/月/年聚合。见 PRODUCT.md「价格数据」后续目标。
 - [ ] **同业估值对比**：需外部数据源，远期。

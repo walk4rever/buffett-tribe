@@ -299,9 +299,12 @@ function isLikelyHeadingText(text: string) {
   const normalized = normalizePlainText(text);
   if (!normalized) return false;
   if (normalized.length > 140) return false;
-  if (/[:。.!?]$/.test(normalized)) return false;
+  // Check ITEM/NOTE headings before the trailing-punctuation rejection below:
+  // the common "Item 1. Business." print style ends in a period like an
+  // ordinary sentence, which would otherwise disqualify it.
   if (/^ITEM\s+\d+[A-Z]?\b/i.test(normalized)) return true;
   if (/^NOTE\s+\d+\b/i.test(normalized)) return true;
+  if (/[:。.!?]$/.test(normalized)) return false;
 
   const alphaCount = normalized.replace(/[^A-Za-z]/g, "").length;
   const upperCount = normalized.replace(/[^A-Z]/g, "").length;
