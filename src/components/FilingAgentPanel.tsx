@@ -8,9 +8,16 @@ interface FilingAgentPanelProps {
   ticker: string | null;
   periodYear: number | null;
   onClose: () => void;
+  pendingQuote?: { text: string } | null;
 }
 
-export function FilingAgentPanel({ companyName, ticker, periodYear, onClose }: FilingAgentPanelProps) {
+export function FilingAgentPanel({
+  companyName,
+  ticker,
+  periodYear,
+  onClose,
+  pendingQuote,
+}: FilingAgentPanelProps) {
   const yearLabel = periodYear ? `${periodYear} 年报` : "年报";
 
   return (
@@ -31,6 +38,7 @@ export function FilingAgentPanel({ companyName, ticker, periodYear, onClose }: F
           emptyTitle={`理解${companyName}`}
           emptySubtitle="基于年报原文，看懂这家公司在说什么"
           placeholder=""
+          pendingQuote={pendingQuote}
           suggestions={[
             `${companyName}这份年报最大的风险是什么？`,
             `${companyName}的营收和利润增长主要靠什么？`,

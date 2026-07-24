@@ -74,6 +74,9 @@ interface AgentChatProps {
   emptyTitle?: string;
   emptySubtitle?: string;
   placeholder?: string;
+  /** Set by a parent when the user selects report text and asks to discuss it — changing
+   *  this object (even to an identical string) re-populates the input and focuses it. */
+  pendingQuote?: { text: string } | null;
 }
 
 export function AgentChat({
@@ -82,13 +85,23 @@ export function AgentChat({
   emptyTitle = "理解一家公司",
   emptySubtitle = "以价值投资大师的视角，看穿公司的本质",
   placeholder = "问关于巴菲特投资哲学、具体公司、历年决策的问题… (⌘Enter 发送)",
+  pendingQuote,
 }: AgentChatProps = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const sessionIdRef = useRef<string>("");
+
+  useEffect(() => {
+    if (!pendingQuote) return;
+    const quoted =
+      pendingQuote.text.length > 400 ? `${pendingQuote.text.slice(0, 400)}…` : pendingQuote.text;
+    setInput(`关于这段：「${quoted}」\n\n`);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [pendingQuote]);
 
   useEffect(() => {
     const key = "bt_agent_session_id";
@@ -296,6 +309,7 @@ export function AgentChat({
       <div className="chat-input-wrap">
         <div className="chat-input-bar">
           <textarea
+            ref={inputRef}
             className="chat-input"
             placeholder={placeholder}
             rows={2}

@@ -86,9 +86,14 @@ function applyLineSpacing(doc: Document, lineHeight: number) {
   });
 }
 
+type QuoteButtonState = { text: string; top: number; left: number };
+
 export function FilingReader({ company, filing }: FilingReaderProps) {
   const [frameReady, setFrameReady] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [quoteButton, setQuoteButton] = useState<QuoteButtonState | null>(null);
+  const [pendingQuote, setPendingQuote] = useState<{ text: string } | null>(null);
+  const quoteButtonRef = useRef<HTMLButtonElement | null>(null);
   const fontLevelIndex = useSyncExternalStore(
     fontLevelStore.subscribe,
     fontLevelStore.getSnapshot,
@@ -163,6 +168,67 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
     if (!doc) return;
     applyLineSpacing(doc, LINE_LEVELS[lineLevelIndex].value);
   }, [frameReady, lineLevelIndex]);
+
+  // The selected report text lives inside the iframe's own document, so the
+  // selectionchange listener must be attached there — the parent document never
+  // sees selection changes that happen inside a same-origin iframe.
+  useEffect(() => {
+    if (!frameReady) return;
+    const doc = iframeRef.current?.contentDocument;
+    const win = iframeRef.current?.contentWindow;
+    if (!doc || !win) return;
+
+    function handleSelectionChange() {
+      const selection = win!.getSelection();
+      const text = selection?.toString().trim() ?? "";
+      if (!selection || selection.rangeCount === 0 || !text) {
+        setQuoteButton(null);
+        return;
+      }
+      const rect = selection.getRangeAt(0).getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) {
+        setQuoteButton(null);
+        return;
+      }
+      const iframeRect = iframeRef.current!.getBoundingClientRect();
+      setQuoteButton({
+        text,
+        top: iframeRect.top + rect.top - 40,
+        left: iframeRect.left + rect.left + rect.width / 2,
+      });
+    }
+
+    // Popover coordinates are computed once per selection; scrolling the iframe's
+    // own content would leave it stale, so just dismiss it instead of tracking scroll.
+    function handleScroll() {
+      setQuoteButton(null);
+    }
+
+    doc.addEventListener("selectionchange", handleSelectionChange);
+    win.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      doc.removeEventListener("selectionchange", handleSelectionChange);
+      win.removeEventListener("scroll", handleScroll);
+    };
+  }, [frameReady]);
+
+  useEffect(() => {
+    function handlePointerDown(e: PointerEvent) {
+      if (quoteButtonRef.current && !quoteButtonRef.current.contains(e.target as Node)) {
+        setQuoteButton(null);
+      }
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, []);
+
+  const askAboutQuote = useCallback(() => {
+    if (!quoteButton) return;
+    setPendingQuote({ text: quoteButton.text });
+    setAiPanelOpen(true);
+    setQuoteButton(null);
+    iframeRef.current?.contentWindow?.getSelection()?.removeAllRanges();
+  }, [quoteButton]);
 
   const cycleFontLevel = useCallback(() => {
     fontLevelStore.setIndex((fontLevelStore.getSnapshot() + 1) % FONT_LEVELS.length);
@@ -239,9 +305,23 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
             ticker={company.ticker}
             periodYear={filing.periodYear}
             onClose={() => setAiPanelOpen(false)}
+            pendingQuote={pendingQuote}
           />
         ) : null}
       </div>
+
+      {quoteButton ? (
+        <button
+          ref={quoteButtonRef}
+          type="button"
+          className="filing-reader-quote-btn"
+          style={{ top: quoteButton.top, left: quoteButton.left }}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={askAboutQuote}
+        >
+          问 AI 这段 →
+        </button>
+      ) : null}
 
       {!aiPanelOpen ? (
         <button type="button" className="master-agent-fab" onClick={() => setAiPanelOpen(true)}>
