@@ -3635,8 +3635,8 @@ body.layout-no-header {
   overflow: hidden;
 }
 
-/* Match the send button's height (42px) instead of the taller /agent-page textarea.
-   Higher specificity than .agent-chat .chat-input (52px, content-box) so it actually wins. */
+/* Redundant with the base .agent-chat .chat-input rule now that both match the
+   send button's height (42px); kept for specificity in case this context diverges again. */
 .master-agent-modal-body .agent-chat .chat-input {
   box-sizing: border-box;
   height: 42px;
@@ -12884,10 +12884,13 @@ a.insight-entity-chip:hover {
 @keyframes agent-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 .agent-typing { animation: agent-blink 1s step-end infinite; color: var(--text-muted); }
 
-/* Textarea variant of chat-input */
+/* Textarea variant of chat-input — match the send button's height (42px) */
 .agent-chat .chat-input {
   resize: none;
-  height: 52px;
-  line-height: 1.5;
+  box-sizing: border-box;
+  height: 42px;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+  line-height: 1.4;
 }
 
