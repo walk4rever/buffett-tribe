@@ -1,8 +1,8 @@
 # TODOS — 活跃工作队列
 
-> 更新：2026-07-23（v0.39.18）。本文件只保留**未完成项**，按 P0–P3 排优先级；完成项的结论回写 `PRODUCT.md` 后从这里移除（详细过程见 git 历史）。产品定位、架构、数据口径、测试体系设计一律以 `PRODUCT.md` 为准。
+> 更新：2026-07-26（v0.39.23）。本文件只保留**未完成项**，按 P0–P3 排优先级；完成项的结论回写 `PRODUCT.md` 后从这里移除（详细过程见 git 历史）。产品定位、架构、数据口径、测试体系设计一律以 `PRODUCT.md` 为准。
 >
-> 当前队列于 2026-07-17 与用户讨论后重排：P0 项是用户点名的紧急项（带完整现状诊断，可直接开工），P1 三项是围绕"Agent 是核心入口"主线的既定建议。2026-07-18 新增两项来自 `anthropics/financial-services` 仓库调研的建议（P2）。
+> 当前队列于 2026-07-17 与用户讨论后重排：P0 项是用户点名的紧急项（带完整现状诊断，可直接开工），P1 三项是围绕"Agent 是核心入口"主线的既定建议。2026-07-18 新增两项来自 `anthropics/financial-services` 仓库调研的建议（P2）。2026-07-26 复盘法拉利（RACE）onboarding 全过程后新增 P0 ③ 并补充 ② 的设计约束。
 
 ## P0 — 下一步就做（用户点名，2026-07-17）
 
@@ -22,7 +22,24 @@
     3. 股价（~半小时）：`npm run import:stock-prices:yf -- --ticker 600519.SS` / `9992.HK`，`StockPrice` 表和 K 线图组件零改动，Entity 上配好 ticker 即可。
     4. 公司页 tab 适配（~半天）：概览区按 `market` 显示市场代码而非 CIK；财务/估值 tab 优雅占位；年度报告 tab 占位 + 外链巨潮资讯网/披露易。
   - **Phase 2（财务数据，另 3-5 天）先不做**：akshare 三大表 → LINE_ITEMS 映射 + CNY/HKD 标注，看完 Phase 1 效果再决定。
-  - **待拍板**：(a) 业务/价值分析 LLM tab 要不要给这两家先跑生成（能跑但无年报 evidence，来源标注与美股不同质）；(b) 港股代码规范用 `9992` 还是 `09992`（Yahoo 用 9992.HK，港交所官方 09992），路由与展示定一个。
+  - **设计约束（2026-07-26 复盘 RACE 后补充，三条，详见 PRODUCT.md「跨市场扩展的三条结构约束」）**：
+    1. **不要把美股抽取链路泛化到 A 股/港股**。RACE 的教训恰恰是这条的最强论据——在 SEC inline XBRL 这种**已经标准化**的格式上都花了好几天、加到第四条策略；A 股年报是 PDF 且章节结构根本没有统一标准。因此 PRODUCT.md Phase 3 的"方案 A：外链巨潮/披露易"应从"临时妥协"上升为**长期答案**，除非将来有明确产品理由才重开。
+    2. **`market` 只允许在一个地方进入代码**：即 identifier 的 parse/format helper。页面**按能力渲染，不按市场分支**——Entity 体现的是"有没有财务/有没有年报/有没有持仓"，tab 据此决定显示内容还是占位，而不是散落 `if (market === 'cn')`。否则加第三个市场时又要改 5+ 个地方（与 v0.39.23 清掉的硬编码来源胶囊配色是同一个病）。
+    3. **`onboard-company.ts` 不要 fork 出 `onboard-cn-company.ts`**：它的骨架（checkpoint / per-step verify / 断点续跑）是市场无关的，值钱的正是这部分；**只有 steps 列表按 market 不同**——A 股/港股就是"Entity 种子 → 股价"两步，美股是现在的七步。
+  - **待拍板（2026-07-26 给出建议，待用户确认）**：
+    - (a) 业务/价值分析 LLM tab 要不要给这两家先跑生成（能跑但无年报 evidence，来源标注与美股不同质）。**建议不跑**：已存在"证据缺失时静默产出"的存量问题（P0 ③ / P2 evidence 条目），而 A 股/港股是构造上必然零 evidence，跑了就是批量制造同一类内容。等 Phase 2 财务数据进来后，可基于财务数据跑一个明确标注口径不同的版本。
+    - (b) 港股代码规范用 `9992` 还是 `09992`（Yahoo 用 9992.HK，港交所官方 09992）。**建议 `09992`（补零）**：不是因为哪个更好看，而是 `prisma/schema.prisma` 的 `Entity.code` 注释**已经写了 `'00700' (hk)`**，跟着已有约定走、别制造第二套；Yahoo ticker 在同一个 helper 里去零派生 `9992.HK` 即可，Phase 1 里价格管线是唯一的自动化消费方。注意 PRODUCT.md 现有示例代码 `parseCompanyId` 与 Phase 1 目标表仍写作 `9992`，拍板后需一并订正。
+
+- [ ] **③ 抽取管线止血：验收粒度 + evidence guard**（2026-07-26 复盘 RACE onboarding 得出，~半天，**建议先于 ② 或与 ② 并行做**）
+  - **复盘结论**：法拉利那两个修复（v0.39.17 页脚锚定、v0.39.18 标点判断顺序）表面是两个解析 bug，但放在一起看只有一个根因——**管线把"抽取"当成确定性操作，而它实际是概率性的**。四条证据：
+    1. **onboarding 的验收粒度是错的（本次新发现）**：`scripts/onboard-company.ts` step 1 的 verify 用的是 `prisma.filingSection.count({ where: { entityId } }) > 0`，是**整个 entity 的聚合计数**。法拉利 2020/2021 抽取正常、2022–2025 全空，聚合起来仍然 `> 0`，验收当场通过。这套"每步查库验证真正写入"的机制只能发现"一家公司完全失败"，发现不了"一家公司的某几年失败"——这是 RACE 故障拖到几周后才暴露的直接原因。
+    2. **监控是单向的**：`check-filing-section-integrity.ts` 原本只查"有 section 但缺 primary_html"，反向的"有 primary_html 但 0 section"（法拉利的确切形态）是盲区；v0.39.17 补上后立刻冒出 65 例存量（见 P2 对应条目），说明这是一个持续静默累积很久的故障类，不是特例。
+    3. **修一个 bug 带出 12 家公司**：`isLikelyHeadingText()` 的标点判断顺序一改，CHTR/DPZ/FND/HPQ/JEF/JPM-PM/KHC/MCK/MDLZ/MTB/NVR/PG 全部从 0 恢复到 20+ 章节。法拉利从来不特殊，它只是碰巧被盯上的那一个。
+    4. **抽取器在按"每来一个新 filer 就加一个分支"生长**：`scripts/lib/extract-10k-sections.ts` 现已 1192 行 / 45 个函数，并存 TOC 锚点、20-F 交叉引用表、块扫描三条主路径，RACE 又加了第四条（`collectPageFooterMarkers` 页脚锚定，且带"必须排除表格内数字"的补丁）。
+  - **方案取向**：不要去追求"写出永不出错的解析器"，那是无底洞。方向是**让抽取结果成为一等公民的记录，而不是从行数反推健康度**。本条只做最便宜的止血两件事：
+    - [ ] **verify 改 per-filing 粒度**（`scripts/onboard-company.ts:140-146`）：每条 `ExtSource` 都必须有对应 section，否则该步判失败。约 10 行改动，能让 RACE 那类故障在 onboarding 当场就红。
+    - [ ] **evidence 缺失时拒绝生成**：`fetchLatestFilingEvidence` 返回空时，生成脚本应拒绝生成或强制标注"无年报佐证"，而不是静默产出无依据内容。这一个 guard 同时覆盖 RACE 的无证据生成和 A 股/港股**构造上必然零 evidence** 的场景（与上面 ② 的待拍板 (a) 是同一个问题）。与 P2「生成脚本 filing evidence 选取行为不一致」一并处理。
+  - **前置**：动手前先把 P2 中已修复但未回填的 12 家公司跑完 `extract:10k:sections --needs-current-version`，否则是在已知有脏数据的语料上继续叠加。
 
 ## P1 — 近期排队（Agent 主线，2026-07-17 讨论确认）
 
@@ -44,13 +61,14 @@
 - [ ] **pi-gateway 流量监控**：PM2 logs + Langfuse 观测调用情况。
 - [ ] **L5 Playwright E2E 冒烟**：5-6 个核心用户路径（`/agent` 问答、公司页六 tab、年报阅读器、大师主页）。写起来最贵、维护成本最高，边际价值低于 L3/L4，明确延后。
 - [ ] **重写 `tests/README.md`**：现在内容指向另一个仓库（talk-with-buffett），完全过时。
-- [ ] **65 家静默抽取失败的根因已查清并部分修复，待回填生产库**（2026-07-23，`check:filing-section:integrity` 新检测发现后逐个排查）：下载 20 家代表性公司原文直接跑现有代码复现，分四类：
+- [ ] **抽取策略注册表化**（2026-07-26 复盘 RACE 提出，~1 天，P0 ③ 止血之后的结构性改进，可选）：`scripts/lib/extract-10k-sections.ts` 现在是嵌套 fallback（TOC 锚点 → 20-F 交叉引用表 → 页脚锚定 → 块扫描）挤在 1192 行一个文件里，"新格式 = 在共享函数里再加一个 if"，RACE 的 `collectPageFooterMarkers` 就是这么加进去的。改成一个**有名字的策略列表**，依次尝试、返回 sections 或 null，并把**命中的策略名随抽取结果入库**。收益有两层：新格式 = 新增一个策略模块而不是改共享函数（`isLikelyHeadingText` 那个 bug 正是因为共享函数被多条路径复用才一次性影响 12 家公司）；命中策略入库后，"哪类 filer 走哪条路、哪条路在退化"变成可查询的，不必再靠人下载原文复现。**注意**：这是纯重构，前提是 `tests/extract-10k-sections.test.ts` 的既有用例（含 RACE/GOTU/JOYY 回归）能全绿护航。
+- [ ] **65 家静默抽取失败的根因已查清并部分修复，待回填生产库**（2026-07-23，`check:filing-section:integrity` 新检测发现后逐个排查；**回填是 P0 ③ 的前置**）：下载 20 家代表性公司原文直接跑现有代码复现，分四类：
   - **① 代码 bug，已修复**（`isLikelyHeadingText()`，`scripts/lib/extract-10k-sections.ts`）：判断"是否以 ITEM/NOTE 开头"之前先无条件拒绝"以句号/冒号结尾"的文本，而"Item 1. Business."这种印刷体标题本身就以句号收尾，直接被误杀，导致整份文件的 item 边界扫描全部落空。改成先判 ITEM/NOTE 模式再判尾标点。本地验证覆盖 CHTR/DPZ/FND/HPQ/JEF/JPM-PM/KHC/MCK/MDLZ/MTB/NVR/PG 12 家公司，全部从 0 section 恢复到 20–23 个；反向验证法拉利/GOTU/JOYY 三家不受影响（它们走 20-F 专属路径，不经过这个函数）。**代码已修复，生产库尚未回填**——需要跑一次 `extract:10k:sections --needs-current-version`，范围是这 12 家公司名下几十条 filing，动作比法拉利单一家公司大，回填前需要确认。
   - **② 内容确实"引用不含正文"，非 bug**：GE、C-PR（Citigroup）、SYF（Synchrony）——这几份 10-K 正文里"incorporated by reference"出现 56–175 次，Item 内容本来就没写在主文档里，引用的是单独的年报 exhibit。要修需要新增"抓取被引用 exhibit"的能力，范围完全不同，未着手。
   - **③ 修正案文件，0 章节属正常**：BN（40-F/A）、GOLD 2021（10-K/A）、PG 2020 的 10-K/A 副本——本来就只覆盖局部内容，不需要处理。
   - **④ 旧式 SGML 格式，孤例**：INOD 2020，文档根节点是 `<document>`，不是现代 inline-XBRL 渲染，优先级低。
   - `data-integrity-check.yml` 的 `--strict` 巡检目前仍会因为②③④（以及①回填前）持续标红开 issue；①回填后应该能消掉多数噪音，②③④要么修复要么加豁免清单再评估。
-- [ ] **生成脚本 filing evidence 选取行为不一致**（同上排查发现）：`fetchLatestFilingEvidence`（`scripts/lib/company-generation.ts`，company-profile/business-model/value-analysis 三个生成脚本共用）只认最新一年 `ExtSource`，若该年 section 为空，evidence 文本里 Sections 块直接留空、不回退旧年份；`generate-management-analysis.ts` 自己另写的 `fetchBuybackEvidence` 则会往旧年份回退，且诚实标注具体年份（`[10-K FY2021 ...]`）。同一套数据两种不统一的处理方式，值得决定一个统一策略（回退 + 标注年份 vs 不回退但提示证据缺失）。
+- [ ] **生成脚本 filing evidence 选取行为不一致**（同上排查发现；**与 P0 ③ 的 evidence guard 是同一处代码，建议一并处理**）：`fetchLatestFilingEvidence`（`scripts/lib/company-generation.ts`，company-profile/business-model/value-analysis 三个生成脚本共用）只认最新一年 `ExtSource`，若该年 section 为空，evidence 文本里 Sections 块直接留空、不回退旧年份；`generate-management-analysis.ts` 自己另写的 `fetchBuybackEvidence` 则会往旧年份回退，且诚实标注具体年份（`[10-K FY2021 ...]`）。同一套数据两种不统一的处理方式，值得决定一个统一策略（回退 + 标注年份 vs 不回退但提示证据缺失）。
 
 ## P3 — 长期 / 低优先
 
