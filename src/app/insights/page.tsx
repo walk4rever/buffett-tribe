@@ -40,7 +40,7 @@ export default async function InsightsPage({ searchParams }: Props) {
               <Link
                 key={source}
                 href={`/insights?source=${encodeURIComponent(source)}`}
-                className={`insights-filter-pill insights-filter-pill--${getInsightSourcePillKey(source)}${selectedSource === source ? ` insights-filter-pill--active` : ""}`}
+                className={`insights-filter-pill${selectedSource === source ? " insights-filter-pill--active" : ""}`}
               >
                 {source}
               </Link>
@@ -67,7 +67,7 @@ export default async function InsightsPage({ searchParams }: Props) {
                   <div className="insight-row-body">
                     <div className="insight-row-title-line">
                       <h2>{post.title}</h2>
-                      <span className={`insight-row-source-pill ${getInsightSourcePillClass(sourceLabel)}`}>{sourceLabel}</span>
+                      <span className="insight-row-source-pill">{sourceLabel}</span>
                     </div>
                     {post.description ? <p>{post.description}</p> : null}
                     {post.tags.length > 0 ? (
@@ -143,18 +143,4 @@ function formatDateTwoLine(date: Date): React.ReactNode {
       <span className="insight-row-num-yr">{year}</span>
     </>
   );
-}
-
-function getInsightSourcePillKey(source: string): string {
-  const normalized = source.trim().toLowerCase().replace(/-/g, " ");
-  if (normalized === "invest like the best") return "iltb";
-  if (normalized === "acquired") return "acquired";
-  if (normalized === "business breakdowns") return "breakdowns";
-  if (normalized === "capital allocators") return "capitalallocators";
-  if (normalized === "buffett tribe") return "buffetttribe";
-  return "default";
-}
-
-function getInsightSourcePillClass(source: string): string {
-  return `insight-row-source-pill--${getInsightSourcePillKey(source)}`;
 }

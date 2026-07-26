@@ -10437,43 +10437,13 @@ body {
 }
 
 .insights-filter-pill--active {
-  border-color: rgba(0, 0, 0, 0.22);
-  background: #1a1a1a;
+  border-color: var(--accent);
+  background: var(--accent);
   color: #fff;
 }
 
 .insights-filter-pill--active:hover {
-  background: #333;
-  color: #fff;
-}
-
-.insights-filter-pill--iltb.insights-filter-pill--active {
-  border-color: #2754c5;
-  background: #2754c5;
-  color: #fff;
-}
-
-.insights-filter-pill--acquired.insights-filter-pill--active {
-  border-color: #9a5b00;
-  background: #9a5b00;
-  color: #fff;
-}
-
-.insights-filter-pill--breakdowns.insights-filter-pill--active {
-  border-color: #237346;
-  background: #237346;
-  color: #fff;
-}
-
-.insights-filter-pill--capitalallocators.insights-filter-pill--active {
-  border-color: #5b3ec7;
-  background: #5b3ec7;
-  color: #fff;
-}
-
-.insights-filter-pill--buffetttribe.insights-filter-pill--active {
-  border-color: #8a5a14;
-  background: #8a5a14;
+  background: color-mix(in srgb, var(--accent) 85%, #000);
   color: #fff;
 }
 
@@ -10564,52 +10534,16 @@ body {
   min-height: 24px;
   max-width: min(30%, 180px);
   padding: 0 0.65rem;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--secondary));
   border-radius: 999px;
-  background: #f7f8fa;
-  color: rgba(0, 0, 0, 0.62);
+  background: color-mix(in srgb, var(--accent) 8%, #fff);
+  color: var(--accent);
   font-size: 0.68rem;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.insight-row-source-pill--default {
-  border-color: rgba(0, 0, 0, 0.08);
-  background: #f7f8fa;
-  color: rgba(0, 0, 0, 0.62);
-}
-
-.insight-row-source-pill--iltb {
-  border-color: rgba(33, 99, 235, 0.16);
-  background: #f3f7ff;
-  color: #2754c5;
-}
-
-.insight-row-source-pill--acquired {
-  border-color: rgba(176, 106, 0, 0.16);
-  background: #fff7ea;
-  color: #9a5b00;
-}
-
-.insight-row-source-pill--breakdowns {
-  border-color: rgba(33, 128, 74, 0.16);
-  background: #eefaf2;
-  color: #237346;
-}
-
-.insight-row-source-pill--capitalallocators {
-  border-color: rgba(91, 62, 199, 0.16);
-  background: #f4f1ff;
-  color: #5b3ec7;
-}
-
-.insight-row-source-pill--buffetttribe {
-  border-color: rgba(138, 90, 20, 0.18);
-  background: #fdf6ea;
-  color: #8a5a14;
 }
 
 .insight-row-title-line {
