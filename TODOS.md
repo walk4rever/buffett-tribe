@@ -37,9 +37,9 @@
     3. **修一个 bug 带出 12 家公司**：`isLikelyHeadingText()` 的标点判断顺序一改，CHTR/DPZ/FND/HPQ/JEF/JPM-PM/KHC/MCK/MDLZ/MTB/NVR/PG 全部从 0 恢复到 20+ 章节。法拉利从来不特殊，它只是碰巧被盯上的那一个。
     4. **抽取器在按"每来一个新 filer 就加一个分支"生长**：`scripts/lib/extract-10k-sections.ts` 现已 1192 行 / 45 个函数，并存 TOC 锚点、20-F 交叉引用表、块扫描三条主路径，RACE 又加了第四条（`collectPageFooterMarkers` 页脚锚定，且带"必须排除表格内数字"的补丁）。
   - **方案取向**：不要去追求"写出永不出错的解析器"，那是无底洞。方向是**让抽取结果成为一等公民的记录，而不是从行数反推健康度**。本条只做最便宜的止血两件事：
-    - [ ] **verify 改 per-filing 粒度**（`scripts/onboard-company.ts:140-146`）：每条 `ExtSource` 都必须有对应 section，否则该步判失败。约 10 行改动，能让 RACE 那类故障在 onboarding 当场就红。
-    - [ ] **evidence 缺失时拒绝生成**：`fetchLatestFilingEvidence` 返回空时，生成脚本应拒绝生成或强制标注"无年报佐证"，而不是静默产出无依据内容。这一个 guard 同时覆盖 RACE 的无证据生成和 A 股/港股**构造上必然零 evidence** 的场景（与上面 ② 的待拍板 (a) 是同一个问题）。与 P2「生成脚本 filing evidence 选取行为不一致」一并处理。
-  - **前置**：动手前先把 P2 中已修复但未回填的 12 家公司跑完 `extract:10k:sections --needs-current-version`，否则是在已知有脏数据的语料上继续叠加。
+    - [x] **verify 改 per-filing 粒度**（2026-07-26 完成，`scripts/onboard-company.ts` step `import_10k`）：verify 从 entity 级 `filingSection.count > 0` 改为按 `ExtSource`（`filerEntityId + kind in [10k,20f,40f]`）逐条检查 `sections: { none: {} }`，任一 filing 零 section 即判失败；另加 `totalFilings > 0` 兜底防止"一条 filing 都没导入"被误判通过。生产库验证：RACE 现在 `total=6 withoutSections=0` 会通过；CHTR/DPZ（未回填）分别 `withoutSections=1/5` 会正确拦下。**副作用**：GE/C-PR/SYF 这类"内容 incorporated-by-reference、零 section 本来就是正常结果"的公司（见下方 65 家条目分类②）会被这条 verify **永久拦住**，无法通过 onboarding——目前不在计划内的新 onboard 名单里，暂不影响，但以后要 onboard 这类公司需要先决定豁免机制或接入 exhibit 抓取。
+    - [x] **evidence 缺失时拒绝生成**（2026-07-26 完成，用户拍板"拒绝生成"而非"标注无佐证"）：`company-generation.ts` 新增 `hasUsableFilingEvidence()`（`evidence != null && evidence.sections.length > 0`），`generate-company-profile.ts`/`generate-business-model.ts`/`generate-value-analysis.ts` 三个脚本在 fetch 到 filing evidence 后立即检查，为空则打印 SKIP 原因并 `continue`，不再调用 LLM、不产出无依据内容。`--dry-run --company GE` 验证 SKIP 正确触发（不到达 prompt 构建）；`--dry-run --company AAPL` 验证正常公司不受影响。**范围说明**：`generate-management-analysis.ts` 的 `fetchBuybackEvidence` 未改动——它只是资本配置分析里的一个信号源（financials/holdings/letters 三个信号源之外的补充），本来就允许为空并输出"数据不足"，不是"仅靠 evidence 撑起叙事"的场景，与三个改动脚本的风险不同质，不在这次拍板范围内。`generate-valuation-analysis.ts` 完全不用 filing evidence，同样不涉及。
+  - **仍未做**：P2 中已修复但未回填的 12 家公司仍未跑 `extract:10k:sections --needs-current-version`；P2「生成脚本 filing evidence 选取行为不一致」（`fetchLatestFilingEvidence` 不回退旧年份 vs `fetchBuybackEvidence` 回退且标注年份）仍未统一，两者都待后续处理。
 
 ## P1 — 近期排队（Agent 主线，2026-07-17 讨论确认）
 

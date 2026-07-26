@@ -21,6 +21,7 @@ import {
   formatMoney,
   getArg,
   hasFlag,
+  hasUsableFilingEvidence,
   jsonObject,
   normalizeText,
   parseJsonObject,
@@ -184,6 +185,12 @@ async function main() {
     console.log(`  Financials: ${financials.length} years`);
     console.log(`  Holders: ${holders.length}`);
     console.log(`  Filing evidence: ${filingEvidence ? filingEvidence.filingLabel : "none"}`);
+
+    const filingEvidenceState = filingEvidence ? `${filingEvidence.filingLabel} matched 0 sections` : "no 10-K/20-F/40-F filing found";
+    if (!hasUsableFilingEvidence(filingEvidence)) {
+      console.log(`  SKIP: no usable filing section evidence (${filingEvidenceState}) — refusing to generate a value analysis without SEC filing evidence`);
+      continue;
+    }
 
     const prompt = buildPrompt({
       name: company.canonicalName,

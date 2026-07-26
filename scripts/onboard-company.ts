@@ -138,11 +138,23 @@ async function main() {
       label: "导入 10-K/20-F/40-F（Entity + Financial + FilingSection + R2）",
       run: () => runNpmScript("import:10k", ["--ticker", ticker, "--from", fromYear, "--to", toYear]),
       verify: async (entityId) => {
-        const [financialCount, sectionCount] = await Promise.all([
-          prisma.financial.count({ where: { entityId } }),
-          prisma.filingSection.count({ where: { entityId } }),
+        const financialCount = await prisma.financial.count({ where: { entityId } });
+        if (financialCount === 0) return false;
+
+        // Per-filing, not per-entity: an entity-level sectionCount > 0 check
+        // stays green even when some filings extracted zero sections (e.g.
+        // Ferrari/RACE 2022-2025 20-Fs silently returned 0 sections while
+        // 2020-2021 worked, so the aggregate count masked the gap for weeks).
+        const filingKindFilter = { in: ["10k", "20f", "40f"] };
+        const [totalFilings, filingsWithoutSections] = await Promise.all([
+          prisma.extSource.count({
+            where: { filerEntityId: entityId, kind: filingKindFilter },
+          }),
+          prisma.extSource.count({
+            where: { filerEntityId: entityId, kind: filingKindFilter, sections: { none: {} } },
+          }),
         ]);
-        return financialCount > 0 && sectionCount > 0;
+        return totalFilings > 0 && filingsWithoutSections === 0;
       },
     },
     {

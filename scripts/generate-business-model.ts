@@ -21,6 +21,7 @@ import {
   findCompanies,
   getArg,
   hasFlag,
+  hasUsableFilingEvidence,
   jsonObject,
   normalizeText,
   parseJsonObject,
@@ -240,6 +241,12 @@ async function main() {
     const filingEvidence = await fetchLatestFilingEvidence(company.id);
     console.log(`  Financials: ${financials.length} years`);
     console.log(`  Filing evidence: ${filingEvidence ? filingEvidence.filingLabel : "none"}`);
+
+    const filingEvidenceState = filingEvidence ? `${filingEvidence.filingLabel} matched 0 sections` : "no 10-K/20-F/40-F filing found";
+    if (!hasUsableFilingEvidence(filingEvidence)) {
+      console.log(`  SKIP: no usable filing section evidence (${filingEvidenceState}) — refusing to generate a business model without SEC filing evidence`);
+      continue;
+    }
 
     const prompt = buildPrompt({
       name: company.canonicalName,

@@ -307,6 +307,18 @@ export function buildFinancialHistoryText(financials: FinancialYear[]) {
   }).join("\n\n");
 }
 
+/**
+ * True only when the filing has sections that actually matched the extractor's
+ * target section list. A filing can be present (fetchLatestFilingEvidence
+ * found an ExtSource) with zero sections when extraction silently failed —
+ * this was Ferrari/RACE's 2022-2025 20-Fs before the page-footer-anchoring
+ * fix. Callers that would otherwise generate unsupported narrative from
+ * financials/metadata alone should gate on this and skip instead.
+ */
+export function hasUsableFilingEvidence(evidence: FilingEvidence | null): evidence is FilingEvidence {
+  return evidence != null && evidence.sections.length > 0;
+}
+
 export function buildFilingEvidenceText(filingEvidence: FilingEvidence | null) {
   if (!filingEvidence) return "\nLatest filing evidence: N/A";
 
