@@ -85,6 +85,7 @@
 
 ## 已完成归档（结论已回写 PRODUCT.md，过程见 git 历史）
 
+- **2026-07-27 · search_filings 工具补上港股支持**：泡泡玛特年报接入 evidence 后发现 Agent 的 `search_filings` 工具实际访问不到——`findEntity()` 只匹配 `canonicalName`（英文法定名）和 ticker，中文站用户最自然的问法"泡泡玛特"查不到（改成同时匹配 `metadata->>'nameZh'`/`nameEnShort'`）；`fetchFullSectionContent()` 只会从 `primary_html` artifact 重新解析全文，港股年报是 PDF 转纯文本、根本没有这个 artifact，会静默 fallback 到 `FilingSection.content` 的 8000 字预览（改成没有 `primary_html` 时改读该 section 自己的 `textArtifact.publicUrl`，本来就是完整文本，不用重新解析）。这是 2026-07-08 那次 search_filings 全文修复（见下一条）同一条故障线在新市场的重演，思路一致：`content` 字段只是预览，永远不能当全文用。新增 L3 回归用例（`tests/agent-tools/search-filings.test.ts`）用中文名查询 + 一个刻意选在预览截断点之后（约第 2 万字符）的关键词，两个问题任一个没修都会测不过。同时把工具的 `description` 更新为提到港股覆盖，之前完全没提，LLM 选工具时可能因此不认为它适用于港股问题。
 - **2026-07-17 · 新公司一键 onboarding 脚本**：`scripts/onboard-company.ts` / `npm run onboard:company -- --ticker XXXX`，把「导入 10-K → 导入股价 → 5 个 LLM 生成脚本」共 7 步编排为一条命令，每步跑完查库验证真正写入（不只看退出码，`generate:*` 脚本内部会捕获单公司错误仍退出 0），按 ticker checkpoint 到 `.cache/onboard-company/<TICKER>.json` 支持断点续跑。端到端验证：`--ticker ODFL` 从零创建 Entity + 10 条 Financial + 22 个 FilingSection，checkpoint 断点续跑验证通过（生产库真实数据，用户决定保留）。用法见 `scripts/README.md`「00. 新公司一键 onboarding 入口」。
 - **2026-07-10 · Filer / Company 身份拆分**：`Filer` 表 + Berkshire 双 Entity 修复 + 5 处查询收口 + 3 处硬编码投资人清单动态化 → PRODUCT.md「稳定主键原则」「v0.38.9–15 变更」。
 - **2026-07-10 · 13F 数据完备性排查**：确认追踪 5 位投资人（不是 3 位），2020Q1–2026Q1 每季连续无缺，3 处异常（Atreides 2022Q2 缺失、2 条 13F-HR/A 空重复行）已修复。

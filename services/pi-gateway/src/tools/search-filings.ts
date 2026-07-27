@@ -14,6 +14,7 @@ type SectionRow = {
   source_id: string;
   filing_kind: string;
   source_url: string | null;
+  text_artifact_url: string | null;
 };
 
 // Primary filing HTML can be several MB; observed R2 fetch+body-read latency
@@ -45,12 +46,20 @@ async function getAvailableSections(entityId: string, year: number | null): Prom
   return r.rows;
 }
 
+// canonicalName is always the English legal name (e.g. "POP MART
+// INTERNATIONAL GROUP LIMITED") — CN/HK entities' Chinese name lives in
+// metadata.nameZh instead (see scripts/lib/cn-hk-company-seeds.ts), which a
+// plain canonicalName match would never see. Chinese users on this
+// Chinese-language site asking about "泡泡玛特" is the expected case, not
+// an edge case.
 async function findEntity(company: string): Promise<{ id: string; name: string | null; ticker: string | null } | null> {
   const r = await pool.query<{ id: string; name: string | null; ticker: string | null }>(
     `SELECT id, "canonicalName" AS name, ticker
      FROM "Entity"
      WHERE UPPER(ticker) = UPPER($1)
         OR "canonicalName" ILIKE $2
+        OR metadata->>'nameZh' ILIKE $2
+        OR metadata->>'nameEnShort' ILIKE $2
      ORDER BY (UPPER(ticker) = UPPER($1)) DESC
      LIMIT 1`,
     [company, `%${company}%`],
@@ -73,10 +82,12 @@ async function querySections(
     `SELECT fs.section, fs.content, fs."contentTextLength" AS content_text_length,
             es."periodYear" AS period_year,
             ce."canonicalName" AS company_name, ce.ticker,
-            es.id AS source_id, es.kind AS filing_kind, es.url AS source_url
+            es.id AS source_id, es.kind AS filing_kind, es.url AS source_url,
+            fa."publicUrl" AS text_artifact_url
      FROM "FilingSection" fs
      JOIN "ExtSource" es ON es.id = fs."sourceId"
      JOIN "Entity" ce ON ce.id = fs."entityId"
+     LEFT JOIN "FilingArtifact" fa ON fa.id = fs."textArtifactId"
      WHERE fs."entityId" = $1
        AND fs.section = ANY($2::text[])
        AND fs."contentTextLength" > 100
@@ -102,6 +113,21 @@ async function fetchPrimaryHtmlUrl(sourceId: string): Promise<string | null> {
 
 const FULL_TEXT_FETCH_ATTEMPTS = 2;
 
+async function fetchWithRetry(url: string, signal: AbortSignal | undefined): Promise<string | null> {
+  for (let attempt = 1; attempt <= FULL_TEXT_FETCH_ATTEMPTS; attempt++) {
+    try {
+      const timeoutSignal = AbortSignal.timeout(FULL_TEXT_FETCH_TIMEOUT_MS);
+      const combinedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+      const res = await fetch(url, { signal: combinedSignal });
+      if (!res.ok) continue;
+      return await res.text();
+    } catch {
+      // fall through to retry, or give up after the last attempt
+    }
+  }
+  return null;
+}
+
 // FilingSection.content is a lightweight preview/legacy field, not guaranteed
 // to hold the full section text (see incident notes: section-level R2
 // artifacts were retired once the reader moved to an iframe over the
@@ -113,29 +139,32 @@ const FULL_TEXT_FETCH_ATTEMPTS = 2;
 // testing varies wildly (sub-second to 2+ minutes) even for the same file,
 // so one retry on timeout/network failure meaningfully improves reliability
 // over a single attempt without materially slowing the common case.
+//
+// Non-SEC filing kinds (e.g. hk-annual-report) never had a primary_html
+// artifact to begin with — their FilingSection rows were written directly
+// from PDF-extracted text (see scripts/import-hk-annual-report-from-file.ts),
+// so there's nothing to re-derive from. For those, fall back to the
+// section's own textArtifact (row.text_artifact_url) — already the complete,
+// untruncated text, just needs fetching, not HTML re-parsing.
 async function fetchFullSectionContent(
-  row: Pick<SectionRow, "source_id" | "section" | "filing_kind" | "source_url">,
+  row: Pick<SectionRow, "source_id" | "section" | "filing_kind" | "source_url" | "text_artifact_url">,
   signal: AbortSignal | undefined,
 ): Promise<string | null> {
-  const publicUrl = await fetchPrimaryHtmlUrl(row.source_id).catch(() => null);
-  if (!publicUrl) return null;
-
-  for (let attempt = 1; attempt <= FULL_TEXT_FETCH_ATTEMPTS; attempt++) {
-    try {
-      const timeoutSignal = AbortSignal.timeout(FULL_TEXT_FETCH_TIMEOUT_MS);
-      const combinedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
-
-      const res = await fetch(publicUrl, { signal: combinedSignal });
-      if (!res.ok) continue;
-      const html = await res.text();
-
+  const primaryHtmlUrl = await fetchPrimaryHtmlUrl(row.source_id).catch(() => null);
+  if (primaryHtmlUrl) {
+    const html = await fetchWithRetry(primaryHtmlUrl, signal);
+    if (html) {
       const sections = extractTargetSections(html, row.source_url ?? undefined, row.filing_kind as FilingKind);
       const content = sections[row.section]?.content;
       if (content) return content;
-    } catch {
-      // fall through to retry, or fall back to row.content after the last attempt
     }
   }
+
+  if (row.text_artifact_url) {
+    const text = await fetchWithRetry(row.text_artifact_url, signal);
+    if (text) return text;
+  }
+
   return null;
 }
 
@@ -143,11 +172,11 @@ export const searchFilingsTool = defineTool({
   name: "search_filings",
   label: "Search Annual Reports",
   description:
-    "Search annual report (10-K/20-F) sections for any public company. Returns relevant content from business description, MD&A, risk factors, financial statements, and more. Data covers ~120 companies from 2020–2025.",
+    "Search annual report sections for any public company — SEC 10-K/20-F filings for US-listed companies, or HKEXnews annual reports for HK-listed companies (e.g. 9992.HK / 泡泡玛特). Returns relevant content from business description, MD&A, risk factors, financial statements, and more. Data covers ~120 companies from 2020–2025.",
   promptSnippet: "search_filings(company, section?, year?, keyword?) → annual report content",
   parameters: Type.Object({
     company: Type.String({
-      description: "Company ticker (e.g. AAPL) or partial name (e.g. Apple)",
+      description: "Company ticker (e.g. AAPL or 9992.HK) or partial name in English or Chinese (e.g. Apple, 泡泡玛特)",
     }),
     section: Type.Optional(Type.String({
       description: "Section to retrieve: business | mda | risk | financial | notes | cybersecurity | market_risk | compensation | governance | properties | legal — or an exact section key like item_7_mda. Omit to see available sections.",

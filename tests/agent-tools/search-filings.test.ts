@@ -36,4 +36,25 @@ describe.skipIf(!hasDb)("search_filings golden cases (live DB + R2)", () => {
     const text = result.content[0]?.type === "text" ? result.content[0].text : "";
     expect(text).toContain("Filing sections available");
   }, 30_000);
+
+  // Regression coverage for the 2026-07-27 HK support fixes: findEntity()
+  // previously only matched canonicalName (always the English legal name)
+  // and ticker, so "泡泡玛特" — the natural way a user on this Chinese-
+  // language site would ask — resolved to nothing. And
+  // fetchFullSectionContent() previously only re-derived full text from a
+  // primary_html artifact (the SEC path); HK annual reports have no such
+  // artifact (they're PDF-extracted text, not HTML), so it silently fell
+  // back to the 8,000-char FilingSection.content preview. "diluted earnings
+  // per share" sits well past that cutoff in the real FY2024 annual report
+  // text (confirmed at ~char 20,000) — this only passes if the section's
+  // own textArtifact is actually being fetched, not the preview.
+  it("finds Pop Mart by its Chinese name and returns full (untruncated) HK annual report text", async () => {
+    const result = await searchFilingsTool.execute(
+      "test",
+      { company: "泡泡玛特", section: "hk_annual_report_4", year: 2024, keyword: "diluted earnings per share" },
+      undefined,
+    );
+    const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+    expect(text.toLowerCase()).toContain("diluted earnings per share");
+  }, 30_000);
 });
