@@ -140,10 +140,12 @@ async function fetchWithRetry(url: string, signal: AbortSignal | undefined): Pro
 // so one retry on timeout/network failure meaningfully improves reliability
 // over a single attempt without materially slowing the common case.
 //
-// Non-SEC filing kinds (e.g. hk-annual-report) never had a primary_html
-// artifact to begin with — their FilingSection rows were written directly
-// from PDF-extracted text (see scripts/import-hk-annual-report-from-file.ts),
-// so there's nothing to re-derive from. For those, fall back to the
+// Non-SEC filing kinds (e.g. hk-annual-report, cn-annual-report) never had a
+// primary_html artifact to begin with — their FilingSection rows were
+// written directly from PDF-extracted text (see
+// scripts/import-hk-annual-report-from-file.ts /
+// scripts/import-cn-annual-report-from-file.ts), so there's nothing to
+// re-derive from. For those, fall back to the
 // section's own textArtifact (row.text_artifact_url) — already the complete,
 // untruncated text, just needs fetching, not HTML re-parsing.
 async function fetchFullSectionContent(
@@ -172,11 +174,11 @@ export const searchFilingsTool = defineTool({
   name: "search_filings",
   label: "Search Annual Reports",
   description:
-    "Search annual report sections for any public company — SEC 10-K/20-F filings for US-listed companies, or HKEXnews annual reports for HK-listed companies (e.g. 9992.HK / 泡泡玛特). Returns relevant content from business description, MD&A, risk factors, financial statements, and more. Data covers ~120 companies from 2020–2025.",
+    "Search annual report sections for any public company — SEC 10-K/20-F filings for US-listed companies, HKEXnews annual reports for HK-listed companies (e.g. 9992.HK / 泡泡玛特), or cninfo annual reports for A-share companies (e.g. 600519.SS / 贵州茅台). Returns relevant content from business description, MD&A, risk factors, financial statements, and more. Data covers ~120 companies from 2020–2025.",
   promptSnippet: "search_filings(company, section?, year?, keyword?) → annual report content",
   parameters: Type.Object({
     company: Type.String({
-      description: "Company ticker (e.g. AAPL or 9992.HK) or partial name in English or Chinese (e.g. Apple, 泡泡玛特)",
+      description: "Company ticker (e.g. AAPL, 9992.HK, or 600519.SS) or partial name in English or Chinese (e.g. Apple, 泡泡玛特, 贵州茅台)",
     }),
     section: Type.Optional(Type.String({
       description: "Section to retrieve: business | mda | risk | financial | notes | cybersecurity | market_risk | compensation | governance | properties | legal — or an exact section key like item_7_mda. Omit to see available sections.",

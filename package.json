@@ -39,6 +39,7 @@
     "import:stock-prices:yf": "sh -c 'PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python; exec \"$PY\" scripts/fetch-stock-prices-yf.py \"$@\"' sh",
     "import:cn-hk-financials": "sh -c 'PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python; exec \"$PY\" scripts/fetch-cn-hk-financials-ak.py \"$@\"' sh",
     "import:hk-annual-report": "sh -c 'PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python; exec \"$PY\" scripts/fetch-hk-annual-report.py \"$@\"' sh",
+    "import:cn-annual-report": "sh -c 'PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python; exec \"$PY\" scripts/fetch-cn-annual-report.py \"$@\"' sh",
     "import:company-stock-prices:yf": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-company-stock-prices-yf.ts",
     "backfill:capex": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-capex.ts",
     "backfill:capex:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-capex.ts --dry-run",

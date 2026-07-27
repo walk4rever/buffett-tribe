@@ -8,6 +8,7 @@
  *   npm run onboard:company -- --ticker XXXX --skip-generation
  *   npm run onboard:company -- --ticker XXXX --force --fresh
  *   npm run onboard:company -- --ticker 9992.HK --market hk
+ *   npm run onboard:company -- --ticker 600519.SS --market cn
  *
  * US steps (default, each verified against the DB after running, not just by
  * exit code — the generate:* scripts catch per-company errors internally and
@@ -24,9 +25,11 @@
  * CN/HK steps (--market cn|hk): seed_entity (manual lookup table in
  * scripts/lib/cn-hk-company-seeds.ts) -> import_price -> import_financials
  * (akshare three-statement data -> Financial) -> import_annual_report
- * (HK only for now — HKEXnews search+download+pypdf text extraction+R2 PDF
- * archive, see scripts/fetch-hk-annual-report.py; --from applies here too,
- * same "2020" default as the US path) -> the same 5 generate_* steps as US.
+ * (HKEXnews for hk / cninfo for cn — different retrieval mechanics per
+ * market, see scripts/fetch-hk-annual-report.py and
+ * scripts/fetch-cn-annual-report.py; both search+download+pypdf text
+ * extraction+R2 PDF archive; --from applies here too, same "2020" default
+ * as the US path) -> the same 5 generate_* steps as US.
  * No 10-K import (no XBRL/SEC equivalent — PRODUCT.md's "跨市场扩展的三条
  * 结构约束" explicitly decided not to generalize the US extraction pipeline
  * to CN/HK). The generate_* steps used to be US-only because
@@ -226,12 +229,11 @@ function buildImportFinancialsStep(ticker: string, market: "cn" | "hk"): Step {
 function buildImportAnnualReportStep(ticker: string, market: "cn" | "hk", fromYear: string): Step {
   return {
     id: "import_annual_report",
-    label: "导入年报原文（HKEXnews → FilingSection + R2 PDF，供 LLM 生成与阅读页使用）",
-    // A-share acquisition (cninfo) hasn't been built yet — see PRODUCT.md.
-    skip: market !== "hk",
+    label: "导入年报原文（HKEXnews/cninfo → FilingSection + R2 PDF，供 LLM 生成与阅读页使用）",
     run: () => {
       const seed = CN_HK_SEEDS[ticker];
-      return runNpmScript("import:hk-annual-report", ["--code", seed.code, "--market", market, "--ticker", ticker, "--from-year", fromYear, "--import-db"]);
+      const scriptName = market === "hk" ? "import:hk-annual-report" : "import:cn-annual-report";
+      return runNpmScript(scriptName, ["--code", seed.code, "--market", market, "--ticker", ticker, "--from-year", fromYear, "--import-db"]);
     },
     verify: async (entityId) => {
       const count = await prisma.filingSection.count({ where: { entityId } });

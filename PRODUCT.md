@@ -416,9 +416,9 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 
 ## A股与港股覆盖扩展
 
-当前系统深度绑定 SEC EDGAR 体系（CIK、XBRL、10-K/20-F/40-F），公司页路由、Entity 模型、财务导入链路、年报阅读器都围绕这一体系构建。下一阶段需要扩展支持 A 股和港股公司，首批以贵州茅台（600519.SS）和泡泡玛特（9992.HK）为验证目标。
+当前系统深度绑定 SEC EDGAR 体系（CIK、XBRL、10-K/20-F/40-F），公司页路由、Entity 模型、财务导入链路、年报阅读器都围绕这一体系构建。扩展支持 A 股和港股公司，验证目标为贵州茅台（600519.SS）和泡泡玛特（9992.HK）——两家均已完成，美股/港股/A股三个市场至此全部对等支持。
 
-> **实施状态（2026-07-27 更新）**：**泡泡玛特（hk-09992）Phase 1+2+3 已完成并上线**——路由泛化（`/company/[id]`，`parseCompanyIdentifier`/`formatCompanyUrl`/`getCompanyByIdentifier` 统一入口）、Entity 种子（`scripts/lib/cn-hk-company-seeds.ts`）、股价、财务数据（`akshare` 三大报表 → `Financial`）、年报原文（HKEXnews → `FilingSection` evidence，见下方 Phase 3）均已验证；`onboard-company.ts --market hk` 现在是完整 9 步，业务/价值/管理/估值分析四个 LLM tab 都已解锁并跑出真实内容，公司页信息完整。**茅台（A股）尚未开始**——路由/onboard 骨架可直接复用，财务数据映射（akshare cninfo 接口）和年报解析入库都还没做。详细过程见 TODOS.md P0 ②。
+> **实施状态（2026-07-27 更新）**：**泡泡玛特（hk-09992）与贵州茅台（cn-600519）Phase 1+2+3 均已完成并上线**——路由泛化（`/company/[id]`，`parseCompanyIdentifier`/`formatCompanyUrl`/`getCompanyByIdentifier` 统一入口）、Entity 种子（`scripts/lib/cn-hk-company-seeds.ts`）、股价、财务数据（`akshare` 三大报表 → `Financial`）、年报原文（HKEXnews/cninfo → `FilingSection` evidence + R2 PDF + 本地阅读页，见下方 Phase 3）均已验证；`onboard-company.ts --market hk|cn` 均为完整 9 步，业务/价值/管理/估值分析四个 LLM tab 都已解锁并跑出真实内容，公司页信息完整。详细过程见 TODOS.md P0 ②。
 
 ### 扩展动机
 
@@ -485,31 +485,33 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 - 财务分析 tab 空态、年度报告 tab 空态改市场感知文案（不再提示"运行 import:10k"）。
 - 年度报告 tab 空态外链披露易 HKEXnews（`https://www.hkexnews.hk/index.htm`，已用 WebFetch 验证是真实可达的官方页面）。
 
-#### Phase 2：财务数据 —— ✅ 港股已完成，A 股未开始
+#### Phase 2：财务数据 —— ✅ 港股 + A 股均已完成
 
-**实际实现与本节原计划的出入**（2026-07-26 做可行性验证后发现）：
-- 原计划设想"中文财务指标 → LINE_ITEMS"靠文本匹配（下方表格是原设想，仅对 A 股成立）。**港股实际用的是 `akshare.stock_financial_hk_report_em()` 返回的 `STD_ITEM_CODE`**——一个跨 HK filer 稳定的数字科目码（验证过泡泡玛特 09992 与腾讯 00700 同一 code 对应同一科目），比文本匹配更可靠，结构上类似 SEC 那套 `tagsUsGaap`/`tagsIfrs` 数字码映射，不是新模式。12 个 `LINE_ITEMS` 全部有对应 code（含 CapEx、ShareRepurchaseAmt），9 个财年（2017–2025）全部拿到。
-- **A 股（`stock_financial_report_sina()`）没有等价的稳定数字码**，是宽表 + 中文列名，原计划的文本匹配思路对 A 股仍然成立，但需要专门验证一遍列名映射——尚未做，脚本对 `--market cn` 直接报错退出，不导入未经验证的数据。
-- **货币不能从 market 推断**：akshare 港股接口不暴露货币字段，且泡泡玛特虽在港交所上市，报表货币是人民币不是港币（对着真实 FY2024 营收数字核对过）——`currency` 是 `cn-hk-company-seeds.ts` 里逐公司手工核实的字段，不是派生值。
+**港股实现**：`akshare.stock_financial_hk_report_em()` 返回的 `STD_ITEM_CODE`——一个跨 HK filer 稳定的数字科目码（验证过泡泡玛特 09992 与腾讯 00700 同一 code 对应同一科目），结构上类似 SEC 那套 `tagsUsGaap`/`tagsIfrs` 数字码映射，不是新模式。12 个 `LINE_ITEMS` 全部有对应 code（含 CapEx、ShareRepurchaseAmt），9 个财年（2017–2025）全部拿到。
 
-原设想的中文指标映射表（A 股尚待验证时的起点，不是最终值）：
+**A 股实现（`scripts/fetch-cn-hk-financials-ak.py` 的 `CN_COLUMN_MAP`，2026-07-27 完成）**：`akshare.stock_financial_report_sina()` 没有 HK 那种稳定数字码，是宽表 + 中文列名，且**混杂季度与年度行**——用 `报告日` 字段以 `"1231"` 结尾筛出年度行（HK 接口有 `indicator="年度"` 参数直接过滤，Sina 接口没有）。列名逐一对着贵州茅台（600519）真实公开 FY2024 数字核对：营业收入 ¥170.9B、归属于母公司所有者的净利润 ¥86.2B、基本每股收益 ¥68.64、资产总计 ¥298.9B，全部一致。11/12 `LINE_ITEMS` 有对应列，`ShareRepurchaseAmt` 留空未映射——Sina 这套通用模板（所有 A 股公司共用同一套字段，含大量金融业专属字段）没有可信的股份回购列，宁可空缺也不猜测；`GrossProfit` 不是原始列，是营业收入−营业成本的标准会计恒等式派生值。
 
-| 中文报表指标 | LINE_ITEM |
+实际使用的中文列名映射表：
+
+| 中文报表指标（Sina 列名） | LINE_ITEM |
 |-------------|-----------|
-| 营业收入 / 营业总收入 | Revenue |
-| 毛利润 / 营业毛利 | GrossProfit |
-| 营业利润 / 营业利润（亏损） | OperatingIncome |
-| 净利润 / 归属于母公司净利润 | NetIncome |
-| 经营活动产生的现金流量净额 | OperatingCashFlow |
-| 资产总计 / 总资产 | TotalAssets |
-| 负债合计 / 总负债 | TotalLiabilities |
-| 所有者权益合计 / 归属于母公司股东权益 | ShareholdersEquity |
+| 营业收入 | Revenue |
+| 营业收入 − 营业成本（派生） | GrossProfit |
+| 营业利润 | OperatingIncome |
+| 归属于母公司所有者的净利润 | NetIncome |
 | 基本每股收益 | EPSBasic |
 | 稀释每股收益 | EPSDiluted |
+| 资产总计 | TotalAssets |
+| 负债合计 | TotalLiabilities |
+| 所有者权益(或股东权益)合计 | ShareholdersEquity |
+| 经营活动产生的现金流量净额 | OperatingCashFlow |
+| 购建固定资产、无形资产和其他长期资产所支付的现金 | CapEx |
 
-**财年对齐**：A 股/港股以日历年度为准，`periodEnd` 统一为 `12-31`（港股已验证）。**存储**：复用现有 `Financial` 表结构，未新建表（`ExtSource.kind` 新增 `"akshare"` 值）。
+**货币不能从 market 推断**：akshare 港股接口不暴露货币字段，且泡泡玛特虽在港交所上市，报表货币是人民币不是港币（对着真实 FY2024 营收数字核对过）——`currency` 是 `cn-hk-company-seeds.ts` 里逐公司手工核实的字段，不是派生值。A 股本身受监管要求恒为 CNY，同样按显式字段记录而非从 market 推断代码逻辑。
 
-#### Phase 3：年报原文 —— ✅ 港股（泡泡玛特）已完成并接入 LLM evidence + 本地阅读页，A 股未开始
+**财年对齐**：A 股/港股以日历年度为准，`periodEnd` 统一为 `12-31`（均已验证）。**存储**：复用现有 `Financial` 表结构，未新建表（`ExtSource.kind` 新增 `"akshare"` 值）。
+
+#### Phase 3：年报原文 —— ✅ 港股（泡泡玛特）+ A 股（贵州茅台）均已完成并接入 LLM evidence + 本地阅读页
 
 **目标**：年报文本作为 evidence 支撑业务/价值/管理分析 LLM tab（此前这三个 tab 对港股/A股全部空着，根源就是没有年报原文，`hasUsableFilingEvidence()` 会拒绝生成）。首版（2026-07-27 早）**不做**本地年报阅读器 UI，年度报告 tab 维持外链披露易占位——但同日晚些时候用户要求补上，见下方「本地阅读页」小节；下面这段保留作为决策变更的记录，不代表当前状态。
 
@@ -521,7 +523,9 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 
 下载有实测的限速（约 85KB/s，一份 8MB 年报视具体文件可能 1 秒到 100 秒不等），脚本按此设置了 180 秒超时，不是保守冗余。PDF 是原生数字文本，`pypdf` 直接提取，未用 OCR。
 
-**A 股未做**：巨潮资讯网机制不同（`akshare.stock_zh_a_disclosure_report_cninfo` 已验证可行，见 P2 相关条目），获取路径更简单但还没接入解析入库这一步。
+**A 股实现（`scripts/fetch-cn-annual-report.py` + `scripts/import-cn-annual-report-from-file.ts`，2026-07-27 完成）**：不是把 HK 脚本改参数复用——获取机制本质不同，符合本节开头「不照搬，按市场格式重新设计」的约束，只共享 `archiveFilingArtifact()`/`buildStoredTextOnlyFilingSectionData()` 两个已有的通用底层 helper。`akshare.stock_zh_a_disclosure_report_cninfo(keyword="年度报告")` 返回的公告标题带 `<em>...</em>` 搜索高亮标记，需要先 strip 再匹配；纯 `"年度报告"` 关键词还会命中"半年度报告"（子串重叠）、"...摘要"、"...（英文版）"，用锚定正则 `^.+?(\d{4})年年度报告$` 精确排除，验证过真实返回结果里这三类变体全部被正确过滤，只保留 6 份年份 2020-2025 的正式中文年报。PDF 直链是可预测的静态 CDN 地址（公告详情页链接里的 `announcementId`+`announcementTime` 拼出 `static.cninfo.com.cn/finalpage/{announcementTime}/{announcementId}.PDF`）——比 HKEXnews 简单得多，不需要 JSF/ViewState 会话周旋，下载速度也快一个数量级（3.6MB 年报实测 0.3 秒，~14MB/s，vs HKEXnews 的 ~85KB/s），因此不需要 HK 那种保守超时设计。`ExtSource.kind = "cn-annual-report"`，`FilingSection` 前缀 `cn_annual_report_1..4`，同样按页数机械四等分。`hasUsableFilingEvidence()`/`fetchLatestFilingEvidence()`（`scripts/lib/company-generation.ts`）、`src/lib/company-data.ts` 四处 kind 过滤、阅读页 `PdfViewer` 分支、`onboard-company.ts` 的 `buildImportAnnualReportStep` 均按 HK 已有模式加一行泛化；`services/pi-gateway` 的 `search_filings` 工具核心逻辑**零改动**自动覆盖（fallback 判断依据是"有没有 primary_html"，不认 kind 名字）——新增贵州茅台 L3 回归用例（`tests/agent-tools/search-filings.test.ts`，同 HK 一样用中文名 + 截断点之后的深层关键词）跑通确认，不只是理论推断。唯一实际要改的是工具 `description`/`company` 参数说明，之前完全没提 A 股，同样有"LLM 因描述不提及而不选用该工具"的风险，照 HK 那次的措辞补上了。
+
+**验证**：`onboard:company -- --ticker 600519.SS --market cn` 一次性跑完全部 9 步（含 5 个 LLM 生成步骤），无需分次补跑；`/company/cn-600519` 六个 tab 截图确认业务/财务/价值分析均为真实生成内容，年度报告 tab 6 张卡片、PDF 阅读页正常渲染（143 页）；Pop Mart（HK）与 AAPL（US）回归截图确认无副作用——详细过程见 TODOS.md P0 ②。
 
 **验证**：`onboard:company -- --ticker 9992.HK --market hk` 端到端跑通，业务/价值/管理/估值分析四个 tab 从"构建中"占位变成真实生成内容（业务概览提到 Molly/DIMOO 等真实 IP 名称与真实 FY2025 财务数字，价值分析护城河评分附"年报未提及重大监管壁垒"这类可追溯到原文的具体论据）——详细过程见 TODOS.md P0 ②。
 
@@ -573,7 +577,7 @@ model Entity {
 
 #### 财务数据导入（`scripts/fetch-cn-hk-financials-ak.py` + `scripts/import-cn-hk-financials-from-file.ts`）
 
-两阶段：Python 用 akshare 拉数据 + 映射到 `LINE_ITEMS` + 写归一化 JSON，Node/Prisma 脚本读 JSON 写 `Financial`——照抄 `fetch-stock-prices-yf.py` → `import-stock-prices-from-file.ts` 的既有两阶段模式，不是新协调机制。港股映射用 `STD_ITEM_CODE` 数字码（见上），A 股映射未实现。`ExtSource` 新增 `kind: "akshare"`，`accessionNumber` 固定为 `"akshare-annual"` 做幂等键（重跑复用同一行，不是每次都新建）。
+两阶段：Python 用 akshare 拉数据 + 映射到 `LINE_ITEMS` + 写归一化 JSON，Node/Prisma 脚本读 JSON 写 `Financial`——照抄 `fetch-stock-prices-yf.py` → `import-stock-prices-from-file.ts` 的既有两阶段模式，不是新协调机制。港股映射用 `STD_ITEM_CODE` 数字码，A 股映射用 `CN_COLUMN_MAP` 中文列名（均见上）。`ExtSource` 新增 `kind: "akshare"`，`accessionNumber` 固定为 `"akshare-annual"` 做幂等键（重跑复用同一行，不是每次都新建）。
 
 #### 前端
 
@@ -585,8 +589,8 @@ model Entity {
 
 | 公司 | 市场 | 代码 | Yahoo Ticker | 状态 |
 |------|------|------|-------------|------|
-| 泡泡玛特 | 港股（港交所） | 09992 | 9992.HK | ✅ Phase 1+2 已完成（2026-07-26） |
-| 贵州茅台 | A 股（上交所） | 600519 | 600519.SS | 未开始——Phase 1 骨架可直接复用，Phase 2 需要先建 A 股列名映射表 |
+| 泡泡玛特 | 港股（港交所） | 09992 | 9992.HK | ✅ Phase 1+2+3 已完成（2026-07-26/27） |
+| 贵州茅台 | A 股（上交所） | 600519 | 600519.SS | ✅ Phase 1+2+3 已完成（2026-07-27） |
 
 ### 成功标准
 
@@ -855,8 +859,8 @@ Apple HIG 精简风格：
 |------|------|
 | /agent 投资研究 Agent | ✅ 已上线（v0.38.0+） |
 | /master 大师页面 | ✅ 已上线 |
-| /company/[cik] 公司页 | ✅ 已上线（美股 CIK） |
-| A 股/港股覆盖 | ❌ 仅 schema 前置（market/code 字段），路由与导入未实施 |
+| /company/[id] 公司页 | ✅ 已上线（美股/港股/A股统一路由） |
+| A 股/港股覆盖 | ✅ 已上线（贵州茅台 600519、泡泡玛特 09992，2026-07-27） |
 | /insights 洞见过滤 | ✅ 已上线（v0.38.x，?source= 过滤） |
 | Company Canvas（6 Tab UI） | ✅ 已实现 |
 | 管理分析 / 估值分析 Tab（LLM） | ✅ 已上线（v0.37.5，55 家） |
@@ -1195,7 +1199,7 @@ FinancialFact
 - `scripts/import-10k-edgartools.ts`：用 edgartools 获取 annual filing，支持 `companyfacts + filing-level inline XBRL fallback`，并归档 SEC 原始文件到 `FilingArtifact`
 - `npm run send:announcement`：给注册用户批量发邮件公告
 
-> A 股/港股 akshare 导入脚本（`import:cn-financials` / `import:cn-company-info`）为规划项，尚未实现，方案见「A股与港股覆盖扩展」。
+> A 股/港股 akshare 导入脚本（`npm run import:cn-hk-financials`、`npm run import:hk-annual-report`、`npm run import:cn-annual-report`）均已实现并验证，方案与实施状态见「A股与港股覆盖扩展」。
 
 ### 实验与基准
 

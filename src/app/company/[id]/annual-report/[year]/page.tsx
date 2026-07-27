@@ -33,12 +33,13 @@ export default async function AnnualReportPage({ params }: Props) {
   const filing = await getCompanyAnnualFiling(company.id, year);
   if (!filing) notFound();
 
-  // HK annual reports were imported as PDF-extracted text, not HTML — there's
-  // no primary_html artifact for FilingReader's iframe to point at. They get
-  // their own PDF (kind: "primary_pdf", archived to R2 by
-  // import-hk-annual-report-from-file.ts) rendered through the same generic
-  // PdfViewer already used for the 大师资料库 documents — no new reader UI.
-  if (filing.kind === "hk-annual-report") {
+  // HK/CN annual reports were imported as PDF-extracted text, not HTML —
+  // there's no primary_html artifact for FilingReader's iframe to point at.
+  // They get their own PDF (kind: "primary_pdf", archived to R2 by
+  // import-hk-annual-report-from-file.ts / import-cn-annual-report-from-file.ts)
+  // rendered through the same generic PdfViewer already used for the
+  // 大师资料库 documents — no new reader UI.
+  if (filing.kind === "hk-annual-report" || filing.kind === "cn-annual-report") {
     const pdfArtifact = filing.artifacts.find((artifact) => artifact.kind === "primary_pdf");
     if (!pdfArtifact?.objectKey) notFound();
 

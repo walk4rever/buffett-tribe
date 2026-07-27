@@ -32,4 +32,15 @@ export const CN_HK_SEEDS: Record<string, CnHkSeed> = {
     industry: "潮流玩具",
     exchange: "香港交易所",
   },
+  "600519.SS": {
+    market: "cn",
+    code: "600519",
+    currency: "CNY",
+    canonicalName: "贵州茅台酒股份有限公司",
+    nameZh: "贵州茅台",
+    nameEnShort: "Kweichow Moutai",
+    sector: "Consumer Staples",
+    industry: "白酒",
+    exchange: "上海证券交易所",
+  },
 };

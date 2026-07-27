@@ -1,8 +1,8 @@
 # TODOS — 活跃工作队列
 
-> 更新：2026-07-26。本文件只保留**未完成项**，按 P0–P3 排优先级；完成项的结论回写 `PRODUCT.md` 后从这里移除（详细过程见 git 历史）。产品定位、架构、数据口径、测试体系设计一律以 `PRODUCT.md` 为准。
+> 更新：2026-07-27。本文件只保留**未完成项**，按 P0–P3 排优先级；完成项的结论回写 `PRODUCT.md` 后从这里移除（详细过程见 git 历史）。产品定位、架构、数据口径、测试体系设计一律以 `PRODUCT.md` 为准。
 >
-> 当前队列于 2026-07-17 与用户讨论后重排：P0 项是用户点名的紧急项（带完整现状诊断，可直接开工），P1 三项是围绕"Agent 是核心入口"主线的既定建议。2026-07-18 新增两项来自 `anthropics/financial-services` 仓库调研的建议（P2）。2026-07-26 复盘法拉利（RACE）onboarding 全过程后新增 P0 ③；泡泡玛特（港股）Phase 1+2 端到端完成并上线，② 改为已完成、范围收窄到剩下的茅台（A股）；12 家回填公司里 11 家跑完，MTB 剩 1 条独立问题。
+> 当前队列于 2026-07-17 与用户讨论后重排：P0 项是用户点名的紧急项（带完整现状诊断，可直接开工），P1 三项是围绕"Agent 是核心入口"主线的既定建议。2026-07-18 新增两项来自 `anthropics/financial-services` 仓库调研的建议（P2）。2026-07-26 复盘法拉利（RACE）onboarding 全过程后新增 P0 ③；泡泡玛特（港股）Phase 1+2 端到端完成并上线；12 家回填公司里 11 家跑完，MTB 剩 1 条独立问题。2026-07-27 贵州茅台（A股）Phase 1+2+3 端到端完成，② 三个市场全部收官（美股/港股/A股）。
 
 ## P0 — 下一步就做（用户点名，2026-07-17）
 
@@ -14,7 +14,7 @@
   - **下一步**：跟用户过一轮翻译方案的小样本对比（同一份 filing 分别跑方案 A/B 看效果），再定最终方案和排期。
 - [ ] **①-c `/api/filing-image` 代理延迟严重**（2026-07-21 排查字体/行间距控件失效时发现）：法拉利这份 20-F 内嵌 40 张图片全部经该接口代理转发 SEC.gov 原图，单张最长 3.5 分钟（`race-20251231_g5.jpg`），多张超过 1 分钟，无缓存。当前已通过"控件不再等 iframe `load` 事件"绕开了它对本功能的影响，但代理本身的延迟没有处理，值得单独排查是否要加缓存层（R2/CDN）或加超时+占位图。
 
-- [x] **② A 股/港股 Phase 1+2：泡泡玛特（hk-09992）**（2026-07-26 完成，端到端验证）
+- [x] **② A 股/港股 Phase 1+2+3：泡泡玛特（hk-09992）+ 贵州茅台（cn-600519）**（2026-07-26 港股完成，2026-07-27 A股完成，均端到端验证）
   - **路由/查询泛化**：`src/app/company/[cik]` → `[id]`；`src/lib/company-data.ts` 新增 `parseCompanyIdentifier`/`formatCompanyUrl`/`getCompanyByIdentifier` 作为唯一入口（US 走 CIK，CN/HK 走 `{market, code}`），替换掉两套已经互相drift 的旧实现（`company-data.ts` 自己的 `formatCompanyCikUrl` + 独立的 `src/lib/cik.ts`，后者已删除）；`/company` 目录页放宽 `cik: { not: null }` 过滤。`CompanyDirectory.tsx` 的 `cik` key 字段改成通用 `key`。
   - **Entity 种子**：`scripts/lib/cn-hk-company-seeds.ts`（从 `onboard-company.ts` 抽出，因为后来 Phase 2 也要用），手工表，泡泡玛特一行。
   - **股价**：`import:stock-prices:yf --ticker 9992.HK` 零改动直接用（Entity.ticker="9992.HK"，StockPrice 按 ticker 字符串查，与 CIK/market 无关）。
@@ -28,7 +28,7 @@
     - **顺手修的 bug**：`PdfViewer` 直接拿 `FilingArtifact.publicUrl`（R2 公开域名）当 `url` 传入时，pdfjs 的跨域 `fetch` 被 CORS 拦截（R2 公开桶不带 `Access-Control-Allow-Origin`），页面卡在"加载中"。大师资料库的 PDF 之所以没这个问题，是因为它们从来不是直接拿 R2 URL 给客户端 fetch 的，而是走 `/api/documents/*/[slug]` 这类同源代理路由（`getR2Stream()` 服务端转发）。照同一模式新增 `/api/filing-pdf/[...key]/route.ts`（用 `FilingArtifact.objectKey`，`@unique`，做 catch-all 路径还原后查库转发），阅读页改传 `/api/filing-pdf/${objectKey}` 而非 `publicUrl`。
     - **验证**：typecheck/lint/build 全绿；`import:hk-annual-report -- --code 09992 --market hk --from-year 2020 --import-db` 直接跑一遍确认 6 个年份全部导入、R2 `primary_pdf` 均可达；`/company/hk-09992` 年度报告 tab 截图确认 6 张卡片（此前 0 张）；`/company/hk-09992/annual-report/2024` 截图确认 `PdfViewer` 正常渲染真实页面（338 页、缩略图/目录侧栏均可用）；`/company/CIK0000320193/annual-report/2025` 截图确认 `FilingReader` 无回归。
   - **验证**：typecheck/lint/build 全绿；`onboard:company -- --ticker 9992.HK --market hk` 端到端跑过三遍（首次全新建、Phase2财务数据补跑、本次年报+生成补跑，checkpoint 均正确跳过已完成步骤）；`/company` 目录、`/company/CIK0000320193`（AAPL 回归）截图确认无副作用。
-  - **未做/后续**：茅台（A股）Phase 1+2+3 都还没做——路由/onboard 骨架可直接复用，但财务数据映射（`akshare.stock_zh_a_disclosure_report_cninfo` 已验证可行，见 P2）和年报解析入库（巨潮资讯网机制与披露易不同）都是新工作。`src/lib/valuation-metrics.ts`/`scripts/lib/company-generation.ts` 里的 `Financial.unit` 仍未线上消费（value_analysis/valuation_analysis 目前不靠它，不紧急）。
+  - **② 再追加：A 股（贵州茅台 600519）Phase 1+2+3 端到端完成（2026-07-27）**：三个市场里最后一块拼图，实现前先用真实数据验证了两条数据源，不是拍脑袋设计——`akshare.stock_financial_report_sina(stock="sh600519")` 返回的宽表 FY2024 数字（营业收入 ¥170.9B、归母净利润 ¥86.2B、EPS ¥68.64、总资产 ¥298.9B）逐一核对与茅台真实公开财报一致；`akshare.stock_zh_a_disclosure_report_cninfo` 返回的年报公告标题带 `<em>` 高亮标记，需要先 strip 再用锚定正则 `^.+?(\d{4})年年度报告$` 过滤（同一批结果里还混着"摘要"/"英文版"/"半年度报告"三种变体，都被正确排除），PDF 直链是可预测的静态 CDN 地址 `static.cninfo.com.cn/finalpage/{announcementTime}/{announcementId}.PDF`——巨潮的这条路径比披露易简单得多，3.6MB 年报下载 0.3 秒（~14MB/s），完全不需要 HKEXnews 那套 JSF/ViewState 会话周旋，也不需要保守超时。财务映射新增 `CN_COLUMN_MAP`（`scripts/fetch-cn-hk-financials-ak.py`，11/12 LINE_ITEMS，`ShareRepurchaseAmt` 因 Sina 模板无对应科目而留空未映射，`GrossProfit` 用营业收入−营业成本derive，不是猜的科目名）；年报新增独立脚本对 `scripts/fetch-cn-annual-report.py` + `scripts/import-cn-annual-report-from-file.ts`（不是把 HK 脚本参数化复用——获取机制本质不同，符合「不照搬，按市场重新设计」的既有约束），复用 `archiveFilingArtifact()`/`buildStoredTextOnlyFilingSectionData()` 两个已有通用 helper，`ExtSource.kind = "cn-annual-report"`。`fetchLatestFilingEvidence()`/`company-data.ts` 四处 kind 过滤/阅读页分支/`onboard-company.ts` 的 `buildImportAnnualReportStep` 均按 HK 的既有模式加一行泛化，`services/pi-gateway` 的 `search_filings` 工具**零改动**自动覆盖（fallback 逻辑本来就是按"有没有 primary_html"判断，不认 kind 名字）。**验证**：`onboard:company -- --ticker 600519.SS --market cn` 一次性跑完全部 9 步（含 5 个 LLM 生成步骤，一次成功，无需分次补跑）；财务/年报 DB 数据核对与源头一致；`/company/cn-600519` 六个 tab 截图确认业务/财务/价值分析均为真实生成内容（护城河雷达图、5 年财务趋势表），年度报告 tab 6 张卡片、PDF 阅读页正常渲染（143 页）；Pop Mart（HK）与 AAPL（US）回归截图确认无副作用。`src/lib/valuation-metrics.ts`/`scripts/lib/company-generation.ts` 里的 `Financial.unit` 仍未线上消费（value_analysis/valuation_analysis 目前不靠它，不紧急）。
   - **设计约束（2026-07-26 复盘 RACE 后补充，2026-07-27 订正了第 1 条的表述，详见 PRODUCT.md「跨市场扩展的三条结构约束」）**：不照搬美股抽取逻辑到 CN/HK（不是不做年报接入，是按市场数据格式重新设计——上面追加的年报接入正是这条约束下做成的）；`market` 只在 identifier 的 parse/format helper 一处进代码；`onboard-company.ts` 不按市场 fork，只有 steps 列表变。
 
 - [ ] **③ 抽取管线止血：验收粒度 + evidence guard**（2026-07-26 复盘 RACE onboarding 得出，~半天，**建议先于 ② 或与 ② 并行做**）
@@ -56,8 +56,8 @@
 - [ ] **13F 历史证券承接页**（2026-07-17 从 P1 顺延）：`Security.ticker = null` 且 `companyEntityId = null` 的历史证券无可访问页面。产品口径与处理方案见 PRODUCT.md「待办：13F 历史证券承接页」（company shell 补齐 / `/security/[id]` 承接页 / orphan 巡检纳入 `check:security:integrity`）。
 - [ ] **L2 集成测试**（2026-07-17 从 P1 顺延）：Prisma 查询（CompanyNameMap 同步、Security↔Entity 回填幂等性、GCV 版本递增）+ API route。测试库方案已定：本地 pglite 影子库。落地后 `test:release`（发版前全量跑 L2+L3+L4+L5）才成立。
 - [ ] **Whale Rock / Atreides 组合 375 家公司 Financial/10-K 缺口**（2026-07-10 排查发现）：两家成长股基金加入 13F 追踪后从未同步扩展公司数据 pipeline（gavin-baker 212 家持仓仅 27 家有 FY 数据，alex-sacerdote 211 家仅 21 家）。**用户已决定先不处理，只记录**；若要补，先评估 SEC EDGAR 请求量与时间成本，再决定是否批量 `import:10k`。
-- [ ] **A 股 Phase 1+2（茅台）**：港股（泡泡玛特）已完成，见 P0 ②。A 股复用同一套路由/onboard 骨架，但财务数据映射需要新工作——`akshare.stock_financial_report_sina()` 是宽表 + 中文列名，不是港股那种跨 filer 稳定的 `STD_ITEM_CODE`，需要单独验证一遍列名映射（`scripts/fetch-cn-hk-financials-ak.py` 里 `--market cn` 目前直接报错退出）。
-- [ ] **search_filings 覆盖扩展**：finer-grained 财务报表 / notes 章节；HK/A 股年报（依赖 A 股/港股接入进度）。
+- [ ] **search_filings 覆盖扩展**：finer-grained 财务报表 / notes 章节。
+- [ ] **Disney 2020 10-K L3 用例当前失败**（2026-07-27 跑 A 股回归测试时发现）：`tests/agent-tools/search-filings.test.ts` 里 "Aspire" 关键词未命中，返回的是截断预览内容而非全文——与本次 A 股改动无关（`git diff` 确认改动只涉及 CN 相关代码/注释），大概率是测试自身注释里早就记录过的 R2 body-read 延迟问题（观测范围 <1s 到 2+ 分钟）导致 fallback，未深挖根因。
 - [ ] **DEF 14A（proxy）抓取**：10-K item_10/11 只有 incorporated-by-reference 占位，管理层薪酬/董事会结构要 proxy。接入后管理分析补"管理层与董事会"卡。
 - [ ] **Agent 扩展验收**：跨大师对比 / 时间线 / 观点 + 公司持仓 + 年报联动的组合查询质量验收。
 - [ ] **pi-gateway 流量监控**：PM2 logs + Langfuse 观测调用情况。
@@ -88,6 +88,7 @@
 
 ## 已完成归档（结论已回写 PRODUCT.md，过程见 git 历史）
 
+- **2026-07-27 · search_filings 工具补上 A 股支持**：贵州茅台年报接入后核查同一条故障线是否在 A 股重演——`findEntity()`/`fetchFullSectionContent()` 的修复本来就是通用的（不认 kind 名字，只看 metadata 字段和有没有 `primary_html`），实测确认零逻辑改动即可覆盖 A 股，唯一要补的是工具 `description`/`company` 参数说明之前完全没提 A 股，同样有"LLM 因描述不提及而不选用该工具"的风险，照 HK 那次的措辞加了一句。新增贵州茅台 L3 回归用例（"龙狮瓶盖"，一个位于约第 2 万字符处的关联方名称，同样刻意选在预览截断点之后）跑通确认，不是只在注释里断言。**顺带发现一个不相关但当前是红的测试**：跑测试套件时 Disney 2020 10-K 那条既有 L3 用例失败（"Aspire"关键词未命中，返回的是截断预览内容）——`git diff` 确认这次改动只碰了注释/description 字符串，不是这次引入的回归；测试自己的注释早就记录过"R2 body-read 延迟从 <1s 到 2+ 分钟不等"，大概率是同一类延迟问题导致 fallback，未深挖，待排查。
 - **2026-07-27 · search_filings 工具补上港股支持**：泡泡玛特年报接入 evidence 后发现 Agent 的 `search_filings` 工具实际访问不到——`findEntity()` 只匹配 `canonicalName`（英文法定名）和 ticker，中文站用户最自然的问法"泡泡玛特"查不到（改成同时匹配 `metadata->>'nameZh'`/`nameEnShort'`）；`fetchFullSectionContent()` 只会从 `primary_html` artifact 重新解析全文，港股年报是 PDF 转纯文本、根本没有这个 artifact，会静默 fallback 到 `FilingSection.content` 的 8000 字预览（改成没有 `primary_html` 时改读该 section 自己的 `textArtifact.publicUrl`，本来就是完整文本，不用重新解析）。这是 2026-07-08 那次 search_filings 全文修复（见下一条）同一条故障线在新市场的重演，思路一致：`content` 字段只是预览，永远不能当全文用。新增 L3 回归用例（`tests/agent-tools/search-filings.test.ts`）用中文名查询 + 一个刻意选在预览截断点之后（约第 2 万字符）的关键词，两个问题任一个没修都会测不过。同时把工具的 `description` 更新为提到港股覆盖，之前完全没提，LLM 选工具时可能因此不认为它适用于港股问题。
 - **2026-07-17 · 新公司一键 onboarding 脚本**：`scripts/onboard-company.ts` / `npm run onboard:company -- --ticker XXXX`，把「导入 10-K → 导入股价 → 5 个 LLM 生成脚本」共 7 步编排为一条命令，每步跑完查库验证真正写入（不只看退出码，`generate:*` 脚本内部会捕获单公司错误仍退出 0），按 ticker checkpoint 到 `.cache/onboard-company/<TICKER>.json` 支持断点续跑。端到端验证：`--ticker ODFL` 从零创建 Entity + 10 条 Financial + 22 个 FilingSection，checkpoint 断点续跑验证通过（生产库真实数据，用户决定保留）。用法见 `scripts/README.md`「00. 新公司一键 onboarding 入口」。
 - **2026-07-10 · Filer / Company 身份拆分**：`Filer` 表 + Berkshire 双 Entity 修复 + 5 处查询收口 + 3 处硬编码投资人清单动态化 → PRODUCT.md「稳定主键原则」「v0.38.9–15 变更」。

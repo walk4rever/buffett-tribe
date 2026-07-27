@@ -57,4 +57,23 @@ describe.skipIf(!hasDb)("search_filings golden cases (live DB + R2)", () => {
     const text = result.content[0]?.type === "text" ? result.content[0].text : "";
     expect(text.toLowerCase()).toContain("diluted earnings per share");
   }, 30_000);
+
+  // Same regression class, A-share this time (2026-07-27 CN support): the
+  // fixes above are market-agnostic (findEntity() matches metadata.nameZh
+  // generically, fetchFullSectionContent() falls back to textArtifact
+  // whenever there's no primary_html, regardless of kind name), so this
+  // should pass with zero further code changes — this test is what actually
+  // confirms that rather than just asserting it in a comment. "龙狮瓶盖"
+  // (a related-party packaging supplier named in the connected transactions
+  // disclosure) sits at ~char 20,000 in the real FY2024 annual report text,
+  // well past the 8,000-char FilingSection.content preview cutoff.
+  it("finds Kweichow Moutai by its Chinese name and returns full (untruncated) A-share annual report text", async () => {
+    const result = await searchFilingsTool.execute(
+      "test",
+      { company: "贵州茅台", section: "cn_annual_report_4", year: 2024, keyword: "龙狮瓶盖" },
+      undefined,
+    );
+    const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+    expect(text).toContain("龙狮瓶盖");
+  }, 30_000);
 });
