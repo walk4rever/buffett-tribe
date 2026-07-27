@@ -4,7 +4,7 @@
 
 Usage:
   .venv/bin/python scripts/fetch-hk-annual-report.py --code 09992 --market hk --import-db
-  .venv/bin/python scripts/fetch-hk-annual-report.py --code 09992 --market hk --years 3
+  .venv/bin/python scripts/fetch-hk-annual-report.py --code 09992 --market hk --from-year 2020
 
 HKEXnews's title-search (https://www1.hkexnews.hk/search/titlesearch.xhtml) is a
 JSF app, not a REST API — a plain requests.get() with query params returns an
@@ -63,10 +63,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--code", required=True, help="Exchange code, e.g. 09992")
     parser.add_argument("--market", required=True, choices=["hk"], help="Only hk supported")
     parser.add_argument("--ticker", default=None, help="Entity.ticker, e.g. 9992.HK (defaults to derived from --code)")
-    parser.add_argument("--years", type=int, default=2, help="How many most-recent annual reports to fetch (default 2)")
-    parser.add_argument("--out-dir", default="/tmp/hk-annual-report-ak", help="Directory for the generated JSON fixture")
+    parser.add_argument("--from-year", type=int, default=2020, help="Earliest annual report content-year to fetch (default 2020, matching the US onboarding default)")
+    parser.add_argument("--out-dir", default="/tmp/hk-annual-report-ak", help="Directory for the generated JSON fixture and downloaded PDFs")
     parser.add_argument("--import-db", action="store_true", help="Import the generated JSON into the database after fetching")
-    parser.add_argument("--keep-file", action="store_true", help="Keep the generated JSON instead of deleting it after import")
+    parser.add_argument("--keep-file", action="store_true", help="Keep the generated JSON and PDFs instead of deleting them after import")
     return parser.parse_args()
 
 
@@ -181,7 +181,7 @@ def fetch_all_records(session: requests.Session, stock_id: int, date_from: str, 
     return all_records
 
 
-def find_annual_reports(session: requests.Session, code: str, years: int) -> list[dict]:
+def find_annual_reports(session: requests.Session, code: str, from_year: int) -> list[dict]:
     stock_id = resolve_stock_id(session, code)
     print(f"  resolved {code} -> internal stockId {stock_id}", file=sys.stderr)
 
@@ -206,15 +206,13 @@ def find_annual_reports(session: requests.Session, code: str, years: int) -> lis
         # Annual reports are filed ~3-4 months after fiscal year-end; the
         # report content year is typically filedYear - 1.
         period_year = (filed_year - 1) if filed_year else None
-        if period_year is None or period_year in seen_years:
+        if period_year is None or period_year in seen_years or period_year < from_year:
             continue
         seen_years.add(period_year)
         link = rec.get("FILE_LINK", "")
         if link.startswith("/"):
             link = BASE_URL + link
         found.append({"periodYear": period_year, "title": title, "url": link})
-        if len(found) >= years:
-            break
 
     return found
 
@@ -251,26 +249,33 @@ def main() -> int:
 
     session = build_session()
 
-    print(f"Searching HKEXnews for {args.code} annual reports...")
-    reports = find_annual_reports(session, args.code, args.years)
+    print(f"Searching HKEXnews for {args.code} annual reports since {args.from_year}...")
+    reports = find_annual_reports(session, args.code, args.from_year)
     if not reports:
         print(f"No annual reports found for {args.code}", file=sys.stderr)
         return 1
     print(f"Found {len(reports)} annual report(s): {[r['periodYear'] for r in reports]}")
 
     results = []
+    pdf_paths: list[Path] = []
     for report in reports:
         pdf_path = out_dir / f"{args.code}_{report['periodYear']}.pdf"
+        pdf_paths.append(pdf_path)
         print(f"Downloading FY{report['periodYear']}: {report['url']}")
         download_pdf(session, report["url"], pdf_path)
 
         print(f"  extracting text...")
         chunks = extract_chunks(pdf_path, CHUNK_COUNT)
         print(f"  {len(chunks)} chunks, {sum(len(c) for c in chunks)} total chars")
-        results.append({"periodYear": report["periodYear"], "chunks": chunks})
-
-        if not args.keep_file:
-            pdf_path.unlink(missing_ok=True)
+        # pdfPath/url are kept (not just chunks) so the importer can archive
+        # the original PDF to R2 — HKEXnews itself is too slow to link to
+        # directly (~85KB/s observed), so the reading page needs its own copy.
+        results.append({
+            "periodYear": report["periodYear"],
+            "url": report["url"],
+            "pdfPath": str(pdf_path),
+            "chunks": chunks,
+        })
 
     json_path = out_dir / f"{args.code}.json"
     json_path.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -284,8 +289,11 @@ def main() -> int:
             "--ticker", ticker, "--code", args.code, "--market", args.market,
         ]
         subprocess.run(cmd, check=True)
-        if not args.keep_file:
-            json_path.unlink(missing_ok=True)
+
+    if not args.keep_file:
+        json_path.unlink(missing_ok=True)
+        for pdf_path in pdf_paths:
+            pdf_path.unlink(missing_ok=True)
 
     print("Done.")
     return 0

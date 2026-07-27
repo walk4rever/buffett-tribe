@@ -24,8 +24,9 @@
  * CN/HK steps (--market cn|hk): seed_entity (manual lookup table in
  * scripts/lib/cn-hk-company-seeds.ts) -> import_price -> import_financials
  * (akshare three-statement data -> Financial) -> import_annual_report
- * (HK only for now — HKEXnews search+download+pypdf text extraction, see
- * scripts/fetch-hk-annual-report.py) -> the same 5 generate_* steps as US.
+ * (HK only for now — HKEXnews search+download+pypdf text extraction+R2 PDF
+ * archive, see scripts/fetch-hk-annual-report.py; --from applies here too,
+ * same "2020" default as the US path) -> the same 5 generate_* steps as US.
  * No 10-K import (no XBRL/SEC equivalent — PRODUCT.md's "跨市场扩展的三条
  * 结构约束" explicitly decided not to generalize the US extraction pipeline
  * to CN/HK). The generate_* steps used to be US-only because
@@ -222,15 +223,15 @@ function buildImportFinancialsStep(ticker: string, market: "cn" | "hk"): Step {
   };
 }
 
-function buildImportAnnualReportStep(ticker: string, market: "cn" | "hk"): Step {
+function buildImportAnnualReportStep(ticker: string, market: "cn" | "hk", fromYear: string): Step {
   return {
     id: "import_annual_report",
-    label: "导入年报原文（HKEXnews → FilingSection，供 LLM 生成使用）",
+    label: "导入年报原文（HKEXnews → FilingSection + R2 PDF，供 LLM 生成与阅读页使用）",
     // A-share acquisition (cninfo) hasn't been built yet — see PRODUCT.md.
     skip: market !== "hk",
     run: () => {
       const seed = CN_HK_SEEDS[ticker];
-      return runNpmScript("import:hk-annual-report", ["--code", seed.code, "--market", market, "--ticker", ticker, "--import-db"]);
+      return runNpmScript("import:hk-annual-report", ["--code", seed.code, "--market", market, "--ticker", ticker, "--from-year", fromYear, "--import-db"]);
     },
     verify: async (entityId) => {
       const count = await prisma.filingSection.count({ where: { entityId } });
@@ -341,7 +342,7 @@ async function main() {
           buildSeedEntityStep(ticker, market),
           importPriceStep,
           buildImportFinancialsStep(ticker, market),
-          buildImportAnnualReportStep(ticker, market),
+          buildImportAnnualReportStep(ticker, market, fromYear),
           ...generateSteps,
         ];
 

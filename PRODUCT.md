@@ -509,9 +509,9 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 
 **财年对齐**：A 股/港股以日历年度为准，`periodEnd` 统一为 `12-31`（港股已验证）。**存储**：复用现有 `Financial` 表结构，未新建表（`ExtSource.kind` 新增 `"akshare"` 值）。
 
-#### Phase 3：年报原文 —— ✅ 港股（泡泡玛特）已完成并接入 LLM evidence，A 股未开始
+#### Phase 3：年报原文 —— ✅ 港股（泡泡玛特）已完成并接入 LLM evidence + 本地阅读页，A 股未开始
 
-**目标**：年报文本作为 evidence 支撑业务/价值/管理分析 LLM tab（此前这三个 tab 对港股/A股全部空着，根源就是没有年报原文，`hasUsableFilingEvidence()` 会拒绝生成）。**不做**本地年报阅读器 UI（`/company/[id]/annual-report/[year]` 那套 SEC 阅读体验）——年度报告 tab 维持外链披露易/巨潮的占位，evidence 和"本地能读原文"是两件事，只做前者。
+**目标**：年报文本作为 evidence 支撑业务/价值/管理分析 LLM tab（此前这三个 tab 对港股/A股全部空着，根源就是没有年报原文，`hasUsableFilingEvidence()` 会拒绝生成）。首版（2026-07-27 早）**不做**本地年报阅读器 UI，年度报告 tab 维持外链披露易占位——但同日晚些时候用户要求补上，见下方「本地阅读页」小节；下面这段保留作为决策变更的记录，不代表当前状态。
 
 **港股实现（`scripts/fetch-hk-annual-report.py` + `scripts/import-hk-annual-report-from-file.ts`）**：不照搬 `extract-10k-sections.ts` 的 Item 边界识别逻辑（SEC 编号章节惯例在港股 PDF 上不成立），按页数机械切成 4 段存入 `FilingSection`（`ExtSource.kind = "hk-annual-report"`）——巧的是泡泡玛特这份年报按页数四等分，天然落在"管理层讨论/公司治理报告/ESG报告/财务报表附注"这几个自然区块的边界附近，不需要精细语义切分也能覆盖全文不同部分。
 
@@ -524,6 +524,8 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 **A 股未做**：巨潮资讯网机制不同（`akshare.stock_zh_a_disclosure_report_cninfo` 已验证可行，见 P2 相关条目），获取路径更简单但还没接入解析入库这一步。
 
 **验证**：`onboard:company -- --ticker 9992.HK --market hk` 端到端跑通，业务/价值/管理/估值分析四个 tab 从"构建中"占位变成真实生成内容（业务概览提到 Molly/DIMOO 等真实 IP 名称与真实 FY2025 财务数字，价值分析护城河评分附"年报未提及重大监管壁垒"这类可追溯到原文的具体论据）——详细过程见 TODOS.md P0 ②。
+
+**本地阅读页（2026-07-27 追加）**：年度报告 tab 卡片过去对港股恒为空，因为 `getCompanyReferenceFilings`/`getCompanyAnnualFiling` 的 `kind` 过滤硬编码只认 `10k`/`20f`/`40f`——加上 `hk-annual-report` 后卡片直接复用既有 SEC 卡片 UI 出现，无需新写。点进去的阅读页原本只会渲染 `FilingReader`（依赖 `primary_html`），港股年报是纯文本没有这个 artifact；按用户要求复用大师资料库已有的通用 `PdfViewer` 组件（`src/components/PdfViewer.tsx`，纯 `url` prop，不绑定任何数据模型），`annual-report/[year]/page.tsx` 按 `filing.kind === "hk-annual-report"` 分支到它。PDF 原件不再依赖披露易原站（已知限速 ~85KB/s），下载后连同文本一起归档到 R2（`archiveFilingArtifact()`，`kind: "primary_pdf"`，复用 SEC 附件同一套归档/去重逻辑）。年份范围从"最近 2 份"改为 `--from-year`（默认 2020），复用 `onboard-company.ts` 已有的 `--from` 参数贯通，不新增用户可见 flag；泡泡玛特回填至 6 份（2020-2025）。**踩到一个 CORS 坑**：`PdfViewer` 若直接拿 `FilingArtifact.publicUrl`（R2 公开域名）当 `url`，pdfjs 内部的跨域 `fetch` 会被 CORS 拦截（R2 公开桶不带 `Access-Control-Allow-Origin`）——大师资料库的 PDF 从未暴露这个问题，因为它们从不直接把 R2 URL 给客户端，而是走 `/api/documents/*/[slug]` 同源代理（`getR2Stream()` 服务端转发）。照同一模式新增 `/api/filing-pdf/[...key]/route.ts`（用 `FilingArtifact.objectKey`，`@unique`，catch-all 路径还原后查库转发），阅读页改传代理路径而非 `publicUrl`。
 
 ### 跨市场扩展的三条结构约束
 

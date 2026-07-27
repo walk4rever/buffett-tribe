@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import db from "../src/lib/prisma";
 import { buildStoredTextOnlyFilingSectionData } from "./lib/filing-section-storage";
+import { archiveFilingArtifact } from "./lib/filing-archive";
 
-type ReportRecord = { periodYear: number; chunks: string[] };
+type ReportRecord = { periodYear: number; url: string; pdfPath: string; chunks: string[] };
 
 function getArg(flag: string): string | undefined {
   const args = process.argv.slice(2);
@@ -41,6 +42,10 @@ async function main() {
     // instead of accumulating duplicates — same idempotency pattern as the
     // akshare financials importer's "akshare-annual" key.
     const accessionNumber = `hk-annual-report-${report.periodYear}`;
+    // form: "Annual Report" so the company page's reference card shows a
+    // real label instead of falling back to the raw kind string
+    // ("HK-ANNUAL-REPORT") — see src/app/company/[id]/page.tsx's card head.
+    const metadata = { ticker, market, code, form: "Annual Report" };
     const extSource = await db.extSource.upsert({
       where: { ExtSource_filer_accession_unique: { filerEntityId: entity.id, accessionNumber } },
       create: {
@@ -48,9 +53,28 @@ async function main() {
         filerEntityId: entity.id,
         accessionNumber,
         periodYear: report.periodYear,
-        metadata: { ticker, market, code },
+        url: report.url,
+        metadata,
       },
-      update: { metadata: { ticker, market, code } },
+      update: { url: report.url, metadata },
+    });
+
+    // Archive the original PDF to R2 — HKEXnews itself is too slow to link
+    // to directly for a reading page (~85KB/s observed), so the reading page
+    // needs its own copy. cik falls back to entityId, matching the same
+    // null-cik pattern buildStoredTextOnlyFilingSectionData's caller already
+    // uses one level up for CN/HK entities (which have no SEC CIK).
+    const pdfBuffer = readFileSync(report.pdfPath);
+    await archiveFilingArtifact(db, {
+      sourceId: extSource.id,
+      kind: "primary_pdf",
+      cik: entity.cik ?? entity.id,
+      accession: accessionNumber,
+      originalName: `${code}_${report.periodYear}.pdf`,
+      contentType: "application/pdf",
+      body: pdfBuffer,
+      sourceUrl: report.url,
+      metadata: { entityId: entity.id, periodYear: report.periodYear },
     });
 
     for (const [index, content] of report.chunks.entries()) {
