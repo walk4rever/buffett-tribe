@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ALargeSmall, AlignVerticalSpaceAround, ChevronLeft, ExternalLink, Sparkles } from "lucide-react";
-import { formatCompanyCikUrl, type CompanyAnnualFiling } from "@/lib/company-data";
+import { formatCompanyUrl, type CompanyAnnualFiling } from "@/lib/company-data";
 import { FilingAgentPanel } from "@/components/FilingAgentPanel";
 
 type FilingReaderProps = {
@@ -12,6 +12,8 @@ type FilingReaderProps = {
     nameZh: string | null;
     ticker: string | null;
     cik: string | null;
+    market?: string | null;
+    code?: string | null;
   };
   filing: CompanyAnnualFiling;
 };
@@ -113,7 +115,7 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
     ? `/api/filing-html?sourceId=${encodeURIComponent(filing.id)}`
     : null;
 
-  const companyUrl = formatCompanyCikUrl(company.cik) ?? `/company/${company.cik ?? ""}`;
+  const companyUrl = formatCompanyUrl(company) ?? "/company";
   const displayCompanyName = company.nameZh?.trim() || company.name;
   const reportLabel = `${filing.periodYear ?? "—"}${filing.periodQuarter ? ` Q${filing.periodQuarter}` : ""}`;
   const reportMetaLabel = [

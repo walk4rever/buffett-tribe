@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import prisma from "@/lib/prisma";
-import { formatCompanyPathFromCik } from "@/lib/cik";
+import { formatCompanyUrl } from "@/lib/company-data";
 import { SiteNav } from "@/components/SiteNav";
 import { CompanyDirectory, type CompanyDirectoryItem } from "@/components/CompanyDirectory";
 
@@ -26,10 +26,15 @@ function uniqueTickers(values: Array<string | null | undefined>): string[] {
 async function getCompanies(): Promise<CompanyDirectoryItem[]> {
   try {
     const rows = await prisma.entity.findMany({
-      where: { type: "company", cik: { not: null } },
+      where: {
+        type: "company",
+        OR: [{ cik: { not: null } }, { AND: [{ market: { not: null } }, { code: { not: null } }] }],
+      },
       select: {
         canonicalName: true,
         cik: true,
+        market: true,
+        code: true,
         ticker: true,
         metadata: true,
         securitiesAsCompany: {
@@ -39,26 +44,24 @@ async function getCompanies(): Promise<CompanyDirectoryItem[]> {
       },
       orderBy: { canonicalName: "asc" },
     });
-    return rows
-      .filter((row) => row.cik)
-      .map((row) => {
-        const meta = row.metadata as Record<string, unknown> | null;
-        const nameZh = (typeof meta?.nameZh === "string" && meta.nameZh.trim()) || row.canonicalName;
-        const nameEn =
-          (typeof meta?.nameEnShort === "string" && meta.nameEnShort.trim()) || row.canonicalName;
-        // Entity.ticker is the display-primary ticker; a company can also have
-        // multiple tradeable share classes (e.g. Berkshire BRK-A/BRK-B, Alphabet
-        // GOOG/GOOGL) recorded as separate Security rows under the same
-        // companyEntityId — merge both sources so search matches any of them.
-        const tickers = uniqueTickers([row.ticker, ...row.securitiesAsCompany.map((s) => s.ticker)]);
-        return {
-          cik: row.cik as string,
-          nameZh,
-          nameEn,
-          tickers,
-          href: formatCompanyPathFromCik(row.cik),
-        };
-      });
+    return rows.map((row) => {
+      const meta = row.metadata as Record<string, unknown> | null;
+      const nameZh = (typeof meta?.nameZh === "string" && meta.nameZh.trim()) || row.canonicalName;
+      const nameEn =
+        (typeof meta?.nameEnShort === "string" && meta.nameEnShort.trim()) || row.canonicalName;
+      // Entity.ticker is the display-primary ticker; a company can also have
+      // multiple tradeable share classes (e.g. Berkshire BRK-A/BRK-B, Alphabet
+      // GOOG/GOOGL) recorded as separate Security rows under the same
+      // companyEntityId — merge both sources so search matches any of them.
+      const tickers = uniqueTickers([row.ticker, ...row.securitiesAsCompany.map((s) => s.ticker)]);
+      return {
+        key: row.cik ?? `${row.market}-${row.code}`,
+        nameZh,
+        nameEn,
+        tickers,
+        href: formatCompanyUrl(row),
+      };
+    });
   } catch {
     return [];
   }

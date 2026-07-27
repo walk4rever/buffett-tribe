@@ -1,4 +1,4 @@
-import { formatUsdInYi } from "@/lib/currency";
+import { formatMoneyInYi } from "@/lib/currency";
 
 export type FinancialYearItems = {
   year: number;
@@ -46,6 +46,7 @@ export type CompanyFinancialDashboard = {
   cards: FinancialDashboardCard[];
   rows: FinancialDashboardRow[];
   longTermTrends: FinancialTrendSummary[];
+  currency: string | null;
 };
 
 type MetricDef = {
@@ -111,8 +112,8 @@ function formatNumber(v: number | null) {
   return v.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
-function formatMetricValue(value: number | null, kind: MetricKind) {
-  if (kind === "money") return formatUsdInYi(value);
+function formatMetricValue(value: number | null, kind: MetricKind, currency: string | null = null) {
+  if (kind === "money") return formatMoneyInYi(value, currency);
   if (kind === "percent") return formatPercent(value);
   return formatNumber(value);
 }
@@ -329,6 +330,7 @@ function buildLongTermTrends(template: FinancialTemplate, latestYear: number | n
 export function buildCompanyFinancialDashboard(
   company: CompanyFinancialContext,
   financials: FinancialYearItems[],
+  currency: string | null = null,
 ): CompanyFinancialDashboard {
   const normalizedFinancials = [...financials].sort((a, b) => b.year - a.year).slice(0, 5);
   const byYear = new Map(normalizedFinancials.map((row) => [row.year, row]));
@@ -342,7 +344,7 @@ export function buildCompanyFinancialDashboard(
     ? metrics.map((metric) => ({
         key: metric.key,
         label: metric.zhLabel,
-        value: formatMetricValue(metric.compute(latestYear, ctx), metric.kind),
+        value: formatMetricValue(metric.compute(latestYear, ctx), metric.kind, currency),
         hint: metric.hint,
         sourceType: metric.sourceType,
       }))
@@ -360,7 +362,7 @@ export function buildCompanyFinancialDashboard(
     enLabel: metric.enLabel,
     sourceType: metric.sourceType,
     values: Object.fromEntries(
-      displayYears.map((year) => [year, formatMetricValue(metric.compute(year, ctx), metric.kind)]),
+      displayYears.map((year) => [year, formatMetricValue(metric.compute(year, ctx), metric.kind, currency)]),
     ),
   }));
 
@@ -372,5 +374,6 @@ export function buildCompanyFinancialDashboard(
     cards,
     rows,
     longTermTrends: buildLongTermTrends(template, latestYear, ctx),
+    currency,
   };
 }

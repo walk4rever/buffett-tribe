@@ -17,6 +17,7 @@
   - `--skip-price` / `--skip-generation`：只跑核心数据导入，跳过股价或全部 LLM 生成。
   - `--fresh`：忽略 checkpoint 从头开始。
   - `--dry-run`：只打印将要执行的步骤列表。
+  - `--market cn|hk`：切换到 A股/港股 onboarding，步骤变为 3 步（`seed_entity` 手工种子表 → `import:stock-prices:yf` → `import:cn-hk-financials`，见 14 号入口），不跑 10-K 导入和 5 个 LLM 生成脚本（无年报证据可用）。种子表在 [cn-hk-company-seeds.ts](/Users/rafael/R129/buffett-tribe/scripts/lib/cn-hk-company-seeds.ts)，新公司要先在那加一行。
 - Checkpoint：按 ticker 存到 `.cache/onboard-company/<TICKER>.json`，记录每步验证通过的完成时间；重跑默认跳过已完成步骤，某一步验证失败会在该步停止，修好后重跑同一条命令即可从断点续跑。
 - 2026-07-17 端到端验证：`--ticker ODFL --from 2024 --to 2024 --skip-price --skip-generation` 从零创建 Entity，10 条 `Financial` + 22 个 `FilingSection` 写入，R2 归档确认，checkpoint 断点续跑验证通过（生产库真实数据，非测试库）。
 
@@ -296,6 +297,54 @@ python3 -m venv .venv
 ```bash
 npm run import:company-stock-prices:yf -- --batch-size 10 --start 2020-01-01
 ```
+
+## 14. A股/港股财务数据导入入口
+
+- 文件：[fetch-cn-hk-financials-ak.py](/Users/rafael/R129/buffett-tribe/scripts/fetch-cn-hk-financials-ak.py)
+- 命令：`npm run import:cn-hk-financials`
+- 作用：用 `akshare` 拉取三大报表并映射到 `Financial`/`LINE_ITEMS`。**目前只实现港股**（`akshare.stock_financial_hk_report_em()` 的 `STD_ITEM_CODE` 是跨 filer 稳定的数字口径，已验证泡泡玛特 09992 与腾讯 00700 同一 code 对应同一科目）；A 股（`--market cn`）尚未实现映射表，会直接报错退出，不会导入未经验证的数据。
+
+常用示例：
+
+```bash
+npm run import:cn-hk-financials -- --code 09992 --market hk --currency CNY --import-db
+```
+
+本地准备：
+
+```bash
+.venv/bin/pip install -r requirements-akshare.txt
+```
+
+说明：
+
+- `--currency` 必须手工核对真实年报后填写，不能从 `--market` 推断——泡泡玛特虽在港交所上市，报表货币是人民币而非港币，这是本入口设计时踩过的一个真实坑，不是理论风险。
+- 只按单公司调用（无跨 ticker 批处理/断点续跑），因为它总是被 `onboard-company.ts --market hk` 的 `import_financials` 步骤调用，断点续跑在 `onboard-company.ts` 那一层已经有了。
+
+## 14b. 港股年报原文导入入口
+
+- 文件：[fetch-hk-annual-report.py](/Users/rafael/R129/buffett-tribe/scripts/fetch-hk-annual-report.py)
+- 命令：`npm run import:hk-annual-report`
+- 作用：从披露易（HKEXnews）搜索并下载年报 PDF，`pypdf` 提取文本后切成 4 段存入 `FilingSection`（`ExtSource.kind = "hk-annual-report"`），供 `fetchLatestFilingEvidence()` 读取——这是 CN/HK 公司能跑通业务/价值/管理分析 LLM tab 的前提（`hasUsableFilingEvidence()` 之前一直因为没有年报原文而拒绝生成）。
+
+常用示例：
+
+```bash
+npm run import:hk-annual-report -- --code 09992 --market hk --years 2 --import-db
+```
+
+本地准备：
+
+```bash
+.venv/bin/pip install -r requirements-hkex.txt
+```
+
+说明：
+
+- 披露易的搜索是 JSF 应用，不是 REST API——直接 `requests.get()` 加查询参数会静默返回空结果，不报错也不提示。真正可用的做法：先访问搜索页拿 `javax.faces.ViewState`，POST 回去建立 session，再调 `titleSearchServlet.do`；且该接口在不指定股票代码时限制搜索跨度最多一个月，超了同样静默返回空——脚本按月回溯扫描，不是一次性查询。
+- 该站点没有公开的"按股票代码搜索"参数（`stockId=-1` 表示不过滤，按 `STOCK_CODE` 本地过滤更可靠），且下载大文件较慢（实测约 85KB/s，一份 8MB 年报约 100 秒），脚本已按此设置了较长的超时，不是 bug。
+- 只做港股（`--market hk`），A 股走巨潮资讯网（cninfo），机制不同，尚未实现。
+- 切成 4 段是刻意不做 SEC Item 式精细边界识别——港股年报没有那种固定编号章节惯例，`fetchLatestFilingEvidence()` 真正需要的只是"有真实原文可引用"，不需要精确切边界。
 
 ## 15. 当前推荐顺序
 

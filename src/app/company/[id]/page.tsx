@@ -10,11 +10,12 @@ import {
   formatMoney,
   getBusinessCanvas,
   getCompanyAnalysis,
-  getCompanyByCik,
+  getCompanyByIdentifier,
   getCompanyFinancials,
+  getFinancialsCurrency,
   getCompanySecurities,
-  formatCompanyCikSlug,
-  formatCompanyCikUrl,
+  formatCompanyUrl,
+  parseCompanyIdentifier,
   getGeneratedArtifact,
   getRecentHolders,
   getCompanyReferenceFilings,
@@ -33,7 +34,7 @@ import { formatShares } from "@/lib/master-data";
 export const dynamic = "force-dynamic";
 
 interface Props {
-  params: Promise<{ cik: string }>;
+  params: Promise<{ id: string }>;
   searchParams: Promise<{ tab?: string }>;
 }
 
@@ -445,17 +446,22 @@ function getMoatMock(companyName: string, ticker: string | null): MoatMock {
 }
 
 export default async function CompanyPage({ params, searchParams }: Props) {
-  const { cik: rawCik } = await params;
+  const { id: rawId } = await params;
   const { tab: rawTab } = await searchParams;
-  const canonicalSlug = formatCompanyCikSlug(rawCik.trim());
-  if (!canonicalSlug) notFound();
-  if (rawCik.trim() !== canonicalSlug) redirect(`/company/${canonicalSlug}`);
+  const trimmedId = rawId.trim();
+  const parsed = parseCompanyIdentifier(trimmedId);
+  if (!parsed) notFound();
 
-  const company = await getCompanyByCik(canonicalSlug);
+  const canonicalUrl = formatCompanyUrl(parsed);
+  if (!canonicalUrl) notFound();
+  if (`/company/${trimmedId}` !== canonicalUrl) redirect(canonicalUrl);
+
+  const company = await getCompanyByIdentifier(trimmedId);
   if (!company) notFound();
 
-  const [financials, holders, securities, analysis, businessCanvas, referenceFilings, managementArtifact, valuationArtifact] = await Promise.all([
+  const [financials, financialsCurrency, holders, securities, analysis, businessCanvas, referenceFilings, managementArtifact, valuationArtifact] = await Promise.all([
     getCompanyFinancials(company.id, 5),
+    getFinancialsCurrency(company.id),
     getRecentHolders(company.id, 30),
     getCompanySecurities(company.id),
     getCompanyAnalysis(company.id),
@@ -495,7 +501,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     : [company.ticker ?? "—"];
 
   const latest = financials[0];
-  const dashboard = buildCompanyFinancialDashboard(company, financials);
+  const dashboard = buildCompanyFinancialDashboard(company, financials, financialsCurrency);
   const rev = latest ? num(latest.items, "Revenue") : null;
 
   const meta = normalizeMeta(company.metadata);
@@ -505,8 +511,13 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     (typeof meta.nameEnShort === "string" && meta.nameEnShort.trim()) ? meta.nameEnShort.trim() : company.canonicalName;
   const latestYear = dashboard.latestYear;
   const displayYears = dashboard.displayYears;
+  const identityFact = company.cik
+    ? { label: "CIK", subLabel: "CIK", value: company.cik }
+    : company.market && company.code
+      ? { label: "股票代码", subLabel: "Market Code", value: `${company.market.toUpperCase()} ${company.code}` }
+      : { label: "CIK", subLabel: "CIK", value: "—" };
   const profileFacts = [
-    { label: "CIK", subLabel: "CIK", value: company.cik ?? "—" },
+    identityFact,
     {
       label: "行业",
       subLabel: "Sector",
@@ -570,7 +581,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
         <section className="company-hero">
           <div className="company-hero-main">
             <div className="company-hero-copy">
-              <p className="company-eyebrow">SEC 公司档案</p>
+              <p className="company-eyebrow">{company.cik ? "SEC 公司档案" : "公司档案"}</p>
               <h1 className="company-name">
                 <CompanyDisplayName
                   zhName={zhName}
@@ -780,7 +791,11 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                 </table>
               </div>
             ) : (
-              <p className="company-empty">暂无 10-K 年报结构化数据。可先运行 `import:10k` 脚本。</p>
+              <p className="company-empty">
+                {company.cik
+                  ? "暂无 10-K 年报结构化数据。可先运行 `import:10k` 脚本。"
+                  : "暂无结构化财务数据，A 股/港股财务数据接入规划中。"}
+              </p>
             )}
             {dashboard.longTermTrends.length ? (
               <div className="company-long-term-block" aria-label="长期趋势摘要">
@@ -958,7 +973,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
 
           <section className="company-section" data-tab-panel="management">
             {hasManagement && managementArtifact ? (
-              <ManagementAnalysisSection artifact={managementArtifact} />
+              <ManagementAnalysisSection artifact={managementArtifact} usFiling={Boolean(company.cik)} />
             ) : (
               <div className="company-placeholder-grid">
                 <article className="company-placeholder-card">
@@ -1039,7 +1054,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                     <Link
                       key={filing.id}
                       className="company-reference-card company-reference-card--clickable"
-                      href={`${formatCompanyCikUrl(company.cik) ?? `/company/${company.cik ?? ""}`}/annual-report/${filing.periodYear}`}
+                      href={`${formatCompanyUrl(company) ?? "/company"}/annual-report/${filing.periodYear}`}
                     >
                       {cardHead}
                     </Link>
@@ -1050,8 +1065,22 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                   );
                 })}
               </div>
-            ) : (
+            ) : company.cik ? (
               <p className="company-empty">暂无 10-K 归档资料。可先运行 `import:10k` 脚本。</p>
+            ) : (
+              <p className="company-empty">
+                {company.market === "cn"
+                  ? "A 股年报原文暂未接入，可前往"
+                  : "港股年报原文暂未接入，可前往"}{" "}
+                <a
+                  href={company.market === "cn" ? "http://www.cninfo.com.cn/" : "https://www.hkexnews.hk/index.htm"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {company.market === "cn" ? "巨潮资讯网" : "披露易 HKEXnews"}
+                </a>
+                {" "}搜索「{company.code}」查看原文。
+              </p>
             )}
           </section>
 

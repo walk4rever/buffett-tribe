@@ -194,7 +194,7 @@ function CardGrid({ cards, columns }: { cards: AnalysisCard[]; columns?: 2 | 3 }
   );
 }
 
-export function ManagementAnalysisSection({ artifact }: { artifact: GeneratedArtifact }) {
+export function ManagementAnalysisSection({ artifact, usFiling }: { artifact: GeneratedArtifact; usFiling: boolean }) {
   const data = parseManagementPayload(artifact.payload);
   if (!data) return null;
 
@@ -256,7 +256,7 @@ export function ManagementAnalysisSection({ artifact }: { artifact: GeneratedArt
       ) : null}
 
       <p className="company-gen-disclaimer">
-        以上内容由 AI 基于 SEC 公开文件、财务数据与股东信生成，不构成任何投资建议。
+        以上内容由 AI 基于{usFiling ? "SEC 公开文件" : "公司年报"}、财务数据与股东信生成，不构成任何投资建议。
       </p>
     </>
   );

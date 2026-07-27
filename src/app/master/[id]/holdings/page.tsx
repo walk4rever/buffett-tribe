@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CompanyDisplayName } from "@/components/CompanyDisplayName";
 import { SiteNav } from "@/components/SiteNav";
-import { formatCompanyPathFromCik } from "@/lib/cik";
+import { formatCompanyUrl } from "@/lib/company-data";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
 import { getTribeMember } from "@/lib/tribe";
 import {
@@ -38,7 +38,7 @@ function getHoldingTicker(h: Awaited<ReturnType<typeof getHoldingsByQuarter>>[nu
 }
 
 function getHoldingCompanyPath(h: Awaited<ReturnType<typeof getHoldingsByQuarter>>[number]) {
-  return formatCompanyPathFromCik(h.security?.company?.cik);
+  return formatCompanyUrl(h.security?.company ?? {});
 }
 
 export default async function HoldingsPage({ params, searchParams }: Props) {

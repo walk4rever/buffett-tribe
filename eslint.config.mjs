@@ -13,6 +13,9 @@ const eslintConfig = defineConfig([
     "build/**",
     "coverage/**",
     "next-env.d.ts",
+    // Python venv — akshare bundles some vendored .js crypto helpers that
+    // ESLint has no reason to ever lint.
+    ".venv/**",
   ]),
 ]);
 

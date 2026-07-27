@@ -1,15 +1,17 @@
 /**
- * One-shot onboarding for a brand-new US company: chains the 7 steps that
- * today require manually running separate commands in the right order.
+ * One-shot onboarding for a brand-new company: chains the steps that today
+ * require manually running separate commands in the right order.
  *
  * Usage:
  *   npm run onboard:company -- --ticker XXXX
  *   npm run onboard:company -- --ticker XXXX --from 2020 --to 2026
  *   npm run onboard:company -- --ticker XXXX --skip-generation
  *   npm run onboard:company -- --ticker XXXX --force --fresh
+ *   npm run onboard:company -- --ticker 9992.HK --market hk
  *
- * Steps (each verified against the DB after running, not just by exit code —
- * the generate:* scripts catch per-company errors internally and still exit 0):
+ * US steps (default, each verified against the DB after running, not just by
+ * exit code — the generate:* scripts catch per-company errors internally and
+ * still exit 0):
  *   1. import:10k              -> Entity + Financial + FilingSection + R2 artifacts
  *   2. import:stock-prices:yf  -> StockPrice (skippable with --skip-price)
  *   3. generate:company-profile
@@ -19,6 +21,22 @@
  *   7. generate:valuation-analysis
  * (3-7 skippable with --skip-generation)
  *
+ * CN/HK steps (--market cn|hk): seed_entity (manual lookup table in
+ * scripts/lib/cn-hk-company-seeds.ts) -> import_price -> import_financials
+ * (akshare three-statement data -> Financial) -> import_annual_report
+ * (HK only for now — HKEXnews search+download+pypdf text extraction, see
+ * scripts/fetch-hk-annual-report.py) -> the same 5 generate_* steps as US.
+ * No 10-K import (no XBRL/SEC equivalent — PRODUCT.md's "跨市场扩展的三条
+ * 结构约束" explicitly decided not to generalize the US extraction pipeline
+ * to CN/HK). The generate_* steps used to be US-only because
+ * hasUsableFilingEvidence() (scripts/lib/company-generation.ts) had nothing
+ * to ground them on for CN/HK — import_annual_report's FilingSection rows
+ * are what unblocks them, not a change to the generate scripts themselves.
+ *
+ * This is the same checkpoint/verify/resume skeleton either way — only the
+ * steps list changes per market, per PRODUCT.md constraint #3 ("onboard
+ * script doesn't fork per market").
+ *
  * Resumable: progress is checkpointed to .cache/onboard-company/<TICKER>.json;
  * a rerun skips steps already verified complete. Pass --fresh to ignore it.
  */
@@ -27,10 +45,16 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import prisma from "@/lib/prisma";
+import { CN_HK_SEEDS } from "./lib/cn-hk-company-seeds";
+
+type Market = "us" | "cn" | "hk";
 
 type StepId =
+  | "seed_entity"
   | "import_10k"
   | "import_price"
+  | "import_financials"
+  | "import_annual_report"
   | "generate_company_profile"
   | "generate_business_model"
   | "generate_value_analysis"
@@ -118,8 +142,106 @@ async function hasGeneratedArtifact(entityId: string, artifactType: string): Pro
   return count > 0;
 }
 
+function parseMarket(value: string | undefined): Market {
+  const market = (value?.trim().toLowerCase() ?? "us") as Market;
+  if (market !== "us" && market !== "cn" && market !== "hk") {
+    throw new Error(`Invalid --market "${value}". Expected one of: us, cn, hk.`);
+  }
+  return market;
+}
+
+// No @@unique([market, code]) constraint exists on Entity (only @@index), so
+// this upserts by hand rather than via Prisma's where-unique upsert().
+function buildSeedEntityStep(ticker: string, market: "cn" | "hk"): Step {
+  const seed = CN_HK_SEEDS[ticker];
+  if (!seed) {
+    throw new Error(
+      `No CN_HK_SEEDS entry for ticker "${ticker}". Add one to scripts/onboard-company.ts before onboarding a new ${market.toUpperCase()} company.`,
+    );
+  }
+  if (seed.market !== market) {
+    throw new Error(`CN_HK_SEEDS entry for "${ticker}" is market "${seed.market}", but --market ${market} was passed.`);
+  }
+
+  return {
+    id: "seed_entity",
+    label: `写入 Entity（${seed.nameZh} / ${seed.market.toUpperCase()} ${seed.code}）`,
+    run: async () => {
+      const existing = await prisma.entity.findFirst({
+        where: { type: "company", market: seed.market, code: seed.code },
+        select: { id: true },
+      });
+      const data = {
+        type: "company" as const,
+        canonicalName: seed.canonicalName,
+        ticker,
+        market: seed.market,
+        code: seed.code,
+        sector: seed.sector,
+        metadata: {
+          nameZh: seed.nameZh,
+          nameEnShort: seed.nameEnShort,
+          industry: seed.industry,
+          exchange: seed.exchange,
+        },
+      };
+      if (existing) {
+        await prisma.entity.update({ where: { id: existing.id }, data });
+      } else {
+        await prisma.entity.create({ data });
+      }
+    },
+    verify: async () => {
+      const entity = await prisma.entity.findFirst({
+        where: { type: "company", market: seed.market, code: seed.code },
+        select: { id: true },
+      });
+      return entity != null;
+    },
+  };
+}
+
+function buildImportFinancialsStep(ticker: string, market: "cn" | "hk"): Step {
+  const seed = CN_HK_SEEDS[ticker]; // already validated to exist by buildSeedEntityStep, called first
+
+  return {
+    id: "import_financials",
+    label: `导入财务数据（akshare 三大报表 → Financial，${seed.currency}）`,
+    run: () =>
+      runNpmScript("import:cn-hk-financials", [
+        "--code", seed.code,
+        "--market", market,
+        "--ticker", ticker,
+        "--currency", seed.currency,
+        "--import-db",
+      ]),
+    verify: async (entityId) => {
+      const count = await prisma.financial.count({ where: { entityId } });
+      return count > 0;
+    },
+  };
+}
+
+function buildImportAnnualReportStep(ticker: string, market: "cn" | "hk"): Step {
+  return {
+    id: "import_annual_report",
+    label: "导入年报原文（HKEXnews → FilingSection，供 LLM 生成使用）",
+    // A-share acquisition (cninfo) hasn't been built yet — see PRODUCT.md.
+    skip: market !== "hk",
+    run: () => {
+      const seed = CN_HK_SEEDS[ticker];
+      return runNpmScript("import:hk-annual-report", ["--code", seed.code, "--market", market, "--ticker", ticker, "--import-db"]);
+    },
+    verify: async (entityId) => {
+      const count = await prisma.filingSection.count({ where: { entityId } });
+      return count > 0;
+    },
+  };
+}
+
 async function main() {
   const ticker = normalizeTicker(getArg("--ticker"));
+  const market = parseMarket(getArg("--market"));
   const defaultToYear = new Date().getUTCFullYear();
   const fromYear = getArg("--from") ?? "2020";
   const toYear = getArg("--to") ?? String(defaultToYear);
@@ -132,45 +254,22 @@ async function main() {
 
   const checkpoint = await loadCheckpoint(ticker, fresh);
 
-  const steps: Step[] = [
-    {
-      id: "import_10k",
-      label: "导入 10-K/20-F/40-F（Entity + Financial + FilingSection + R2）",
-      run: () => runNpmScript("import:10k", ["--ticker", ticker, "--from", fromYear, "--to", toYear]),
-      verify: async (entityId) => {
-        const financialCount = await prisma.financial.count({ where: { entityId } });
-        if (financialCount === 0) return false;
+  const importPriceStep: Step = {
+    id: "import_price",
+    label: "导入股价（StockPrice）",
+    skip: skipPrice,
+    run: () => {
+      const priceArgs = ["--ticker", ticker, "--import-db"];
+      if (priceStart) priceArgs.push("--start", priceStart);
+      return runNpmScript("import:stock-prices:yf", priceArgs);
+    },
+    verify: async () => {
+      const count = await prisma.stockPrice.count({ where: { ticker } });
+      return count > 0;
+    },
+  };
 
-        // Per-filing, not per-entity: an entity-level sectionCount > 0 check
-        // stays green even when some filings extracted zero sections (e.g.
-        // Ferrari/RACE 2022-2025 20-Fs silently returned 0 sections while
-        // 2020-2021 worked, so the aggregate count masked the gap for weeks).
-        const filingKindFilter = { in: ["10k", "20f", "40f"] };
-        const [totalFilings, filingsWithoutSections] = await Promise.all([
-          prisma.extSource.count({
-            where: { filerEntityId: entityId, kind: filingKindFilter },
-          }),
-          prisma.extSource.count({
-            where: { filerEntityId: entityId, kind: filingKindFilter, sections: { none: {} } },
-          }),
-        ]);
-        return totalFilings > 0 && filingsWithoutSections === 0;
-      },
-    },
-    {
-      id: "import_price",
-      label: "导入股价（StockPrice）",
-      skip: skipPrice,
-      run: () => {
-        const priceArgs = ["--ticker", ticker, "--import-db"];
-        if (priceStart) priceArgs.push("--start", priceStart);
-        return runNpmScript("import:stock-prices:yf", priceArgs);
-      },
-      verify: async () => {
-        const count = await prisma.stockPrice.count({ where: { ticker } });
-        return count > 0;
-      },
-    },
+  const generateSteps: Step[] = [
     {
       id: "generate_company_profile",
       label: "生成公司概览（company_profile）",
@@ -208,7 +307,45 @@ async function main() {
     },
   ];
 
-  console.log(`\nOnboarding ${ticker} (${fromYear} -> ${toYear})`);
+  const steps: Step[] =
+    market === "us"
+      ? [
+          {
+            id: "import_10k",
+            label: "导入 10-K/20-F/40-F（Entity + Financial + FilingSection + R2）",
+            run: () => runNpmScript("import:10k", ["--ticker", ticker, "--from", fromYear, "--to", toYear]),
+            verify: async (entityId) => {
+              const financialCount = await prisma.financial.count({ where: { entityId } });
+              if (financialCount === 0) return false;
+
+              // Per-filing, not per-entity: an entity-level sectionCount > 0 check
+              // stays green even when some filings extracted zero sections (e.g.
+              // Ferrari/RACE 2022-2025 20-Fs silently returned 0 sections while
+              // 2020-2021 worked, so the aggregate count masked the gap for weeks).
+              const filingKindFilter = { in: ["10k", "20f", "40f"] };
+              const [totalFilings, filingsWithoutSections] = await Promise.all([
+                prisma.extSource.count({
+                  where: { filerEntityId: entityId, kind: filingKindFilter },
+                }),
+                prisma.extSource.count({
+                  where: { filerEntityId: entityId, kind: filingKindFilter, sections: { none: {} } },
+                }),
+              ]);
+              return totalFilings > 0 && filingsWithoutSections === 0;
+            },
+          },
+          importPriceStep,
+          ...generateSteps,
+        ]
+      : [
+          buildSeedEntityStep(ticker, market),
+          importPriceStep,
+          buildImportFinancialsStep(ticker, market),
+          buildImportAnnualReportStep(ticker, market),
+          ...generateSteps,
+        ];
+
+  console.log(`\nOnboarding ${ticker} [market: ${market}]${market === "us" ? ` (${fromYear} -> ${toYear})` : ""}`);
   if (dryRun) console.log("(dry run — no commands will execute)");
   console.log(`Checkpoint: ${checkpointFile(ticker)}\n`);
 

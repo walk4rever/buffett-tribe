@@ -1,8 +1,8 @@
 # TODOS — 活跃工作队列
 
-> 更新：2026-07-26（v0.39.23）。本文件只保留**未完成项**，按 P0–P3 排优先级；完成项的结论回写 `PRODUCT.md` 后从这里移除（详细过程见 git 历史）。产品定位、架构、数据口径、测试体系设计一律以 `PRODUCT.md` 为准。
+> 更新：2026-07-26。本文件只保留**未完成项**，按 P0–P3 排优先级；完成项的结论回写 `PRODUCT.md` 后从这里移除（详细过程见 git 历史）。产品定位、架构、数据口径、测试体系设计一律以 `PRODUCT.md` 为准。
 >
-> 当前队列于 2026-07-17 与用户讨论后重排：P0 项是用户点名的紧急项（带完整现状诊断，可直接开工），P1 三项是围绕"Agent 是核心入口"主线的既定建议。2026-07-18 新增两项来自 `anthropics/financial-services` 仓库调研的建议（P2）。2026-07-26 复盘法拉利（RACE）onboarding 全过程后新增 P0 ③ 并补充 ② 的设计约束。
+> 当前队列于 2026-07-17 与用户讨论后重排：P0 项是用户点名的紧急项（带完整现状诊断，可直接开工），P1 三项是围绕"Agent 是核心入口"主线的既定建议。2026-07-18 新增两项来自 `anthropics/financial-services` 仓库调研的建议（P2）。2026-07-26 复盘法拉利（RACE）onboarding 全过程后新增 P0 ③；泡泡玛特（港股）Phase 1+2 端到端完成并上线，② 改为已完成、范围收窄到剩下的茅台（A股）；12 家回填公司里 11 家跑完，MTB 剩 1 条独立问题。
 
 ## P0 — 下一步就做（用户点名，2026-07-17）
 
@@ -14,21 +14,19 @@
   - **下一步**：跟用户过一轮翻译方案的小样本对比（同一份 filing 分别跑方案 A/B 看效果），再定最终方案和排期。
 - [ ] **①-c `/api/filing-image` 代理延迟严重**（2026-07-21 排查字体/行间距控件失效时发现）：法拉利这份 20-F 内嵌 40 张图片全部经该接口代理转发 SEC.gov 原图，单张最长 3.5 分钟（`race-20251231_g5.jpg`），多张超过 1 分钟，无缓存。当前已通过"控件不再等 iframe `load` 事件"绕开了它对本功能的影响，但代理本身的延迟没有处理，值得单独排查是否要加缓存层（R2/CDN）或加超时+占位图。
 
-- [ ] **② A 股/港股 Phase 1：茅台（cn-600519）+ 泡泡玛特（hk-9992）**（~2-3 天）
-  - **现状**：只有 schema 前置落地（`Entity.market`/`code`，2026-06-15）；路由、导入、页面适配全部未开始。完整方案见 PRODUCT.md「A股与港股覆盖扩展」。
-  - **四步最小路径**：
-    1. 路由与查询泛化（大头，~1 天）：`src/app/company/[cik]` 目录改 `[id]`；`src/lib/company-data.ts` 的 `formatCompanyCikSlug` / `getCompanyByCik` / `formatCompanyCikUrl` 泛化为 market-aware（`cn-600519` / `hk-9992`，按 `{market, code}` 查询），这套 helper 被公司页/年报页/持仓链接等 5+ 处引用；`/company` 列表页从"只列有 CIK"放宽。
-    2. Entity 种子（~半天）：两家公司写小种子脚本手工录入（中文名/行业/交易所/ticker），**不先建 akshare 公司信息管线**，等链路验证后再决定批量化。
-    3. 股价（~半小时）：`npm run import:stock-prices:yf -- --ticker 600519.SS` / `9992.HK`，`StockPrice` 表和 K 线图组件零改动，Entity 上配好 ticker 即可。
-    4. 公司页 tab 适配（~半天）：概览区按 `market` 显示市场代码而非 CIK；财务/估值 tab 优雅占位；年度报告 tab 占位 + 外链巨潮资讯网/披露易。
-  - **Phase 2（财务数据，另 3-5 天）先不做**：akshare 三大表 → LINE_ITEMS 映射 + CNY/HKD 标注，看完 Phase 1 效果再决定。
-  - **设计约束（2026-07-26 复盘 RACE 后补充，三条，详见 PRODUCT.md「跨市场扩展的三条结构约束」）**：
-    1. **不要把美股抽取链路泛化到 A 股/港股**。RACE 的教训恰恰是这条的最强论据——在 SEC inline XBRL 这种**已经标准化**的格式上都花了好几天、加到第四条策略；A 股年报是 PDF 且章节结构根本没有统一标准。因此 PRODUCT.md Phase 3 的"方案 A：外链巨潮/披露易"应从"临时妥协"上升为**长期答案**，除非将来有明确产品理由才重开。
-    2. **`market` 只允许在一个地方进入代码**：即 identifier 的 parse/format helper。页面**按能力渲染，不按市场分支**——Entity 体现的是"有没有财务/有没有年报/有没有持仓"，tab 据此决定显示内容还是占位，而不是散落 `if (market === 'cn')`。否则加第三个市场时又要改 5+ 个地方（与 v0.39.23 清掉的硬编码来源胶囊配色是同一个病）。
-    3. **`onboard-company.ts` 不要 fork 出 `onboard-cn-company.ts`**：它的骨架（checkpoint / per-step verify / 断点续跑）是市场无关的，值钱的正是这部分；**只有 steps 列表按 market 不同**——A 股/港股就是"Entity 种子 → 股价"两步，美股是现在的七步。
-  - **待拍板（2026-07-26 给出建议，待用户确认）**：
-    - (a) 业务/价值分析 LLM tab 要不要给这两家先跑生成（能跑但无年报 evidence，来源标注与美股不同质）。**建议不跑**：已存在"证据缺失时静默产出"的存量问题（P0 ③ / P2 evidence 条目），而 A 股/港股是构造上必然零 evidence，跑了就是批量制造同一类内容。等 Phase 2 财务数据进来后，可基于财务数据跑一个明确标注口径不同的版本。
-    - (b) 港股代码规范用 `9992` 还是 `09992`（Yahoo 用 9992.HK，港交所官方 09992）。**建议 `09992`（补零）**：不是因为哪个更好看，而是 `prisma/schema.prisma` 的 `Entity.code` 注释**已经写了 `'00700' (hk)`**，跟着已有约定走、别制造第二套；Yahoo ticker 在同一个 helper 里去零派生 `9992.HK` 即可，Phase 1 里价格管线是唯一的自动化消费方。注意 PRODUCT.md 现有示例代码 `parseCompanyId` 与 Phase 1 目标表仍写作 `9992`，拍板后需一并订正。
+- [x] **② A 股/港股 Phase 1+2：泡泡玛特（hk-09992）**（2026-07-26 完成，端到端验证）
+  - **路由/查询泛化**：`src/app/company/[cik]` → `[id]`；`src/lib/company-data.ts` 新增 `parseCompanyIdentifier`/`formatCompanyUrl`/`getCompanyByIdentifier` 作为唯一入口（US 走 CIK，CN/HK 走 `{market, code}`），替换掉两套已经互相drift 的旧实现（`company-data.ts` 自己的 `formatCompanyCikUrl` + 独立的 `src/lib/cik.ts`，后者已删除）；`/company` 目录页放宽 `cik: { not: null }` 过滤。`CompanyDirectory.tsx` 的 `cik` key 字段改成通用 `key`。
+  - **Entity 种子**：`scripts/lib/cn-hk-company-seeds.ts`（从 `onboard-company.ts` 抽出，因为后来 Phase 2 也要用），手工表，泡泡玛特一行。
+  - **股价**：`import:stock-prices:yf --ticker 9992.HK` 零改动直接用（Entity.ticker="9992.HK"，StockPrice 按 ticker 字符串查，与 CIK/market 无关）。
+  - **公司页 tab 适配**：概览区按 `market` 显示市场代码而非 CIK；财务分析空态/年度报告空态改市场感知文案；年度报告空态外链披露易 HKEXnews（**用 WebFetch 验证过是真实可达的官方页面**，`https://www.hkexnews.hk/index.htm`，不是编的）。
+  - **Phase 2 财务数据（原计划另做 3-5 天，实际发现远比预期简单）**：先做了可行性验证再设计——`akshare.stock_financial_hk_report_em()` 的 `STD_ITEM_CODE` 是跨 HK filer 稳定的数字口径（验证过泡泡玛特 09992 与腾讯 00700 同一 code 对应同一科目），比 PRODUCT.md 原计划的中文科目名匹配靠谱得多；三大报表 12 个 LINE_ITEMS 全部有对应 code，9 个财年（2017-2025）全部拿到，FY2024 营收数字与公开披露的真实数字核对一致。新脚本 `scripts/fetch-cn-hk-financials-ak.py` + `scripts/import-cn-hk-financials-from-file.ts`（两阶段 Python fetch → Node/Prisma 写入，照抄 `fetch-stock-prices-yf.py` 的既有模式），`npm run import:cn-hk-financials`。**A 股（`--market cn`）映射表未实现**——akshare 的 A 股接口（`stock_financial_report_sina`）是宽表 + 中文列名，需要单独验证映射，脚本对 `--market cn` 直接报错退出，不会导入未经验证的数据；茅台 onboard 时要先补这个映射表。
+  - **意外发现，纠正了 PRODUCT.md 的原假设**：akshare 没有暴露货币字段，且泡泡玛特虽在港交所上市，**报表货币是人民币（CNY）不是港币**（对着真实 FY2024 营收数字核对过）——`unit`/货币不能从 `market` 推断，必须逐公司核实（见 `cn-hk-company-seeds.ts` 里 `currency` 字段的注释）。`src/lib/currency.ts` 新增 `formatMoneyInYi(value, currency)`，CNY/HKD 加 `¥`/`HK$` 前缀，USD/未知货币走原 `formatUsdInYi` 的无前缀行为（美股公司页面零回归，已截图核对 AAPL）。
+  - **② 追加：年报原文 evidence 接入，LLM tab 全部解锁（2026-07-27）**：此前"LLM tab 不跑"是因为没有年报原文、evidence guard 会拒绝生成，不是永久决定——用户订正了对"不泛化"约束的理解（不是"不做年报接入"，是"不照搬美股解析逻辑，按各市场数据格式重新设计"，终局三个市场要对等支持），于是把年报接入这块也做了。新增 `scripts/fetch-hk-annual-report.py` + `scripts/import-hk-annual-report-from-file.ts`，从披露易抓年报 PDF、`pypdf` 提取文本、按页数机械切 4 段存入 `FilingSection`（`ExtSource.kind = "hk-annual-report"`）。`fetchLatestFilingEvidence()`（`scripts/lib/company-generation.ts`）新增这个 kind 和对应 section key，业务/价值/管理三个 LLM 脚本**零改动**自动解锁（evidence guard 本来就是通用检查，不认市场）。`onboard-company.ts` 的 CN/HK steps 从 3 步扩到 9 步：`seed_entity → import_price → import_financials → import_annual_report → 5个generate_*`，与美股共用同一套 generate 步骤定义（此前只在 `market==="us"` 分支里，现在提出来给两边复用）。**港股代码补零 `09992` 拍板已落地**（`hk-09992` 路由 slug）。
+    - **技术上最有价值的发现**：披露易搜索不认股票代码直接查——先要用 `GET /search/prefix.do?...&name={code}&callback=callback`（必须带 `callback` 参数，否则静默返回空）把代码解析成 HKEX 内部数字 ID，再用这个 ID 查，一次就能拿完该公司全部历史公告（几秒钟）。一开始不知道这条路，只能传 `stockId=-1`（不过滤），接口会把查询限制在 1 个月内、返回当月**整个港股市场**公告（2-3 万条），按月回溯扫描 19 个月找 2 份年报，跑了 25 分钟没跑完，中止后才找到 `prefix.do` 这条路重做。
+    - **验证**：`onboard:company -- --ticker 9992.HK --market hk` 端到端跑通（含新的 `import_annual_report` 步骤 + 5 个生成步骤，checkpoint 正确跳过已完成的前 3 步）；`/company/hk-09992` 业务/价值/管理/估值分析四个 tab 截图确认真实内容替换了"构建中"占位（业务概览提到 Molly/DIMOO 等真实 IP、真实 FY2025 数字；价值分析附"年报未提及重大监管壁垒"这类可溯源到原文的具体论据）；顺手发现并修了 `CompanyGeneratedSections.tsx` 里"以上内容由 AI 基于 **SEC** 公开文件…生成"这行硬编码免责声明文案，改成按 `company.cik` 是否存在切换"SEC 公开文件"/"公司年报"；AAPL 回归截图确认无副作用。
+  - **验证**：typecheck/lint/build 全绿；`onboard:company -- --ticker 9992.HK --market hk` 端到端跑过三遍（首次全新建、Phase2财务数据补跑、本次年报+生成补跑，checkpoint 均正确跳过已完成步骤）；`/company` 目录、`/company/CIK0000320193`（AAPL 回归）截图确认无副作用。
+  - **未做/后续**：茅台（A股）Phase 1+2+3 都还没做——路由/onboard 骨架可直接复用，但财务数据映射（`akshare.stock_zh_a_disclosure_report_cninfo` 已验证可行，见 P2）和年报解析入库（巨潮资讯网机制与披露易不同）都是新工作。`src/lib/valuation-metrics.ts`/`scripts/lib/company-generation.ts` 里的 `Financial.unit` 仍未线上消费（value_analysis/valuation_analysis 目前不靠它，不紧急）。
+  - **设计约束（2026-07-26 复盘 RACE 后补充，2026-07-27 订正了第 1 条的表述，详见 PRODUCT.md「跨市场扩展的三条结构约束」）**：不照搬美股抽取逻辑到 CN/HK（不是不做年报接入，是按市场数据格式重新设计——上面追加的年报接入正是这条约束下做成的）；`market` 只在 identifier 的 parse/format helper 一处进代码；`onboard-company.ts` 不按市场 fork，只有 steps 列表变。
 
 - [ ] **③ 抽取管线止血：验收粒度 + evidence guard**（2026-07-26 复盘 RACE onboarding 得出，~半天，**建议先于 ② 或与 ② 并行做**）
   - **复盘结论**：法拉利那两个修复（v0.39.17 页脚锚定、v0.39.18 标点判断顺序）表面是两个解析 bug，但放在一起看只有一个根因——**管线把"抽取"当成确定性操作，而它实际是概率性的**。四条证据：
@@ -39,7 +37,8 @@
   - **方案取向**：不要去追求"写出永不出错的解析器"，那是无底洞。方向是**让抽取结果成为一等公民的记录，而不是从行数反推健康度**。本条只做最便宜的止血两件事：
     - [x] **verify 改 per-filing 粒度**（2026-07-26 完成，`scripts/onboard-company.ts` step `import_10k`）：verify 从 entity 级 `filingSection.count > 0` 改为按 `ExtSource`（`filerEntityId + kind in [10k,20f,40f]`）逐条检查 `sections: { none: {} }`，任一 filing 零 section 即判失败；另加 `totalFilings > 0` 兜底防止"一条 filing 都没导入"被误判通过。生产库验证：RACE 现在 `total=6 withoutSections=0` 会通过；CHTR/DPZ（未回填）分别 `withoutSections=1/5` 会正确拦下。**副作用**：GE/C-PR/SYF 这类"内容 incorporated-by-reference、零 section 本来就是正常结果"的公司（见下方 65 家条目分类②）会被这条 verify **永久拦住**，无法通过 onboarding——目前不在计划内的新 onboard 名单里，暂不影响，但以后要 onboard 这类公司需要先决定豁免机制或接入 exhibit 抓取。
     - [x] **evidence 缺失时拒绝生成**（2026-07-26 完成，用户拍板"拒绝生成"而非"标注无佐证"）：`company-generation.ts` 新增 `hasUsableFilingEvidence()`（`evidence != null && evidence.sections.length > 0`），`generate-company-profile.ts`/`generate-business-model.ts`/`generate-value-analysis.ts` 三个脚本在 fetch 到 filing evidence 后立即检查，为空则打印 SKIP 原因并 `continue`，不再调用 LLM、不产出无依据内容。`--dry-run --company GE` 验证 SKIP 正确触发（不到达 prompt 构建）；`--dry-run --company AAPL` 验证正常公司不受影响。**范围说明**：`generate-management-analysis.ts` 的 `fetchBuybackEvidence` 未改动——它只是资本配置分析里的一个信号源（financials/holdings/letters 三个信号源之外的补充），本来就允许为空并输出"数据不足"，不是"仅靠 evidence 撑起叙事"的场景，与三个改动脚本的风险不同质，不在这次拍板范围内。`generate-valuation-analysis.ts` 完全不用 filing evidence，同样不涉及。
-  - **仍未做**：P2 中已修复但未回填的 12 家公司仍未跑 `extract:10k:sections --needs-current-version`；P2「生成脚本 filing evidence 选取行为不一致」（`fetchLatestFilingEvidence` 不回退旧年份 vs `fetchBuybackEvidence` 回退且标注年份）仍未统一，两者都待后续处理。
+  - **回填已跑（2026-07-26）**：12 家公司全部跑过 `extract:10k:sections --needs-current-version`。**11/12 完全恢复**（CHTR/DPZ/FND/HPQ/JEF/JPM-PM/KHC/MCK/MDLZ/NVR/PG，`withoutSections` 全部归零）。**MTB 剩 1 条未解决**——FY2022 10-K（`sourceId cmpl0h2lz0xy7rss7sbtd0d0l`，accession `0000950170-23-003804`）单独重跑，症状和另外 11 家不同：不是解析逻辑问题，是 R2 对象抓取本身卡住/极慢（`fetching R2 object ...` 之后长时间无 "extracting from N bytes" 日志），更像 P0 ①-c 那类基础设施延迟问题，不是 `isLikelyHeadingText` 那类 bug。未深挖，待有空排查 R2 fetch 延迟或换用直连 SEC.gov 的 fallback 路径。
+  - **仍未做**：P2「生成脚本 filing evidence 选取行为不一致」（`fetchLatestFilingEvidence` 不回退旧年份 vs `fetchBuybackEvidence` 回退且标注年份）仍未统一。
 
 ## P1 — 近期排队（Agent 主线，2026-07-17 讨论确认）
 
@@ -54,7 +53,7 @@
 - [ ] **13F 历史证券承接页**（2026-07-17 从 P1 顺延）：`Security.ticker = null` 且 `companyEntityId = null` 的历史证券无可访问页面。产品口径与处理方案见 PRODUCT.md「待办：13F 历史证券承接页」（company shell 补齐 / `/security/[id]` 承接页 / orphan 巡检纳入 `check:security:integrity`）。
 - [ ] **L2 集成测试**（2026-07-17 从 P1 顺延）：Prisma 查询（CompanyNameMap 同步、Security↔Entity 回填幂等性、GCV 版本递增）+ API route。测试库方案已定：本地 pglite 影子库。落地后 `test:release`（发版前全量跑 L2+L3+L4+L5）才成立。
 - [ ] **Whale Rock / Atreides 组合 375 家公司 Financial/10-K 缺口**（2026-07-10 排查发现）：两家成长股基金加入 13F 追踪后从未同步扩展公司数据 pipeline（gavin-baker 212 家持仓仅 27 家有 FY 数据，alex-sacerdote 211 家仅 21 家）。**用户已决定先不处理，只记录**；若要补，先评估 SEC EDGAR 请求量与时间成本，再决定是否批量 `import:10k`。
-- [ ] **A 股/港股 Phase 2（财务数据）**：akshare 三大报表导入 + 中文指标 → LINE_ITEMS 映射 + CNY/HKD 货币标注，方案见 PRODUCT.md。Phase 1 验证后再决定。
+- [ ] **A 股 Phase 1+2（茅台）**：港股（泡泡玛特）已完成，见 P0 ②。A 股复用同一套路由/onboard 骨架，但财务数据映射需要新工作——`akshare.stock_financial_report_sina()` 是宽表 + 中文列名，不是港股那种跨 filer 稳定的 `STD_ITEM_CODE`，需要单独验证一遍列名映射（`scripts/fetch-cn-hk-financials-ak.py` 里 `--market cn` 目前直接报错退出）。
 - [ ] **search_filings 覆盖扩展**：finer-grained 财务报表 / notes 章节；HK/A 股年报（依赖 A 股/港股接入进度）。
 - [ ] **DEF 14A（proxy）抓取**：10-K item_10/11 只有 incorporated-by-reference 占位，管理层薪酬/董事会结构要 proxy。接入后管理分析补"管理层与董事会"卡。
 - [ ] **Agent 扩展验收**：跨大师对比 / 时间线 / 观点 + 公司持仓 + 年报联动的组合查询质量验收。
@@ -63,7 +62,7 @@
 - [ ] **重写 `tests/README.md`**：现在内容指向另一个仓库（talk-with-buffett），完全过时。
 - [ ] **抽取策略打点（原「注册表化」，2026-07-26 复议后大幅缩小范围）**：复议后判断完整 registry 重构（`applicable()/run()` 接口）当前不必要——`extractTargetSections()`（`scripts/lib/extract-10k-sections.ts:1105`）实际只有 **3 条顶层策略**（① `preferTocAnchors` 时的 TOC 锚点、② `kind==="20f"` 时的交叉引用表——RACE 加的页脚锚定只是它内部按 section 粒度的二级兜底，不是独立第 4 条、③ 对三种 filing kind 都生效的块扫描兜底），三年多只出现过一次"需要新增顶层策略"的情况（RACE），历史上更常见的故障模式是块扫描这个共享兜底本身的匹配逻辑有 bug（`isLikelyHeadingText` 一次波及 12 家），registry 化并不能防止这类 bug，只是让"加新策略"更好隔离——而这不是当前的增长曲线，且已拍板"美股抽取链路不泛化到 A 股/港股"，近期没有新增顶层策略的驱动力。**改成一个便宜得多的版本**：不引入策略接口，只在 `extractTargetSections` 现有的三个 return 点把命中的策略名（`"toc-anchor" | "20f-cross-reference" | "block-scan"`）带出来，随抽取结果存进 `FilingSection`（或旁边一张小表），拿到"哪类 filer 走哪条路、哪条路在退化"的可查询能力，不用等下次静默失败被撞见才靠人下载原文复现。~1 小时量级。**完整 registry 重构降级为**：等真的出现第三次"需要新增顶层策略"的场景再启动，不预先搭框架。
 - [ ] **65 家静默抽取失败的根因已查清并部分修复，待回填生产库**（2026-07-23，`check:filing-section:integrity` 新检测发现后逐个排查；**回填是 P0 ③ 的前置**）：下载 20 家代表性公司原文直接跑现有代码复现，分四类：
-  - **① 代码 bug，已修复**（`isLikelyHeadingText()`，`scripts/lib/extract-10k-sections.ts`）：判断"是否以 ITEM/NOTE 开头"之前先无条件拒绝"以句号/冒号结尾"的文本，而"Item 1. Business."这种印刷体标题本身就以句号收尾，直接被误杀，导致整份文件的 item 边界扫描全部落空。改成先判 ITEM/NOTE 模式再判尾标点。本地验证覆盖 CHTR/DPZ/FND/HPQ/JEF/JPM-PM/KHC/MCK/MDLZ/MTB/NVR/PG 12 家公司，全部从 0 section 恢复到 20–23 个；反向验证法拉利/GOTU/JOYY 三家不受影响（它们走 20-F 专属路径，不经过这个函数）。**代码已修复，生产库尚未回填**——需要跑一次 `extract:10k:sections --needs-current-version`，范围是这 12 家公司名下几十条 filing，动作比法拉利单一家公司大，回填前需要确认。
+  - **① 代码 bug，已修复**（`isLikelyHeadingText()`，`scripts/lib/extract-10k-sections.ts`）：判断"是否以 ITEM/NOTE 开头"之前先无条件拒绝"以句号/冒号结尾"的文本，而"Item 1. Business."这种印刷体标题本身就以句号收尾，直接被误杀，导致整份文件的 item 边界扫描全部落空。改成先判 ITEM/NOTE 模式再判尾标点。本地验证覆盖 CHTR/DPZ/FND/HPQ/JEF/JPM-PM/KHC/MCK/MDLZ/MTB/NVR/PG 12 家公司，全部从 0 section 恢复到 20–23 个；反向验证法拉利/GOTU/JOYY 三家不受影响（它们走 20-F 专属路径，不经过这个函数）。**已回填（2026-07-26）**：11/12 完全恢复，MTB 剩 1 条因不同症状（R2 fetch 慢/卡，非解析 bug）未解决，详见 P0 ③。
   - **② 内容确实"引用不含正文"，非 bug**：GE、C-PR（Citigroup）、SYF（Synchrony）——这几份 10-K 正文里"incorporated by reference"出现 56–175 次，Item 内容本来就没写在主文档里，引用的是单独的年报 exhibit。要修需要新增"抓取被引用 exhibit"的能力，范围完全不同，未着手。
   - **③ 修正案文件，0 章节属正常**：BN（40-F/A）、GOLD 2021（10-K/A）、PG 2020 的 10-K/A 副本——本来就只覆盖局部内容，不需要处理。
   - **④ 旧式 SGML 格式，孤例**：INOD 2020，文档根节点是 `<document>`，不是现代 inline-XBRL 渲染，优先级低。

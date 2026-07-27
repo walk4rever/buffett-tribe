@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 export type CompanyDirectoryItem = {
-  cik: string;
+  key: string;
   nameZh: string;
   nameEn: string;
   tickers: string[];
@@ -50,7 +50,7 @@ export function CompanyDirectory({ companies }: { companies: CompanyDirectoryIte
         <div className="companies-grid">
           {filtered.map((c) =>
             c.href ? (
-              <Link key={c.cik} href={c.href} className="companies-item">
+              <Link key={c.key} href={c.href} className="companies-item">
                 <span className="companies-item-zh">{c.nameZh}</span>
                 <span className="companies-item-en">{c.nameEn}</span>
                 {c.tickers.length > 0 ? (
@@ -58,7 +58,7 @@ export function CompanyDirectory({ companies }: { companies: CompanyDirectoryIte
                 ) : null}
               </Link>
             ) : (
-              <span key={c.cik} className="companies-item companies-item--static">
+              <span key={c.key} className="companies-item companies-item--static">
                 <span className="companies-item-zh">{c.nameZh}</span>
                 <span className="companies-item-en">{c.nameEn}</span>
                 {c.tickers.length > 0 ? (

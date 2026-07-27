@@ -1,10 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import { FilingReader } from "@/components/FilingReader";
 import { SiteNav } from "@/components/SiteNav";
-import { formatCompanyCikSlug, getCompanyAnnualFiling, getCompanyByCik } from "@/lib/company-data";
+import { formatCompanyUrl, getCompanyAnnualFiling, getCompanyByIdentifier, parseCompanyIdentifier } from "@/lib/company-data";
 
 interface Props {
-  params: Promise<{ cik: string; year: string }>;
+  params: Promise<{ id: string; year: string }>;
 }
 
 function getCompanyNameZh(metadata: unknown) {
@@ -14,12 +14,16 @@ function getCompanyNameZh(metadata: unknown) {
 }
 
 export default async function AnnualReportPage({ params }: Props) {
-  const { cik: rawCik, year: rawYear } = await params;
-  const canonicalSlug = formatCompanyCikSlug(rawCik.trim());
-  if (!canonicalSlug) notFound();
-  if (rawCik.trim() !== canonicalSlug) redirect(`/company/${canonicalSlug}/annual-report/${rawYear}`);
+  const { id: rawId, year: rawYear } = await params;
+  const trimmedId = rawId.trim();
+  const parsed = parseCompanyIdentifier(trimmedId);
+  if (!parsed) notFound();
 
-  const company = await getCompanyByCik(canonicalSlug);
+  const canonicalUrl = formatCompanyUrl(parsed);
+  if (!canonicalUrl) notFound();
+  if (`/company/${trimmedId}` !== canonicalUrl) redirect(`${canonicalUrl}/annual-report/${rawYear}`);
+
+  const company = await getCompanyByIdentifier(trimmedId);
   if (!company) notFound();
 
   const year = Number.parseInt(rawYear, 10);
@@ -38,6 +42,8 @@ export default async function AnnualReportPage({ params }: Props) {
             nameZh: getCompanyNameZh(company.metadata),
             ticker: company.ticker ?? null,
             cik: company.cik ?? null,
+            market: company.market ?? null,
+            code: company.code ?? null,
           }}
           filing={filing}
         />

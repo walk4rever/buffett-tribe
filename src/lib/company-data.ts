@@ -24,6 +24,43 @@ export function formatCompanyCikUrl(cikRaw: string | null | undefined) {
   return slug ? `/company/${slug}` : null;
 }
 
+export type CompanyIdentifier =
+  | { market: "us"; cik: string }
+  | { market: "cn" | "hk"; code: string };
+
+/**
+ * Single entry point for turning a `/company/[id]` URL segment into a
+ * market + identifier. `cn-`/`hk-` prefixes are checked first since they're
+ * unambiguous; anything else falls back to the existing permissive CIK
+ * parsing (normalizeCompanyCik already strips a `CIK` prefix or accepts a
+ * bare digit string) so old non-canonical CIK URLs keep redirecting the way
+ * they always have.
+ */
+export function parseCompanyIdentifier(raw: string): CompanyIdentifier | null {
+  const trimmed = raw.trim();
+  const marketMatch = trimmed.match(/^(cn|hk)-(\d+)$/i);
+  if (marketMatch) {
+    return { market: marketMatch[1].toLowerCase() as "cn" | "hk", code: marketMatch[2] };
+  }
+  const cik = normalizeCompanyCik(trimmed);
+  return cik ? { market: "us", cik } : null;
+}
+
+/**
+ * Single canonical URL builder for all markets — the one place `market`
+ * enters a URL-building decision. Every other call site should build a URL
+ * through this function rather than branching on `market` itself.
+ */
+export function formatCompanyUrl(entity: {
+  cik?: string | null;
+  market?: string | null;
+  code?: string | null;
+}): string | null {
+  if (entity.cik) return formatCompanyCikUrl(entity.cik);
+  if (entity.market && entity.code) return `/company/${entity.market}-${entity.code}`;
+  return null;
+}
+
 function logDbFallback(scope: string, err: unknown) {
   const message = err instanceof Error ? err.message : String(err);
   if (process.env.DEBUG_DB_FALLBACK === "1") {
@@ -58,6 +95,8 @@ export async function getCompanyByCik(cikRaw: string) {
       canonicalName: true,
       ticker: true,
       cik: true,
+      market: true,
+      code: true,
       sector: true,
       metadata: true,
     },
@@ -138,10 +177,30 @@ export async function getCompanyByTicker(ticker: string) {
   };
 }
 
-export async function getCompanyByIdentifier(identifier: string) {
-  const byCik = await getCompanyByCik(identifier);
-  if (byCik) return byCik;
-  return getCompanyByTicker(identifier);
+/**
+ * Resolves a `/company/[id]` URL segment to an Entity, dispatching on market.
+ * This is the only place that decides which lookup strategy a URL uses —
+ * callers (the route files) don't branch on market themselves.
+ */
+export async function getCompanyByIdentifier(raw: string) {
+  const parsed = parseCompanyIdentifier(raw);
+  if (!parsed) return null;
+  if (parsed.market === "us") return getCompanyByCik(parsed.cik);
+
+  return db.entity.findFirst({
+    where: { type: "company", market: parsed.market, code: parsed.code },
+    select: {
+      id: true,
+      type: true,
+      canonicalName: true,
+      ticker: true,
+      cik: true,
+      market: true,
+      code: true,
+      sector: true,
+      metadata: true,
+    },
+  });
 }
 
 export async function getCompanySecurities(entityId: string) {
@@ -255,6 +314,25 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
     .sort((a, b) => b[0] - a[0])
     .slice(0, limit)
     .map(([year, data]) => ({ year, periodEnd: data.periodEnd, items: data.items }));
+}
+
+/**
+ * A company's Financial rows are always one currency across every year and
+ * line item (US: always "USD"; a CN/HK entity's currency is a verified fact
+ * from scripts/lib/cn-hk-company-seeds.ts, not derived from `market` — see
+ * that file's comment on why). Kept separate from getCompanyFinancials
+ * rather than folded into its return shape, since that function already has
+ * a second caller (api/canvas/route.ts) expecting a bare array.
+ */
+export async function getFinancialsCurrency(entityId: string): Promise<string | null> {
+  const familyIds = await getEntityFamilyIds(entityId);
+  const row = await retryOnce(async () =>
+    db.financial.findFirst({
+      where: { entityId: { in: familyIds }, periodType: "FY", unit: { not: null } },
+      select: { unit: true },
+    }),
+  );
+  return row?.unit ?? null;
 }
 
 export type HolderRow = {

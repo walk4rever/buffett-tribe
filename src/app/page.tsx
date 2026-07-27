@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatCompanyPathFromCik } from "@/lib/cik";
+import { formatCompanyUrl } from "@/lib/company-data";
 import { SiteNav } from "@/components/SiteNav";
 import { HeroSearch } from "@/components/HeroSearch";
 import { ALPHA_TRIBE_MEMBERS, CORE_TRIBE_MEMBERS, formatAumForHome, TRIBE_MEMBERS } from "@/lib/tribe";
@@ -52,7 +52,7 @@ export default async function Home() {
           {signals.map((s) => (
             <div key={s.ticker} className={`home-sig home-sig--${s.type}`}>
               <span className="home-sig-tag">{s.tag}</span>
-              <Link href={formatCompanyPathFromCik(s.cik) ?? "#"} className="home-sig-ticker">
+              <Link href={formatCompanyUrl({ cik: s.cik }) ?? "#"} className="home-sig-ticker">
                 {s.tickerLabel}
               </Link>
               <div className="home-sig-company">{s.company}</div>
