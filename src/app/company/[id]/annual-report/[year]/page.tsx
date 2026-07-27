@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { FilingReader } from "@/components/FilingReader";
-import PdfViewer from "@/components/PdfViewer";
+import { PdfFilingReader } from "@/components/PdfFilingReader";
 import { SiteNav } from "@/components/SiteNav";
 import { formatCompanyUrl, getCompanyAnnualFiling, getCompanyByIdentifier, parseCompanyIdentifier } from "@/lib/company-data";
 
@@ -38,7 +38,9 @@ export default async function AnnualReportPage({ params }: Props) {
   // They get their own PDF (kind: "primary_pdf", archived to R2 by
   // import-hk-annual-report-from-file.ts / import-cn-annual-report-from-file.ts)
   // rendered through the same generic PdfViewer already used for the
-  // 大师资料库 documents — no new reader UI.
+  // 大师资料库 documents, with the same AI 解读 panel as FilingReader — the
+  // PDF-extracted text was already written to FilingSection at import time,
+  // so search_filings already covers these companies.
   if (filing.kind === "hk-annual-report" || filing.kind === "cn-annual-report") {
     const pdfArtifact = filing.artifacts.find((artifact) => artifact.kind === "primary_pdf");
     if (!pdfArtifact?.objectKey) notFound();
@@ -51,11 +53,13 @@ export default async function AnnualReportPage({ params }: Props) {
       <div className="pdf-reader-page">
         <SiteNav />
         <main className="pdf-reader-shell">
-          <PdfViewer
-            key={pdfUrl}
-            url={pdfUrl}
+          <PdfFilingReader
+            pdfUrl={pdfUrl}
             title={`${zhName ?? company.canonicalName} ${year} 年报`}
             backHref={canonicalUrl}
+            companyName={zhName ?? company.canonicalName}
+            ticker={company.ticker ?? company.code ?? null}
+            periodYear={year}
           />
         </main>
       </div>
