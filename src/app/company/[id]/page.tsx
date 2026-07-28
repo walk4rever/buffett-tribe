@@ -170,11 +170,6 @@ function formatSignedPct(diffPct: number | null) {
   return `${sign}${diffPct.toFixed(1)}%`;
 }
 
-function formatFilingDate(date: Date | null) {
-  if (!date) return "—";
-  return date.toISOString().slice(0, 10);
-}
-
 function buildCompanyNarrative(params: {
   companyName: string;
   ticker: string | null;
@@ -1035,17 +1030,12 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                   const periodLabel = filing.periodYear
                     ? `${filing.periodYear}${filing.periodQuarter ? ` Q${filing.periodQuarter}` : ""}`
                     : "—";
-                  const filedLabel = formatFilingDate(filing.filedAt ?? filing.ts);
                   const cardHead = (
                     <div className="company-reference-card-head">
                       <div>
                         <h3>
                           {periodLabel} · {form}
                         </h3>
-                        <p>
-                          Filed {filedLabel}
-                          {filing.ts ? ` · Report date ${formatFilingDate(filing.ts)}` : ""} · {filing.artifacts.length} files
-                        </p>
                       </div>
                     </div>
                   );

@@ -352,7 +352,13 @@ async function main() {
   if (dryRun) console.log("(dry run — no commands will execute)");
   console.log(`Checkpoint: ${checkpointFile(ticker)}\n`);
 
-  const summary: Array<{ step: StepId; label: string; status: "skipped" | "already_done" | "done" | "failed" }> = [];
+  const summary: Array<{
+    step: StepId;
+    label: string;
+    status: "skipped" | "already_done" | "done" | "failed";
+    durationMs?: number;
+  }> = [];
+  const runStartedAt = Date.now();
 
   for (const [index, step] of steps.entries()) {
     const prefix = `[${index + 1}/${steps.length}] ${step.label}`;
@@ -375,6 +381,7 @@ async function main() {
     }
 
     console.log(`\n${prefix}`);
+    const stepStartedAt = Date.now();
     await step.run();
 
     // Steps before import_10k completes have no entityId yet; resolve fresh each time
@@ -385,27 +392,39 @@ async function main() {
     }
 
     const ok = await step.verify(entityId);
+    const durationMs = Date.now() - stepStartedAt;
     if (!ok) {
-      summary.push({ step: step.id, label: step.label, status: "failed" });
-      console.error(`${prefix} — ran but verification found no data written`);
+      summary.push({ step: step.id, label: step.label, status: "failed", durationMs });
+      console.error(`${prefix} — ran but verification found no data written (${formatDuration(durationMs)})`);
       break;
     }
 
     checkpoint.completed[step.id] = { completedAt: new Date().toISOString() };
     await saveCheckpoint(checkpoint);
-    summary.push({ step: step.id, label: step.label, status: "done" });
-    console.log(`${prefix} — done`);
+    summary.push({ step: step.id, label: step.label, status: "done", durationMs });
+    console.log(`${prefix} — done (${formatDuration(durationMs)})`);
   }
 
   console.log("\n=== Onboarding summary ===");
   for (const row of summary) {
-    console.log(`  [${row.status.padEnd(12)}] ${row.label}`);
+    const time = row.durationMs != null ? ` (${formatDuration(row.durationMs)})` : "";
+    console.log(`  [${row.status.padEnd(12)}]${time.padEnd(10)} ${row.label}`);
   }
+  const totalRunMs = summary.reduce((sum, row) => sum + (row.durationMs ?? 0), 0);
+  console.log(`\nTotal step time: ${formatDuration(totalRunMs)} | Wall clock: ${formatDuration(Date.now() - runStartedAt)}`);
   const failed = summary.some((row) => row.status === "failed");
   console.log(failed ? "\nOnboarding incomplete — rerun the same command to resume from the failed step.\n" : "\nOnboarding complete.\n");
 
   await prisma.$disconnect();
   if (failed) process.exit(1);
+}
+
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.round(ms / 1000);
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m${seconds.toString().padStart(2, "0")}s`;
 }
 
 function buildGenerateArgs(ticker: string, force: boolean): string[] {

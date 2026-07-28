@@ -10,11 +10,18 @@ akshare's stock_zh_a_disclosure_report_cninfo() lists cninfo disclosures for a
 keyword; a plain keyword="年度报告" search also substring-matches "半年度报告"
 (interim report), "...年度报告摘要" (summary) and "...年度报告（英文版）"
 (English version). Titles are filtered with an anchored regex requiring the
-string to *end* with "<year>年年度报告" — verified against Moutai (600519)
-real search results, correctly keeps only the 6 plain Chinese annual reports
-from 2020-2025 and excludes the 12 non-matching variants in the same result
-set. Title strings come back with cninfo's own "<em>...</em>" search-highlight
-markup around the matched keyword, stripped before the regex is applied.
+string to *end* with "<year>年度报告", with an optional "年" between the
+digits and "年度报告", and an optional (possibly empty) company-name prefix
+before the digits — companies don't share one title convention: Moutai
+(600519) writes "贵州茅台2025年年度报告" (name + year + 年 + 年度报告),
+Shenhua (601088) writes "中国神华2025年度报告" (name + year directly followed
+by 年度报告, no separate 年), and CATL (300750) omits the name prefix
+entirely — "2025年年度报告", nothing before the year. Verified against all
+three companies' real search results: keeps only the plain Chinese annual
+reports and excludes the half-year/summary/English/procedural-announcement
+variants across all three title shapes. Title strings come back with
+cninfo's own "<em>...</em>" search-highlight markup around the matched
+keyword, stripped before the regex is applied.
 
 The PDF itself lives at a predictable, fast static CDN URL built from the
 announcement's id + date (both present in the row's own detail-page link):
@@ -39,7 +46,7 @@ from pypdf import PdfReader
 
 STATIC_BASE = "https://static.cninfo.com.cn/finalpage"
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
-TITLE_RE = re.compile(r"^.+?(\d{4})年年度报告$")
+TITLE_RE = re.compile(r"^.*?(\d{4})年?年度报告$")
 LINK_RE = re.compile(r"announcementId=(\d+).*?announcementTime=([\d-]+)")
 CHUNK_COUNT = 4
 
