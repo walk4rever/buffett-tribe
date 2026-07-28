@@ -3,13 +3,55 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+export type CompanyMarket = "us" | "hk" | "cn";
+
 export type CompanyDirectoryItem = {
   key: string;
   nameZh: string;
   nameEn: string;
   tickers: string[];
   href: string | null;
+  market: CompanyMarket;
 };
+
+const MARKET_SECTIONS: Array<{ market: CompanyMarket; label: string }> = [
+  { market: "cn", label: "A股" },
+  { market: "hk", label: "港股" },
+  { market: "us", label: "美股" },
+];
+
+function CompanyGrid({ items }: { items: CompanyDirectoryItem[] }) {
+  // Pad to a full row of 6 (the desktop column count) so a short section's
+  // last row still reads as a complete grid rather than one lone box.
+  const fillerCount = (6 - (items.length % 6)) % 6;
+
+  return (
+    <div className="companies-grid">
+      {items.map((c) =>
+        c.href ? (
+          <Link key={c.key} href={c.href} className="companies-item">
+            <span className="companies-item-zh">{c.nameZh}</span>
+            <span className="companies-item-en">{c.nameEn}</span>
+            {c.tickers.length > 0 ? (
+              <span className="companies-item-ticker">({c.tickers.join(" / ")})</span>
+            ) : null}
+          </Link>
+        ) : (
+          <span key={c.key} className="companies-item companies-item--static">
+            <span className="companies-item-zh">{c.nameZh}</span>
+            <span className="companies-item-en">{c.nameEn}</span>
+            {c.tickers.length > 0 ? (
+              <span className="companies-item-ticker">({c.tickers.join(" / ")})</span>
+            ) : null}
+          </span>
+        )
+      )}
+      {Array.from({ length: fillerCount }, (_, i) => (
+        <span key={`filler-${i}`} aria-hidden="true" className="companies-item companies-item--filler" />
+      ))}
+    </div>
+  );
+}
 
 export function CompanyDirectory({ companies }: { companies: CompanyDirectoryItem[] }) {
   const [query, setQuery] = useState("");
@@ -25,11 +67,14 @@ export function CompanyDirectory({ companies }: { companies: CompanyDirectoryIte
     );
   }, [companies, query]);
 
-  // The grid's column count is responsive (6 / 4 / 2, see globals.css breakpoints);
-  // padding to a multiple of 12 (their LCM) keeps the last row full at every
-  // breakpoint, so the per-cell border-top/border-left lines never break
-  // partway through a short final row.
-  const fillerCount = (12 - (filtered.length % 12)) % 12;
+  const sections = useMemo(
+    () =>
+      MARKET_SECTIONS.map((section) => ({
+        ...section,
+        items: filtered.filter((c) => c.market === section.market),
+      })).filter((section) => section.items.length > 0),
+    [filtered]
+  );
 
   return (
     <>
@@ -44,33 +89,18 @@ export function CompanyDirectory({ companies }: { companies: CompanyDirectoryIte
         />
         <span className="companies-search-count">{filtered.length} 家</span>
       </div>
-      {filtered.length === 0 ? (
+      {sections.length === 0 ? (
         <div className="companies-empty">没有匹配“{query.trim()}”的公司</div>
       ) : (
-        <div className="companies-grid">
-          {filtered.map((c) =>
-            c.href ? (
-              <Link key={c.key} href={c.href} className="companies-item">
-                <span className="companies-item-zh">{c.nameZh}</span>
-                <span className="companies-item-en">{c.nameEn}</span>
-                {c.tickers.length > 0 ? (
-                  <span className="companies-item-ticker">({c.tickers.join(" / ")})</span>
-                ) : null}
-              </Link>
-            ) : (
-              <span key={c.key} className="companies-item companies-item--static">
-                <span className="companies-item-zh">{c.nameZh}</span>
-                <span className="companies-item-en">{c.nameEn}</span>
-                {c.tickers.length > 0 ? (
-                  <span className="companies-item-ticker">({c.tickers.join(" / ")})</span>
-                ) : null}
-              </span>
-            )
-          )}
-          {Array.from({ length: fillerCount }, (_, i) => (
-            <span key={`filler-${i}`} aria-hidden="true" className="companies-item companies-item--filler" />
-          ))}
-        </div>
+        sections.map((section) => (
+          <section key={section.market} className="companies-section">
+            <h2 className="companies-section-title">
+              {section.label}
+              <span className="companies-section-count">({section.items.length})</span>
+            </h2>
+            <CompanyGrid items={section.items} />
+          </section>
+        ))
       )}
     </>
   );

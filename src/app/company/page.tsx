@@ -54,12 +54,15 @@ async function getCompanies(): Promise<CompanyDirectoryItem[]> {
       // GOOG/GOOGL) recorded as separate Security rows under the same
       // companyEntityId — merge both sources so search matches any of them.
       const tickers = uniqueTickers([row.ticker, ...row.securitiesAsCompany.map((s) => s.ticker)]);
+      // Guaranteed non-null: the query requires cik OR (market AND code).
+      const market = (row.market as "hk" | "cn" | null) ?? "us";
       return {
         key: row.cik ?? `${row.market}-${row.code}`,
         nameZh,
         nameEn,
         tickers,
         href: formatCompanyUrl(row),
+        market,
       };
     });
   } catch {
