@@ -50,11 +50,23 @@ import requests
 from bs4 import BeautifulSoup
 from pypdf import PdfReader
 
+try:
+    import fitz  # PyMuPDF
+except ImportError:  # pragma: no cover
+    fitz = None
+
 BASE_URL = "https://www1.hkexnews.hk"
 SEARCH_PAGE = f"{BASE_URL}/search/titlesearch.xhtml"
 API_ENDPOINT = f"{BASE_URL}/search/titleSearchServlet.do"
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
-ANNUAL_REPORT_TITLE_RE = re.compile(r"年報|Annual Report", re.IGNORECASE)
+# 年報 (Tencent/Pop Mart style) and 年度報告 (Nongfu Spring style) are both
+# used for the same document; 月報表/中期報告 do not match either.
+ANNUAL_REPORT_TITLE_RE = re.compile(r"年報|年度報告|Annual Report", re.IGNORECASE)
+# ...but these do: 企業年度報告書 is a short statutory form filed months later
+# (not the annual report — Nongfu's 2022 one is ~3K chars vs ~460K for the
+# real 2022年度報告), and 補充/補遺/澄清公告 are later corrections to it.
+# Newest-first selection would otherwise pick these over the real report.
+ANNUAL_REPORT_EXCLUDE_RE = re.compile(r"補充|補遺|澄清|企業年度報告書|ANNOUNCEMENT", re.IGNORECASE)
 CHUNK_COUNT = 4
 
 
@@ -64,6 +76,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--market", required=True, choices=["hk"], help="Only hk supported")
     parser.add_argument("--ticker", default=None, help="Entity.ticker, e.g. 9992.HK (defaults to derived from --code)")
     parser.add_argument("--from-year", type=int, default=2020, help="Earliest annual report content-year to fetch (default 2020, matching the US onboarding default)")
+    parser.add_argument("--lang", default="zh-first", choices=["zh-first", "zh", "en"],
+                        help="Report language: zh-first prefers the Chinese version per year and falls back to English for years where no Chinese filing exists (default); zh/en pin a single language")
     parser.add_argument("--out-dir", default="/tmp/hk-annual-report-ak", help="Directory for the generated JSON fixture and downloaded PDFs")
     parser.add_argument("--import-db", action="store_true", help="Import the generated JSON into the database after fetching")
     parser.add_argument("--keep-file", action="store_true", help="Keep the generated JSON and PDFs instead of deleting them after import")
@@ -134,11 +148,17 @@ def resolve_stock_id(session: requests.Session, code: str) -> int:
     raise RuntimeError(f"No stockId match for code {code} in prefix.do response: {payload}")
 
 
-def fetch_all_records(session: requests.Session, stock_id: int, date_from: str, date_to: str) -> list[dict]:
+def fetch_all_records(session: requests.Session, stock_id: int, date_from: str, date_to: str, lang: str) -> list[dict]:
     """Fetch all filings for one resolved stockId across a date range in one
     call (HKEX's 1-month cap only applies to the unfiltered stockId=-1 case).
     Still paginates via rowRange defensively in case a company has more than
-    one page of history."""
+    one page of history.
+
+    lang selects which language version of each filing HKEX links to: with
+    lang="E" every FILE_LINK points at the English PDF, with lang="ZH" at the
+    Chinese one (e.g. Tencent 2025: .../2026040901231.pdf vs
+    .../2026040901232_c.pdf — same filing, two documents, verified against
+    the live endpoint)."""
     all_records: list[dict] = []
     fetched = 0
     api_total: int | None = None
@@ -152,7 +172,7 @@ def fetch_all_records(session: requests.Session, stock_id: int, date_from: str, 
                 "sortDir": "0", "sortByOptions": "DateTime", "category": "0", "market": "SEHK",
                 "stockId": str(stock_id), "documentType": "-1", "fromDate": date_from, "toDate": date_to,
                 "title": "", "searchType": "0", "t1code": "-2", "t2Gcode": "-2", "t2code": "-2",
-                "rowRange": str(row_range), "lang": "E",
+                "rowRange": str(row_range), "lang": lang,
             },
             headers={
                 "Accept": "application/json, text/javascript, */*; q=0.01",
@@ -181,21 +201,18 @@ def fetch_all_records(session: requests.Session, stock_id: int, date_from: str, 
     return all_records
 
 
-def find_annual_reports(session: requests.Session, code: str, from_year: int) -> list[dict]:
-    stock_id = resolve_stock_id(session, code)
-    print(f"  resolved {code} -> internal stockId {stock_id}", file=sys.stderr)
-
-    establish_search_session(session, "19990401", date.today().strftime("%Y%m%d"))
-    records = fetch_all_records(session, stock_id, "19990401", date.today().strftime("%Y%m%d"))
-    print(f"  fetched {len(records)} total filings for this company", file=sys.stderr)
-
-    found: list[dict] = []
-    seen_years: set[int] = set()
+def pick_annual_reports_by_year(records: list[dict], from_year: int) -> dict[int, dict]:
+    """Filter a filing list down to annual reports, keyed by content year.
+    Records arrive newest-first, so the first hit per year is the most
+    recently filed version (a later corrected re-filing wins)."""
+    by_year: dict[int, dict] = {}
     for rec in records:
         if rec.get("FILE_TYPE", "").upper() != "PDF":
             continue
         title = rec.get("TITLE", "")
         if not ANNUAL_REPORT_TITLE_RE.search(title):
+            continue
+        if ANNUAL_REPORT_EXCLUDE_RE.search(title):
             continue
         date_time = rec.get("DATE_TIME", "")
         filed_year = None
@@ -206,15 +223,38 @@ def find_annual_reports(session: requests.Session, code: str, from_year: int) ->
         # Annual reports are filed ~3-4 months after fiscal year-end; the
         # report content year is typically filedYear - 1.
         period_year = (filed_year - 1) if filed_year else None
-        if period_year is None or period_year in seen_years or period_year < from_year:
+        if period_year is None or period_year in by_year or period_year < from_year:
             continue
-        seen_years.add(period_year)
         link = rec.get("FILE_LINK", "")
         if link.startswith("/"):
             link = BASE_URL + link
-        found.append({"periodYear": period_year, "title": title, "url": link})
+        by_year[period_year] = {"periodYear": period_year, "title": title, "url": link}
+    return by_year
 
-    return found
+
+def find_annual_reports(session: requests.Session, code: str, from_year: int, lang_pref: str) -> list[dict]:
+    stock_id = resolve_stock_id(session, code)
+    print(f"  resolved {code} -> internal stockId {stock_id}", file=sys.stderr)
+
+    establish_search_session(session, "19990401", date.today().strftime("%Y%m%d"))
+    date_from, date_to = "19990401", date.today().strftime("%Y%m%d")
+
+    # zh-first needs both record sets so English can fill years where no
+    # Chinese annual report was filed (e.g. some international issuers file
+    # English only). The record list itself is one cheap JSON call per
+    # language — only the PDF downloads are slow.
+    langs = {"zh": ["ZH"], "en": ["E"], "zh-first": ["ZH", "E"]}[lang_pref]
+    by_year: dict[int, dict] = {}
+    for lang in langs:
+        records = fetch_all_records(session, stock_id, date_from, date_to, lang)
+        picked = pick_annual_reports_by_year(records, from_year)
+        print(f"  lang={lang}: {len(records)} filings, {len(picked)} annual reports ({sorted(picked, reverse=True)})", file=sys.stderr)
+        lang_code = "zh" if lang == "ZH" else "en"
+        for year, report in picked.items():
+            if year not in by_year:
+                by_year[year] = {**report, "lang": lang_code}
+
+    return [by_year[year] for year in sorted(by_year, reverse=True)]
 
 
 def download_pdf(session: requests.Session, url: str, dest: Path) -> None:
@@ -227,9 +267,20 @@ def download_pdf(session: requests.Session, url: str, dest: Path) -> None:
     print(f"  downloaded {dest.stat().st_size} bytes in {time.time() - t0:.1f}s", file=sys.stderr)
 
 
-def extract_chunks(pdf_path: Path, chunk_count: int) -> list[str]:
+def extract_page_texts(pdf_path: Path) -> list[str]:
+    """PyMuPDF first: Chinese annual-report PDFs use CID fonts whose
+    ToUnicode maps pypdf mis-decodes into garbage (verified on Tencent's
+    2025 年報 — pypdf produced mojibake, PyMuPDF clean Traditional Chinese).
+    pypdf remains as a fallback if PyMuPDF isn't installed."""
+    if fitz is not None:
+        with fitz.open(str(pdf_path)) as doc:
+            return [page.get_text() for page in doc]
     reader = PdfReader(str(pdf_path))
-    page_texts = [page.extract_text() or "" for page in reader.pages]
+    return [page.extract_text() or "" for page in reader.pages]
+
+
+def extract_chunks(pdf_path: Path, chunk_count: int) -> list[str]:
+    page_texts = extract_page_texts(pdf_path)
     total_pages = len(page_texts)
     if total_pages == 0:
         return []
@@ -249,12 +300,12 @@ def main() -> int:
 
     session = build_session()
 
-    print(f"Searching HKEXnews for {args.code} annual reports since {args.from_year}...")
-    reports = find_annual_reports(session, args.code, args.from_year)
+    print(f"Searching HKEXnews for {args.code} annual reports since {args.from_year} (lang: {args.lang})...")
+    reports = find_annual_reports(session, args.code, args.from_year, args.lang)
     if not reports:
         print(f"No annual reports found for {args.code}", file=sys.stderr)
         return 1
-    print(f"Found {len(reports)} annual report(s): {[r['periodYear'] for r in reports]}")
+    print(f"Found {len(reports)} annual report(s): {[(r['periodYear'], r['lang']) for r in reports]}")
 
     results = []
     pdf_paths: list[Path] = []
@@ -266,13 +317,20 @@ def main() -> int:
 
         print(f"  extracting text...")
         chunks = extract_chunks(pdf_path, CHUNK_COUNT)
-        print(f"  {len(chunks)} chunks, {sum(len(c) for c in chunks)} total chars")
+        total_chars = sum(len(c) for c in chunks)
+        print(f"  {len(chunks)} chunks, {total_chars} total chars")
+        if total_chars < 10_000:
+            # A real annual report is hundreds of pages; a tiny extraction
+            # means we grabbed the wrong document (e.g. a statutory form or
+            # supplemental announcement) or the PDF is image-only.
+            print(f"  WARNING: suspiciously small extraction for FY{report['periodYear']} — check the picked URL", file=sys.stderr)
         # pdfPath/url are kept (not just chunks) so the importer can archive
         # the original PDF to R2 — HKEXnews itself is too slow to link to
         # directly (~85KB/s observed), so the reading page needs its own copy.
         results.append({
             "periodYear": report["periodYear"],
             "url": report["url"],
+            "lang": report["lang"],
             "pdfPath": str(pdf_path),
             "chunks": chunks,
         })

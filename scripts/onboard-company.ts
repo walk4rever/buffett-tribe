@@ -236,8 +236,15 @@ function buildImportAnnualReportStep(ticker: string, market: "cn" | "hk", fromYe
       return runNpmScript(scriptName, ["--code", seed.code, "--market", market, "--ticker", ticker, "--from-year", fromYear, "--import-db"]);
     },
     verify: async (entityId) => {
-      const count = await prisma.filingSection.count({ where: { entityId } });
-      return count > 0;
+      // Per-filing, not per-entity — same lesson as the US 10-K path: an
+      // entity-level count > 0 stays green even when one year's PDF extracts
+      // zero chunks.
+      const kind = `${market}-annual-report`;
+      const [totalFilings, filingsWithoutSections] = await Promise.all([
+        prisma.extSource.count({ where: { filerEntityId: entityId, kind } }),
+        prisma.extSource.count({ where: { filerEntityId: entityId, kind, sections: { none: {} } } }),
+      ]);
+      return totalFilings > 0 && filingsWithoutSections === 0;
     },
   };
 }

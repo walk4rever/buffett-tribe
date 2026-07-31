@@ -3,7 +3,7 @@ import db from "../src/lib/prisma";
 import { buildStoredTextOnlyFilingSectionData } from "./lib/filing-section-storage";
 import { archiveFilingArtifact } from "./lib/filing-archive";
 
-type ReportRecord = { periodYear: number; url: string; pdfPath: string; chunks: string[] };
+type ReportRecord = { periodYear: number; url: string; lang?: string; pdfPath: string; chunks: string[] };
 
 function getArg(flag: string): string | undefined {
   const args = process.argv.slice(2);
@@ -42,10 +42,13 @@ async function main() {
     // instead of accumulating duplicates — same idempotency pattern as the
     // akshare financials importer's "akshare-annual" key.
     const accessionNumber = `hk-annual-report-${report.periodYear}`;
-    // form: "Annual Report" so the company page's reference card shows a
-    // real label instead of falling back to the raw kind string
-    // ("HK-ANNUAL-REPORT") — see src/app/company/[id]/page.tsx's card head.
-    const metadata = { ticker, market, code, form: "Annual Report" };
+    // form shows a real label on the company page's reference card instead of
+    // falling back to the raw kind string ("HK-ANNUAL-REPORT") — see
+    // src/app/company/[id]/page.tsx's card head. lang records which language
+    // version of the filing was fetched (HKEX files zh/en as separate PDFs;
+    // older imports predate the field and default to "en").
+    const lang = report.lang ?? "en";
+    const metadata = { ticker, market, code, form: lang === "zh" ? "年報" : "Annual Report", lang };
     const extSource = await db.extSource.upsert({
       where: { ExtSource_filer_accession_unique: { filerEntityId: entity.id, accessionNumber } },
       create: {
