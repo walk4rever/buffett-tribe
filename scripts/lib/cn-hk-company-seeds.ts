@@ -87,4 +87,15 @@ export const CN_HK_SEEDS: Record<string, CnHkSeed> = {
     industry: "包装饮用水",
     exchange: "香港交易所",
   },
+  "3690.HK": {
+    market: "hk",
+    code: "03690",
+    currency: "CNY",
+    canonicalName: "MEITUAN",
+    nameZh: "美团",
+    nameEnShort: "Meituan",
+    sector: "Consumer Discretionary",
+    industry: "本地生活服务",
+    exchange: "香港交易所",
+  },
 };

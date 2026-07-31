@@ -118,23 +118,31 @@ function parseBusinessModel(raw: string): { businessNarrative: NarrativeSection;
     throw new Error("Invalid canvas");
   }
 
+  const normalizedCanvas = {} as CanvasPayload;
+
   for (const key of CANVAS_KEYS) {
     const items = canvas[key];
     if (!Array.isArray(items) || items.length === 0) {
       throw new Error(`Invalid canvas field: ${key}`);
     }
-    for (const item of items) {
+    normalizedCanvas[key] = items.map((item) => {
       const entry = jsonObject(item);
       if (!entry) {
         throw new Error(`Invalid canvas entry in field: ${key}`);
       }
-      if (!normalizeText(entry.text)) {
+      const entryText = normalizeText(entry.text);
+      if (!entryText) {
         throw new Error(`Invalid canvas entry text in field: ${key}`);
       }
-      if (!Array.isArray(entry.evidence) || entry.evidence.some((evidence) => !normalizeText(evidence))) {
+      // Models occasionally emit evidence/sources as a single string instead of
+      // an array despite the prompt spec — coerce rather than reject, since the
+      // content itself is valid.
+      const evidence = Array.isArray(entry.evidence) ? entry.evidence : [entry.evidence];
+      if (evidence.some((item) => !normalizeText(item))) {
         throw new Error(`Invalid canvas entry evidence in field: ${key}`);
       }
-      if (!Array.isArray(entry.sources) || entry.sources.some((source) => !normalizeText(source))) {
+      const sources = Array.isArray(entry.sources) ? entry.sources : [entry.sources];
+      if (sources.some((item) => !normalizeText(item))) {
         throw new Error(`Invalid canvas entry sources in field: ${key}`);
       }
       if (
@@ -143,12 +151,18 @@ function parseBusinessModel(raw: string): { businessNarrative: NarrativeSection;
       ) {
         throw new Error(`Invalid canvas entry confidence in field: ${key}`);
       }
-    }
+      return {
+        text: entryText,
+        evidence: evidence.map((item) => normalizeText(item) ?? ""),
+        sources: sources.map((item) => normalizeText(item) ?? ""),
+        confidence: entry.confidence as number | undefined,
+      };
+    });
   }
 
   return {
     businessNarrative: { title, content },
-    canvas: canvas as CanvasPayload,
+    canvas: normalizedCanvas,
   };
 }
 
@@ -268,7 +282,7 @@ async function main() {
         systemPrompt: SYSTEM_PROMPT,
         userPrompt: prompt,
         temperature: 0.2,
-        maxTokens: 6000,
+        maxTokens: 10000,
       });
       lastModelResponse = content;
       const parsed = parseBusinessModel(content);

@@ -212,7 +212,7 @@ async function main() {
         systemPrompt: SYSTEM_PROMPT,
         userPrompt: prompt,
         temperature: 0.4,
-        maxTokens: 4000,
+        maxTokens: 7000,
       });
       const moat = parseMoat(content);
       const narrative = existingOrEmptyNarrative(existing?.narrative);

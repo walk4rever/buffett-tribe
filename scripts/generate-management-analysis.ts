@@ -270,7 +270,7 @@ Generate the management analysis payload.`;
         systemPrompt: SYSTEM_PROMPT,
         userPrompt: prompt,
         temperature: 0.4,
-        maxTokens: 4000,
+        maxTokens: 7000,
       });
       const payload = parsePayload(content);
 
