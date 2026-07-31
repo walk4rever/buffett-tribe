@@ -14,9 +14,10 @@ export default async function InsightsPage({ searchParams }: Props) {
   const sp = await searchParams;
   const selectedSource = sp.source?.trim() || null;
 
-  const [posts, sources] = await Promise.all([
+  const [posts, sources, total] = await Promise.all([
     getInsightPosts(selectedSource),
     getInsightSources(),
+    getInsightPostCount(selectedSource),
   ]);
 
   return (
@@ -83,9 +84,31 @@ export default async function InsightsPage({ searchParams }: Props) {
             })
           )}
         </section>
+
+        {posts.length > 0 && (
+          <p className="insights-list-end">
+            共 {total} 篇{posts.length < total ? `，当前显示最近 ${posts.length} 篇` : " · 已显示全部"}
+          </p>
+        )}
       </main>
     </div>
   );
+}
+
+async function getInsightPostCount(source: string | null): Promise<number> {
+  try {
+    return await prisma.insightPost.count({
+      where: {
+        status: "published",
+        ...(source ? { source } : {}),
+      },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2021") {
+      return 0;
+    }
+    throw err;
+  }
 }
 
 async function getInsightSources(): Promise<string[]> {
@@ -135,7 +158,7 @@ async function getInsightPosts(source: string | null) {
 }
 
 function formatDateTwoLine(date: Date): React.ReactNode {
-  const monthDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
+  const monthDay = `${date.getMonth() + 1}月${date.getDate()}日`;
   const year = date.getFullYear();
   return (
     <>

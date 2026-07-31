@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { SiteNav } from "@/components/SiteNav";
 import { InsightReader } from "@/components/InsightReader";
 import { InsightOverviewShareButton } from "@/components/InsightOverviewShareButton";
-import { estimateReadingMinutes, extractInsightOverviewShareContent, isInsightFormat } from "@/lib/insights";
+import { extractInsightOverviewShareContent, isInsightFormat } from "@/lib/insights";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,10 @@ export default async function InsightDetailPage({ params }: Props) {
   const format = isInsightFormat(post.format) ? post.format : "markdown";
   const dateLabel = post.publishedAt ? formatDate(post.publishedAt) : formatDate(post.updatedAt);
   const overview = extractInsightOverviewShareContent(post.contentRaw, post.description ?? undefined);
-  const relatedEntities = post.entityIds.length > 0 ? await getEntitiesByIds(post.entityIds) : [];
+  const [relatedEntities, adjacent] = await Promise.all([
+    post.entityIds.length > 0 ? getEntitiesByIds(post.entityIds) : Promise.resolve([]),
+    getAdjacentPosts(post.slug),
+  ]);
 
   return (
     <div className="home-v2 insight-detail-page">
@@ -31,11 +35,17 @@ export default async function InsightDetailPage({ params }: Props) {
           <h1>{post.title}</h1>
           <div className="insight-detail-meta">
             <span>{post.sourceUrl ? <a href={post.sourceUrl} target="_blank" rel="noopener noreferrer">{post.source || "来源"}</a> : post.source || "Buffett Tribe"}</span>
-            {post.author ? <span>{post.author}</span> : null}
+            {post.author && post.author !== post.source ? <span>{post.author}</span> : null}
             <span>{dateLabel}</span>
-            <span>{estimateReadingMinutes(post.contentRaw)} min</span>
           </div>
           {post.description ? <p className="insight-detail-desc">{post.description}</p> : null}
+          {post.tags.length > 0 ? (
+            <div className="insight-row-tags insight-detail-tags">
+              {post.tags.map((tag) => (
+                <span key={tag}>{tag}</span>
+              ))}
+            </div>
+          ) : null}
         </header>
 
         <InsightReader
@@ -77,9 +87,47 @@ export default async function InsightDetailPage({ params }: Props) {
             </div>
           </aside>
         )}
+
+        <nav className="insight-detail-nav" aria-label="文章导航">
+          {adjacent.newer ? (
+            <Link href={`/insights/${adjacent.newer.slug}`} className="insight-detail-nav-link">
+              <span className="insight-detail-nav-label">← 较新一篇</span>
+              <span className="insight-detail-nav-title">{adjacent.newer.title}</span>
+            </Link>
+          ) : <span />}
+          {adjacent.older ? (
+            <Link href={`/insights/${adjacent.older.slug}`} className="insight-detail-nav-link insight-detail-nav-link--older">
+              <span className="insight-detail-nav-label">较早一篇 →</span>
+              <span className="insight-detail-nav-title">{adjacent.older.title}</span>
+            </Link>
+          ) : <span />}
+        </nav>
+        <Link href="/insights" className="insight-detail-back">← 返回洞见列表</Link>
       </main>
     </div>
   );
+}
+
+async function getAdjacentPosts(slug: string) {
+  try {
+    const posts = await prisma.insightPost.findMany({
+      where: { status: "published" },
+      select: { slug: true, title: true },
+      orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
+      take: 80,
+    });
+    const index = posts.findIndex((p) => p.slug === slug);
+    if (index === -1) return { newer: null, older: null };
+    return {
+      newer: index > 0 ? posts[index - 1] : null,
+      older: index < posts.length - 1 ? posts[index + 1] : null,
+    };
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2021") {
+      return { newer: null, older: null };
+    }
+    throw err;
+  }
 }
 
 async function getInsightPost(slug: string) {

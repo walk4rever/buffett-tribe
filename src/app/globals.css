@@ -10486,6 +10486,13 @@ body {
   font-size: 0.88rem;
 }
 
+.insights-list-end {
+  margin: 1rem 0 0;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.38);
+  font-size: 0.75rem;
+}
+
 .insight-row {
   display: flex;
   align-items: center;
@@ -10499,6 +10506,14 @@ body {
 
 .insight-row:hover {
   background: #f8f9fb;
+}
+
+.insight-row h2 {
+  transition: color 0.12s ease;
+}
+
+.insight-row:hover h2 {
+  color: var(--accent);
 }
 
 .insight-row-num {
@@ -10623,6 +10638,24 @@ body {
 }
 
 @media (max-width: 640px) {
+  .insights-filter-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.25rem;
+    scrollbar-width: none;
+  }
+
+  .insights-filter-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .insight-row-title-line {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
   .insight-row-source-pill {
     max-width: 100%;
   }
@@ -10652,6 +10685,12 @@ body {
   margin-top: 0.5rem;
 }
 
+.insight-detail-meta > * + *::before {
+  content: "·";
+  margin-right: 0.65rem;
+  color: rgba(0, 0, 0, 0.22);
+}
+
 .insight-detail-meta a {
   color: inherit;
 }
@@ -10662,6 +10701,84 @@ body {
   font-size: 0.85rem;
   line-height: 1.6;
   letter-spacing: 0;
+}
+
+.insight-detail-tags {
+  margin-top: 0.65rem;
+}
+
+.insight-detail-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 2.5rem;
+}
+
+.insight-detail-nav-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.insight-detail-nav-link:hover {
+  background: #f8f9fb;
+  border-color: rgba(0, 0, 0, 0.14);
+}
+
+.insight-detail-nav-link--older {
+  text-align: right;
+}
+
+.insight-detail-nav-label {
+  font-size: 0.68rem;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.insight-detail-nav-title {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  color: rgba(0, 0, 0, 0.8);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.4;
+  transition: color 0.12s ease;
+}
+
+.insight-detail-nav-link:hover .insight-detail-nav-title {
+  color: var(--accent);
+}
+
+.insight-detail-back {
+  display: block;
+  margin-top: 1.5rem;
+  text-align: center;
+  color: var(--apple-blue);
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+.insight-detail-back:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .insight-detail-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .insight-detail-nav-link--older {
+    text-align: left;
+  }
 }
 
 .insight-share-trigger {
@@ -10721,12 +10838,34 @@ body {
   white-space: nowrap;
   color: rgba(0, 0, 0, 0.5);
   font-size: 0.75rem;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.insight-reader-bar--title-visible .insight-reader-bar-title {
+  opacity: 1;
+  transform: none;
 }
 
 .insight-reader-bar-actions {
   display: inline-flex;
   align-items: center;
   justify-self: end;
+}
+
+.insight-reader-progress {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 100%;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.1s linear;
+  pointer-events: none;
 }
 
 /* ── Reader body ── */
