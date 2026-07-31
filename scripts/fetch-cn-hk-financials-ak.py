@@ -14,19 +14,28 @@ to do the actual Prisma write. No separate checkpoint file here — this script
 is invoked once per company via onboard-company.ts, which already
 checkpoints at the orchestration level (.cache/onboard-company/<TICKER>.json).
 
-HK mapping is via akshare's stock_financial_hk_report_em(), which returns a
-stable numeric STD_ITEM_CODE per line item (verified identical across HK
-filers, e.g. "004001001" = revenue for both Pop Mart 09992 and Tencent
-00700) — see HK_ITEM_CODE_MAP below.
+HK mapping is via akshare's stock_financial_hk_report_em(). It returns a
+numeric STD_ITEM_CODE per line item, but those codes are NOT stable across
+industry templates: industrial companies (Pop Mart 09992, Tencent 00700)
+use "004xxx" codes, while insurers (PICC P&C 02328) and banks use "002xxx"
+codes — a code-keyed insurer import silently produced nothing but
+OperatingCashFlow. So mapping is keyed on STD_ITEM_NAME (the Chinese line
+item name) instead — see HK_ITEM_NAME_MAP below. After the fetch,
+REQUIRED_LINE_ITEMS coverage is checked per fiscal year: an item missing
+from EVERY year means a template mismatch (fail loudly); missing from some
+years only is a data gap (warn).
 
 CN mapping is via akshare's stock_financial_report_sina(), which returns a
 wide table with Chinese column headers and mixed quarterly+annual rows (no
 "indicator=年度" filter like the HK endpoint) — annual rows are isolated by
 filtering 报告日 ending in "1231". Column names verified against Moutai
-(600519) real public FY2024 figures — see CN_COLUMN_MAP below. No dedicated
-buyback column exists in this template, so ShareRepurchaseAmt is left
-unmapped for CN rather than guessed; GrossProfit is derived as 营业收入 -
-营业成本 (a standard identity, not a raw column).
+(600519) real public FY2024 figures — see CN_COLUMN_MAP below. The bank
+template (e.g. CMB 600036) names the same concepts differently (归属于母
+公司的净利润, 归属于母公司股东的权益) — both variants are mapped. No
+dedicated buyback column exists in either template, so ShareRepurchaseAmt
+is left unmapped for CN rather than guessed; GrossProfit is derived as
+营业收入 - 营业成本 (a standard identity, not a raw column; skipped for
+banks, which have no 营业成本).
 """
 
 from __future__ import annotations
@@ -40,43 +49,65 @@ from pathlib import Path
 import akshare as ak
 import pandas as pd
 
-# STD_ITEM_CODE -> Financial.lineItem, verified against scripts/lib/
+# STD_ITEM_NAME -> Financial.lineItem, verified against scripts/lib/
 # annual-report-import-core.ts's LINE_ITEMS (the same 12 keys the US SEC
-# import pipeline writes). Codes confirmed stable across HK filers.
-HK_ITEM_CODE_MAP: dict[str, str] = {
+# import pipeline writes). Names, not STD_ITEM_CODEs: codes differ across
+# industry templates (industrial "004xxx" vs insurer/bank "002xxx"), while
+# the core names are shared or aliased per template. Names verified against
+# Tencent 00700 (industrial template) and PICC P&C 02328 (insurer
+# template). Aliases for the same lineItem must not co-occur in one
+# template; "first hit wins" per (period, lineItem) resolves any overlap.
+HK_ITEM_NAME_MAP: dict[str, str] = {
     # 利润表 (income statement)
-    "004001001": "Revenue",
-    "004007999": "GrossProfit",
-    "004010999": "OperatingIncome",
-    "004025002": "NetIncome",  # attributable to shareholders, matches US convention
-    "004027002": "EPSBasic",
-    "004027003": "EPSDiluted",
+    "营业额": "Revenue",  # industrial template (004001001)
+    "经营收入总额": "Revenue",  # insurer template (002003999, incl. investment income)
+    "毛利": "GrossProfit",  # industrial only; insurers/banks have none
+    "经营溢利": "OperatingIncome",  # same name in both templates
+    "股东应占溢利": "NetIncome",  # attributable to shareholders, matches US convention
+    "每股基本盈利": "EPSBasic",
+    "每股摊薄盈利": "EPSDiluted",
     # 资产负债表 (balance sheet)
-    "004009999": "TotalAssets",
-    "004025999": "TotalLiabilities",
-    "004030999": "ShareholdersEquity",
+    "总资产": "TotalAssets",
+    "总负债": "TotalLiabilities",
+    "股东权益": "ShareholdersEquity",  # industrial: attributable (excl. 少数股东权益)
+    "归属于母公司股东权益": "ShareholdersEquity",  # insurer template
     # 现金流量表 (cash flow statement)
-    "003999": "OperatingCashFlow",
-    "005005": "CapEx",  # 购建固定资产
-    "007008": "ShareRepurchaseAmt",  # 回购股份
+    "经营业务现金净额": "OperatingCashFlow",
+    "购建固定资产": "CapEx",
+    "回购股份": "ShareRepurchaseAmt",  # see suspicious-repurchase check in check-all-company-financials.ts
 }
 
 HK_STATEMENTS = ["资产负债表", "利润表", "现金流量表"]
 
+# Line items every FY must have; anything else (GrossProfit, CapEx,
+# ShareRepurchaseAmt, EPS*) is legitimately absent for some industries.
+REQUIRED_LINE_ITEMS = [
+    "Revenue",
+    "NetIncome",
+    "TotalAssets",
+    "TotalLiabilities",
+    "ShareholdersEquity",
+    "OperatingCashFlow",
+]
+
 # Sina column name -> Financial.lineItem, verified against Moutai (600519)
 # FY2024 figures matching public filings (营业收入 ¥170.9B, 归属于母公司所有者
-# 的净利润 ¥86.2B, 基本每股收益 ¥68.64, 资产总计 ¥298.9B).
+# 的净利润 ¥86.2B, 基本每股收益 ¥68.64, 资产总计 ¥298.9B). The bank template
+# (verified against CMB 600036 FY2025) names net income and equity
+# differently — both variants are mapped.
 CN_COLUMN_MAP: dict[str, str] = {
     # 利润表 (income statement)
     "营业收入": "Revenue",
     "营业利润": "OperatingIncome",
     "归属于母公司所有者的净利润": "NetIncome",
+    "归属于母公司的净利润": "NetIncome",  # bank template
     "基本每股收益": "EPSBasic",
     "稀释每股收益": "EPSDiluted",
     # 资产负债表 (balance sheet)
     "资产总计": "TotalAssets",
     "负债合计": "TotalLiabilities",
     "所有者权益(或股东权益)合计": "ShareholdersEquity",
+    "归属于母公司股东的权益": "ShareholdersEquity",  # bank template
     # 现金流量表 (cash flow statement)
     "经营活动产生的现金流量净额": "OperatingCashFlow",
     "购建固定资产、无形资产和其他长期资产所支付的现金": "CapEx",
@@ -122,8 +153,8 @@ def fetch_hk_records(code: str) -> list[dict[str, object]]:
     for statement in HK_STATEMENTS:
         df = ak.stock_financial_hk_report_em(stock=code, symbol=statement, indicator="年度")
         for _, row in df.iterrows():
-            item_code = str(row.get("STD_ITEM_CODE", "")).strip()
-            line_item = HK_ITEM_CODE_MAP.get(item_code)
+            item_name = str(row.get("STD_ITEM_NAME", "")).strip()
+            line_item = HK_ITEM_NAME_MAP.get(item_name)
             if not line_item:
                 continue
             report_date = row.get("REPORT_DATE")
@@ -140,6 +171,33 @@ def fetch_hk_records(code: str) -> list[dict[str, object]]:
             records.append({"periodEnd": period_end, "lineItem": line_item, "value": amount})
 
     return records
+
+
+def check_completeness(records: list[dict[str, object]], code: str) -> None:
+    """Fail loudly on template mismatch (a required line item missing from
+    EVERY fiscal year), warn on partial gaps."""
+    by_year: dict[str, set[str]] = {}
+    for r in records:
+        by_year.setdefault(str(r["periodEnd"])[:4], set()).add(str(r["lineItem"]))
+
+    missing_every_year = [
+        item
+        for item in REQUIRED_LINE_ITEMS
+        if all(item not in items for items in by_year.values())
+    ]
+    if missing_every_year:
+        print(
+            f"ERROR: {code}: required line items missing from every fiscal year: "
+            f"{missing_every_year} — the source template for this industry is not "
+            f"covered by the item map. Do NOT import; extend the map first.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    for year in sorted(by_year):
+        missing = [item for item in REQUIRED_LINE_ITEMS if item not in by_year[year]]
+        if missing:
+            print(f"  warning: {code} FY{year} missing {missing}", file=sys.stderr)
 
 
 def fetch_cn_records(code: str, from_year: int) -> list[dict[str, object]]:
@@ -217,6 +275,8 @@ def main() -> int:
     if not records:
         print(f"No mapped line items returned for {args.code}", file=sys.stderr)
         return 1
+
+    check_completeness(records, args.code)
 
     out_dir = Path(args.out_dir)
     json_path = write_output(out_dir, args.code, records)

@@ -577,7 +577,7 @@ model Entity {
 
 #### 财务数据导入（`scripts/fetch-cn-hk-financials-ak.py` + `scripts/import-cn-hk-financials-from-file.ts`）
 
-两阶段：Python 用 akshare 拉数据 + 映射到 `LINE_ITEMS` + 写归一化 JSON，Node/Prisma 脚本读 JSON 写 `Financial`——照抄 `fetch-stock-prices-yf.py` → `import-stock-prices-from-file.ts` 的既有两阶段模式，不是新协调机制。港股映射用 `STD_ITEM_CODE` 数字码，A 股映射用 `CN_COLUMN_MAP` 中文列名（均见上）。`ExtSource` 新增 `kind: "akshare"`，`accessionNumber` 固定为 `"akshare-annual"` 做幂等键（重跑复用同一行，不是每次都新建）。
+两阶段：Python 用 akshare 拉数据 + 映射到 `LINE_ITEMS` + 写归一化 JSON，Node/Prisma 脚本读 JSON 写 `Financial`——照抄 `fetch-stock-prices-yf.py` → `import-stock-prices-from-file.ts` 的既有两阶段模式，不是新协调机制。港股映射用 `STD_ITEM_NAME` 中文科目名（`HK_ITEM_NAME_MAP`），不用 `STD_ITEM_CODE`——数字码按行业模板漂移（工商业是 `004xxx`，保险/银行是 `002xxx`，曾导致中国财险 2328 只导入经营现金流一项，2026-07-31 修复）；科目名跨模板共享或按模板设别名。A 股映射用 `CN_COLUMN_MAP` 中文列名，含银行模板别名（如 `归属于母公司的净利润`，见上）。导入前按 `REQUIRED_LINE_ITEMS` 做完整性检查：某科目全年份缺失=模板未覆盖，报错退出不导入；部分年份缺失只警告。`ExtSource` 新增 `kind: "akshare"`，`accessionNumber` 固定为 `"akshare-annual"` 做幂等键（重跑复用同一行，不是每次都新建）。
 
 #### 前端
 

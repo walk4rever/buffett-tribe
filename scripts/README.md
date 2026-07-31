@@ -302,7 +302,7 @@ npm run import:company-stock-prices:yf -- --batch-size 10 --start 2020-01-01
 
 - 文件：[fetch-cn-hk-financials-ak.py](/Users/rafael/R129/buffett-tribe/scripts/fetch-cn-hk-financials-ak.py)
 - 命令：`npm run import:cn-hk-financials`
-- 作用：用 `akshare` 拉取三大报表并映射到 `Financial`/`LINE_ITEMS`。**目前只实现港股**（`akshare.stock_financial_hk_report_em()` 的 `STD_ITEM_CODE` 是跨 filer 稳定的数字口径，已验证泡泡玛特 09992 与腾讯 00700 同一 code 对应同一科目）；A 股（`--market cn`）尚未实现映射表，会直接报错退出，不会导入未经验证的数据。
+- 作用：用 `akshare` 拉取三大报表并映射到 `Financial`/`LINE_ITEMS`。港股（`--market hk`）按 `STD_ITEM_NAME` 中文科目名映射（`STD_ITEM_CODE` 按行业模板漂移——工商业 `004xxx`、保险/银行 `002xxx`，不可做键）；A 股（`--market cn`）按 Sina 宽表中文列名映射，含银行模板列名别名。导入前按 `REQUIRED_LINE_ITEMS` 校验完整性：科目全年份缺失（=模板未覆盖）直接报错退出，不导入半成品数据。
 
 常用示例：
 

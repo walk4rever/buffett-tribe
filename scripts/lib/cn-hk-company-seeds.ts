@@ -120,4 +120,15 @@ export const CN_HK_SEEDS: Record<string, CnHkSeed> = {
     industry: "白酒",
     exchange: "深圳证券交易所",
   },
+  "2328.HK": {
+    market: "hk",
+    code: "02328",
+    currency: "CNY",
+    canonicalName: "PICC PROPERTY AND CASUALTY COMPANY LIMITED",
+    nameZh: "中国财险",
+    nameEnShort: "PICC P&C",
+    sector: "Financials",
+    industry: "财产保险",
+    exchange: "香港交易所",
+  },
 };
