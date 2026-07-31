@@ -1,1 +1,5 @@
 akshare==1.18.78
+pypdf==6.14.2
+# A-share annual-report PDFs use CID fonts whose ToUnicode maps pypdf
+# mis-decodes (garbled CJK); PyMuPDF extracts them correctly.
+PyMuPDF==1.28.0

@@ -7,6 +7,14 @@ import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 pdfjs.GlobalWorkerOptions.workerSrc =
   'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs';
 
+// Predefined CJK CID fonts (common in A-share/HK annual report PDFs) resolve
+// glyphs through external CMap files, not the embedded font program — without
+// these, pdf.js silently drops the Chinese text while digits/images (which
+// don't need a CMap) still render fine.
+const PDFJS_CDN_BASE = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38';
+const CMAP_URL = `${PDFJS_CDN_BASE}/cmaps/`;
+const STANDARD_FONT_DATA_URL = `${PDFJS_CDN_BASE}/standard_fonts/`;
+
 interface PdfViewerProps {
   url: string;
   title?: string;
@@ -275,7 +283,12 @@ export default function PdfViewer({ url, title, backHref }: PdfViewerProps) {
     setSidebarMode('thumbs');
 
     pdfjs
-      .getDocument(url)
+      .getDocument({
+        url,
+        cMapUrl: CMAP_URL,
+        cMapPacked: true,
+        standardFontDataUrl: STANDARD_FONT_DATA_URL,
+      })
       .promise.then(async (loadedDoc) => {
         if (cancelled) {
           loadedDoc.destroy();

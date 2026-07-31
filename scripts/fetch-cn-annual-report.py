@@ -44,6 +44,11 @@ import akshare as ak
 import requests
 from pypdf import PdfReader
 
+try:
+    import fitz  # PyMuPDF
+except ImportError:
+    fitz = None
+
 STATIC_BASE = "https://static.cninfo.com.cn/finalpage"
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
 TITLE_RE = re.compile(r"^.*?(\d{4})年?年度报告$")
@@ -97,19 +102,39 @@ def find_annual_reports(code: str, from_year: int) -> list[dict]:
     return found
 
 
-def download_pdf(url: str, dest: Path) -> None:
+def download_pdf(url: str, dest: Path) -> str:
+    """cninfo's static CDN is inconsistent about the PDF extension's case
+    per-filing (confirmed: 000568's 2024 annual report 404s as .PDF but
+    serves as .pdf) — the URL built from disclosure-list metadata guesses
+    uppercase, so fall back to the opposite case on 404. Returns the URL
+    that actually worked."""
     t0 = time.time()
     resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=60, stream=True)
+    if resp.status_code == 404 and url.endswith(".PDF"):
+        url = url[:-4] + ".pdf"
+        resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=60, stream=True)
     resp.raise_for_status()
     with open(dest, "wb") as f:
         for chunk in resp.iter_content(chunk_size=65536):
             f.write(chunk)
     print(f"  downloaded {dest.stat().st_size} bytes in {time.time() - t0:.1f}s", file=sys.stderr)
+    return url
+
+
+def extract_page_texts(pdf_path: Path) -> list[str]:
+    """PyMuPDF first: A-share annual-report PDFs use CID fonts whose
+    ToUnicode maps pypdf mis-decodes into garbage (same issue verified on
+    HK filings — see fetch-hk-annual-report.py). pypdf remains as a
+    fallback if PyMuPDF isn't installed."""
+    if fitz is not None:
+        with fitz.open(str(pdf_path)) as doc:
+            return [page.get_text() for page in doc]
+    reader = PdfReader(str(pdf_path))
+    return [page.extract_text() or "" for page in reader.pages]
 
 
 def extract_chunks(pdf_path: Path, chunk_count: int) -> list[str]:
-    reader = PdfReader(str(pdf_path))
-    page_texts = [page.extract_text() or "" for page in reader.pages]
+    page_texts = extract_page_texts(pdf_path)
     total_pages = len(page_texts)
     if total_pages == 0:
         return []
@@ -140,7 +165,7 @@ def main() -> int:
         pdf_path = out_dir / f"{args.code}_{report['periodYear']}.pdf"
         pdf_paths.append(pdf_path)
         print(f"Downloading FY{report['periodYear']}: {report['url']}")
-        download_pdf(report["url"], pdf_path)
+        actual_url = download_pdf(report["url"], pdf_path)
 
         print(f"  extracting text...")
         chunks = extract_chunks(pdf_path, CHUNK_COUNT)
@@ -149,7 +174,7 @@ def main() -> int:
         # the original PDF to R2, matching the HK annual report pipeline.
         results.append({
             "periodYear": report["periodYear"],
-            "url": report["url"],
+            "url": actual_url,
             "pdfPath": str(pdf_path),
             "chunks": chunks,
         })
