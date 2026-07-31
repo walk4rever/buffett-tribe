@@ -565,7 +565,6 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     radarCenter,
   );
   const radarRings = [0.25, 0.5, 0.75, 1];
-  const referenceArtifactCount = referenceFilings.reduce((sum, filing) => sum + filing.artifacts.length, 0);
   const initialTabId = typeof rawTab === "string" ? rawTab.trim() : "";
 
   return (
@@ -1020,7 +1019,6 @@ export default async function CompanyPage({ params, searchParams }: Props) {
           <section className="company-section" data-tab-panel="references">
             <div className="company-financial-trend-head">
               <h3>年度报告</h3>
-              <span>{referenceFilings.length ? `${referenceFilings.length} 份 filing · ${referenceArtifactCount} 个原始文件` : "暂无原始资料"}</span>
             </div>
             {referenceFilings.length ? (
               <div className="company-reference-list">
