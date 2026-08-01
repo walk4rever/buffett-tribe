@@ -11237,6 +11237,63 @@ body {
   background: #f5f5f7;
 }
 
+/* ── Insight article: docked AI panel ──
+   Only kicks in once InsightChatShell renders .insight-chat-row (desktop +
+   panel open); otherwise .insight-detail-page keeps its normal min-height:100vh
+   flow and .site-main scrolls it like any other page. */
+
+.insight-detail-page:has(.insight-chat-row) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.insight-detail-page:has(.insight-chat-row) .insight-detail-shell {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-width: 1180px;
+  /* .insight-detail-shell's normal clamp(1.5rem,4vw,2.5rem) top / 4rem bottom
+     padding is sized for a long-form article page — reserving that much
+     fixed vertical space here would just shrink the docked row and leave a
+     visible gap above/below both columns. The article's own padding
+     (below) recreates comfortable inner margins without reserving it twice. */
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.insight-chat-row {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+
+.insight-chat-article {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  max-width: 720px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2.5rem;
+  padding-bottom: 1.5rem;
+}
+
+/* .insight-reader-bar's sticky offset (top: var(--site-nav-height)) assumes
+   its scroll container starts right at the page top, below the fixed
+   SiteNav — true for .site-main, but .insight-chat-article is a nested
+   scroll box that already sits below SiteNav in the flex column, so that
+   offset would push the bar an extra site-nav-height down, stranding it
+   mid-content instead of flush against the top of the panel. */
+.insight-chat-article .insight-reader-bar {
+  top: 0;
+}
+
 @media (max-width: 760px) {
   .insights-shell,
   .insight-detail-shell {

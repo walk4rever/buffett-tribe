@@ -12,6 +12,10 @@ function buildContextPrefix(context: SessionContext | undefined): string | undef
     const yearHint = context.periodYear ? ` ${context.periodYear} 年` : "";
     return `[当前用户正在阅读${label}${yearHint}的年报原文。除非用户明确提到其他公司，围绕这家公司的年报内容、财务数据、风险因素展开分析；调用 search_filings 时用 "${context.ticker ?? context.companyName}" 作为 company 参数${context.periodYear ? `，year 参数用 ${context.periodYear}` : ""}。]`;
   }
+  if (context?.insightSlug) {
+    const titleLabel = context.insightTitle ? `《${context.insightTitle}》` : "";
+    return `[当前用户正在阅读洞见文章${titleLabel}（slug: ${context.insightSlug}）。需要原文中的具体表述、数据或段落细节时，调用 get_insight_content("${context.insightSlug}") 获取全文；仅凭标题回答不确定的问题前，先取原文核实。]`;
+  }
   return undefined;
 }
 

@@ -72,19 +72,31 @@ export function InsightReader({ title, content, format, backHref = "/insights", 
   const [titleVisible, setTitleVisible] = useState(false);
   const [progress, setProgress] = useState(0);
   useEffect(() => {
-    const scroller = document.querySelector(".site-main");
-    const onScroll = () => {
+    function computeFrom(scroller: Element | null) {
       const top = scroller ? scroller.scrollTop : window.scrollY;
       const max = scroller
         ? scroller.scrollHeight - scroller.clientHeight
         : document.documentElement.scrollHeight - window.innerHeight;
       setTitleVisible(top > 180);
       setProgress(max > 0 ? Math.min(1, top / max) : 0);
-    };
-    onScroll();
-    const target: Element | Window = scroller ?? window;
-    target.addEventListener("scroll", onScroll, { passive: true });
-    return () => target.removeEventListener("scroll", onScroll);
+    }
+
+    // The scroll container is .site-main normally, or .insight-chat-article
+    // once InsightChatShell docks the AI panel and turns the article into
+    // its own scroll box (see globals.css) — that swap happens after this
+    // effect's mount, so it can't be resolved once up front. `scroll`
+    // doesn't bubble, but capturing-phase listeners on an ancestor (here,
+    // document) still see it, so one listener covers whichever of the two
+    // is actually scrolling without needing to know which is current.
+    function onScroll(e: Event) {
+      const target = e.target;
+      if (!(target instanceof Element) || !target.matches(".site-main, .insight-chat-article")) return;
+      computeFrom(target);
+    }
+
+    computeFrom(document.querySelector(".insight-chat-article") ?? document.querySelector(".site-main"));
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    return () => document.removeEventListener("scroll", onScroll, true);
   }, []);
 
   return (

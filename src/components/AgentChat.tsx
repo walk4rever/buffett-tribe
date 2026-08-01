@@ -64,7 +64,8 @@ const SUGGESTIONS = [
 
 type AgentContext =
   | { masterId: string; masterName: string }
-  | { companyName: string; ticker?: string; periodYear?: number };
+  | { companyName: string; ticker?: string; periodYear?: number }
+  | { insightSlug: string; insightTitle: string };
 
 interface AgentChatProps {
   /** Scopes the conversation to a specific investor or filing page — the server keys

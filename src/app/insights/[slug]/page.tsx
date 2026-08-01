@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { SiteNav } from "@/components/SiteNav";
 import { InsightReader } from "@/components/InsightReader";
 import { InsightOverviewShareButton } from "@/components/InsightOverviewShareButton";
+import { InsightChatShell } from "@/components/InsightChatShell";
 import { extractInsightOverviewShareContent, isInsightFormat } from "@/lib/insights";
 
 export const dynamic = "force-dynamic";
@@ -31,78 +32,80 @@ export default async function InsightDetailPage({ params }: Props) {
     <div className="home-v2 insight-detail-page">
       <SiteNav />
       <main className="insight-detail-shell">
-        <header className="insight-detail-head">
-          <h1>{post.title}</h1>
-          <div className="insight-detail-meta">
-            <span>{post.sourceUrl ? <a href={post.sourceUrl} target="_blank" rel="noopener noreferrer">{post.source || "来源"}</a> : post.source || "Buffett Tribe"}</span>
-            {post.author && post.author !== post.source ? <span>{post.author}</span> : null}
-            <span>{dateLabel}</span>
-          </div>
-          {post.description ? <p className="insight-detail-desc">{post.description}</p> : null}
-          {post.tags.length > 0 ? (
-            <div className="insight-row-tags insight-detail-tags">
-              {post.tags.map((tag) => (
-                <span key={tag}>{tag}</span>
-              ))}
+        <InsightChatShell slug={post.slug} title={post.title}>
+          <header className="insight-detail-head">
+            <h1>{post.title}</h1>
+            <div className="insight-detail-meta">
+              <span>{post.sourceUrl ? <a href={post.sourceUrl} target="_blank" rel="noopener noreferrer">{post.source || "来源"}</a> : post.source || "Buffett Tribe"}</span>
+              {post.author && post.author !== post.source ? <span>{post.author}</span> : null}
+              <span>{dateLabel}</span>
             </div>
-          ) : null}
-        </header>
+            {post.description ? <p className="insight-detail-desc">{post.description}</p> : null}
+            {post.tags.length > 0 ? (
+              <div className="insight-row-tags insight-detail-tags">
+                {post.tags.map((tag) => (
+                  <span key={tag}>{tag}</span>
+                ))}
+              </div>
+            ) : null}
+          </header>
 
-        <InsightReader
-          title={post.title}
-          content={post.contentRaw}
-          format={format}
-          actions={(
-            <InsightOverviewShareButton
-              title={post.title}
-              source={post.source}
-              dateLabel={dateLabel}
-              overviewTitle={overview.title}
-              overviewMarkdown={overview.markdown}
-            />
+          <InsightReader
+            title={post.title}
+            content={post.contentRaw}
+            format={format}
+            actions={(
+              <InsightOverviewShareButton
+                title={post.title}
+                source={post.source}
+                dateLabel={dateLabel}
+                overviewTitle={overview.title}
+                overviewMarkdown={overview.markdown}
+              />
+            )}
+          />
+
+          {relatedEntities.length > 0 && (
+            <aside className="insight-related-entities">
+              <h2 className="insight-related-entities-title">相关公司</h2>
+              <div className="insight-related-entities-list">
+                {relatedEntities.map((entity) => {
+                  const meta = (entity.metadata ?? {}) as { nameZh?: string };
+                  const nameZh = meta.nameZh ?? entity.canonicalName;
+                  const href = entity.cik ? `/company/cik-${entity.cik}` : null;
+                  const ticker = entity.ticker ?? entity.code;
+                  return href ? (
+                    <a key={entity.id} href={href} className="insight-entity-chip">
+                      {ticker && <span className="insight-entity-ticker">{ticker}</span>}
+                      <span>{nameZh}</span>
+                    </a>
+                  ) : (
+                    <span key={entity.id} className="insight-entity-chip">
+                      {ticker && <span className="insight-entity-ticker">{ticker}</span>}
+                      <span>{nameZh}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            </aside>
           )}
-        />
 
-        {relatedEntities.length > 0 && (
-          <aside className="insight-related-entities">
-            <h2 className="insight-related-entities-title">相关公司</h2>
-            <div className="insight-related-entities-list">
-              {relatedEntities.map((entity) => {
-                const meta = (entity.metadata ?? {}) as { nameZh?: string };
-                const nameZh = meta.nameZh ?? entity.canonicalName;
-                const href = entity.cik ? `/company/cik-${entity.cik}` : null;
-                const ticker = entity.ticker ?? entity.code;
-                return href ? (
-                  <a key={entity.id} href={href} className="insight-entity-chip">
-                    {ticker && <span className="insight-entity-ticker">{ticker}</span>}
-                    <span>{nameZh}</span>
-                  </a>
-                ) : (
-                  <span key={entity.id} className="insight-entity-chip">
-                    {ticker && <span className="insight-entity-ticker">{ticker}</span>}
-                    <span>{nameZh}</span>
-                  </span>
-                );
-              })}
-            </div>
-          </aside>
-        )}
-
-        <nav className="insight-detail-nav" aria-label="文章导航">
-          {adjacent.newer ? (
-            <Link href={`/insights/${adjacent.newer.slug}`} className="insight-detail-nav-link">
-              <span className="insight-detail-nav-label">← 较新一篇</span>
-              <span className="insight-detail-nav-title">{adjacent.newer.title}</span>
-            </Link>
-          ) : <span />}
-          {adjacent.older ? (
-            <Link href={`/insights/${adjacent.older.slug}`} className="insight-detail-nav-link insight-detail-nav-link--older">
-              <span className="insight-detail-nav-label">较早一篇 →</span>
-              <span className="insight-detail-nav-title">{adjacent.older.title}</span>
-            </Link>
-          ) : <span />}
-        </nav>
-        <Link href="/insights" className="insight-detail-back">← 返回洞见列表</Link>
+          <nav className="insight-detail-nav" aria-label="文章导航">
+            {adjacent.newer ? (
+              <Link href={`/insights/${adjacent.newer.slug}`} className="insight-detail-nav-link">
+                <span className="insight-detail-nav-label">← 较新一篇</span>
+                <span className="insight-detail-nav-title">{adjacent.newer.title}</span>
+              </Link>
+            ) : <span />}
+            {adjacent.older ? (
+              <Link href={`/insights/${adjacent.older.slug}`} className="insight-detail-nav-link insight-detail-nav-link--older">
+                <span className="insight-detail-nav-label">较早一篇 →</span>
+                <span className="insight-detail-nav-title">{adjacent.older.title}</span>
+              </Link>
+            ) : <span />}
+          </nav>
+          <Link href="/insights" className="insight-detail-back">← 返回洞见列表</Link>
+        </InsightChatShell>
       </main>
     </div>
   );

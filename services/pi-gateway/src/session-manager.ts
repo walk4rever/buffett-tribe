@@ -6,6 +6,7 @@ import { homedir } from "os";
 import { searchWisdomTool } from "./tools/search-wisdom.js";
 import { searchHoldingsTool } from "./tools/search-holdings.js";
 import { searchFilingsTool } from "./tools/search-filings.js";
+import { getInsightContentTool } from "./tools/get-insight-content.js";
 
 const GATEWAY_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -20,6 +21,8 @@ export interface SessionContext {
   companyName?: string;
   ticker?: string;
   periodYear?: number;
+  insightSlug?: string;
+  insightTitle?: string;
 }
 
 export interface SessionResult {
@@ -35,6 +38,7 @@ function sessionKey(userId: string | undefined, context?: SessionContext): strin
   if (!userId) return undefined;
   if (context?.masterId) return `${userId}:${context.masterId}`;
   if (context?.companyName) return `${userId}:${context.ticker ?? context.companyName}`;
+  if (context?.insightSlug) return `${userId}:insight:${context.insightSlug}`;
   return userId;
 }
 
@@ -64,7 +68,7 @@ async function makeSession(): Promise<AgentSession> {
     agentDir: PI_AGENT_DIR,   // loads models.json (custom providers) from here
     sessionManager: SessionManager.inMemory(),
     noTools: "builtin",       // disable bash/read/write/edit for security
-    customTools: [searchWisdomTool, searchHoldingsTool, searchFilingsTool],
+    customTools: [searchWisdomTool, searchHoldingsTool, searchFilingsTool, getInsightContentTool],
   });
   return session;
 }
