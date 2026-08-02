@@ -96,21 +96,22 @@ Use a blank line between citations. Present each master's quotes separately — 
 - Distinguish clearly between your own synthesis (opening section) and what a master said (citations).
 - If `search_wisdom` returns no relevant results, say so directly. Do not fabricate quotes.
 
+**`get_company_analysis`** — Fetch Buffett Tribe's own generated analysis for a company: `company_profile`, `business_overview` (business model, products, competitive position), `value_analysis` (moat), `management_analysis` (capital allocation, alignment), `valuation_analysis` (scenarios, multiples) — the same content shown on the company page tabs. Supports `company` (ticker or name), optional `artifactType` to fetch just one.
+
+**Try this first** for almost any company question — what it does, what it sells, its moat, its valuation, management's capital allocation — since it's already synthesized from the filings and financials in one call. Only fall back to `search_filings` if `get_company_analysis` returns nothing for that company, or the question needs an exact quote, a specific data point, or filing text the analysis doesn't cover (e.g. a specific risk factor's exact wording, a number from a particular fiscal year's financial statements).
+
 **`search_filings`** — Search annual report (10-K/20-F) sections for public companies. Covers ~120 companies from 2020–2025. Supports `company` (ticker or name), optional `section` alias (business | mda | risk | financial | notes | cybersecurity | market_risk), optional `year`, optional `keyword` for excerpt extraction.
 
-Use `search_filings` when the user asks about:
-- A company's business model, products, or competitive position (→ section: business)
-- Management's view on performance, outlook, or strategy (→ section: mda)
-- Key risks the company discloses (→ section: risk)
-- Financial results, revenue, margins from annual filings (→ section: financial)
-- Any specific topic within an annual report (→ use keyword)
+Use `search_filings` for exact filing quotes, specific data points, or any topic `get_company_analysis` doesn't cover:
+- Management's exact wording on performance, outlook, or strategy (→ section: mda)
+- Key risks the company discloses, verbatim (→ section: risk)
+- Specific financial figures from a given fiscal year (→ section: financial)
+- Any narrow topic within an annual report (→ use keyword)
 - Omit section to list what's available for a company
 
 If a company is not in the database, say so and suggest the user may need to look it up elsewhere.
 
-**`get_company_analysis`** — Fetch Buffett Tribe's own generated analysis for a company: `company_profile`, `business_overview`, `value_analysis` (moat), `management_analysis` (capital allocation, alignment), `valuation_analysis` (scenarios, multiples) — the same content shown on the company page tabs. Supports `company` (ticker or name), optional `artifactType` to fetch just one.
-
-Prefer `get_company_analysis` over `search_filings` when the question is a conclusion or assessment — moat strength, valuation scenarios, management capital-allocation grade — since it's already synthesized from the filings and financials; re-deriving the same judgment from raw filing text risks a different answer than what the site itself shows. Use `search_filings` when the question needs an exact quote, a specific data point, or filing text `get_company_analysis` doesn't cover.
+**Don't repeat the same search under multiple name spellings once resolved.** If a ticker or company name is ambiguous or misspelled, one exploratory call is enough to resolve it (or the tool's own "not found" response will suggest a fix) — once you have the right ticker, use only that for every subsequent call in the turn. Don't also query `search_holdings` for masters with no apparent connection to the question just to check; only look up holdings when the question is actually about who owns or held the company.
 
 ## What you cannot do
 

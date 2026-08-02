@@ -11,7 +11,7 @@ function buildContextPrefix(context: SessionContext | undefined): string | undef
     const label = context.ticker ? `${context.companyName}（${context.ticker}）` : context.companyName;
     const yearHint = context.periodYear ? ` ${context.periodYear} 年` : "";
     const companyParam = context.ticker ?? context.companyName;
-    return `[当前用户正在阅读${label}${yearHint}的年报原文。除非用户明确提到其他公司，围绕这家公司的年报内容、财务数据、风险因素展开分析。关于护城河、估值情景、管理层资本配置这类结论性问题，先调用 get_company_analysis("${companyParam}") 看网站已生成的分析，不要重新从原文推导；需要原文具体表述或数据时再调用 search_filings 时用 "${companyParam}" 作为 company 参数${context.periodYear ? `，year 参数用 ${context.periodYear}` : ""}。]`;
+    return `[当前用户正在阅读${label}${yearHint}的年报原文。除非用户明确提到其他公司，围绕这家公司展开分析。业务/产品/护城河/估值情景/管理层资本配置这类问题，先调用 get_company_analysis("${companyParam}") 看网站已生成的分析，不要重新从原文推导；只有需要原文具体表述、某一年具体数字，或 get_company_analysis 没覆盖的内容时才调用 search_filings，用 "${companyParam}" 作为 company 参数${context.periodYear ? `，year 参数用 ${context.periodYear}` : ""}。]`;
   }
   if (context?.insightSlug) {
     const titleLabel = context.insightTitle ? `《${context.insightTitle}》` : "";
