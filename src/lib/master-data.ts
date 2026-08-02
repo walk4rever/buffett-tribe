@@ -39,6 +39,122 @@ export async function getAvailableQuarters(tribeId: string): Promise<QuarterPoin
   }
 }
 
+const BENEFICIAL_OWNERSHIP_KINDS = ["sc13d", "sc13d-a", "sc13g", "sc13g-a"] as const;
+
+export type BeneficialOwnershipFiling = {
+  id: string;
+  kind: (typeof BENEFICIAL_OWNERSHIP_KINDS)[number];
+  filedAt: Date | null;
+  filingUrl: string | null;
+  issuerName: string;
+  issuerTicker: string | null;
+  percentOfClass: number | null;
+  sharesOwned: string | null; // BigInt serialized to string for client components
+  isGroupFiling: boolean;
+  // The filer's current 13F portfolio weight in this same issuer, if that
+  // position shows up in their latest 13F at all (see cross-reference note below).
+  currentPortfolioPct: number | null;
+  issuer: {
+    id: string;
+    cik: string | null;
+    market: string | null;
+    code: string | null;
+    canonicalName: string;
+    nameZh: string | null;
+  } | null;
+};
+
+// Event-triggered (not quarterly) beneficial-ownership disclosures — 13D/13D-A/13G/13G-A —
+// distinct from the 13F portfolio snapshot above: these report % of the ISSUER's share
+// class, not % of the filer's own portfolio. See BeneficialOwnership model comment.
+//
+// Cross-referenced against the filer's most recent 13F Holding for the same issuer
+// (matched by companyEntityId) so the UI can show whether a disclosed stake still shows
+// up in the current 13F at all — 13F only lists positions above SEC's reporting
+// threshold, so a 13D/13G stake can legitimately disappear from it (different account,
+// short position hedge, etc.), which is itself a useful signal to surface, not just a gap.
+export async function getBeneficialOwnershipFilings(
+  tribeId: string,
+  limit?: number,
+): Promise<BeneficialOwnershipFiling[]> {
+  try {
+    const sources = await db.extSource.findMany({
+      where: { filer: { is: { tribeId } }, kind: { in: [...BENEFICIAL_OWNERSHIP_KINDS] } },
+      select: {
+        id: true,
+        kind: true,
+        filedAt: true,
+        url: true,
+        beneficialOwnership: {
+          select: {
+            issuerName: true,
+            issuerTicker: true,
+            percentOfClass: true,
+            sharesOwned: true,
+            isGroupFiling: true,
+            issuer: {
+              select: { id: true, cik: true, market: true, code: true, canonicalName: true, metadata: true },
+            },
+          },
+        },
+      },
+      orderBy: { filedAt: "desc" },
+      take: limit,
+    });
+
+    const filings = sources.filter(
+      (s): s is typeof s & { beneficialOwnership: NonNullable<typeof s.beneficialOwnership> } =>
+        s.beneficialOwnership != null,
+    );
+
+    const issuerEntityIds = [...new Set(filings.map((s) => s.beneficialOwnership.issuer?.id).filter((x): x is string => !!x))];
+    const portfolioPctByEntity = new Map<string, number>();
+    if (issuerEntityIds.length > 0) {
+      const holdings = await db.holding.findMany({
+        where: { holder: { tribeId }, security: { companyEntityId: { in: issuerEntityIds } } },
+        select: { percentOfPortfolio: true, asOfDate: true, security: { select: { companyEntityId: true } } },
+        orderBy: { asOfDate: "desc" },
+      });
+      // First hit per companyEntityId wins — rows are already ordered by asOfDate desc, so that's the latest quarter.
+      for (const h of holdings) {
+        const companyEntityId = h.security?.companyEntityId;
+        if (!companyEntityId || h.percentOfPortfolio == null || portfolioPctByEntity.has(companyEntityId)) continue;
+        portfolioPctByEntity.set(companyEntityId, h.percentOfPortfolio);
+      }
+    }
+
+    return filings.map((s) => {
+      const bo = s.beneficialOwnership;
+      const meta = (bo.issuer?.metadata ?? null) as { nameZh?: string } | null;
+      return {
+        id: s.id,
+        kind: s.kind as BeneficialOwnershipFiling["kind"],
+        filedAt: s.filedAt,
+        filingUrl: s.url,
+        issuerName: bo.issuerName,
+        issuerTicker: bo.issuerTicker,
+        percentOfClass: bo.percentOfClass,
+        sharesOwned: bo.sharesOwned != null ? bo.sharesOwned.toString() : null,
+        isGroupFiling: bo.isGroupFiling,
+        currentPortfolioPct: bo.issuer ? portfolioPctByEntity.get(bo.issuer.id) ?? null : null,
+        issuer: bo.issuer
+          ? {
+              id: bo.issuer.id,
+              cik: bo.issuer.cik,
+              market: bo.issuer.market,
+              code: bo.issuer.code,
+              canonicalName: bo.issuer.canonicalName,
+              nameZh: meta?.nameZh ?? null,
+            }
+          : null,
+      };
+    });
+  } catch (err) {
+    logDbFallback("getBeneficialOwnershipFilings", err);
+    return [];
+  }
+}
+
 export async function getHoldingsByQuarter(tribeId: string, year: number, quarter: number) {
   try {
     const rows = await db.holding.findMany({

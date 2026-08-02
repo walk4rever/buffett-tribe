@@ -169,18 +169,19 @@ model Entity {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  financials             Financial[]
-  filingSections         FilingSection[]
-  filingAttachments      FilingAttachment[]
-  holdingsAsHolder       Holding[]               @relation("HolderEntity")
-  securitiesAsCompany    Security[]              @relation("SecurityCompany")
-  extSourcesAsFiler      ExtSource[]
-  analyses               CompanyAnalysis[]
-  businessCanvas         BusinessCanvas?
-  businessCanvasVersions BusinessCanvasVersion[]
-  profile                MasterProfile?
-  filerAsFiler           Filer?                  @relation("FilerFilerEntity")
-  filerAsCompany         Filer?                  @relation("FilerCompanyEntity")
+  financials                  Financial[]
+  filingSections              FilingSection[]
+  filingAttachments           FilingAttachment[]
+  holdingsAsHolder            Holding[]               @relation("HolderEntity")
+  securitiesAsCompany         Security[]              @relation("SecurityCompany")
+  extSourcesAsFiler           ExtSource[]
+  analyses                    CompanyAnalysis[]
+  businessCanvas              BusinessCanvas?
+  businessCanvasVersions      BusinessCanvasVersion[]
+  profile                     MasterProfile?
+  filerAsFiler                Filer?                  @relation("FilerFilerEntity")
+  filerAsCompany              Filer?                  @relation("FilerCompanyEntity")
+  beneficialOwnershipAsIssuer BeneficialOwnership[]
 
   @@index([type])
   @@index([ticker])
@@ -229,7 +230,7 @@ model Security {
 
 model ExtSource {
   id              String    @id @default(cuid())
-  kind            String // '10k' | '10q' | '13f' | 'xbrl' | 'price'
+  kind            String // '10k' | '10q' | '13f' | 'xbrl' | 'price' | 'sc13d' | 'sc13d-a' | 'sc13g' | 'sc13g-a'
   url             String?
   ts              DateTime?
   periodYear      Int? // e.g. 2025 — calendar year of the reporting period
@@ -240,17 +241,47 @@ model ExtSource {
   metadata        Json? // 扩展：完整的 SEC filing 元数据（accession、form、fileNumber、filmNumber、size、isXBRL、primaryDocument、acceptanceDateTime、act 等）
   createdAt       DateTime  @default(now())
 
-  filer       Entity?            @relation(fields: [filerEntityId], references: [id], onDelete: SetNull)
-  financials  Financial[]
-  holdings    Holding[]
-  sections    FilingSection[]
-  attachments FilingAttachment[]
-  artifacts   FilingArtifact[]
+  filer                 Entity?                      @relation(fields: [filerEntityId], references: [id], onDelete: SetNull)
+  financials            Financial[]
+  holdings              Holding[]
+  sections              FilingSection[]
+  attachments           FilingAttachment[]
+  artifacts             FilingArtifact[]
   sectionExtractionJobs FilingSectionExtractionJob[]
+  beneficialOwnership   BeneficialOwnership?
 
   @@unique([filerEntityId, accessionNumber], name: "ExtSource_filer_accession_unique")
   @@index([kind, ts])
   @@index([filerEntityId])
+}
+
+// Schedule 13D / 13D-A / 13G / 13G-A beneficial-ownership disclosures — event-triggered
+// (crossing a 5%/10% threshold), distinct from Holding's quarterly 13F snapshot: this
+// reports % of the ISSUER's share class, not % of the filer's own portfolio. One row per
+// filing, for the tracked filer's own reported stake only (not other members of a joint
+// group filing — see ExtSource.metadata for the full raw payload if needed later).
+model BeneficialOwnership {
+  id                     String    @id @default(cuid())
+  sourceId               String    @unique
+  issuerEntityId         String? // matched by Entity.cik when the issuer is already onboarded; null otherwise
+  issuerCik              String
+  issuerName             String
+  issuerTicker           String?
+  securitiesClassTitle   String?
+  eventDate              DateTime? // dateOfEvent / eventDateRequiresFilingThisStatement
+  sharesOwned            BigInt?
+  percentOfClass         Float?
+  soleVotingPower        BigInt?
+  sharedVotingPower      BigInt?
+  soleDispositivePower   BigInt?
+  sharedDispositivePower BigInt?
+  isGroupFiling          Boolean   @default(false)
+  createdAt              DateTime  @default(now())
+
+  source ExtSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  issuer Entity?   @relation(fields: [issuerEntityId], references: [id], onDelete: SetNull)
+
+  @@index([issuerCik])
 }
 
 model FilingSectionExtractionJob {
@@ -325,8 +356,8 @@ model FilingSection {
 
   extractedAt DateTime @default(now())
 
-  entity Entity    @relation(fields: [entityId], references: [id], onDelete: Cascade)
-  source ExtSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  entity         Entity          @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  source         ExtSource       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   textArtifact   FilingArtifact? @relation("FilingSectionTextArtifact", fields: [textArtifactId], references: [id], onDelete: SetNull)
   blocksArtifact FilingArtifact? @relation("FilingSectionBlocksArtifact", fields: [blocksArtifactId], references: [id], onDelete: SetNull)
   htmlArtifact   FilingArtifact? @relation("FilingSectionHtmlArtifact", fields: [htmlArtifactId], references: [id], onDelete: SetNull)
@@ -373,7 +404,7 @@ model FilingArtifact {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  source ExtSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  source            ExtSource       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   textForSections   FilingSection[] @relation("FilingSectionTextArtifact")
   blocksForSections FilingSection[] @relation("FilingSectionBlocksArtifact")
   htmlForSections   FilingSection[] @relation("FilingSectionHtmlArtifact")

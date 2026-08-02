@@ -10301,6 +10301,21 @@ body {
   text-transform: uppercase;
 }
 
+/* ── Beneficial ownership disclosures (13D/13G) — reuses .holdings-table,
+   just a badge color variant to distinguish activist (13D) from passive
+   (13G) filings at a glance, plus a muted note when a disclosed stake
+   doesn't show up in the filer's current 13F at all ── */
+.ownership-badge--activist {
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+}
+
+.ownership-not-in-13f {
+  color: var(--graphite-text-secondary);
+  font-size: 0.82em;
+  font-style: italic;
+}
+
 .document-card-title {
   margin: 0;
   font-size: 1rem;

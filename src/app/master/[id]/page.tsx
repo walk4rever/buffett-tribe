@@ -11,10 +11,12 @@ import { getMasterProfile } from "@/lib/master-profile";
 import {
   formatShares,
   formatValueUsd,
+  getBeneficialOwnershipFilings,
   getHoldingsByQuarter,
   getLatestHoldingChangeSet,
   getMasterClassSummary,
   getPortfolioInsightRecord,
+  type BeneficialOwnershipFiling,
 } from "@/lib/master-data";
 
 export const revalidate = 300; // cache 5 min - holdings/letters update infrequently
@@ -52,6 +54,18 @@ function formatPriceFromValueAndShares(valueUsd: bigint | null, shares: bigint |
   const s = Number(shares);
   if (!Number.isFinite(v) || !Number.isFinite(s) || s <= 0) return "-";
   return `$${(v / s).toFixed(2)}`;
+}
+
+const OWNERSHIP_KIND_LABEL: Record<BeneficialOwnershipFiling["kind"], string> = {
+  sc13d: "13D",
+  "sc13d-a": "13D/A",
+  sc13g: "13G",
+  "sc13g-a": "13G/A",
+};
+
+function formatFiledDate(d: Date | null) {
+  if (!d) return "-";
+  return new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
 }
 
 function formatSignedPct(diffPct: number | null) {
@@ -255,10 +269,11 @@ export default async function PersonHubPage({ params }: Props) {
   const member = getTribeMember(id);
   if (!member) notFound();
 
-  const [masterClass, changeSet, profileResult] = await Promise.all([
+  const [masterClass, changeSet, profileResult, beneficialOwnership] = await Promise.all([
     getMasterClassSummary(id),
     getLatestHoldingChangeSet(id),
     getMasterProfile(id),
+    getBeneficialOwnershipFilings(id, 24),
   ]);
 
   const fallback = FALLBACK_BRIEF[id] ?? genericFallback(member);
@@ -825,6 +840,82 @@ export default async function PersonHubPage({ params }: Props) {
             </>
           ) : (
             <p className="person-empty">暂无持仓数据。</p>
+          )}
+        </section>
+
+        <section className="person-section" id="ownership">
+          <div className="person-section-head">
+            <h2 className="person-section-title">重大持仓披露</h2>
+          </div>
+          {beneficialOwnership.length > 0 ? (
+            <div className="holdings-table-wrap holdings-table-wrap--fit person-holdings-table-wrap">
+              <table className="holdings-table holdings-table--fit person-holdings-table">
+                <thead>
+                  <tr>
+                    <th className="holdings-th">类型<br /><span className="holdings-th-en">Type</span></th>
+                    <th className="holdings-th">标的公司<br /><span className="holdings-th-en">Issuer</span></th>
+                    <th className="holdings-th holdings-th--num">占标的公司<br /><span className="holdings-th-en">% of Class</span></th>
+                    <th className="holdings-th holdings-th--num">当前13F占比<br /><span className="holdings-th-en">% of 13F Portfolio</span></th>
+                    <th className="holdings-th holdings-th--num">申报日期<br /><span className="holdings-th-en">Filed</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {beneficialOwnership.map((f) => {
+                    const href = f.issuer ? formatCompanyUrl(f.issuer) : null;
+                    const isActivist = f.kind === "sc13d" || f.kind === "sc13d-a";
+                    const displayZh = f.issuer?.nameZh?.trim() || f.issuerName;
+                    const companyNode = f.issuer ? (
+                      <CompanyDisplayName
+                        zhName={displayZh}
+                        enName={f.issuer.canonicalName}
+                        ticker={f.issuerTicker}
+                        compact
+                      />
+                    ) : (
+                      <span className="holdings-company">
+                        {f.issuerName}
+                        {f.issuerTicker ? <em> {f.issuerTicker}</em> : null}
+                      </span>
+                    );
+                    return (
+                      <tr key={f.id} className="holdings-row">
+                        <td className="holdings-td">
+                          <span
+                            className={`document-card-badge ownership-badge${isActivist ? " ownership-badge--activist" : ""}`}
+                          >
+                            {OWNERSHIP_KIND_LABEL[f.kind]}
+                          </span>
+                        </td>
+                        <td className="holdings-td holdings-td--name">
+                          {href ? (
+                            <Link href={href}>{companyNode}</Link>
+                          ) : f.filingUrl ? (
+                            <a href={f.filingUrl} target="_blank" rel="noopener noreferrer">
+                              {companyNode}
+                            </a>
+                          ) : (
+                            companyNode
+                          )}
+                        </td>
+                        <td className="holdings-td holdings-td--num">
+                          {f.percentOfClass != null ? `${f.percentOfClass.toFixed(1)}%` : "-"}
+                        </td>
+                        <td className="holdings-td holdings-td--num">
+                          {f.currentPortfolioPct != null ? (
+                            `${f.currentPortfolioPct.toFixed(2)}%`
+                          ) : (
+                            <span className="ownership-not-in-13f">未见于13F</span>
+                          )}
+                        </td>
+                        <td className="holdings-td holdings-td--num">{formatFiledDate(f.filedAt)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="person-empty">暂无披露数据。</p>
           )}
         </section>
       </div>

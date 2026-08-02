@@ -21,6 +21,7 @@
     "pipeline:13f": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/pipeline-13f.ts",
     "data:13f": "npm run pipeline:13f --",
     "import:13f:range": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-13f-edgartools.ts --from 2024Q1 --to 2025Q4",
+    "import:beneficial-ownership": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-beneficial-ownership.ts",
     "import:10k": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-10k-edgartools.ts",
     "verify:10k:edgartools": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/verify-10k-edgartools.ts",
     "import:10k:all": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-all-10k-edgartools.ts",
