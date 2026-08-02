@@ -20,9 +20,16 @@ if [[ "$RESTART_ONLY" == false ]]; then
   bash "${SCRIPT_DIR}/scripts/sync-shared-lib.sh"
 
   echo "→ Syncing files to ${REMOTE}:${REMOTE_DIR} ..."
+  # .pi-agent is excluded like .env: the committed models.json under
+  # services/pi-gateway/.pi-agent/ is a local-dev template with a
+  # FILL_IN_DEEPSEEK_API_KEY placeholder and no settings.json. Without this
+  # exclude, --delete overwrites production's real key + defaultProvider
+  # config with that placeholder on every deploy (found 2026-08-02 debugging
+  # why the agent silently produced no output in prod).
   rsync -az --delete \
     --exclude='node_modules' \
     --exclude='.env' \
+    --exclude='.pi-agent' \
     --exclude='*.log' \
     "${SCRIPT_DIR}/" "${REMOTE}:${REMOTE_DIR}/"
 
