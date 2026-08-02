@@ -61,12 +61,11 @@ Agent 是核心入口。三层知识驱动 Agent 自主决定如何回答：
 /master   大师             核心大师（巴菲特、李录、段永平）的资料、持仓
 /company  公司             任意一家公司的研究画布（6 Tab Canvas）
 /insights 投资洞见         播客 / 栏目文章，按来源过滤
-/idea     对话研究室        旧版对话入口，待迁移或下线
 ```
 
 ### /master — 大师
 
-价值投资大师的原始资料库：股东信、合伙人信、演讲、访谈。每位大师有独立页面，展示材料列表与 13F 持仓快照。材料全文可阅读，可跳转到 /idea 继续追问。
+价值投资大师的原始资料库：股东信、合伙人信、演讲、访谈。每位大师有独立页面，展示材料列表与 13F 持仓快照。材料全文可阅读。
 
 Alpha 投资人作为独立分类展示，不进入核心大师主导航。第一位 Alpha master 是 Gavin Baker / Atreides Management, LP，用于承载科技成长、AI、半导体、crossover 等现代投资风格；第二位是 Alex Sacerdote / Whale Rock Capital Management（科技成长）。Alpha 投资人有 master 页与 13F 持仓页，但没有 wisdom 资料内容（`Filer.isMasterPersona = false`）；其持仓页需要明确说明 13F 不代表完整组合。
 
@@ -102,9 +101,9 @@ Agent 由 pi-gateway（Express SSE，air7，PM2）驱动，使用 `@earendil-wor
 
 AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投研定位、三工具用法、回答格式（分析 + 引用分层）。
 
-### /idea — 对话研究室（旧版）
+### /idea — 对话研究室（旧版，已下线）
 
-旧版对话界面，左侧对话 + 右侧公司 Canvas 联动。待迁移或下线，现阶段保留不动。
+旧版对话界面，左侧对话 + 右侧公司 Canvas 联动。2026-08-02 确认导航已无入口、全站无其他引用，页面、`IdeaWorkspace`、`/api/chat*`、`src/lib/chat.ts` 均已删除。`ChatUsage`/`ChatMessage` 表结构保留未做 migration，避免连带丢失历史数据。`src/lib/search.ts`（`searchChunks`）与其依赖的 `Chunk`/`Source` 表未受影响——它们仍在为 `/api/mcp`（对外 MCP server 的 `search` 工具）提供检索，与 /idea 无关。
 
 ---
 
@@ -684,7 +683,6 @@ Apple HIG 精简风格：
 /company/[cik]/annual-report  年度报告默认入口（跳转到最新可读年份）
 /company/[cik]/annual-report/[year]  年度报告阅读
 /insights           投资洞见（文章列表，?source= 按栏目过滤）
-/idea               对话研究室（旧版，保留待迁移）
 /login              登录
 /reset-password     重置密码
 /documents/*        PDF 全屏阅读器（年度会议、书籍、演讲、文章）
@@ -880,7 +878,7 @@ Apple HIG 精简风格：
 | Company Brain 写回（Claim） | ❌ 已从计划移除（2026-07-17 决策：方向未想清楚，暂不做） |
 | 数字人 / 语音实验 | ❌ 已下线（2026-06-11 范围收缩） |
 | 持仓数据更新 | 🟡 以季度批处理为主 |
-| /idea 对话研究室 | 🟡 旧版保留，待迁移或下线 |
+| /idea 对话研究室 | ❌ 已下线（2026-08-02，代码已清理，见「/idea — 对话研究室」一节）|
 
 ### 已完成基础能力
 
