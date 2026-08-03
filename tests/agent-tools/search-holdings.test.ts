@@ -6,12 +6,18 @@
 // quarter to quarter.
 //
 // Requires DIRECT_URL. Skips (not fails) when it isn't set.
-import { describe, expect, it } from "vitest";
-import { searchHoldingsTool } from "../../services/pi-gateway/src/tools/search-holdings.js";
+import { beforeAll, describe, expect, it } from "vitest";
+import { createSearchHoldingsTool } from "../../services/pi-gateway/src/tools/search-holdings.js";
 
 const hasDb = Boolean(process.env.DIRECT_URL);
 
 describe.skipIf(!hasDb)("search_holdings golden cases (live DB)", () => {
+  let searchHoldingsTool: Awaited<ReturnType<typeof createSearchHoldingsTool>>;
+
+  beforeAll(async () => {
+    searchHoldingsTool = await createSearchHoldingsTool();
+  });
+
   it("finds AAPL in Berkshire's most recent 13F", async () => {
     const result = await searchHoldingsTool.execute(
       "test",
