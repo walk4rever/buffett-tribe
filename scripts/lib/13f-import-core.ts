@@ -153,10 +153,22 @@ async function translateMissingNames(entries: InfoTableEntry[], concurrency = 4)
   if (!tasks.length) return;
 
   await mapLimit(tasks, concurrency, async (task) => {
-    const nameZh = await translateCompanyNameToZh({
-      englishName: task.canonicalName,
-      ticker: task.ticker,
-    });
+    // A single untranslatable issuer name (e.g. a truncated SEC nameOfIssuer
+    // like "ELEVANCE HEALTH INC FORMERLY" that confuses the LLM into an empty
+    // response) must not abort the whole filing — mapLimit has no per-task
+    // isolation, so one throw here would fail every other company's holding
+    // in the same quarter too. Fall back to the English short name instead.
+    let nameZh: string;
+    try {
+      nameZh = await translateCompanyNameToZh({
+        englishName: task.canonicalName,
+        ticker: task.ticker,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`  ⚠ zh translation failed for "${task.canonicalName}" (${msg}); falling back to English name`);
+      nameZh = task.nameEnShort;
+    }
 
     await upsertNameMapEntries({
       db,
@@ -179,6 +191,7 @@ export const FILERS = [
   { tribeId: "gavin-baker", name: "Atreides Management, LP", cik: "1777813" },
   { tribeId: "alex-sacerdote", name: "Whale Rock Capital Management LLC", cik: "1387322" },
   { tribeId: "leopold-aschenbrenner", name: "Situational Awareness LP", cik: "2045724" },
+  { tribeId: "christopher-begg", name: "East Coast Asset Management, LLC", cik: "1579254" },
 ] as const;
 
 export type FilerConfig = (typeof FILERS)[number];

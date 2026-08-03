@@ -5,7 +5,7 @@ import { MasterAgentDialog } from "@/components/MasterAgentDialog";
 import { SiteNav } from "@/components/SiteNav";
 import { formatCompanyUrl } from "@/lib/company-data";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
-import { getTribeMember } from "@/lib/tribe";
+import { getTribeMember, getTribeMemberColor } from "@/lib/tribe";
 import { getDocumentsForOwner } from "@/lib/documents";
 import { getMasterProfile } from "@/lib/master-profile";
 import {
@@ -224,7 +224,7 @@ const FALLBACK_BRIEF: Record<
       "跨市场视角：结合公开市场与私募成长投资理解企业生命周期",
       "风险控制：通过组合、对冲和仓位管理应对高成长资产波动",
     ],
-    tags: ["Alpha 投资人", "科技成长", "AI", "半导体", "Crossover"],
+    tags: ["Alpha 部落", "科技成长", "AI", "半导体", "Crossover"],
     timeline: [
       "1999：加入 Fidelity Investments，开始研究科技、医药、零售和通信等行业",
       "2009：开始管理 Fidelity OTC Portfolio",
@@ -241,7 +241,7 @@ const FALLBACK_BRIEF: Record<
       "深度研究：自下而上的基本面分析，重视管理层质量和资本配置能力",
       "科技聚焦：专注软件、互联网、金融科技和数字平台等结构性增长领域",
     ],
-    tags: ["Alpha 投资人", "科技成长", "长期持有", "基本面研究"],
+    tags: ["Alpha 部落", "科技成长", "长期持有", "基本面研究"],
     timeline: [
       "2006：创立 Whale Rock Capital Management",
       "2006-2022：管理 Whale Rock 多空股票策略，聚焦科技成长领域",
@@ -329,9 +329,9 @@ export default async function PersonHubPage({ params }: Props) {
 
       <div className="person-wrap">
         <section className="person-hero">
-          <div className="person-hero-accent" style={{ background: member.color }} />
+          <div className="person-hero-accent" style={{ background: getTribeMemberColor(member) }} />
           <div className="person-hero-body">
-            <span className="person-avatar" style={{ background: member.color }}>
+            <span className="person-avatar" style={{ background: getTribeMemberColor(member) }}>
               {member.initials.slice(0, 2)}
             </span>
             <div className="person-hero-info">
@@ -343,7 +343,7 @@ export default async function PersonHubPage({ params }: Props) {
               {isAlphaMaster ? (
                 <>
                   <div className="person-alpha-note">
-                    <span>Alpha 投资人</span>
+                    <span>Alpha 部落</span>
                     <span>科技成长 / Crossover / SEC 13F</span>
                   </div>
                   <p className="person-alpha-disclaimer">

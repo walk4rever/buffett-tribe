@@ -1,6 +1,6 @@
 /**
  * One-shot onboarding for a brand-new Alpha investor (a 13F filer shown under
- * "Alpha 投资人", distinct from the core tribe members). Chains the steps that
+ * "Alpha 部落", distinct from the core tribe members). Chains the steps that
  * today require hand-editing two source files and running two separate scripts:
  *
  *   1. register_filer          -> FILERS entry in scripts/lib/13f-import-core.ts
@@ -138,8 +138,6 @@ function buildInput(): AlphaInvestorInput {
     nameZh: getArg("--name-zh")?.trim() || name,
     firm,
     cik,
-    aum: getArg("--aum")?.trim() || undefined,
-    color: getArg("--color")?.trim() || "#d97706",
     icon: getArg("--icon")?.trim() || "A",
     initials: getArg("--initials")?.trim() || deriveInitials(name),
     materialLabel: getArg("--material-label")?.trim() || "访谈与观点",

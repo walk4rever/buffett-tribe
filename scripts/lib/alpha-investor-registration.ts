@@ -21,8 +21,6 @@ export type AlphaInvestorInput = {
   nameZh: string;
   firm: string;
   cik: string;
-  aum?: string;
-  color: string;
   icon: string;
   initials: string;
   materialLabel: string;
@@ -53,17 +51,15 @@ export async function registerTribeMember(input: AlphaInvestorInput): Promise<"i
   const closeIndex = source.lastIndexOf(TRIBE_CLOSE);
   if (closeIndex === -1) throw new Error(`Could not find "${TRIBE_CLOSE}" in ${TRIBE_FILE}`);
 
-  const aumLine = input.aum ? `    aum: "${escapeForDoubleQuotedString(input.aum)}",\n` : "";
   const block = `  {
     id: "${input.id}",
     category: "alpha",
-    displayGroup: "Alpha 投资人",
+    displayGroup: "Alpha 部落",
     name: "${escapeForDoubleQuotedString(input.name)}",
     nameZh: "${escapeForDoubleQuotedString(input.nameZh)}",
     firm: "${escapeForDoubleQuotedString(input.firm)}",
-    color: "${input.color}",
     initials: "${escapeForDoubleQuotedString(input.initials)}",
-${aumLine}    materialLabel: "${escapeForDoubleQuotedString(input.materialLabel)}",
+    materialLabel: "${escapeForDoubleQuotedString(input.materialLabel)}",
     materialSub: "${escapeForDoubleQuotedString(input.materialSub)}",
     materialHref: "/master/${input.id}#library",
     holdingsHref: "/master/${input.id}/holdings",

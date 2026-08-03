@@ -210,6 +210,19 @@ export async function getLatestHoldings(tribeId: string, limit = 10) {
   return { latest, holdings: holdings.slice(0, limit) };
 }
 
+// AUM badge on the homepage cards — sum of the latest 13F's reported position
+// values. Reuses getHoldingsByQuarter (not a raw aggregate) so the same
+// duplicate-security dedupe applies here as everywhere else the total is shown.
+export async function getLatestPortfolioValueUsd(tribeId: string): Promise<bigint | null> {
+  const quarters = await getAvailableQuarters(tribeId);
+  const latest = quarters[0];
+  if (!latest) return null;
+
+  const holdings = await getHoldingsByQuarter(tribeId, latest.year, latest.quarter);
+  if (!holdings.length) return null;
+  return holdings.reduce((sum, h) => sum + (h.valueUsd ?? BigInt(0)), BigInt(0));
+}
+
 export async function getLetterYearsByType() {
   try {
     const rows = await db.source.findMany({

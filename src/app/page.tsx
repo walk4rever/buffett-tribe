@@ -2,9 +2,10 @@ import Link from "next/link";
 import { formatCompanyUrl } from "@/lib/company-data";
 import { SiteNav } from "@/components/SiteNav";
 import { HeroSearch } from "@/components/HeroSearch";
-import { ALPHA_TRIBE_MEMBERS, CORE_TRIBE_MEMBERS, formatAumForHome, TRIBE_MEMBERS } from "@/lib/tribe";
+import { ALPHA_TRIBE_MEMBERS, CORE_TRIBE_MEMBERS, getTribeMemberColor, TRIBE_MEMBERS } from "@/lib/tribe";
 import { getLatestHomeSignalCards } from "@/lib/home-signals";
-import { getAvailableQuarters } from "@/lib/master-data";
+import { getAvailableQuarters, getLatestPortfolioValueUsd } from "@/lib/master-data";
+import { formatUsdInYi } from "@/lib/currency";
 
 export const dynamic = "force-dynamic";
 
@@ -18,10 +19,14 @@ async function getHomeMemberStates() {
   try {
     return await Promise.all(
       TRIBE_MEMBERS.map(async (m) => {
-        const quarters = await getAvailableQuarters(m.id);
+        const [quarters, portfolioValueUsd] = await Promise.all([
+          getAvailableQuarters(m.id),
+          getLatestPortfolioValueUsd(m.id),
+        ]);
         return {
           id: m.id,
           latestQuarter: quarters[0] ?? null,
+          aum: portfolioValueUsd != null ? `$${formatUsdInYi(portfolioValueUsd)}` : null,
         };
       })
     );
@@ -30,6 +35,7 @@ async function getHomeMemberStates() {
     return TRIBE_MEMBERS.map((m) => ({
       id: m.id,
       latestQuarter: null,
+      aum: null,
     }));
   }
 }
@@ -92,7 +98,7 @@ export default async function Home() {
                     <div className="home-member-top">
                       <span
                         className="home-member-avatar"
-                        style={{ background: m.color }}
+                        style={{ background: getTribeMemberColor(m) }}
                       >
                         {m.initials.slice(0, 2)}
                       </span>
@@ -100,7 +106,7 @@ export default async function Home() {
                         <div className="home-member-name">{m.nameZh}</div>
                         <div className="home-member-firm">{m.firm}</div>
                       </div>
-                      {m.aum && <span className="home-member-aum">{formatAumForHome(m.aum) ?? m.aum}</span>}
+                      {state.aum && <span className="home-member-aum">{state.aum}</span>}
                     </div>
                   </Link>
                   <div className="home-member-links">
@@ -135,7 +141,7 @@ export default async function Home() {
           </div>
           {ALPHA_TRIBE_MEMBERS.length > 0 ? (
             <div className="home-alpha-block">
-              <p className="home-members-hd home-members-hd--alpha">Alpha投资人</p>
+              <p className="home-members-hd home-members-hd--alpha">Alpha部落</p>
               <div className="home-member-list home-member-list--alpha">
                 {ALPHA_TRIBE_MEMBERS.map((m) => {
                   const state = stateMap.get(m.id);
@@ -145,7 +151,7 @@ export default async function Home() {
                         <div className="home-member-top">
                           <span
                             className="home-member-avatar"
-                            style={{ background: m.color }}
+                            style={{ background: getTribeMemberColor(m) }}
                           >
                             {m.initials.slice(0, 2)}
                           </span>
@@ -153,7 +159,7 @@ export default async function Home() {
                             <div className="home-member-name">{m.nameZh}</div>
                             <div className="home-member-firm">{m.firm}</div>
                           </div>
-                          {m.aum && <span className="home-member-aum">{formatAumForHome(m.aum) ?? m.aum}</span>}
+                          {state?.aum && <span className="home-member-aum">{state.aum}</span>}
                         </div>
                       </Link>
                       <div className="home-member-links">

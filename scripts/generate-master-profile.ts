@@ -318,7 +318,11 @@ async function callAI(prompt: string): Promise<unknown> {
         { role: "user", content: prompt },
       ],
       temperature: 0.5,
-      max_tokens: 4000,
+      // CJK output is more token-dense than the English-heavy US filings this
+      // limit was originally tuned against — 4000 truncated mid-JSON for
+      // christopher-begg (see commit 1a055f2e for the same symptom/fix on
+      // generate:value-analysis / generate:management-analysis).
+      max_tokens: 7000,
       stream: false,
     }),
     signal: AbortSignal.timeout(120000),

@@ -5,15 +5,25 @@ export interface TribeMember {
   name: string;
   nameZh: string;
   firm: string;
-  color: string;
   initials: string;
-  aum?: string;
   materialLabel: string;
   materialSub: string;
   materialHref: string;
   holdingsHref: string;
   hasData: boolean;
   icon: string;
+}
+
+// One color per tribe, not per member — a per-person palette doesn't scale
+// (every new Alpha onboarding would need a fresh color pick). Buffett Tribe
+// members all share the brand red; Alpha Tribe members all share amber.
+const CATEGORY_COLOR: Record<TribeMember["category"], string> = {
+  core: "#8b0000",
+  alpha: "#d97706",
+};
+
+export function getTribeMemberColor(member: Pick<TribeMember, "category">): string {
+  return CATEGORY_COLOR[member.category];
 }
 
 export const TRIBE_MEMBERS: TribeMember[] = [
@@ -24,9 +34,7 @@ export const TRIBE_MEMBERS: TribeMember[] = [
     name: "Warren Buffett",
     nameZh: "巴菲特",
     firm: "Berkshire Hathaway",
-    color: "#8b0000",
     initials: "巴",
-    aum: "$294B",
     materialLabel: "信件档案",
     materialSub: "1958–2025",
     materialHref: "/master/buffett/library?category=document",
@@ -41,9 +49,7 @@ export const TRIBE_MEMBERS: TribeMember[] = [
     name: "Li Lu",
     nameZh: "李录",
     firm: "喜马拉雅资本",
-    color: "#1d4ed8",
     initials: "李",
-    aum: "$3.6B",
     materialLabel: "资料库",
     materialSub: "1997–至今",
     materialHref: "/master/lilu/library?category=document",
@@ -58,9 +64,7 @@ export const TRIBE_MEMBERS: TribeMember[] = [
     name: "Duan Yongping",
     nameZh: "段永平",
     firm: "H&H International Investment",
-    color: "#059669",
     initials: "段",
-    aum: "$14.5B",
     materialLabel: "资料库",
     materialSub: "2006–至今",
     materialHref: "/master/duan/library?category=document",
@@ -71,13 +75,11 @@ export const TRIBE_MEMBERS: TribeMember[] = [
   {
     id: "gavin-baker",
     category: "alpha",
-    displayGroup: "Alpha 投资人",
+    displayGroup: "Alpha 部落",
     name: "Gavin Baker",
     nameZh: "Gavin Baker",
     firm: "Atreides Management, LP",
-    color: "#7c3aed",
     initials: "GB",
-    aum: "$5.0B",
     materialLabel: "访谈与观点",
     materialSub: "建设中",
     materialHref: "/master/gavin-baker#library",
@@ -88,13 +90,11 @@ export const TRIBE_MEMBERS: TribeMember[] = [
   {
     id: "alex-sacerdote",
     category: "alpha",
-    displayGroup: "Alpha 投资人",
+    displayGroup: "Alpha 部落",
     name: "Alex Sacerdote",
     nameZh: "Alex Sacerdote",
     firm: "Whale Rock Capital Management",
-    color: "#0ea5e9",
     initials: "AS",
-    aum: "$8.0B",
     materialLabel: "访谈与观点",
     materialSub: "建设中",
     materialHref: "/master/alex-sacerdote#library",
@@ -105,17 +105,30 @@ export const TRIBE_MEMBERS: TribeMember[] = [
   {
     id: "leopold-aschenbrenner",
     category: "alpha",
-    displayGroup: "Alpha 投资人",
+    displayGroup: "Alpha 部落",
     name: "Leopold Aschenbrenner",
     nameZh: "Leopold Aschenbrenner",
     firm: "Situational Awareness LP",
-    color: "#d97706",
     initials: "LA",
-    aum: "$1.5B",
     materialLabel: "访谈与观点",
     materialSub: "建设中",
     materialHref: "/master/leopold-aschenbrenner#library",
     holdingsHref: "/master/leopold-aschenbrenner/holdings",
+    hasData: true,
+    icon: "A",
+  },
+  {
+    id: "christopher-begg",
+    category: "alpha",
+    displayGroup: "Alpha 部落",
+    name: "Christopher Begg",
+    nameZh: "Christopher Begg",
+    firm: "East Coast Asset Management, LLC",
+    initials: "CB",
+    materialLabel: "访谈与观点",
+    materialSub: "建设中",
+    materialHref: "/master/christopher-begg#library",
+    holdingsHref: "/master/christopher-begg/holdings",
     hasData: true,
     icon: "A",
   },
@@ -126,20 +139,4 @@ export const ALPHA_TRIBE_MEMBERS = TRIBE_MEMBERS.filter((m) => m.category === "a
 
 export function getTribeMember(id: string): TribeMember | null {
   return TRIBE_MEMBERS.find((m) => m.id === id) ?? null;
-}
-
-export function formatAumForHome(aum: string | undefined): string | null {
-  if (!aum) return null;
-  const compact = aum.replace(/\s+/g, "");
-  const match = compact.match(/^\$?([\d.]+)([BTM])$/i);
-  if (!match) return aum;
-
-  const value = Number.parseFloat(match[1] ?? "");
-  if (!Number.isFinite(value)) return aum;
-
-  const unit = (match[2] ?? "").toUpperCase();
-  const yiMultiplier = unit === "T" ? 10000 : unit === "B" ? 10 : unit === "M" ? 0.01 : 1;
-  const yiValue = value * yiMultiplier;
-  const text = Number.isInteger(yiValue) ? String(yiValue) : yiValue.toFixed(1).replace(/\.0$/, "");
-  return `$${text}亿`;
 }

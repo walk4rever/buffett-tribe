@@ -4,7 +4,7 @@ import { CompanyDisplayName } from "@/components/CompanyDisplayName";
 import { SiteNav } from "@/components/SiteNav";
 import { formatCompanyUrl } from "@/lib/company-data";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
-import { getTribeMember } from "@/lib/tribe";
+import { getTribeMember, getTribeMemberColor } from "@/lib/tribe";
 import {
   formatShares,
   formatValueUsd,
@@ -77,7 +77,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
       <div className="holdings-wrap">
         {/* Person header */}
         <div className="holdings-hd">
-          <span className="holdings-avatar" style={{ background: member.color }}>
+          <span className="holdings-avatar" style={{ background: getTribeMemberColor(member) }}>
             {member.initials.slice(0, 2)}
           </span>
           <div className="holdings-hd-info">
@@ -85,7 +85,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
             <h1 className="holdings-name">{member.nameZh}</h1>
             <p className="holdings-firm">{member.firm}</p>
             {member.category === "alpha" ? (
-              <p className="holdings-firm">Alpha 投资人 · 13F 仅覆盖公开市场披露仓位</p>
+              <p className="holdings-firm">Alpha 部落 · 13F 仅覆盖公开市场披露仓位</p>
             ) : null}
           </div>
         </div>
@@ -103,7 +103,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
                       key={`${q.year}-${q.quarter}`}
                       href={`/master/${id}/holdings?year=${q.year}&quarter=${q.quarter}`}
                       className={`holdings-timeline-node${active ? " holdings-timeline-node--active" : ""}`}
-                      style={active ? { borderColor: member.color, color: member.color } : undefined}
+                      style={active ? { borderColor: getTribeMemberColor(member), color: getTribeMemberColor(member) } : undefined}
                     >
                       <span className="holdings-timeline-dot" />
                       <span className="holdings-timeline-label">{q.year} Q{q.quarter}</span>
@@ -211,7 +211,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
                           className="holdings-bar"
                           style={{
                             width: `${Math.min(h.percentOfPortfolio ?? 0, 100)}%`,
-                            background: member.color,
+                            background: getTribeMemberColor(member),
                           }}
                         />
                       </div>
