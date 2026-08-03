@@ -10,7 +10,7 @@
  */
 
 import { Prisma, PrismaClient } from "@prisma/client";
-import { getTribeMembers } from "@/lib/tribe";
+import { getTribeMember, getTribeMembers } from "@/lib/tribe";
 
 const db = new PrismaClient();
 
@@ -345,11 +345,11 @@ async function main() {
       continue;
     }
 
-    const masterNames: Record<string, string> = {
-      buffett: "巴菲特",
-      lilu: "李录",
-      duan: "段永平",
-    };
+    const member = await getTribeMember(tribeId);
+    if (!member) {
+      console.log(`  SKIP: no Filer/tribe member for tribeId="${tribeId}"`);
+      continue;
+    }
 
     const { label: latestLabel, rows: holdings } = await fetchLatestHoldings(entity.id);
     const sectors = sectorBreakdown(holdings);
@@ -358,16 +358,22 @@ async function main() {
     // (no owner column) — only pull it in for the core members it actually
     // describes, or the LLM attributes Buffett's letter archive to whoever
     // else we're profiling.
-    const materials = tribeId in masterNames ? await fetchMaterialCounts() : [];
+    const materials = member.category === "core" ? await fetchMaterialCounts() : [];
 
     console.log(`  Holdings: ${holdings.length} (${latestLabel})`);
     console.log(`  Sectors: ${sectors.length}`);
     console.log(`  Trend snapshots: ${trend.length}`);
     console.log(`  Material types: ${materials.length}`);
 
+    // Prompt with the person's real name (member.name/nameZh), not
+    // entity.canonicalName (the 13F filer's legal/firm name, e.g. "Dalal
+    // Street, LLC") — asking an LLM to profile an obscure fund-registration
+    // name instead of the actual, often well-documented, person produces
+    // "no public data available" filler for everything, even when the
+    // person themself is extensively documented (e.g. Mohnish Pabrai).
     const prompt = buildPrompt({
-      masterName: entity.canonicalName,
-      masterNameZh: masterNames[tribeId] ?? entity.canonicalName,
+      masterName: member.name,
+      masterNameZh: member.nameZh,
       tribeId,
       latestLabel,
       holdings,

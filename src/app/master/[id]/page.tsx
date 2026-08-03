@@ -330,10 +330,10 @@ export default async function PersonHubPage({ params }: Props) {
                 <>
                   <div className="person-alpha-note">
                     <span>Alpha 部落</span>
-                    <span>科技成长 / Crossover / SEC 13F</span>
+                    <span>SEC 13F</span>
                   </div>
                   <p className="person-alpha-disclaimer">
-                    数据历史较短，投资风格偏科技成长与动量交易，与巴菲特部落的经典价值投资框架存在方法论差异，仅供参考。
+                    数据历史较短，投资风格与研究覆盖因人而异，与巴菲特部落的经典价值投资框架可能存在方法论差异，仅供参考。
                   </p>
                 </>
               ) : null}
@@ -451,7 +451,7 @@ export default async function PersonHubPage({ params }: Props) {
               <p className="person-compare-note">对比基准:{baseLabel}</p>
               {isAlphaMaster ? (
                 <p className="person-compare-note">
-                  13F 仅覆盖可披露的美国公开市场多头及部分期权仓位，不代表 Atreides 全部组合。
+                  13F 仅覆盖可披露的美国公开市场多头及部分期权仓位，不代表{member.nameZh}全部组合。
                 </p>
               ) : null}
             </div>

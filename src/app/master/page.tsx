@@ -40,7 +40,12 @@ async function getMasterMemberStates(members: TribeMember[]) {
 export default async function MasterIndexPage() {
   const members = await getTribeMembers();
   const coreMembers = members.filter((m) => m.category === "core");
-  const alphaMembers = members.filter((m) => m.category === "alpha");
+  // A-Z by display name, not onboarding order — unlike the core tribe (fixed
+  // small set), Alpha investors are added over time and onboarding order
+  // isn't a meaningful sort for readers.
+  const alphaMembers = members
+    .filter((m) => m.category === "alpha")
+    .sort((a, b) => a.nameZh.localeCompare(b.nameZh));
   const memberStates = await getMasterMemberStates(members);
   const stateMap = new Map(memberStates.map((s) => [s.id, s]));
 
