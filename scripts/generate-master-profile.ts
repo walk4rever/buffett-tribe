@@ -247,53 +247,17 @@ ${matLines}
 
 {
   "intro": "150-200字的中文简介，概括投资理念、风格和成就。",
-  "framework": [
-    "投资原则1（15-25字）",
-    "投资原则2",
-    "投资原则3",
-    "投资原则4"
-  ],
-  "tags": ["标签1", "标签2", "标签3", "标签4"],
   "timeline": [
     "年份：事件描述（20-40字）——仅限人生/职业里程碑，不要包含投资买入事件",
     "...",
     "...共5-7条..."
-  ],
-  "style": {
-    "concentration": "组合集中度描述，如'前5大持仓占比约75%，集中度较高'",
-    "holdingCount": "当前持仓数量，如'约25只'",
-    "sectorFocus": ["重仓行业1", "重仓行业2", "重仓行业3"],
-    "turnover": "换手特征描述，如'季度调整通常不超过组合的5%，典型买入并持有风格'",
-    "avgHoldingPeriod": "典型持有周期描述，如'核心持仓通常持有5-10年以上'",
-    "leverageUsage": "杠杆使用情况描述，如'不使用杠杆；保险浮存金提供低成本长期资金'或'不适用'"
-  },
-  "flagshipCases": [
-    {
-      "ticker": "股票代码",
-      "nameZh": "公司中文名",
-      "entryYear": 建仓年份数字,
-      "thesis": "投资逻辑概述（30-50字）",
-      "outcome": "结果简述（20-30字）",
-      "stillHolding": true或false
-    }
-  ],
-  "influences": ["思想来源1", "思想来源2", "思想来源3"],
-  "quotes": ["代表性语录1（精炼，30字以内）", "代表性语录2"],
-  "trackRecord": {
-    "startYear": 开始管理年份数字,
-    "cagr": "年化回报率描述，无确切数据则填null",
-    "benchmarkComparison": "与基准对比描述，无确切数据则填null",
-    "sourceNote": "数据来源说明，如'基于公开披露数据估算'或'非公开数据'"
-  }
+  ]
 }
 
 重要约束：
-1. timeline 仅包含人生/职业里程碑（毕业、创立公司、出版著作、结识导师等），不要包含任何投资买入事件。投资事件请放入 flagshipCases。
-2. flagshipCases 必须仅包含当前持仓中的公司（检查 ticker 是否在前15大持仓中出现），生成3-5个案例。
-3. 如果某些字段没有足够数据支撑（如 trackRecord.cagr），写 "无可信公开数据" 而不是编造。
-4. tags 必须反映该大师的真实投资风格特征，基于持仓集中度、行业偏好和换手特征。
-5. 对于段永平的杠杆说明，应提及他的现金流充沛但明确反对杠杆的立场。
-6. 输出必须是纯 JSON，不要包含 \`\`\`json 包裹。`;
+1. timeline 仅包含人生/职业里程碑（毕业、创立公司、出版著作、结识导师等），不要包含任何投资买入事件或具体建仓年份——那类内容需要逐笔核对真实持仓历史，此处没有数据支撑，不要编造。
+2. 如果某些内容没有足够数据支撑，写 "无可信公开数据" 而不是编造。
+3. 输出必须是纯 JSON，不要包含 \`\`\`json 包裹。`;
 }
 
 // ---------------------------------------------------------------------------
@@ -349,15 +313,10 @@ async function callAI(prompt: string): Promise<unknown> {
 
 function validateProfile(raw: unknown): asserts raw is Record<string, unknown> {
   const obj = raw as Record<string, unknown>;
-  const required = ["intro", "framework", "tags", "timeline", "style", "flagshipCases", "influences", "quotes"];
+  const required = ["intro", "timeline"];
   const missing = required.filter((k) => !(k in obj));
   if (missing.length) throw new Error(`Missing fields: ${missing.join(", ")}`);
-  if (!Array.isArray(obj.framework)) throw new Error("framework must be an array");
-  if (!Array.isArray(obj.tags)) throw new Error("tags must be an array");
   if (!Array.isArray(obj.timeline)) throw new Error("timeline must be an array");
-  if (!Array.isArray(obj.flagshipCases)) throw new Error("flagshipCases must be an array");
-  if (!Array.isArray(obj.influences)) throw new Error("influences must be an array");
-  if (!Array.isArray(obj.quotes)) throw new Error("quotes must be an array");
 }
 
 // ---------------------------------------------------------------------------
@@ -461,13 +420,11 @@ async function main() {
 
       const profile = result as {
         intro?: unknown;
-        framework?: unknown[];
-        flagshipCases?: unknown[];
+        timeline?: unknown[];
       };
       console.log(`  ✓ Profile saved (v${(await db.masterProfile.findUnique({ where: { entityId: entity.id }, select: { version: true } }))?.version ?? 0})`);
       console.log(`    intro: ${String(profile.intro).length} chars`);
-      console.log(`    framework: ${Array.isArray(profile.framework) ? profile.framework.length : 0} items`);
-      console.log(`    flagshipCases: ${Array.isArray(profile.flagshipCases) ? profile.flagshipCases.length : 0} cases`);
+      console.log(`    timeline: ${Array.isArray(profile.timeline) ? profile.timeline.length : 0} items`);
     } catch (err) {
       console.error(`  ✗ Failed:`, err instanceof Error ? err.message : String(err));
     }

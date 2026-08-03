@@ -112,10 +112,6 @@ type PortfolioInsightStructured = {
   items: PortfolioInsightItem[];
 };
 
-type MasterProfile = {
-  framework?: string[];
-};
-
 type AIResponse = {
   choices?: Array<{
     message?: {
@@ -341,13 +337,6 @@ function buildStructuredInsight(
   };
 }
 
-async function getMasterProfile(tribeId: string): Promise<MasterProfile | null> {
-  const entity = await db.entity.findFirst({ where: { tribeId }, select: { id: true } });
-  if (!entity) return null;
-  const row = await db.masterProfile.findUnique({ where: { entityId: entity.id } });
-  return (row?.profile as MasterProfile) ?? null;
-}
-
 // ---------------------------------------------------------------------------
 // Prompt building
 // ---------------------------------------------------------------------------
@@ -356,9 +345,7 @@ function buildPrompt(
   masterName: string,
   quarter: string,
   changeSet: Awaited<ReturnType<typeof buildChangeSet>>,
-  profile: MasterProfile | null,
 ): string {
-  const framework = profile?.framework ?? [];
   const topList = changeSet.top
     .slice(0, 5)
     .map((h, i) => {
@@ -385,9 +372,6 @@ function buildPrompt(
       : "无";
 
   return `作为一位资深价值投资分析师，请基于以下数据，为 **${masterName}** 基金撰写一份 ${quarter} 持仓洞察。用中文输出。300字以内。
-
-**投资框架**：
-${Array.isArray(framework) ? framework.join("；") : "无历史数据"}
 
 **前五大持仓**：
 ${topList || "无数据"}
@@ -538,12 +522,10 @@ async function generateFor(masterId: string, dryRun: boolean, targetQuarter?: Qu
   const quarter = `${changeSet.latest.year}Q${changeSet.latest.quarter}`;
   console.log(`  Quarter: ${quarter} | Top ${changeSet.top.length} holdings`);
 
-  // 2. Get master profile for investment framework
-  const profile = await getMasterProfile(masterId);
   const structured = buildStructuredInsight(changeSet);
 
-  // 3. Build prompt and call AI
-  const prompt = buildPrompt(name, quarter, changeSet, profile);
+  // 2. Build prompt and call AI
+  const prompt = buildPrompt(name, quarter, changeSet);
   console.log(`  Prompt: ${prompt.length} chars`);
 
   if (dryRun) {

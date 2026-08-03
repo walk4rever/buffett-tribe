@@ -279,14 +279,7 @@ export default async function PersonHubPage({ params }: Props) {
   const fallback = FALLBACK_BRIEF[id] ?? genericFallback(member);
   const profile = profileResult?.profile;
   const intro = profile?.intro ?? fallback.intro;
-  const framework = profile?.framework ?? fallback.framework;
-  const tags = profile?.tags ?? fallback.tags;
   const timeline = profile?.timeline ?? fallback.timeline;
-  const style = profile?.style;
-  const flagshipCases = profile?.flagshipCases;
-  const influences = profile?.influences;
-  const quotes = profile?.quotes;
-  const trackRecord = profile?.trackRecord;
   const latest = changeSet.latest;
   const portfolioInsight = latest
     ? await getPortfolioInsightRecord(id, latest.year, latest.quarter)
@@ -303,13 +296,6 @@ export default async function PersonHubPage({ params }: Props) {
     ? await getHoldingsByQuarter(id, latest.year, latest.quarter)
     : [];
   const pieData = buildPieSeries(fullHoldings);
-  const holdingNameByTicker = new Map(
-    fullHoldings.flatMap((h) => {
-      const ticker = getHoldingTicker(h)?.toUpperCase();
-      if (!ticker) return [];
-      return [[ticker, getHoldingDisplay(h.security).zh] as const];
-    }),
-  );
   const prevHoldings = changeSet.base
     ? await getHoldingsByQuarter(id, changeSet.base.year, changeSet.base.quarter)
     : [];
@@ -376,129 +362,6 @@ export default async function PersonHubPage({ params }: Props) {
             </div>
           </div>
         </section>
-
-        <section className="person-section">
-            <div className="person-section-head">
-              <h2 className="person-section-title">投资理念</h2>
-            </div>
-
-            <div className="person-style-tags">
-              {tags.map((tag: string) => (
-                <span key={tag} className="person-tag">{tag}</span>
-              ))}
-            </div>
-
-            <div className="person-philosophy">
-              {framework.map((line: string) => (
-                <div key={line} className="person-philosophy-item">{line}</div>
-              ))}
-            </div>
-
-            {style && (
-            <div className="person-style-grid">
-              <div className="person-style-card">
-                <div className="person-style-label">组合集中度</div>
-                <div className="person-style-value">{style.concentration}</div>
-              </div>
-              <div className="person-style-card">
-                <div className="person-style-label">持仓数量</div>
-                <div className="person-style-value">{style.holdingCount}</div>
-              </div>
-              <div className="person-style-card">
-                <div className="person-style-label">重仓行业</div>
-                <div className="person-style-value">
-                  {style.sectorFocus?.map((s: string) => (
-                    <span key={s} className="person-section-tag">{s}</span>
-                  ))}
-                </div>
-              </div>
-              <div className="person-style-card">
-                <div className="person-style-label">换手特征</div>
-                <div className="person-style-value">{style.turnover}</div>
-              </div>
-              <div className="person-style-card">
-                <div className="person-style-label">持有周期</div>
-                <div className="person-style-value">{style.avgHoldingPeriod}</div>
-              </div>
-              <div className="person-style-card">
-                <div className="person-style-label">杠杆使用</div>
-                <div className="person-style-value">{style.leverageUsage}</div>
-              </div>
-            </div>
-            )}
-
-            {(influences && influences.length > 0 || quotes && quotes.length > 0 || trackRecord) && (
-              <div className="person-quotes-block">
-                {influences && influences.length > 0 && (
-                  <div className="person-influences">
-                    <div className="person-quotes-label">受谁影响</div>
-                    <div className="person-influence-list">
-                      {influences.map((inf: string) => (
-                        <span key={inf} className="person-influence-tag">{inf}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {quotes && quotes.length > 0 && (
-                  <div className="person-quotes-list">
-                    <div className="person-quotes-label">代表性观点</div>
-                    {quotes.map((q: string, i: number) => (
-                      <div key={i} className="person-quote-item">&quot;{q}&quot;</div>
-                    ))}
-                  </div>
-                )}
-                {trackRecord && (
-                  <div className="person-track-record">
-                    <div className="person-quotes-label">历史业绩</div>
-                    <div className="person-track-meta">
-                      {trackRecord.startYear && (
-                        <span>管理起始：{trackRecord.startYear}年</span>
-                      )}
-                      {trackRecord.cagr && (
-                        <span>年化回报：{trackRecord.cagr}</span>
-                      )}
-                      {trackRecord.benchmarkComparison && (
-                        <span>基准对比：{trackRecord.benchmarkComparison}</span>
-                      )}
-                    </div>
-                    <div className="person-track-source">{trackRecord.sourceNote}</div>
-                  </div>
-                )}
-              </div>
-            )}
-          </section>
-
-        {flagshipCases && flagshipCases.length > 0 && (
-          <section className="person-section">
-            <div className="person-section-head">
-              <h2 className="person-section-title">关键案例</h2>
-            </div>
-
-            <>
-              <div className="person-cases-head">
-                <span className="person-section-subhead">重点持仓案例</span>
-                <span className="person-cases-count">{flagshipCases.length} 个案例</span>
-              </div>
-              <div className="person-cases-grid">
-                {flagshipCases.map((c, i) => (
-                  <div key={`${c.ticker}-${i}`} className="person-case-card">
-                    <div className="person-case-accent" />
-                    <div className="person-case-body">
-                      <div className="person-case-header">
-                        <span className="person-case-ticker">{c.ticker}</span>
-                        <span className="person-case-name">{holdingNameByTicker.get(c.ticker.toUpperCase()) ?? c.nameZh}</span>
-                        <span className="person-case-year">{c.entryYear}年建仓</span>
-                        {c.stillHolding && <span className="person-case-badge">持仓中</span>}
-                      </div>
-                      <div className="person-case-thesis">{c.thesis}</div>
-                      <div className="person-case-outcome">{c.outcome}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          </section>
-        )}
 
         <section className="person-section" id="library">
           <div className="person-section-head">
