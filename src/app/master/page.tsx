@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { SiteNav } from "@/components/SiteNav";
-import { ALPHA_TRIBE_MEMBERS, CORE_TRIBE_MEMBERS, getTribeMemberColor, TRIBE_MEMBERS } from "@/lib/tribe";
+import { getTribeMemberColor, getTribeMembers, type TribeMember } from "@/lib/tribe";
 import { getAvailableQuarters, getLatestPortfolioValueUsd } from "@/lib/master-data";
 import { formatUsdInYi } from "@/lib/currency";
 
@@ -12,10 +12,10 @@ function logMasterIndexFallback(scope: string, err: unknown) {
   console.warn(`[master-index:${scope}] DB query failed, fallback to empty result: ${message}`);
 }
 
-async function getMasterMemberStates() {
+async function getMasterMemberStates(members: TribeMember[]) {
   try {
     return await Promise.all(
-      TRIBE_MEMBERS.map(async (m) => {
+      members.map(async (m) => {
         const [quarters, portfolioValueUsd] = await Promise.all([
           getAvailableQuarters(m.id),
           getLatestPortfolioValueUsd(m.id),
@@ -29,7 +29,7 @@ async function getMasterMemberStates() {
     );
   } catch (err) {
     logMasterIndexFallback("memberStates", err);
-    return TRIBE_MEMBERS.map((m) => ({
+    return members.map((m) => ({
       id: m.id,
       latestQuarter: null,
       aum: null,
@@ -38,7 +38,10 @@ async function getMasterMemberStates() {
 }
 
 export default async function MasterIndexPage() {
-  const memberStates = await getMasterMemberStates();
+  const members = await getTribeMembers();
+  const coreMembers = members.filter((m) => m.category === "core");
+  const alphaMembers = members.filter((m) => m.category === "alpha");
+  const memberStates = await getMasterMemberStates(members);
   const stateMap = new Map(memberStates.map((s) => [s.id, s]));
 
   return (
@@ -50,7 +53,7 @@ export default async function MasterIndexPage() {
         <div className="home-members-in">
           <p className="home-members-hd">巴菲特部落</p>
           <div className="home-member-list">
-            {CORE_TRIBE_MEMBERS.map((m) => {
+            {coreMembers.map((m) => {
               const state = stateMap.get(m.id)!;
               return (
                 <div key={m.id} className="home-member-card">
@@ -99,11 +102,11 @@ export default async function MasterIndexPage() {
               );
             })}
           </div>
-          {ALPHA_TRIBE_MEMBERS.length > 0 ? (
+          {alphaMembers.length > 0 ? (
             <div className="home-alpha-block">
               <p className="home-members-hd home-members-hd--alpha">Alpha部落</p>
               <div className="home-member-list home-member-list--alpha">
-                {ALPHA_TRIBE_MEMBERS.map((m) => {
+                {alphaMembers.map((m) => {
                   const state = stateMap.get(m.id);
                   return (
                     <div key={m.id} className="home-member-card home-member-card--alpha">

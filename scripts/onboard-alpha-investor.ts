@@ -4,10 +4,12 @@
  * today require hand-editing two source files and running two separate scripts:
  *
  *   1. register_filer          -> FILERS entry in scripts/lib/13f-import-core.ts
- *   2. register_tribe_member   -> TRIBE_MEMBERS entry in src/lib/tribe.ts (category: "alpha")
+ *   2. register_tribe_member   -> curated fields on the Filer row (category: "alpha"),
+ *                                 consumed by src/lib/tribe.ts — DB-driven, so this
+ *                                 alone makes the investor show up site-wide
  *   3. import_13f               -> npm run import:13f -- --filer <id> (Entity + Holding)
  *   4. generate_master_profile -> npm run generate:master-profile -- --master <id>
- *                                 (LLM bio/timeline/framework, written to MasterProfile;
+ *                                 (LLM bio/timeline, written to MasterProfile;
  *                                 without this the profile page has no hand-written
  *                                 FALLBACK_BRIEF entry either and shows a generic
  *                                 placeholder instead of real content — skippable with
@@ -138,7 +140,6 @@ function buildInput(): AlphaInvestorInput {
     nameZh: getArg("--name-zh")?.trim() || name,
     firm,
     cik,
-    icon: getArg("--icon")?.trim() || "A",
     initials: getArg("--initials")?.trim() || deriveInitials(name),
     materialLabel: getArg("--material-label")?.trim() || "访谈与观点",
     materialSub: getArg("--material-sub")?.trim() || "建设中",
@@ -245,7 +246,7 @@ async function main() {
 
   // Step 2: register tribe member for UI
   {
-    const label = '[2/6] 注册 tribe member（src/lib/tribe.ts::TRIBE_MEMBERS, category: "alpha"）';
+    const label = '[2/6] 注册 tribe member（Filer 表策展字段, category: "alpha"）';
     if (checkpoint.completed.register_tribe_member) {
       console.log(`${label} — already completed`);
       summary.push({ step: label, status: "already_done" });
@@ -254,7 +255,7 @@ async function main() {
     } else {
       console.log(`\n${label}`);
       const result = await registerTribeMember(input);
-      console.log(`  ${result === "inserted" ? "inserted new TRIBE_MEMBERS entry" : "already present, left untouched"}`);
+      console.log(`  ${result === "inserted" ? "wrote curated fields to Filer row" : "already present, left untouched"}`);
       const ok = await isTribeMemberRegistered(input.id);
       if (!ok) {
         summary.push({ step: label, status: "failed" });

@@ -57,7 +57,7 @@ export default async function LibraryPage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
 
-  const member = getTribeMember(id);
+  const member = await getTribeMember(id);
   if (!member) notFound();
 
   const documentOwner = id === "buffett" ? "buffett" : id === "duan" ? "duan" : null;

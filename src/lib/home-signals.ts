@@ -216,8 +216,8 @@ function getCompanyInfo(row: HoldingRow) {
   };
 }
 
-function getMasterLabel(masterId: string) {
-  return getTribeMember(masterId)?.nameZh ?? masterId;
+async function getMasterLabel(masterId: string) {
+  return (await getTribeMember(masterId))?.nameZh ?? masterId;
 }
 
 async function buildMasterEvents(masterId: string): Promise<MasterEventsBundle | null> {
@@ -232,7 +232,7 @@ async function buildMasterEvents(masterId: string): Promise<MasterEventsBundle |
   const latestByCompany = new Map(latestRows.map((row) => [getCompanyInfo(row).companyKey, row] as const));
 
   const events: RawEvent[] = [];
-  const masterNameZh = getMasterLabel(masterId);
+  const masterNameZh = await getMasterLabel(masterId);
 
   for (const row of latestRows) {
     const info = getCompanyInfo(row);

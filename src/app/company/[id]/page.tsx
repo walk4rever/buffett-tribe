@@ -5,7 +5,7 @@ import { CompanyBusinessCanvas } from "@/components/CompanyBusinessCanvas";
 import { CompanySectionTabs } from "@/components/CompanySectionTabs";
 import { SiteNav } from "@/components/SiteNav";
 import db from "@/lib/prisma";
-import { getTribeMember } from "@/lib/tribe";
+import { getTribeMembers } from "@/lib/tribe";
 import {
   formatMoney,
   getBusinessCanvas,
@@ -454,7 +454,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   const company = await getCompanyByIdentifier(trimmedId);
   if (!company) notFound();
 
-  const [financials, financialsCurrency, holders, securities, analysis, businessCanvas, referenceFilings, managementArtifact, valuationArtifact] = await Promise.all([
+  const [financials, financialsCurrency, holders, securities, analysis, businessCanvas, referenceFilings, managementArtifact, valuationArtifact, tribeMembers] = await Promise.all([
     getCompanyFinancials(company.id, 5),
     getFinancialsCurrency(company.id),
     getRecentHolders(company.id, 30),
@@ -464,7 +464,9 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     getCompanyReferenceFilings(company.id, 12),
     getGeneratedArtifact(company.id, "management_analysis"),
     getGeneratedArtifact(company.id, "valuation_analysis"),
+    getTribeMembers(),
   ]);
+  const tribeMemberById = new Map(tribeMembers.map((m) => [m.id, m] as const));
 
   const hasManagement = managementArtifact != null && parseManagementPayload(managementArtifact.payload) != null;
   const hasValuation = valuationArtifact != null && parseValuationPayload(valuationArtifact.payload) != null;
@@ -628,7 +630,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                   </thead>
                   <tbody>
                     {holders.holders.map((h, i) => {
-                      const member = h.tribeId ? getTribeMember(h.tribeId) : null;
+                      const member = h.tribeId ? tribeMemberById.get(h.tribeId) ?? null : null;
                       const holderName = member?.nameZh ?? h.holderName;
                       // Show holder name only on first row of the group
                       const prevHolder = i > 0 ? holders.holders[i - 1] : null;

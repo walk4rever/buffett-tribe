@@ -45,7 +45,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
   const { id } = await params;
   const { year: yearStr, quarter: quarterStr } = await searchParams;
 
-  const member = getTribeMember(id);
+  const member = await getTribeMember(id);
   if (!member) notFound();
 
   const quarters = await getAvailableQuarters(id);

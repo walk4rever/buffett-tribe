@@ -13,9 +13,14 @@
  *   npm run backfill:filer-table
  */
 import { db, FILERS } from "./lib/13f-import-core";
-import { TRIBE_MEMBERS } from "../src/lib/tribe";
 
 const dryRun = process.argv.includes("--dry-run");
+
+// tribe.ts is DB-driven now (Filer.isMasterPersona is the source of truth),
+// so this can no longer read category from TRIBE_MEMBERS. This set only
+// matters the first time a filer row is created; existing rows keep
+// whatever isMasterPersona they already have.
+const CORE_TRIBE_IDS = new Set(["buffett", "lilu", "duan"]);
 
 async function main() {
   for (const filer of FILERS) {
@@ -33,7 +38,11 @@ async function main() {
       select: { id: true },
     });
 
-    const isMasterPersona = TRIBE_MEMBERS.find((m) => m.id === filer.tribeId)?.category === "core";
+    const existingFiler = await db.filer.findUnique({
+      where: { tribeId: filer.tribeId },
+      select: { isMasterPersona: true },
+    });
+    const isMasterPersona = existingFiler?.isMasterPersona ?? CORE_TRIBE_IDS.has(filer.tribeId);
 
     console.log(
       `  ${filer.tribeId}: filerEntityId=${filerEntity.id} companyEntityId=${companyEntity?.id ?? "null"} isMasterPersona=${isMasterPersona}`,

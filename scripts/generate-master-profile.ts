@@ -10,7 +10,7 @@
  */
 
 import { Prisma, PrismaClient } from "@prisma/client";
-import { TRIBE_MEMBERS } from "@/lib/tribe";
+import { getTribeMembers } from "@/lib/tribe";
 
 const db = new PrismaClient();
 
@@ -334,7 +334,7 @@ async function main() {
     process.exit(1);
   }
 
-  const tribeIds = all ? TRIBE_MEMBERS.map((m) => m.id) : [masterId!];
+  const tribeIds = all ? (await getTribeMembers()).map((m) => m.id) : [masterId!];
 
   for (const tribeId of tribeIds) {
     console.log(`\n─── ${tribeId} ───`);

@@ -255,7 +255,7 @@ const FALLBACK_BRIEF: Record<
 // hand-written FALLBACK_BRIEF entry yet (e.g. right after onboarding, before
 // `generate:master-profile` has run) — must never silently borrow another
 // investor's bio.
-function genericFallback(member: NonNullable<ReturnType<typeof getTribeMember>>) {
+function genericFallback(member: NonNullable<Awaited<ReturnType<typeof getTribeMember>>>) {
   return {
     intro: `${member.nameZh}，${member.firm}。投资档案生成中，完整介绍即将上线。`,
     framework: [] as string[],
@@ -266,7 +266,7 @@ function genericFallback(member: NonNullable<ReturnType<typeof getTribeMember>>)
 
 export default async function PersonHubPage({ params }: Props) {
   const { id } = await params;
-  const member = getTribeMember(id);
+  const member = await getTribeMember(id);
   if (!member) notFound();
 
   const [masterClass, changeSet, profileResult, beneficialOwnership] = await Promise.all([

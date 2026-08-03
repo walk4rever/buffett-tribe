@@ -7,7 +7,6 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { hasChineseText, issuerKey, resolveCompanyNamesFromMaps } from "../../src/lib/company-name-map";
 import { normalizeTicker } from "../../src/lib/ticker";
-import { TRIBE_MEMBERS } from "../../src/lib/tribe";
 import { translateCompanyNameToZh, upsertNameMapEntries } from "./company-name-zh";
 import { ImportTimer } from "./import-timer";
 
@@ -194,6 +193,7 @@ export const FILERS = [
   { tribeId: "christopher-begg", name: "East Coast Asset Management, LLC", cik: "1579254" },
   { tribeId: "micky-malka", name: "Ribbit Management Company, LLC", cik: "1836733" },
   { tribeId: "terry-smith", name: "Fundsmith LLP", cik: "1569205" },
+  { tribeId: "mohnish-pabrai", name: "Dalal Street, LLC", cik: "1549575" },
 ] as const;
 
 export type FilerConfig = (typeof FILERS)[number];
@@ -415,7 +415,13 @@ export async function upsertFilerEntity(filer: FilerConfig) {
   // Keep the Filer companion table in sync (see TODOS.md「Filer / Company
   // 拆分」) so every filer is discoverable there the moment it's first
   // imported, before any 10-K import for it ever runs.
-  const isMasterPersona = TRIBE_MEMBERS.find((m) => m.id === filer.tribeId)?.category === "core";
+  //
+  // isMasterPersona is set only on create, defaulting new filers to alpha
+  // (false) — the core tribe's 3 rows already exist and always hit the
+  // update branch. It's intentionally omitted from `update`: this function
+  // runs on every 13F reimport (not just onboarding), and overwriting the
+  // category set at registration time on every quarterly reimport would
+  // silently reclassify investors.
   await db.filer.upsert({
     where: { tribeId: filer.tribeId },
     create: {
@@ -423,13 +429,12 @@ export async function upsertFilerEntity(filer: FilerConfig) {
       name: filer.name,
       filerCik: filer.cik,
       filerEntityId: entity.id,
-      isMasterPersona,
+      isMasterPersona: false,
     },
     update: {
       name: filer.name,
       filerCik: filer.cik,
       filerEntityId: entity.id,
-      isMasterPersona,
     },
   });
 
