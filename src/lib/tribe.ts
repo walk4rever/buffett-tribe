@@ -147,6 +147,21 @@ export const TRIBE_MEMBERS: TribeMember[] = [
     hasData: true,
     icon: "A",
   },
+  {
+    id: "terry-smith",
+    category: "alpha",
+    displayGroup: "Alpha 部落",
+    name: "Terry Smith",
+    nameZh: "Terry Smith",
+    firm: "Fundsmith LLP",
+    initials: "TS",
+    materialLabel: "访谈与观点",
+    materialSub: "建设中",
+    materialHref: "/master/terry-smith#library",
+    holdingsHref: "/master/terry-smith/holdings",
+    hasData: true,
+    icon: "A",
+  },
 ];
 
 export const CORE_TRIBE_MEMBERS = TRIBE_MEMBERS.filter((m) => m.category === "core");

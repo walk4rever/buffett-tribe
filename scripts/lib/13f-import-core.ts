@@ -193,6 +193,7 @@ export const FILERS = [
   { tribeId: "leopold-aschenbrenner", name: "Situational Awareness LP", cik: "2045724" },
   { tribeId: "christopher-begg", name: "East Coast Asset Management, LLC", cik: "1579254" },
   { tribeId: "micky-malka", name: "Ribbit Management Company, LLC", cik: "1836733" },
+  { tribeId: "terry-smith", name: "Fundsmith LLP", cik: "1569205" },
 ] as const;
 
 export type FilerConfig = (typeof FILERS)[number];
