@@ -43,7 +43,7 @@ export function SiteNav() {
             对话
           </Link>
           <span className="home-nav-link home-nav-link--disabled" aria-disabled="true">
-            20孔
+            打孔
           </span>
           <span className="home-nav-link home-nav-link--disabled" aria-disabled="true">
             活动

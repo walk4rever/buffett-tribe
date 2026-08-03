@@ -148,65 +148,78 @@ function formatHoldings(rows: HoldingRow[], masterLabel: string): string {
   return lines.join("\n\n");
 }
 
-export const searchHoldingsTool = defineTool({
-  name: "search_holdings",
-  label: "Search 13F Holdings",
-  description:
-    "Look up 13F portfolio holdings for tracked investors (Buffett, Li Lu, Duan Yongping, Gavin Baker, Alex Sacerdote, Leopold Aschenbrenner). Returns position size, portfolio weight, and quarter-over-quarter change. Defaults to the most recent available quarter.",
-  promptSnippet: "search_holdings(master, company?, year?, quarter?) → 13F holdings data",
-  parameters: Type.Object({
-    master: Type.String({
-      description: "Which investor: buffett | lilu | duan | gavin-baker | alex-sacerdote | leopold-aschenbrenner",
+// Built async (not a static export) so the roster in the tool's own
+// description/parameter schema is generated fresh from the Filer table at
+// session-creation time — onboarding a new investor makes them show up here
+// automatically, with no text to remember to edit and no redeploy required.
+// (Previously this — and AGENTS.md — hardcoded investor names as prose, which
+// went stale the moment Christopher Begg / Micky Malka were onboarded: the
+// underlying DB query always had their data, but the agent never knew to ask.)
+export async function createSearchHoldingsTool() {
+  const filerLabels = await getFilerLabels();
+  const rosterNames = [...filerLabels.values()].join(", ");
+  const rosterIds = [...filerLabels.keys()].join(" | ");
+
+  return defineTool({
+    name: "search_holdings",
+    label: "Search 13F Holdings",
+    description:
+      `Look up 13F portfolio holdings for tracked investors (${rosterNames}). Returns position size, portfolio weight, and quarter-over-quarter change. Defaults to the most recent available quarter.`,
+    promptSnippet: "search_holdings(master, company?, year?, quarter?) → 13F holdings data",
+    parameters: Type.Object({
+      master: Type.String({
+        description: `Which investor: ${rosterIds}`,
+      }),
+      company: Type.Optional(Type.String({
+        description: "Filter by company ticker (e.g. AAPL) or partial name. Omit to get full portfolio.",
+      })),
+      year: Type.Optional(Type.Number({
+        description: "Filter by year (e.g. 2023). Omit for most recent.",
+      })),
+      quarter: Type.Optional(Type.Number({
+        description: "Filter by quarter 1–4. Omit for most recent.",
+      })),
+      top_n: Type.Optional(Type.Number({
+        description: "Max positions to return (default 15, max 25).",
+      })),
     }),
-    company: Type.Optional(Type.String({
-      description: "Filter by company ticker (e.g. AAPL) or partial name. Omit to get full portfolio.",
-    })),
-    year: Type.Optional(Type.Number({
-      description: "Filter by year (e.g. 2023). Omit for most recent.",
-    })),
-    quarter: Type.Optional(Type.Number({
-      description: "Filter by quarter 1–4. Omit for most recent.",
-    })),
-    top_n: Type.Optional(Type.Number({
-      description: "Max positions to return (default 15, max 25).",
-    })),
-  }),
-  async execute(_toolCallId, params, signal) {
-    const { master, company, year, quarter, top_n } = params;
+    async execute(_toolCallId, params, signal) {
+      const { master, company, year, quarter, top_n } = params;
 
-    const tribeId = master.toLowerCase().trim();
-    const filerLabels = await getFilerLabels();
-    const masterLabel = filerLabels.get(tribeId);
-    if (!masterLabel) {
+      const tribeId = master.toLowerCase().trim();
+      const liveFilerLabels = await getFilerLabels();
+      const masterLabel = liveFilerLabels.get(tribeId);
+      if (!masterLabel) {
+        return {
+          content: [{ type: "text" as const, text: `Unknown master "${master}". Use: ${[...liveFilerLabels.keys()].join(" | ")}` }],
+          details: null,
+        };
+      }
+
+      const limit = Math.min(top_n ?? 15, 25);
+
+      if (signal?.aborted) {
+        return { content: [{ type: "text" as const, text: "Search cancelled." }], details: null };
+      }
+
+      let rows: HoldingRow[];
+      try {
+        rows = await queryHoldings(
+          tribeId,
+          company ?? null,
+          year ?? null,
+          quarter ?? null,
+          limit,
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { content: [{ type: "text" as const, text: `Holdings query failed: ${msg}` }], details: null };
+      }
+
       return {
-        content: [{ type: "text" as const, text: `Unknown master "${master}". Use: ${[...filerLabels.keys()].join(" | ")}` }],
-        details: null,
+        content: [{ type: "text" as const, text: formatHoldings(rows, masterLabel) }],
+        details: { count: rows.length },
       };
-    }
-
-    const limit = Math.min(top_n ?? 15, 25);
-
-    if (signal?.aborted) {
-      return { content: [{ type: "text" as const, text: "Search cancelled." }], details: null };
-    }
-
-    let rows: HoldingRow[];
-    try {
-      rows = await queryHoldings(
-        tribeId,
-        company ?? null,
-        year ?? null,
-        quarter ?? null,
-        limit,
-      );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return { content: [{ type: "text" as const, text: `Holdings query failed: ${msg}` }], details: null };
-    }
-
-    return {
-      content: [{ type: "text" as const, text: formatHoldings(rows, masterLabel) }],
-      details: { count: rows.length },
-    };
-  },
-});
+    },
+  });
+}

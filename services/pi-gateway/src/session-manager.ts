@@ -4,7 +4,7 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { homedir } from "os";
 import { searchWisdomTool } from "./tools/search-wisdom.js";
-import { searchHoldingsTool } from "./tools/search-holdings.js";
+import { createSearchHoldingsTool } from "./tools/search-holdings.js";
 import { searchFilingsTool } from "./tools/search-filings.js";
 import { getInsightContentTool } from "./tools/get-insight-content.js";
 import { getCompanyAnalysisTool } from "./tools/get-company-analysis.js";
@@ -64,6 +64,7 @@ function evictStaleSessions() {
 setInterval(evictStaleSessions, 5 * 60 * 1000).unref();
 
 async function makeSession(): Promise<AgentSession> {
+  const searchHoldingsTool = await createSearchHoldingsTool();
   const { session } = await createAgentSession({
     cwd: GATEWAY_DIR,         // loads AGENTS.md from gateway root
     agentDir: PI_AGENT_DIR,   // loads models.json (custom providers) from here
