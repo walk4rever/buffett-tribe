@@ -4,7 +4,6 @@ import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import { BtLogoMark } from "@/components/BtLogoMark";
-import { CORE_TRIBE_MEMBERS } from "@/lib/tribe";
 
 export function SiteNav() {
   const { data: session } = useSession();
@@ -30,21 +29,25 @@ export function SiteNav() {
           Buffett Tribe
         </Link>
         <div className="home-nav-center" aria-label="部落成员与入口">
-          {CORE_TRIBE_MEMBERS.map((member) => (
-            <Link key={member.id} href={`/master/${member.id}`} className="home-nav-link">
-              {member.nameZh}
-            </Link>
-          ))}
-          <span className="home-nav-divider">|</span>
+          <Link href="/master" className="home-nav-link">
+            大师
+          </Link>
           <Link href="/company" className="home-nav-link">
             公司
-          </Link>
-          <Link href="/agent" className="home-nav-link">
-            对话
           </Link>
           <Link href="/insights" className="home-nav-link">
             洞见
           </Link>
+          <span className="home-nav-divider">|</span>
+          <Link href="/agent" className="home-nav-link">
+            对话
+          </Link>
+          <span className="home-nav-link home-nav-link--disabled" aria-disabled="true">
+            20孔
+          </span>
+          <span className="home-nav-link home-nav-link--disabled" aria-disabled="true">
+            活动
+          </span>
         </div>
         <div className="home-nav-right">
           {session ? (

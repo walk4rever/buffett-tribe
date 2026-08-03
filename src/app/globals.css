@@ -4024,6 +4024,10 @@ body.layout-no-header {
   overflow-x: clip;
 }
 
+.master-page {
+  min-height: 100vh;
+}
+
 /* ── Nav — Apple dark glass ── */
 .home-nav {
   background: var(--apple-nav-bg);
@@ -4099,6 +4103,19 @@ body.layout-no-header {
 
 .home-nav-link:hover {
   color: var(--apple-white);
+}
+
+/* Placeholder nav entries for not-yet-built pages (20孔, 活动). Compound
+   selector (not a bare .home-nav-link--disabled) so this outranks the later
+   Graphite Pro override that recolors plain .home-nav-link. */
+.home-nav-link.home-nav-link--disabled {
+  color: rgba(255, 255, 255, 0.32);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.home-nav-link.home-nav-link--disabled:hover {
+  color: rgba(255, 255, 255, 0.32);
 }
 
 .home-nav-divider {
@@ -8707,7 +8724,8 @@ body {
 .home-v2,
 .person-page,
 .holdings-page,
-.letter-page {
+.letter-page,
+.idea-screen {
   background:
     radial-gradient(circle at 0% 0%, rgba(0, 113, 227, 0.1), transparent 34%),
     radial-gradient(circle at 100% 100%, rgba(148, 163, 184, 0.12), transparent 40%),
@@ -8730,21 +8748,58 @@ body {
 }
 
 .home-signals,
-.home-members,
 .home-footer-v2 {
   background: #101827;
 }
 
-.home-sig,
-.home-member-card {
+/* /master (member listing) reuses these classes but is a standalone light
+   content page now, not a dark accent band inside the homepage — match the
+   light graphite-surface card treatment used by /master/[id], /company. */
+.home-members {
+  background: transparent;
+}
+
+.home-sig {
   background: #182233;
   border: 1px solid #2a374d;
   box-shadow: none;
 }
 
+.home-member-card {
+  background: var(--graphite-surface);
+  border: 1px solid var(--graphite-border);
+  box-shadow: 0 10px 32px rgba(15, 23, 42, 0.08);
+}
+
 .home-member-link {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--apple-link-dark);
+  background: var(--graphite-surface-soft);
+  color: var(--graphite-text);
+}
+
+.home-member-link:hover {
+  border-color: var(--graphite-accent);
+  background: rgba(0, 113, 227, 0.08);
+}
+
+.home-member-aum {
+  color: var(--graphite-text);
+  background: var(--graphite-surface-soft);
+}
+
+.home-members-hd {
+  color: var(--graphite-text-secondary);
+}
+
+.home-member-link-text em {
+  color: var(--graphite-text-secondary);
+}
+
+.home-alpha-block {
+  border-top-color: var(--graphite-border-soft);
+}
+
+.home-member-card:focus-visible {
+  outline-color: var(--graphite-accent);
 }
 
 .home-hero {
@@ -8756,13 +8811,8 @@ body {
   color: var(--graphite-text);
 }
 
-/* Keep member names readable on dark member cards */
-.home-members .home-member-name {
-  color: #f8fafc;
-}
-
-.home-members .home-member-firm {
-  color: rgba(248, 250, 252, 0.72);
+.home-member-firm {
+  color: var(--graphite-text-secondary);
 }
 
 .home-hero-sub {
@@ -9322,7 +9372,7 @@ body {
 
 .home-member-card:hover {
   transform: translateY(-4px);
-  border-color: #435573;
+  border-color: var(--graphite-accent);
 }
 
 .home-member-links {
