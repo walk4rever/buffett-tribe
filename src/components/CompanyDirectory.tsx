@@ -12,6 +12,7 @@ export type CompanyDirectoryItem = {
   tickers: string[];
   href: string | null;
   market: CompanyMarket;
+  isComplete: boolean;
 };
 
 const MARKET_SECTIONS: Array<{ market: CompanyMarket; label: string }> = [
@@ -67,14 +68,17 @@ export function CompanyDirectory({ companies }: { companies: CompanyDirectoryIte
     );
   }, [companies, query]);
 
-  const sections = useMemo(
-    () =>
-      MARKET_SECTIONS.map((section) => ({
-        ...section,
-        items: filtered.filter((c) => c.market === section.market),
-      })).filter((section) => section.items.length > 0),
-    [filtered]
-  );
+  const sections = useMemo(() => {
+    const complete = filtered.filter((c) => c.isComplete);
+    const incomplete = filtered.filter((c) => !c.isComplete);
+    const marketSections = MARKET_SECTIONS.map((section) => ({
+      ...section,
+      key: section.market as string,
+      items: complete.filter((c) => c.market === section.market),
+    }));
+    const pendingSection = { market: "pending" as const, key: "pending", label: "待完善", items: incomplete };
+    return [...marketSections, pendingSection].filter((section) => section.items.length > 0);
+  }, [filtered]);
 
   return (
     <>
@@ -93,7 +97,7 @@ export function CompanyDirectory({ companies }: { companies: CompanyDirectoryIte
         <div className="companies-empty">没有匹配“{query.trim()}”的公司</div>
       ) : (
         sections.map((section) => (
-          <section key={section.market} className="companies-section">
+          <section key={section.key} className="companies-section">
             <h2 className="companies-section-title">
               {section.label}
               <span className="companies-section-count">({section.items.length})</span>

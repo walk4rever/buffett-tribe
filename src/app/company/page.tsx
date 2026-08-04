@@ -4,7 +4,11 @@ import { formatCompanyUrl } from "@/lib/company-data";
 import { SiteNav } from "@/components/SiteNav";
 import { CompanyDirectory, type CompanyDirectoryItem } from "@/components/CompanyDirectory";
 
-export const dynamic = "force-dynamic";
+// Company directory changes in slow batches (manual onboarding runs), not
+// per-request — ISR caches the ~1.5-2s query result instead of re-running
+// it on every visit. Up to 1h staleness after an onboard run is a non-issue
+// here.
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "公司库 | Buffett Tribe",
@@ -41,6 +45,12 @@ async function getCompanies(): Promise<CompanyDirectoryItem[]> {
           select: { ticker: true },
           orderBy: { ticker: "asc" },
         },
+        // Onboarding writes Financial/CompanyAnalysis/BusinessCanvas together
+        // as one unit — a company either has all of them or none, so
+        // Financial alone is a reliable "fully onboarded" signal. Without
+        // it, the row is a bare stub auto-created by 13F import the moment
+        // some investor's holdings first mentioned the ticker.
+        _count: { select: { financials: true } },
       },
       orderBy: { canonicalName: "asc" },
     });
@@ -63,6 +73,7 @@ async function getCompanies(): Promise<CompanyDirectoryItem[]> {
         tickers,
         href: formatCompanyUrl(row),
         market,
+        isComplete: row._count.financials > 0,
       };
     });
   } catch {
