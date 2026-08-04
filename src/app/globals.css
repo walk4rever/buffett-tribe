@@ -5355,16 +5355,6 @@ body.layout-no-header {
 .person-timeline-item { font-size: 0.72rem; color: var(--apple-body); padding: 0.25rem 0; border-bottom: 1px solid rgba(0,0,0,0.04); display: flex; gap: 0.5rem; }
 .person-timeline-item:last-child { border-bottom: none; }
 
-/* Timeline v2 — visual connector */
-.person-timeline-v2 { display: flex; flex-direction: column; gap: 0; margin-bottom: 1.5rem; }
-.person-timeline-v2--hero { margin-top: 1rem; margin-bottom: 0; }
-.person-timeline-node { display: flex; gap: 0; min-height: 2.2rem; }
-.person-timeline-marker { display: flex; flex-direction: column; align-items: center; width: 1.5rem; flex-shrink: 0; padding-top: 0.45rem; }
-.person-timeline-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--apple-link-light); flex-shrink: 0; }
-.person-timeline-line { width: 1px; flex: 1; background: rgba(0,0,0,0.1); margin-top: 3px; }
-.person-timeline-body { display: flex; gap: 0.5rem; padding: 0.3rem 0 0.3rem 0.5rem; flex: 1; }
-.person-timeline-year { font-size: 0.75rem; font-weight: 600; color: var(--apple-near-black); white-space: nowrap; min-width: 3.2rem; }
-.person-timeline-desc { font-size: 0.75rem; color: var(--apple-body); line-height: 1.45; }
 .person-section-subhead { font-size: 0.75rem; color: var(--apple-secondary); font-weight: 600; margin-bottom: 0.6rem; }
 
 /* Sections */

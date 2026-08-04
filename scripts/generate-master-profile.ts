@@ -246,17 +246,13 @@ ${matLines}
 请严格输出以下 JSON 格式，不要包含 markdown 代码块标记，只输出纯 JSON。所有中文文本句尾使用中文句号（。）。
 
 {
-  "intro": "150-200字的中文简介，概括投资理念、风格和成就。",
-  "timeline": [
-    "年份：事件描述（20-40字）——仅限人生/职业里程碑，不要包含投资买入事件",
-    "...",
-    "...共5-7条..."
-  ]
+  "bio": "投资人个人履历亮点，100-200字：出生/教育背景、职业转折、代表著作或知名事件等确凿可信的事实。",
+  "fundOverview": "基金公司历史与业绩概述，100-200字：成立时间与背景（如可考）、投资策略与风格、持仓集中度/行业偏好/换手特征（可结合下方持仓数据说明），以及可获得的规模或业绩信息。"
 }
 
 重要约束：
-1. timeline 仅包含人生/职业里程碑（毕业、创立公司、出版著作、结识导师等），不要包含任何投资买入事件或具体建仓年份——那类内容需要逐笔核对真实持仓历史，此处没有数据支撑，不要编造。
-2. 如果某些内容没有足够数据支撑，写 "无可信公开数据" 而不是编造。
+1. 只写你有把握的事实。如果某人公开资料很少，bio 就写得简短，宁可只有一两句话，也不要为了凑够字数编造，更不要使用"未知年份""不详""无可信公开数据"这类占位句式反复堆砌——没有实质内容的条目直接不写。
+2. fundOverview 部分可以放心引用下方持仓数据（集中度、行业、换手率等）做真实描述，这部分不算编造。
 3. 输出必须是纯 JSON，不要包含 \`\`\`json 包裹。`;
 }
 
@@ -313,10 +309,11 @@ async function callAI(prompt: string): Promise<unknown> {
 
 function validateProfile(raw: unknown): asserts raw is Record<string, unknown> {
   const obj = raw as Record<string, unknown>;
-  const required = ["intro", "timeline"];
+  const required = ["bio", "fundOverview"];
   const missing = required.filter((k) => !(k in obj));
   if (missing.length) throw new Error(`Missing fields: ${missing.join(", ")}`);
-  if (!Array.isArray(obj.timeline)) throw new Error("timeline must be an array");
+  if (typeof obj.bio !== "string") throw new Error("bio must be a string");
+  if (typeof obj.fundOverview !== "string") throw new Error("fundOverview must be a string");
 }
 
 // ---------------------------------------------------------------------------
@@ -425,12 +422,12 @@ async function main() {
       });
 
       const profile = result as {
-        intro?: unknown;
-        timeline?: unknown[];
+        bio?: unknown;
+        fundOverview?: unknown;
       };
       console.log(`  ✓ Profile saved (v${(await db.masterProfile.findUnique({ where: { entityId: entity.id }, select: { version: true } }))?.version ?? 0})`);
-      console.log(`    intro: ${String(profile.intro).length} chars`);
-      console.log(`    timeline: ${Array.isArray(profile.timeline) ? profile.timeline.length : 0} items`);
+      console.log(`    bio: ${String(profile.bio).length} chars`);
+      console.log(`    fundOverview: ${String(profile.fundOverview).length} chars`);
     } catch (err) {
       console.error(`  ✗ Failed:`, err instanceof Error ? err.message : String(err));
     }

@@ -5,8 +5,8 @@ import db from "@/lib/prisma";
 // ---------------------------------------------------------------------------
 
 export interface MasterProfileData {
-  intro: string;
-  timeline: string[];
+  bio: string; // 投资人个人履历亮点
+  fundOverview: string; // 基金公司历史与业绩概述
 }
 
 export interface MasterProfileResult {

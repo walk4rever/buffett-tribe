@@ -156,98 +156,26 @@ function splitNarrative(text: string) {
 }
 
 // Hardcoded fallback when DB profile is unavailable
-const FALLBACK_BRIEF: Record<
-  string,
-  { intro: string; framework: string[]; tags: string[]; timeline: string[] }
-> = {
+const FALLBACK_BRIEF: Record<string, { bio: string; fundOverview: string }> = {
   buffett: {
-    intro:
-      "沃伦·巴菲特，伯克希尔·哈撒韦董事长，全球价值投资集大成者，以资本配置纪律和长期持有闻名。",
-    framework: [
-      "能力圈：坚守自己可理解且可长期跟踪的业务边界",
-      "经济护城河：寻找品牌、成本优势、网络效应与定价权",
-      "管理层素质：关注卓越的资本配置纪律与股东导向",
-      "安全边际：要求买入价格比估算的每股内在价值有显著折扣",
-    ],
-    tags: ["长期主义", "特许经营权", "高ROE", "资本配置"],
-    timeline: [
-      "1956：成立巴菲特合伙人公司（Buffett Partnership）",
-      "1965：控制伯克希尔·哈撒韦，将其转型为资本配置旗舰",
-      "1972：收购喜诗糖果，转向「价格合理的高质量企业」",
-      "1988：重仓可口可乐（Coca-Cola），确立经济护城河典范",
-      "2016：大举建仓苹果（Apple），成为第一大重仓股",
-    ],
+    bio: "沃伦·巴菲特，1930年出生于美国内布拉斯加州奥马哈，师从本杰明·格雷厄姆学习价值投资。1956年成立巴菲特合伙人公司，1965年取得伯克希尔·哈撒韦控制权。2006年宣布将大部分财富捐赠给比尔及梅琳达·盖茨基金会，被誉为「奥马哈先知」。",
+    fundOverview: "伯克希尔·哈撒韦以资本配置纪律和长期持有著称，坚持能力圈、经济护城河、管理层素质与安全边际四大原则。1972年收购喜诗糖果确立「价格合理的高质量企业」理念，1988年重仓可口可乐、2016年建仓苹果均成为经典护城河投资案例。",
   },
   lilu: {
-    intro: "李录，喜马拉雅资本创始人，查理·芒格家族资产管理人，将现代价值投资与中国经济全球化深度结合的实践者。",
-    framework: [
-      "对的生意：寻找能长期产生高自由现金流且可持续增长的公司",
-      "对的人：评估管理层企业家精神、诚信和长期视野",
-      "安全边际：在商业和管理层正确的基础上，追求内在价值的低估",
-      "能力圈：坚守深度研究，追求长期的认知优势",
-    ],
-    tags: ["Right Business", "深度研究", "中国机遇", "第一性原理"],
-    timeline: [
-      "1993：在哥伦比亚大学听巴菲特演讲，启发价值投资之路",
-      "1996：创纪录获得哥大经济学、法学(JD)、商学(MBA)三学位",
-      "1997：创立喜马拉雅资本（Himalaya Capital）",
-      "2003：结识查理·芒格，受托管理其家族资产",
-      "2008：向伯克希尔推荐并促成比亚迪（BYD）的重仓投资",
-      "2020：出版《文明、现代化、价值投资与中国》",
-    ],
+    bio: "李录，1993年在哥伦比亚大学听巴菲特演讲后走上价值投资之路，1996年创纪录获得哥大经济学、法学(JD)、商学(MBA)三学位。2003年结识查理·芒格，受托管理其家族资产，2020年出版《文明、现代化、价值投资与中国》。",
+    fundOverview: "喜马拉雅资本由李录于1997年创立，将现代价值投资与中国经济全球化深度结合，寻找能长期产生高自由现金流且可持续增长的公司，重视管理层企业家精神与诚信。2008年向伯克希尔推荐并促成比亚迪的重仓投资是其代表案例。",
   },
   duan: {
-    intro: "段永平，步步高创始人，著名企业家、投资家，以「本分」、「商业模式优先」和重仓苹果、腾讯闻名。",
-    framework: [
-      "商业模式优先：好的模式容易赚钱，有很强用户黏性与高壁垒",
-      "本分文化：不做不对的事，保持平常心，克制盲目扩张",
-      "懂即是简单：对商业模式和确定性有近乎常识性的把握",
-      "估值即现金流折现：若不能一眼看出便宜，那就是不够便宜",
-    ],
-    tags: ["本分", "商业模式优先", "不为清单", "懂即是简单"],
-    timeline: [
-      "1989：创立「小霸王」品牌，打造电子学习机与游戏机帝国",
-      "1995：创立步步高，后分化出 OPPO、vivo 等知名品牌",
-      "2001：移居美国并退居幕后，自学价值投资",
-      "2002：低位重仓网易，持股超 6%，后获超百倍回报",
-      "2006：标得巴菲特慈善午餐，携黄峥一同前往",
-      "2011：大举建仓苹果公司，成为其第一大重仓股",
-      "2018：建仓并持续买入腾讯，公开分享对微信生态的理解",
-    ],
+    bio: "段永平，1989年创立「小霸王」品牌，1995年创立步步高，后分化出 OPPO、vivo 等知名品牌。2001年移居美国并退居幕后自学价值投资，2006年标得巴菲特慈善午餐。",
+    fundOverview: "段永平以「本分」文化和「商业模式优先」著称，强调不做不对的事、保持平常心。2002年低位重仓网易获超百倍回报，2011年建仓苹果、2018年建仓腾讯均长期持有至今，是其集中投资风格的代表案例。",
   },
   "gavin-baker": {
-    intro:
-      "Gavin Baker，Atreides Management, LP 创始人、Managing Partner 与 CIO，长期专注科技、消费成长、AI、半导体与 public/private crossover 投资。",
-    framework: [
-      "技术周期：跟踪算力、半导体、软件平台和消费互联网的长期结构变化",
-      "成长质量：重视市场空间、竞争位置、单位经济模型和管理层执行力",
-      "跨市场视角：结合公开市场与私募成长投资理解企业生命周期",
-      "风险控制：通过组合、对冲和仓位管理应对高成长资产波动",
-    ],
-    tags: ["Alpha 部落", "科技成长", "AI", "半导体", "Crossover"],
-    timeline: [
-      "1999：加入 Fidelity Investments，开始研究科技、医药、零售和通信等行业",
-      "2009：开始管理 Fidelity OTC Portfolio",
-      "2013：参与推动 Fidelity 的风险投资和成长投资业务",
-      "2019：创立 Atreides Management, LP",
-    ],
+    bio: "Gavin Baker，1999年加入 Fidelity Investments，2009年起管理 Fidelity OTC Portfolio，2013年参与推动 Fidelity 的风险投资和成长投资业务，2019年创立 Atreides Management, LP。",
+    fundOverview: "Atreides Management, LP 长期专注科技、消费成长、AI、半导体与 public/private crossover 投资，跟踪算力、半导体、软件平台和消费互联网的长期结构变化，结合公开市场与私募成长投资理解企业生命周期。",
   },
   "alex-sacerdote": {
-    intro:
-      "Alex Sacerdote，Whale Rock Capital Management 创始人，专注科技成长投资的资深基金经理，以深度基本面研究和长期持有优质成长企业著称。",
-    framework: [
-      "成长质量优先：投资于具备可持续竞争优势和强大单位经济模型的企业",
-      "长期持有：对有信心的持仓保持耐心，换手率低于多数成长型基金",
-      "深度研究：自下而上的基本面分析，重视管理层质量和资本配置能力",
-      "科技聚焦：专注软件、互联网、金融科技和数字平台等结构性增长领域",
-    ],
-    tags: ["Alpha 部落", "科技成长", "长期持有", "基本面研究"],
-    timeline: [
-      "2006：创立 Whale Rock Capital Management",
-      "2006-2022：管理 Whale Rock 多空股票策略，聚焦科技成长领域",
-      "2020：疫情期间精准布局远程办公和数字基础设施标的",
-      "2022：宣布关闭 Whale Rock，返还投资者资本",
-    ],
+    bio: "Alex Sacerdote，2006年创立 Whale Rock Capital Management，2006-2022年管理其多空股票策略，2020年疫情期间精准布局远程办公和数字基础设施标的，2022年宣布关闭 Whale Rock，返还投资者资本。",
+    fundOverview: "Whale Rock Capital Management 专注科技成长投资，以深度基本面研究和长期持有优质成长企业著称，投资于具备可持续竞争优势和强大单位经济模型的企业，换手率低于多数成长型基金。",
   },
 };
 
@@ -257,10 +185,8 @@ const FALLBACK_BRIEF: Record<
 // investor's bio.
 function genericFallback(member: NonNullable<Awaited<ReturnType<typeof getTribeMember>>>) {
   return {
-    intro: `${member.nameZh}，${member.firm}。投资档案生成中，完整介绍即将上线。`,
-    framework: [] as string[],
-    tags: [] as string[],
-    timeline: [] as string[],
+    bio: `${member.nameZh}的投资档案生成中，完整履历即将上线。`,
+    fundOverview: `${member.firm}的基金概述生成中，完整内容即将上线。`,
   };
 }
 
@@ -278,8 +204,8 @@ export default async function PersonHubPage({ params }: Props) {
 
   const fallback = FALLBACK_BRIEF[id] ?? genericFallback(member);
   const profile = profileResult?.profile;
-  const intro = profile?.intro ?? fallback.intro;
-  const timeline = profile?.timeline ?? fallback.timeline;
+  const bio = profile?.bio ?? fallback.bio;
+  const fundOverview = profile?.fundOverview ?? fallback.fundOverview;
   const latest = changeSet.latest;
   const portfolioInsight = latest
     ? await getPortfolioInsightRecord(id, latest.year, latest.quarter)
@@ -337,28 +263,8 @@ export default async function PersonHubPage({ params }: Props) {
                   </p>
                 </>
               ) : null}
-              <p className="person-intro">{intro}</p>
-              {timeline.length > 0 && (
-                <div className="person-timeline-v2 person-timeline-v2--hero">
-                  {timeline.map((line: string, i: number) => {
-                    const sepIdx = Math.max(line.indexOf("："), line.indexOf(":"), line.indexOf("-"));
-                    const year = sepIdx > -1 ? line.slice(0, sepIdx) : "";
-                    const desc = sepIdx > -1 ? line.slice(sepIdx + 1) : line;
-                    return (
-                      <div key={i} className="person-timeline-node">
-                        <div className="person-timeline-marker">
-                          <div className="person-timeline-dot" />
-                          {i < timeline.length - 1 && <div className="person-timeline-line" />}
-                        </div>
-                        <div className="person-timeline-body">
-                          {year && <span className="person-timeline-year">{year}</span>}
-                          <span className="person-timeline-desc">{desc}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <p className="person-intro">{bio}</p>
+              <p className="person-intro">{fundOverview}</p>
             </div>
           </div>
         </section>
