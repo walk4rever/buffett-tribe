@@ -1,26 +1,16 @@
 /**
- * Registration primitives for onboarding a new Alpha investor:
- *   - registerFiler: file-editing insert into FILERS in
- *     scripts/lib/13f-import-core.ts — drives which CIKs `import:13f` pulls.
- *     Kept as a source-file edit deliberately: it's operator config for a
- *     manually-invoked CLI script, not something that blocks the website
- *     from showing a new investor, so there's no benefit to moving it to
- *     the DB.
- *   - registerTribeMember: DB write to the `Filer` table (curated
- *     presentation fields consumed by src/lib/tribe.ts) — this is what
- *     makes a new investor appear site-wide immediately, no code change or
- *     redeploy required.
+ * Registration primitive for onboarding a new Alpha investor: a DB write to
+ * the `Filer` table (curated presentation fields consumed by
+ * src/lib/tribe.ts, plus filerCik consumed by the 13F/13D-G import scripts
+ * via getTrackedFilers()) — this single write is what makes a new investor
+ * appear site-wide immediately *and* get picked up by future quarterly
+ * reimports, with no code change or redeploy required.
  *
- * Both are idempotent: if an entry for the given id already exists, it's
- * left untouched and the function reports it as already present.
+ * Idempotent: if the investor is already registered, it's left untouched
+ * and the function reports it as already present.
  */
-import { readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import prisma from "@/lib/prisma";
 import { upsertFilerEntity } from "./13f-import-core";
-
-const FILERS_FILE = path.join(process.cwd(), "scripts", "lib", "13f-import-core.ts");
-const FILERS_CLOSE = "] as const;";
 
 export type AlphaInvestorInput = {
   id: string;
@@ -32,23 +22,6 @@ export type AlphaInvestorInput = {
   materialLabel: string;
   materialSub: string;
 };
-
-function escapeForDoubleQuotedString(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-}
-
-export async function registerFiler(input: AlphaInvestorInput): Promise<"inserted" | "already_present"> {
-  const source = await readFile(FILERS_FILE, "utf8");
-  if (source.includes(`tribeId: "${input.id}"`)) return "already_present";
-
-  const closeIndex = source.lastIndexOf(FILERS_CLOSE);
-  if (closeIndex === -1) throw new Error(`Could not find "${FILERS_CLOSE}" in ${FILERS_FILE}`);
-
-  const line = `  { tribeId: "${input.id}", name: "${escapeForDoubleQuotedString(input.firm)}", cik: "${input.cik}" },\n`;
-  const updated = source.slice(0, closeIndex) + line + source.slice(closeIndex);
-  await writeFile(FILERS_FILE, updated, "utf8");
-  return "inserted";
-}
 
 export async function registerTribeMember(input: AlphaInvestorInput): Promise<"inserted" | "already_present"> {
   const existing = await prisma.filer.findUnique({
@@ -75,11 +48,6 @@ export async function registerTribeMember(input: AlphaInvestorInput): Promise<"i
     },
   });
   return "inserted";
-}
-
-export async function isFilerRegistered(id: string): Promise<boolean> {
-  const source = await readFile(FILERS_FILE, "utf8");
-  return source.includes(`tribeId: "${id}"`);
 }
 
 export async function isTribeMemberRegistered(id: string): Promise<boolean> {

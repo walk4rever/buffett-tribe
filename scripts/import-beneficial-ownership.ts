@@ -16,7 +16,7 @@
 
 import { XMLParser } from "fast-xml-parser";
 import prisma from "@/lib/prisma";
-import { FILERS, type FilerConfig } from "./lib/13f-import-core";
+import { getTrackedFilers, type FilerConfig } from "./lib/13f-import-core";
 
 const USER_AGENT = "buffett-tribe research walkklaw@gmail.com";
 const REQUEST_DELAY_MS = 200; // stay well under SEC's 10 req/s fair-access limit
@@ -141,7 +141,7 @@ function asArray<T>(v: T | T[] | undefined): T[] {
 
 // Filings spell the same filer inconsistently across amendments/co-filers
 // (e.g. "Berkshire Hathaway Inc." in the XML vs "Berkshire Hathaway Inc" in
-// our FILERS config) — compare case-insensitively, ignoring trailing periods.
+// Filer.name) — compare case-insensitively, ignoring trailing periods.
 function normalizeFilerName(name: string): string {
   return name.trim().replace(/\.+$/, "").toLowerCase();
 }
@@ -375,9 +375,10 @@ async function main() {
   const fromYear = fromArg ? Number(fromArg) : new Date().getFullYear() - 5;
   if (!Number.isFinite(fromYear)) throw new Error(`Invalid --from year: ${fromArg}`);
 
-  const targets = filterTribeId ? FILERS.filter((f) => f.tribeId === filterTribeId) : FILERS;
+  const allFilers = await getTrackedFilers();
+  const targets = filterTribeId ? allFilers.filter((f) => f.tribeId === filterTribeId) : allFilers;
   if (targets.length === 0) {
-    throw new Error(`Unknown --filer "${filterTribeId}". Valid: ${FILERS.map((f) => f.tribeId).join(", ")}`);
+    throw new Error(`Unknown --filer "${filterTribeId}". Valid: ${allFilers.map((f) => f.tribeId).join(", ")}`);
   }
 
   for (const filer of targets) {

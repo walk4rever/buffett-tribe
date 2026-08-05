@@ -183,20 +183,22 @@ async function translateMissingNames(entries: InfoTableEntry[], concurrency = 4)
   });
 }
 
-export const FILERS = [
-  { tribeId: "buffett", name: "Berkshire Hathaway Inc", cik: "1067983" },
-  { tribeId: "lilu", name: "Himalaya Capital Management LLC", cik: "1709323" },
-  { tribeId: "duan", name: "H&H International Investment LLC", cik: "1759760" },
-  { tribeId: "gavin-baker", name: "Atreides Management, LP", cik: "1777813" },
-  { tribeId: "alex-sacerdote", name: "Whale Rock Capital Management LLC", cik: "1387322" },
-  { tribeId: "leopold-aschenbrenner", name: "Situational Awareness LP", cik: "2045724" },
-  { tribeId: "christopher-begg", name: "East Coast Asset Management, LLC", cik: "1579254" },
-  { tribeId: "micky-malka", name: "Ribbit Management Company, LLC", cik: "1836733" },
-  { tribeId: "terry-smith", name: "Fundsmith LLP", cik: "1569205" },
-  { tribeId: "mohnish-pabrai", name: "Dalal Street, LLC", cik: "1549575" },
-] as const;
+export type FilerConfig = { tribeId: string; name: string; cik: string };
 
-export type FilerConfig = (typeof FILERS)[number];
+// Tracked filers live in the Filer table (written by the onboarding
+// pipeline — see registerTribeMember() in alpha-investor-registration.ts,
+// which calls upsertFilerEntity() below before this could ever be queried
+// for a brand-new investor). Querying fresh here — instead of a hardcoded
+// array — means a newly onboarded investor is picked up by the next
+// `import:13f --all` quarterly reimport with no code change required.
+export async function getTrackedFilers(): Promise<FilerConfig[]> {
+  const rows = await db.filer.findMany({
+    where: { filerCik: { not: null } },
+    select: { tribeId: true, name: true, filerCik: true },
+    orderBy: { createdAt: "asc" },
+  });
+  return rows.map((r) => ({ tribeId: r.tribeId, name: r.name, cik: r.filerCik! }));
+}
 
 export function quarterKey(year: number, quarter: number): string {
   return `${year}Q${quarter}`;

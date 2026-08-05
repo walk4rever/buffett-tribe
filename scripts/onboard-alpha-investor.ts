@@ -1,25 +1,28 @@
 /**
  * One-shot onboarding for a brand-new Alpha investor (a 13F filer shown under
  * "Alpha 部落", distinct from the core tribe members). Chains the steps that
- * today require hand-editing two source files and running two separate scripts:
+ * today require hand-editing a source file and running several separate scripts:
  *
- *   1. register_filer          -> FILERS entry in scripts/lib/13f-import-core.ts
- *   2. register_tribe_member   -> curated fields on the Filer row (category: "alpha"),
- *                                 consumed by src/lib/tribe.ts — DB-driven, so this
- *                                 alone makes the investor show up site-wide
- *   3. import_13f               -> npm run import:13f -- --filer <id> (Entity + Holding)
- *   4. generate_master_profile -> npm run generate:master-profile -- --master <id>
+ *   1. register_tribe_member   -> curated fields + filerCik on the Filer row
+ *                                 (category: "alpha") — DB-driven, so this alone
+ *                                 makes the investor show up site-wide *and* get
+ *                                 picked up by future `import:13f --all` /
+ *                                 `import:beneficial-ownership` reimports
+ *                                 (both resolve tracked filers via getTrackedFilers(),
+ *                                 not a hardcoded list) — no code change, no redeploy
+ *   2. import_13f               -> npm run import:13f -- --filer <id> (Entity + Holding)
+ *   3. generate_master_profile -> npm run generate:master-profile -- --master <id>
  *                                 (LLM bio/timeline, written to MasterProfile;
  *                                 without this the profile page has no hand-written
  *                                 FALLBACK_BRIEF entry either and shows a generic
  *                                 placeholder instead of real content — skippable with
  *                                 --skip-generation)
- *   5. generate_portfolio_insight -> npm run generate:portfolio-insight -- --master <id>
+ *   4. generate_portfolio_insight -> npm run generate:portfolio-insight -- --master <id>
  *                                 (LLM quarterly holdings commentary, written to
  *                                 PortfolioInsight; without this the "持仓洞察" section
  *                                 on the profile page stays empty — skippable with
  *                                 --skip-generation)
- *   6. report_holdings          -> lists tickers held that have no Entity/Financial data yet;
+ *   5. report_holdings          -> lists tickers held that have no Entity/Financial data yet;
  *                                 with --onboard-holdings, runs onboard:company for each
  *
  * Usage:
@@ -30,7 +33,7 @@
  *
  * Resumable: progress is checkpointed to .cache/onboard-alpha-investor/<id>.json;
  * a rerun skips steps already verified complete. Pass --fresh to ignore it.
- * Steps 1-2 are also independently idempotent (safe to rerun even without the checkpoint).
+ * Step 1 is also independently idempotent (safe to rerun even without the checkpoint).
  */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -38,15 +41,12 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import prisma from "@/lib/prisma";
 import {
-  isFilerRegistered,
   isTribeMemberRegistered,
-  registerFiler,
   registerTribeMember,
   type AlphaInvestorInput,
 } from "./lib/alpha-investor-registration";
 
 type StepId =
-  | "register_filer"
   | "register_tribe_member"
   | "import_13f"
   | "generate_master_profile"
@@ -222,31 +222,10 @@ async function main() {
     console.log(`  -> done`);
   };
 
-  // Step 1: register filer for 13F import
+  // Step 1: register tribe member for UI (also seeds Filer.filerCik, which
+  // doubles as the 13F/13D-G import scripts' filer roster)
   {
-    const label = "[1/6] 注册 filer（scripts/lib/13f-import-core.ts::FILERS）";
-    if (checkpoint.completed.register_filer) {
-      console.log(`${label} — already completed`);
-      summary.push({ step: label, status: "already_done" });
-    } else if (dryRun) {
-      console.log(`${label} — would run`);
-    } else {
-      console.log(`\n${label}`);
-      const result = await registerFiler(input);
-      console.log(`  ${result === "inserted" ? "inserted new FILERS entry" : "already present, left untouched"}`);
-      const ok = await isFilerRegistered(input.id);
-      if (!ok) {
-        summary.push({ step: label, status: "failed" });
-        console.error(`${label} — verification failed: entry not found after write`);
-        return finish(summary);
-      }
-      await markDone("register_filer", label);
-    }
-  }
-
-  // Step 2: register tribe member for UI
-  {
-    const label = '[2/6] 注册 tribe member（Filer 表策展字段, category: "alpha"）';
+    const label = '[1/5] 注册 tribe member（Filer 表策展字段, category: "alpha"）';
     if (checkpoint.completed.register_tribe_member) {
       console.log(`${label} — already completed`);
       summary.push({ step: label, status: "already_done" });
@@ -268,7 +247,7 @@ async function main() {
 
   // Step 3: import 13F holdings
   {
-    const label = "[3/6] 导入 13F 持仓（Entity + Security + Holding）";
+    const label = "[2/5] 导入 13F 持仓（Entity + Security + Holding）";
     if (skipImport) {
       console.log(`${label} — skipped (flag)`);
       summary.push({ step: label, status: "skipped" });
@@ -300,7 +279,7 @@ async function main() {
 
   // Step 4: generate LLM investment profile (intro/framework/timeline/etc.)
   {
-    const label = "[4/6] 生成投资档案（generate:master-profile -> MasterProfile）";
+    const label = "[3/5] 生成投资档案（generate:master-profile -> MasterProfile）";
     if (skipGeneration) {
       console.log(`${label} — skipped (flag)`);
       summary.push({ step: label, status: "skipped" });
@@ -329,7 +308,7 @@ async function main() {
 
   // Step 5: generate quarterly portfolio insight (持仓洞察)
   {
-    const label = "[5/6] 生成持仓洞察（generate:portfolio-insight -> PortfolioInsight）";
+    const label = "[4/5] 生成持仓洞察（generate:portfolio-insight -> PortfolioInsight）";
     if (skipGeneration) {
       console.log(`${label} — skipped (flag)`);
       summary.push({ step: label, status: "skipped" });
@@ -358,7 +337,7 @@ async function main() {
 
   // Step 6: report (and optionally onboard) portfolio companies missing from the DB
   {
-    const label = "[6/6] 检查持仓公司数据缺口";
+    const label = "[5/5] 检查持仓公司数据缺口";
     console.log(`\n${label}`);
     if (dryRun) {
       console.log(`${label} — would run`);

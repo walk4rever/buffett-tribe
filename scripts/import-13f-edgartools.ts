@@ -9,7 +9,7 @@ import path from "node:path";
 import { ImportTimer } from "./lib/import-timer";
 import {
   db,
-  FILERS,
+  getTrackedFilers,
   importFiling,
   normalizeCusip,
   parseQuarterListArg,
@@ -65,7 +65,7 @@ function parsePositiveInt(value: string | undefined, fallback: number) {
   return parsed;
 }
 
-function parseArgs() {
+async function parseArgs() {
   const filerArg = getArg("--filer") ?? getArg("--investor");
   const quartersArg = getArg("--quarters");
   const quarterListArg = getArg("--quarter-list") ?? getArg("--quarters-list");
@@ -87,9 +87,10 @@ function parseArgs() {
     quarterList = quarterRange(from, to);
   }
 
-  const filersToRun = filerArg ? FILERS.filter((f) => f.tribeId === filerArg) : [...FILERS];
+  const allFilers = await getTrackedFilers();
+  const filersToRun = filerArg ? allFilers.filter((f) => f.tribeId === filerArg) : allFilers;
   if (filerArg && filersToRun.length === 0) {
-    throw new Error(`Unknown filer: ${filerArg}. Use ${FILERS.map((f) => f.tribeId).join(", ")}.`);
+    throw new Error(`Unknown filer: ${filerArg}. Use ${allFilers.map((f) => f.tribeId).join(", ")}.`);
   }
 
   return { filersToRun, maxQuarters, quarterList, python };
@@ -169,7 +170,7 @@ function warnMissingQuarters(params: {
 }
 
 async function main() {
-  const { filersToRun, maxQuarters, quarterList, python } = parseArgs();
+  const { filersToRun, maxQuarters, quarterList, python } = await parseArgs();
   const importTimer = new ImportTimer("[13F]");
   await importTimer.time("seed entity cache", () => seedEntityCache());
 
