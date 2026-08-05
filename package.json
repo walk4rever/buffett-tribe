@@ -1,6 +1,6 @@
 {
   "name": "buffett-tribe",
-  "version": "0.41.13",
+  "version": "0.41.14",
   "private": true,
   "type": "module",
   "scripts": {
@@ -50,8 +50,6 @@
     "backfill:security:company-links:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-security-company-links.ts --dry-run",
     "backfill:company-cik": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-cik.ts",
     "backfill:company-cik:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-cik.ts --dry-run",
-    "backfill:filer-table": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-filer-table.ts",
-    "backfill:filer-table:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-filer-table.ts --dry-run",
     "backfill:tribe-member-fields": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-tribe-member-fields.ts",
     "backfill:tribe-member-fields:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-tribe-member-fields.ts --dry-run",
     "fix:berkshire-entity-split": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/fix-berkshire-entity-split.ts",
