@@ -3,17 +3,17 @@ import { Type } from "typebox";
 import { pool } from "../db.js";
 
 // Read lazily (not at module load) so this file stays importable in tests
-// without OPENAI_API_KEY set — see db.ts for the same reasoning re: DIRECT_URL.
+// without DASHSCOPE_API_KEY set — see db.ts for the same reasoning re: DIRECT_URL.
 async function getEmbedding(text: string): Promise<number[]> {
-  const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-  if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY env var is required");
-  const res = await fetch("https://api.openai.com/v1/embeddings", {
+  const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY;
+  if (!DASHSCOPE_API_KEY) throw new Error("DASHSCOPE_API_KEY env var is required");
+  const res = await fetch("https://dashscope-intl.aliyuncs.com/compatible-mode/v1/embeddings", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
-    body: JSON.stringify({ model: "text-embedding-3-large", input: text.slice(0, 8000), dimensions: 1536 }),
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${DASHSCOPE_API_KEY}` },
+    body: JSON.stringify({ model: "text-embedding-v4", input: text.slice(0, 8000), dimensions: 1536 }),
     signal: AbortSignal.timeout(25000),
   });
-  if (!res.ok) throw new Error(`OpenAI embedding ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`DashScope embedding ${res.status}: ${await res.text()}`);
   const data = (await res.json()) as { data: { embedding: number[] }[] };
   return data.data[0].embedding;
 }

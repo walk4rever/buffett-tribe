@@ -95,7 +95,7 @@ Canvas 的数据来自结构化事实层（财务数据，来自 EDGAR / 市场�
 Agent 由 pi-gateway（Express SSE，air7，PM2）驱动，使用 `@earendil-works/pi-coding-agent` 框架，LLM 为 DeepSeek。
 
 三个工具：
-- **`search_wisdom`** 查询资料库：GBrain 语义检索，OpenAI text-embedding-3-large 1536d
+- **`search_wisdom`** 查询资料库：GBrain 语义检索，DashScope text-embedding-v4 1536d
 - **`search_holdings`** 查询持仓明细：Supabase SQL，Holding → Security → Entity 联表，覆盖全部 5 位投资人（从 `Filer` 表动态读取）
 - **`search_filings`** 查询公司年报：FilingSection 结构化抽取，section alias 映射，keyword excerpt
 
@@ -712,7 +712,7 @@ Apple HIG 精简风格：
 
 - **数据源策略**：L1 用 fixture 零外部依赖；L2（未来）用 pglite 影子库；L3/L4 直接对生产库只读——这两层存在的意义就是盯真实数据漂移，脱离生产数据就失去价值。
 - **`npm run build` 有意不进 CI gate**：build-time 需要 RESEND / NextAuth / R2 / LLM 等生产密钥，不把生产凭证同步进 GitHub Secrets；发版前本地跑。
-- **`search_wisdom` 的 L3 case 有意不进 CI**：需要按次计费的 `OPENAI_API_KEY`，留在本地 / 发版前手动跑。`search_filings` / `search_holdings` 只需 `DIRECT_URL`，每次 push 自动跑。
+- **`search_wisdom` 的 L3 case 有意不进 CI**：需要按次计费的 `DASHSCOPE_API_KEY`，留在本地 / 发版前手动跑。`search_filings` / `search_holdings` 只需 `DIRECT_URL`，每次 push 自动跑。
 - **`verify-10k-edgartools` 有意排除在每周巡检外**：它会对生产库写入（重导 AAPL/PDD/SU）+ 打真实 SEC API，只作发版前 / 改导入器代码后的手动冒烟。
 - **Golden case 锚点**：固定挑覆盖不同 filing kind（10-K/20-F/40-F）和不同投资人的公司作为长期锚点，公司退市或数据结构变化时才更新。
 - **测试存放约定**：纯函数 → `tests/*.test.ts`；Agent 工具契约 → `tests/agent-tools/`；数据完整性 → `scripts/check-*.ts` 纳入 L4 清单；Playwright（未来）→ `e2e/*.spec.ts`。

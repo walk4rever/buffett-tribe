@@ -7,7 +7,8 @@
     "sync:shared": "bash scripts/sync-shared-lib.sh",
     "dev": "npm run sync:shared && tsx watch --env-file=.env src/server.ts",
     "start": "npm run sync:shared && tsx --env-file=.env src/server.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "reembed-wisdom": "tsx --env-file=.env scripts/reembed-wisdom.ts"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "^0.79.6",
