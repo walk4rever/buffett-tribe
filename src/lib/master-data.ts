@@ -1,10 +1,27 @@
 import db from "@/lib/prisma";
 import { formatUsdInYi } from "@/lib/currency";
+import { formatCompanyUrl } from "@/lib/company-data";
+import { computeHoldingActivity, computeShareDeltaPct, type HoldingActivity } from "@/lib/holding-activity";
 
 export type QuarterPoint = {
   year: number;
   quarter: number;
 };
+
+// Middle-of-quarter date (not quarter-end) — used purely as an x-axis anchor for the
+// holdings-history chart, so each quarter's point sits centered in its own equal-width
+// slice of the year rather than pinned to the right edge (quarter-end date).
+const QUARTER_MID_MONTH_DAY: Record<number, [number, number]> = {
+  1: [2, 15],
+  2: [5, 15],
+  3: [8, 15],
+  4: [11, 15],
+};
+
+export function quarterMidDate(year: number, quarter: number): string {
+  const [month, day] = QUARTER_MID_MONTH_DAY[quarter];
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
 
 function logDbFallback(scope: string, err: unknown) {
   const message = err instanceof Error ? err.message : String(err);
@@ -155,6 +172,32 @@ export async function getBeneficialOwnershipFilings(
   }
 }
 
+// Defensive dedupe: historical imports may contain duplicate rows sharing the same key
+// (e.g. same security in the same quarter). Keeps the row with the higher valueUsd.
+function dedupeByKey<T>(rows: T[], keyOf: (row: T) => string, valueOf: (row: T) => bigint): T[] {
+  const deduped = new Map<string, T>();
+  for (const row of rows) {
+    const key = keyOf(row);
+    const prev = deduped.get(key);
+    if (!prev || valueOf(row) >= valueOf(prev)) deduped.set(key, row);
+  }
+  return [...deduped.values()];
+}
+
+const HOLDING_SECURITY_INCLUDE = {
+  security: {
+    include: {
+      company: {
+        include: {
+          securitiesAsCompany: {
+            select: { ticker: true },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
 export async function getHoldingsByQuarter(tribeId: string, year: number, quarter: number) {
   try {
     const rows = await db.holding.findMany({
@@ -162,41 +205,39 @@ export async function getHoldingsByQuarter(tribeId: string, year: number, quarte
         holder: { tribeId },
         source: { is: { periodYear: year, periodQuarter: quarter, kind: "13f" } },
       },
-      include: {
-        security: {
-          include: {
-            company: {
-              include: {
-                securitiesAsCompany: {
-                  select: { ticker: true },
-                },
-              },
-            },
-          },
-        },
-      },
+      include: HOLDING_SECURITY_INCLUDE,
       orderBy: { percentOfPortfolio: "desc" },
     });
-    const normalized = rows;
-
-    // Defensive dedupe: historical imports may contain duplicates that share the same security profile.
-    const deduped = new Map<string, typeof normalized[number]>();
-    for (const row of normalized) {
-      const key = row.securityId!;
-      const prev = deduped.get(key);
-      if (!prev) {
-        deduped.set(key, row);
-        continue;
-      }
-      const prevValue = prev.valueUsd ?? BigInt(0);
-      const currValue = row.valueUsd ?? BigInt(0);
-      if (currValue >= prevValue) deduped.set(key, row);
-    }
-    return [...deduped.values()];
+    return dedupeByKey(rows, (r) => r.securityId!, (r) => r.valueUsd ?? BigInt(0));
   } catch (err) {
     logDbFallback("getHoldingsByQuarter", err);
     return [];
   }
+}
+
+export function getHoldingTicker(h: HoldingRow): string | null {
+  return h.security?.ticker ?? h.security?.company?.ticker ?? null;
+}
+
+export function getHoldingCompanyPath(h: HoldingRow): string | null {
+  return formatCompanyUrl(h.security?.company ?? {});
+}
+
+export function getHoldingDisplayNames(h: HoldingRow): { zhName: string; enName: string } {
+  const meta = (h.security?.metadata ?? {}) as { nameZh?: string; nameEnShort?: string };
+  const company = h.security?.company;
+  const zhName = meta.nameZh ?? company?.canonicalName ?? h.security?.ticker ?? "-";
+  const enName = meta.nameEnShort ?? company?.canonicalName ?? h.security?.ticker ?? "-";
+  return { zhName, enName };
+}
+
+// Implied per-share price at filing time — 13F only reports aggregate value + shares, not price.
+export function formatPriceFromValueAndShares(valueUsd: bigint | null, shares: bigint | null): string {
+  if (valueUsd == null || shares == null) return "—";
+  const v = Number(valueUsd);
+  const s = Number(shares);
+  if (!Number.isFinite(v) || !Number.isFinite(s) || s <= 0) return "—";
+  return `$${(v / s).toFixed(2)}`;
 }
 
 export async function getLatestHoldings(tribeId: string, limit = 10) {
@@ -221,6 +262,163 @@ export async function getLatestPortfolioValueUsd(tribeId: string): Promise<bigin
   const holdings = await getHoldingsByQuarter(tribeId, latest.year, latest.quarter);
   if (!holdings.length) return null;
   return holdings.reduce((sum, h) => sum + (h.valueUsd ?? BigInt(0)), BigInt(0));
+}
+
+export type SecurityHistoryPoint = {
+  year: number;
+  quarter: number;
+  time: string; // asOfDate, YYYY-MM-DD — chart x-axis key
+  percentOfPortfolio: number | null;
+  sharesNumber: number | null; // Number(shares) — 13F share counts are far under 2^53, safe
+  valueUsdNumber: number | null; // Number(valueUsd)
+  sharesDisplay: string;
+  valueUsdDisplay: string;
+  reportedPriceDisplay: string;
+  activity: HoldingActivity;
+  // True for a synthetic point appended after a position's last real Holding row — 13F
+  // filings simply omit a security once it's fully sold, so there's never a real row
+  // confirming the exit. Without this, the chart/table would trail off at the last
+  // held quarter instead of showing the drop to zero.
+  isExitPoint: boolean;
+};
+
+export type SecurityHistoryItem = {
+  securityId: string;
+  ticker: string | null;
+  zhName: string;
+  enName: string;
+  companyUrl: string | null;
+  isCurrentlyHeld: boolean;
+  lastHeldYear: number;
+  lastHeldQuarter: number;
+  latestPercentOfPortfolio: number | null;
+  history: SecurityHistoryPoint[]; // ascending by (year, quarter)
+};
+
+// Every security this investor has ever held across all 13F quarters on file, grouped
+// by security with a full quarter-by-quarter history — powers the holdings page's
+// "by company" view (see src/app/master/[id]/holdings/page.tsx). One query for all
+// quarters, grouped/sorted in JS, since even the richest tracked investor only has on
+// the order of a few dozen distinct securities and a few dozen quarters.
+export async function getHoldingsHistoryBySecurity(tribeId: string): Promise<SecurityHistoryItem[]> {
+  try {
+    const quarters = await getAvailableQuarters(tribeId);
+    if (!quarters.length) return [];
+    const latestQuarter = quarters[0];
+    // Quarters ascending, for adjacency lookups when computing activity across gaps.
+    const quartersAsc = [...quarters].reverse();
+    const quarterIndex = new Map<string, number>(quartersAsc.map((q, i) => [`${q.year}-${q.quarter}`, i]));
+
+    const rows = await db.holding.findMany({
+      where: {
+        holder: { tribeId },
+        source: { is: { kind: "13f" } },
+      },
+      include: {
+        ...HOLDING_SECURITY_INCLUDE,
+        source: { select: { periodYear: true, periodQuarter: true } },
+      },
+    });
+
+    const deduped = dedupeByKey(
+      rows,
+      (r) => `${r.securityId}|${r.source.periodYear}|${r.source.periodQuarter}`,
+      (r) => r.valueUsd ?? BigInt(0),
+    );
+
+    const bySecurity = new Map<string, typeof deduped>();
+    for (const row of deduped) {
+      if (row.source.periodYear == null || row.source.periodQuarter == null) continue;
+      const key = row.securityId!;
+      if (!bySecurity.has(key)) bySecurity.set(key, []);
+      bySecurity.get(key)!.push(row);
+    }
+
+    const items: SecurityHistoryItem[] = [];
+    for (const [securityId, group] of bySecurity) {
+      group.sort((a, b) => {
+        const ai = quarterIndex.get(`${a.source.periodYear}-${a.source.periodQuarter}`) ?? -1;
+        const bi = quarterIndex.get(`${b.source.periodYear}-${b.source.periodQuarter}`) ?? -1;
+        return ai - bi;
+      });
+
+      const history: SecurityHistoryPoint[] = group.map((row) => {
+        const idx = quarterIndex.get(`${row.source.periodYear}-${row.source.periodQuarter}`) ?? -1;
+        const prevQuarter = idx > 0 ? quartersAsc[idx - 1] : null;
+        const prevRow = prevQuarter
+          ? group.find((g) => g.source.periodYear === prevQuarter.year && g.source.periodQuarter === prevQuarter.quarter)
+          : undefined;
+        const hasComparableQuarter = prevQuarter != null;
+        const shareDeltaPct = computeShareDeltaPct(prevRow?.shares, row.shares);
+        const activity = computeHoldingActivity(hasComparableQuarter, Boolean(prevRow), shareDeltaPct);
+
+        return {
+          year: row.source.periodYear!,
+          quarter: row.source.periodQuarter!,
+          time: quarterMidDate(row.source.periodYear!, row.source.periodQuarter!),
+          percentOfPortfolio: row.percentOfPortfolio,
+          sharesNumber: row.shares != null ? Number(row.shares) : null,
+          valueUsdNumber: row.valueUsd != null ? Number(row.valueUsd) : null,
+          sharesDisplay: formatShares(row.shares),
+          valueUsdDisplay: formatValueUsd(row.valueUsd),
+          reportedPriceDisplay: formatPriceFromValueAndShares(row.valueUsd, row.shares),
+          activity,
+          isExitPoint: false,
+        };
+      });
+
+      const last = history[history.length - 1];
+      const isCurrentlyHeld = last.year === latestQuarter.year && last.quarter === latestQuarter.quarter;
+
+      // Position no longer shows up in the latest 13F — append a synthetic point for
+      // the first quarter after it disappeared so the chart/table show the drop to
+      // zero instead of trailing off at the last real (nonzero) holding.
+      if (!isCurrentlyHeld) {
+        const lastIdx = quarterIndex.get(`${last.year}-${last.quarter}`)!;
+        const exitQuarter = quartersAsc[lastIdx + 1];
+        history.push({
+          year: exitQuarter.year,
+          quarter: exitQuarter.quarter,
+          time: quarterMidDate(exitQuarter.year, exitQuarter.quarter),
+          percentOfPortfolio: 0,
+          sharesNumber: 0,
+          valueUsdNumber: 0,
+          sharesDisplay: formatShares(BigInt(0)),
+          valueUsdDisplay: formatValueUsd(BigInt(0)),
+          reportedPriceDisplay: formatPriceFromValueAndShares(BigInt(0), BigInt(0)),
+          activity: "Unchanged",
+          isExitPoint: true,
+        });
+      }
+
+      const first = group[0];
+      const { zhName, enName } = getHoldingDisplayNames(first);
+      items.push({
+        securityId,
+        ticker: getHoldingTicker(first),
+        zhName,
+        enName,
+        companyUrl: getHoldingCompanyPath(first),
+        isCurrentlyHeld,
+        lastHeldYear: last.year,
+        lastHeldQuarter: last.quarter,
+        latestPercentOfPortfolio: last.percentOfPortfolio,
+        history,
+      });
+    }
+
+    items.sort((a, b) => {
+      if (a.isCurrentlyHeld !== b.isCurrentlyHeld) return a.isCurrentlyHeld ? -1 : 1;
+      if (a.lastHeldYear !== b.lastHeldYear) return b.lastHeldYear - a.lastHeldYear;
+      if (a.lastHeldQuarter !== b.lastHeldQuarter) return b.lastHeldQuarter - a.lastHeldQuarter;
+      return (b.latestPercentOfPortfolio ?? 0) - (a.latestPercentOfPortfolio ?? 0);
+    });
+
+    return items;
+  } catch (err) {
+    logDbFallback("getHoldingsHistoryBySecurity", err);
+    return [];
+  }
 }
 
 export async function getLetterYearsByType() {

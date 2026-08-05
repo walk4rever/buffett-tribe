@@ -490,10 +490,6 @@ export default async function PersonHubPage({ params }: Props) {
                         <th className="holdings-th holdings-th--num">持股<br/><span className="holdings-th-en">Shares</span></th>
                         <th className="holdings-th holdings-th--num">申报价<br/><span className="holdings-th-en">Reported Price*</span></th>
                         <th className="holdings-th holdings-th--num">市值（亿）<br/><span className="holdings-th-en">Value</span></th>
-                        <th className="holdings-th holdings-th--num">现价<br/><span className="holdings-th-en">Current Price</span></th>
-                        <th className="holdings-th holdings-th--num">较申报价<br/><span className="holdings-th-en">+/- Reported Price</span></th>
-                        <th className="holdings-th holdings-th--num">52周低点<br/><span className="holdings-th-en">52 Week Low</span></th>
-                        <th className="holdings-th holdings-th--num">52周高点<br/><span className="holdings-th-en">52 Week High</span></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -555,10 +551,6 @@ export default async function PersonHubPage({ params }: Props) {
                             <td className="holdings-td holdings-td--num">{formatShares(h.shares)}</td>
                             <td className="holdings-td holdings-td--num">{formatPriceFromValueAndShares(h.valueUsd, h.shares)}</td>
                             <td className="holdings-td holdings-td--num">{formatValueUsd(h.valueUsd)}</td>
-                            <td className="holdings-td holdings-td--num">-</td>
-                            <td className="holdings-td holdings-td--num">-</td>
-                            <td className="holdings-td holdings-td--num">-</td>
-                            <td className="holdings-td holdings-td--num">-</td>
                           </tr>
                         );
                       })}
@@ -595,10 +587,6 @@ export default async function PersonHubPage({ params }: Props) {
                             <td className="holdings-td holdings-td--num">{formatShares(h.shares)}</td>
                             <td className="holdings-td holdings-td--num">{formatPriceFromValueAndShares(h.valueUsd, h.shares)}</td>
                             <td className="holdings-td holdings-td--num">{formatValueUsd(h.valueUsd)}</td>
-                            <td className="holdings-td holdings-td--num">-</td>
-                            <td className="holdings-td holdings-td--num">-</td>
-                            <td className="holdings-td holdings-td--num">-</td>
-                            <td className="holdings-td holdings-td--num">-</td>
                           </tr>
                         );
                       })}

@@ -5212,25 +5212,17 @@ body.layout-no-header {
 .holdings-table--fit .holdings-th:nth-child(1),
 .holdings-table--fit .holdings-td:nth-child(1) { width: 3%; }
 .holdings-table--fit .holdings-th:nth-child(2),
-.holdings-table--fit .holdings-td:nth-child(2) { width: 21%; }
+.holdings-table--fit .holdings-td:nth-child(2) { width: 28%; }
 .holdings-table--fit .holdings-th:nth-child(3),
-.holdings-table--fit .holdings-td:nth-child(3) { width: 9.5%; }
+.holdings-table--fit .holdings-td:nth-child(3) { width: 13%; }
 .holdings-table--fit .holdings-th:nth-child(4),
-.holdings-table--fit .holdings-td:nth-child(4) { width: 10%; }
+.holdings-table--fit .holdings-td:nth-child(4) { width: 15%; }
 .holdings-table--fit .holdings-th:nth-child(5),
-.holdings-table--fit .holdings-td:nth-child(5) { width: 9%; }
+.holdings-table--fit .holdings-td:nth-child(5) { width: 13%; }
 .holdings-table--fit .holdings-th:nth-child(6),
-.holdings-table--fit .holdings-td:nth-child(6) { width: 9%; }
+.holdings-table--fit .holdings-td:nth-child(6) { width: 13%; }
 .holdings-table--fit .holdings-th:nth-child(7),
-.holdings-table--fit .holdings-td:nth-child(7) { width: 9%; }
-.holdings-table--fit .holdings-th:nth-child(8),
-.holdings-table--fit .holdings-td:nth-child(8) { width: 8%; }
-.holdings-table--fit .holdings-th:nth-child(9),
-.holdings-table--fit .holdings-td:nth-child(9) { width: 8%; }
-.holdings-table--fit .holdings-th:nth-child(10),
-.holdings-table--fit .holdings-td:nth-child(10) { width: 6.75%; }
-.holdings-table--fit .holdings-th:nth-child(11),
-.holdings-table--fit .holdings-td:nth-child(11) { width: 6.75%; }
+.holdings-table--fit .holdings-td:nth-child(7) { width: 15%; }
 
 /* % of Portfolio: never ellipsize percentage text */
 .holdings-table--fit .holdings-th:nth-child(3),
@@ -5326,6 +5318,150 @@ body.layout-no-header {
   color: #9a3412;
   background: rgba(245, 158, 11, 0.15);
   border: 1px solid rgba(245, 158, 11, 0.34);
+}
+
+.holdings-view-toggle { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
+.holdings-view-toggle-btn {
+  font-size: 0.8125rem;
+  color: var(--apple-body);
+  border: 1.5px solid #d1d1d6;
+  border-radius: 980px;
+  padding: 0.3125rem 0.875rem;
+  cursor: pointer;
+  background: var(--apple-white);
+  transition: border-color 0.15s;
+  text-decoration: none;
+  letter-spacing: -0.224px;
+}
+.holdings-view-toggle-btn:hover { border-color: #aeaeb2; }
+.holdings-view-toggle-btn--active { border-color: var(--apple-blue); color: var(--apple-blue); background: rgba(0,113,227,0.06); font-weight: 500; }
+
+.holdings-metric-toggle { display: flex; gap: 0.5rem; }
+
+.holdings-company-layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.holdings-company-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  /* Capped to the viewport (not just a fixed 640px) so the whole box — and its own
+     scrollbar — is always fully visible without needing to scroll the page first.
+     284px ≈ header + avatar/name + view toggle, the box's natural (pre-sticky) offset
+     from the top of the page — sized for that, not the smaller post-sticky offset,
+     since the box can't be one height before scrolling and a taller one after. */
+  max-height: min(640px, calc(100vh - 284px));
+  overflow-y: auto;
+  background: var(--apple-white);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  padding: 0.5rem;
+  position: sticky;
+  top: 84px;
+}
+
+.holdings-company-list-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1.5px solid transparent;
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8125rem;
+}
+.holdings-company-list-item:hover { background: var(--apple-light-gray); }
+.holdings-company-list-item--active { background: rgba(0,113,227,0.06); }
+.holdings-company-list-item--exited { opacity: 0.55; }
+
+.holdings-company-list-meta {
+  font-size: 0.6875rem;
+  color: var(--apple-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.holdings-company-detail { min-width: 0; }
+
+.holdings-company-chart-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  font-size: 1rem;
+}
+
+.holdings-company-chart {
+  background: var(--apple-white);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.holdings-chart-hover {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--apple-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.holdings-chart-hover-quarter {
+  font-weight: 600;
+  color: var(--apple-near-black);
+}
+
+.holdings-chart-hover-value {
+  font-family: var(--font-mono);
+}
+
+.holdings-chart-year-axis {
+  position: relative;
+  height: 18px;
+}
+
+.holdings-chart-year-label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 0.6875rem;
+  color: var(--apple-secondary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.holdings-history-table {
+  min-width: 0;
+  font-size: 0.66rem;
+}
+
+.holdings-history-table .holdings-th {
+  font-size: 0.62rem;
+}
+
+@media (max-width: 920px) {
+  .holdings-company-layout {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .holdings-company-list {
+    max-height: 280px;
+    position: static;
+  }
 }
 
 /* ─── Person hub page ───────────────────────────────────────────────────── */
@@ -9042,49 +9178,21 @@ body {
   max-width: none;
 }
 
-/* 11 columns:
-   1 #, 2 Stock, 3 %Portfolio, 4 Activity, 5 Shares, 6 Reported Price,
-   7 Value, 8 Current Price, 9 +/- Reported, 10 52W Low, 11 52W High */
+/* 7 columns: 1 #, 2 Stock, 3 %Portfolio, 4 Activity, 5 Shares, 6 Reported Price, 7 Value */
 .person-holdings-table th:nth-child(1),
 .person-holdings-table td:nth-child(1) { width: 3.5%; }
 .person-holdings-table th:nth-child(2),
-.person-holdings-table td:nth-child(2) { width: 15%; }
+.person-holdings-table td:nth-child(2) { width: 24%; }
 .person-holdings-table th:nth-child(3),
-.person-holdings-table td:nth-child(3) { width: 8%; }
+.person-holdings-table td:nth-child(3) { width: 13%; }
 .person-holdings-table th:nth-child(4),
-.person-holdings-table td:nth-child(4) { width: 9%; }
+.person-holdings-table td:nth-child(4) { width: 15%; }
 .person-holdings-table th:nth-child(5),
-.person-holdings-table td:nth-child(5) { width: 9%; }
+.person-holdings-table td:nth-child(5) { width: 15%; }
 .person-holdings-table th:nth-child(6),
-.person-holdings-table td:nth-child(6) { width: 9%; }
+.person-holdings-table td:nth-child(6) { width: 14.5%; }
 .person-holdings-table th:nth-child(7),
-.person-holdings-table td:nth-child(7) { width: 9%; }
-.person-holdings-table th:nth-child(8),
-.person-holdings-table td:nth-child(8) { width: 8%; }
-.person-holdings-table th:nth-child(9),
-.person-holdings-table td:nth-child(9) { width: 8%; }
-.person-holdings-table th:nth-child(10),
-.person-holdings-table td:nth-child(10) { width: 7%; }
-.person-holdings-table th:nth-child(11),
-.person-holdings-table td:nth-child(11) { width: 7%; }
-
-@media (max-width: 1360px) {
-  .person-holdings-table th:nth-child(10),
-  .person-holdings-table td:nth-child(10),
-  .person-holdings-table th:nth-child(11),
-  .person-holdings-table td:nth-child(11) {
-    display: none;
-  }
-}
-
-@media (max-width: 1220px) {
-  .person-holdings-table th:nth-child(8),
-  .person-holdings-table td:nth-child(8),
-  .person-holdings-table th:nth-child(9),
-  .person-holdings-table td:nth-child(9) {
-    display: none;
-  }
-}
+.person-holdings-table td:nth-child(7) { width: 15%; }
 
 @media (max-width: 1080px) {
   .person-holdings-table th:nth-child(6),
@@ -9174,24 +9282,6 @@ body {
 }
 
 /* cancel previous responsive column-hiding rules */
-@media (max-width: 1360px) {
-  .person-holdings-table th:nth-child(10),
-  .person-holdings-table td:nth-child(10),
-  .person-holdings-table th:nth-child(11),
-  .person-holdings-table td:nth-child(11) {
-    display: table-cell;
-  }
-}
-
-@media (max-width: 1220px) {
-  .person-holdings-table th:nth-child(8),
-  .person-holdings-table td:nth-child(8),
-  .person-holdings-table th:nth-child(9),
-  .person-holdings-table td:nth-child(9) {
-    display: table-cell;
-  }
-}
-
 @media (max-width: 1080px) {
   .person-holdings-table th:nth-child(6),
   .person-holdings-table td:nth-child(6) {

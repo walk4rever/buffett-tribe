@@ -1,30 +1,28 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CompanyDisplayName } from "@/components/CompanyDisplayName";
+import { HoldingsHistoryExplorer } from "@/components/HoldingsHistoryExplorer";
 import { SiteNav } from "@/components/SiteNav";
-import { formatCompanyUrl } from "@/lib/company-data";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
 import { getTribeMember, getTribeMemberColor } from "@/lib/tribe";
 import {
+  formatPriceFromValueAndShares,
   formatShares,
   formatValueUsd,
   getAvailableQuarters,
+  getHoldingCompanyPath,
+  getHoldingDisplayNames,
   getHoldingsByQuarter,
+  getHoldingsHistoryBySecurity,
+  getHoldingTicker,
+  quarterMidDate,
 } from "@/lib/master-data";
 
 export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ year?: string; quarter?: string }>;
-}
-
-function formatPriceFromValueAndShares(valueUsd: bigint | null, shares: bigint | null) {
-  if (valueUsd == null || shares == null) return "—";
-  const v = Number(valueUsd);
-  const s = Number(shares);
-  if (!Number.isFinite(v) || !Number.isFinite(s) || s <= 0) return "—";
-  return `$${(v / s).toFixed(2)}`;
+  searchParams: Promise<{ year?: string; quarter?: string; view?: string }>;
 }
 
 function formatSignedPct(diffPct: number | null) {
@@ -33,17 +31,10 @@ function formatSignedPct(diffPct: number | null) {
   return `${sign}${diffPct.toFixed(1)}%`;
 }
 
-function getHoldingTicker(h: Awaited<ReturnType<typeof getHoldingsByQuarter>>[number]) {
-  return h.security?.ticker ?? h.security?.company?.ticker ?? null;
-}
-
-function getHoldingCompanyPath(h: Awaited<ReturnType<typeof getHoldingsByQuarter>>[number]) {
-  return formatCompanyUrl(h.security?.company ?? {});
-}
-
 export default async function HoldingsPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { year: yearStr, quarter: quarterStr } = await searchParams;
+  const { year: yearStr, quarter: quarterStr, view: viewParam } = await searchParams;
+  const view = viewParam === "company" ? "company" : "quarter";
 
   const member = await getTribeMember(id);
   if (!member) notFound();
@@ -53,6 +44,61 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
 
   const selectedYear = yearStr ? parseInt(yearStr) : quarters[0].year;
   const selectedQuarter = quarterStr ? parseInt(quarterStr) : quarters[0].quarter;
+
+  if (view === "company") {
+    const historyItems = await getHoldingsHistoryBySecurity(id);
+    // Ascending, one entry per fund quarter — lets the chart pad with whitespace
+    // points so every company's x-axis spans the fund's full history, not just
+    // that company's own held-quarters range.
+    const allQuarterTimes = [...quarters].reverse().map((q) => quarterMidDate(q.year, q.quarter));
+    return (
+      <div className="holdings-page">
+        <SiteNav />
+        <div className="holdings-wrap">
+          <div className="holdings-hd">
+            <span className="holdings-avatar" style={{ background: getTribeMemberColor(member) }}>
+              {member.initials.slice(0, 2)}
+            </span>
+            <div className="holdings-hd-info">
+              <p className="holdings-eyebrow">持仓快照</p>
+              <h1 className="holdings-name">{member.nameZh}</h1>
+              <p className="holdings-firm">{member.firm}</p>
+              {member.category === "alpha" ? (
+                <p className="holdings-firm">Alpha 部落 · 13F 仅覆盖公开市场披露仓位</p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="holdings-view-toggle">
+            <Link
+              href={`/master/${id}/holdings?view=quarter&year=${selectedYear}&quarter=${selectedQuarter}`}
+              className="holdings-view-toggle-btn"
+            >
+              按季度
+            </Link>
+            <Link
+              href={`/master/${id}/holdings?view=company`}
+              className="holdings-view-toggle-btn holdings-view-toggle-btn--active"
+              style={{ borderColor: getTribeMemberColor(member), color: getTribeMemberColor(member) }}
+            >
+              按公司
+            </Link>
+          </div>
+
+          <HoldingsHistoryExplorer
+            items={historyItems}
+            accentColor={getTribeMemberColor(member)}
+            allQuarterTimes={allQuarterTimes}
+          />
+
+          <p className="holdings-note">
+            数据来源：SEC EDGAR 13F-HR · 数值为申报日市值，不构成投资建议
+            {member.category === "alpha" ? " · Atreides 可能持有未在 13F 中披露的私募投资、空头或其他非披露资产" : ""}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const holdings = await getHoldingsByQuarter(id, selectedYear, selectedQuarter);
   const selectedIndex = quarters.findIndex((q) => q.year === selectedYear && q.quarter === selectedQuarter);
@@ -88,6 +134,22 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
               <p className="holdings-firm">Alpha 部落 · 13F 仅覆盖公开市场披露仓位</p>
             ) : null}
           </div>
+        </div>
+
+        <div className="holdings-view-toggle">
+          <Link
+            href={`/master/${id}/holdings?view=quarter&year=${selectedYear}&quarter=${selectedQuarter}`}
+            className="holdings-view-toggle-btn holdings-view-toggle-btn--active"
+            style={{ borderColor: getTribeMemberColor(member), color: getTribeMemberColor(member) }}
+          >
+            按季度
+          </Link>
+          <Link
+            href={`/master/${id}/holdings?view=company&year=${selectedYear}&quarter=${selectedQuarter}`}
+            className="holdings-view-toggle-btn"
+          >
+            按公司
+          </Link>
         </div>
 
         <div className="holdings-layout">
@@ -146,10 +208,6 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
                 <th className="holdings-th holdings-th--num">持股<br/><span className="holdings-th-en">Shares</span></th>
                 <th className="holdings-th holdings-th--num">申报价<br/><span className="holdings-th-en">Reported Price*</span></th>
                 <th className="holdings-th holdings-th--num">市值（亿）<br/><span className="holdings-th-en">Value</span></th>
-                <th className="holdings-th holdings-th--num">现价<br/><span className="holdings-th-en">Current Price</span></th>
-                <th className="holdings-th holdings-th--num">较申报价<br/><span className="holdings-th-en">+/- Reported Price</span></th>
-                <th className="holdings-th holdings-th--num">52周低点<br/><span className="holdings-th-en">52 Week Low</span></th>
-                <th className="holdings-th holdings-th--num">52周高点<br/><span className="holdings-th-en">52 Week High</span></th>
               </tr>
             </thead>
             <tbody>
@@ -167,14 +225,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
                         : "holdings-row";
 
                 const reportedPrice = formatPriceFromValueAndShares(h.valueUsd, h.shares);
-                const currentPrice = "—";
-                const pctVsReported = "—";
-                const low52 = "—";
-                const high52 = "—";
-                const meta = (h.security?.metadata ?? {}) as { nameZh?: string; nameEnShort?: string };
-                const company = h.security?.company;
-                const zhName = meta.nameZh ?? company?.canonicalName ?? h.security?.ticker ?? "-";
-                const enName = meta.nameEnShort ?? company?.canonicalName ?? h.security?.ticker ?? "-";
+                const { zhName, enName } = getHoldingDisplayNames(h);
 
                 return (
                   <tr key={h.id} className={rowClass}>
@@ -234,18 +285,11 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
                     <td className="holdings-td holdings-td--num">{formatShares(h.shares)}</td>
                     <td className="holdings-td holdings-td--num">{reportedPrice}</td>
                     <td className="holdings-td holdings-td--num">{formatValueUsd(h.valueUsd)}</td>
-                    <td className="holdings-td holdings-td--num">{currentPrice}</td>
-                    <td className="holdings-td holdings-td--num">{pctVsReported}</td>
-                    <td className="holdings-td holdings-td--num">{low52}</td>
-                    <td className="holdings-td holdings-td--num">{high52}</td>
                   </tr>
                 );
               })}
               {soldOutRows.map((h, i) => {
-                const meta = (h.security?.metadata ?? {}) as { nameZh?: string; nameEnShort?: string };
-                const company = h.security?.company;
-                const zhName = meta.nameZh ?? company?.canonicalName ?? h.security?.ticker ?? "-";
-                const enName = meta.nameEnShort ?? company?.canonicalName ?? h.security?.ticker ?? "-";
+                const { zhName, enName } = getHoldingDisplayNames(h);
                 const reportedPrice = formatPriceFromValueAndShares(h.valueUsd, h.shares);
                 return (
                   <tr key={`exit-${h.id}`} className="holdings-row holdings-row--soldout">
@@ -278,10 +322,6 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
                     <td className="holdings-td holdings-td--num">{formatShares(h.shares)}</td>
                     <td className="holdings-td holdings-td--num">{reportedPrice}</td>
                     <td className="holdings-td holdings-td--num">{formatValueUsd(h.valueUsd)}</td>
-                    <td className="holdings-td holdings-td--num">—</td>
-                    <td className="holdings-td holdings-td--num">—</td>
-                    <td className="holdings-td holdings-td--num">—</td>
-                    <td className="holdings-td holdings-td--num">—</td>
                   </tr>
                 );
               })}
