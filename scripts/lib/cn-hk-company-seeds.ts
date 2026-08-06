@@ -120,6 +120,17 @@ export const CN_HK_SEEDS: Record<string, CnHkSeed> = {
     industry: "白酒",
     exchange: "深圳证券交易所",
   },
+  "600900.SS": {
+    market: "cn",
+    code: "600900",
+    currency: "CNY",
+    canonicalName: "中国长江电力股份有限公司",
+    nameZh: "长江电力",
+    nameEnShort: "China Yangtze Power",
+    sector: "Utilities",
+    industry: "水电",
+    exchange: "上海证券交易所",
+  },
   "2328.HK": {
     market: "hk",
     code: "02328",

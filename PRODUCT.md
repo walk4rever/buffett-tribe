@@ -418,6 +418,8 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 当前系统深度绑定 SEC EDGAR 体系（CIK、XBRL、10-K/20-F/40-F），公司页路由、Entity 模型、财务导入链路、年报阅读器都围绕这一体系构建。扩展支持 A 股和港股公司，验证目标为贵州茅台（600519.SS）和泡泡玛特（9992.HK）——两家均已完成，美股/港股/A股三个市场至此全部对等支持。
 
 > **实施状态（2026-07-27 更新）**：**泡泡玛特（hk-09992）与贵州茅台（cn-600519）Phase 1+2+3 均已完成并上线**——路由泛化（`/company/[id]`，`parseCompanyIdentifier`/`formatCompanyUrl`/`getCompanyByIdentifier` 统一入口）、Entity 种子（`scripts/lib/cn-hk-company-seeds.ts`）、股价、财务数据（`akshare` 三大报表 → `Financial`）、年报原文（HKEXnews/cninfo → `FilingSection` evidence + R2 PDF + 本地阅读页，见下方 Phase 3）均已验证；`onboard-company.ts --market hk|cn` 均为完整 9 步，业务/价值/管理/估值分析四个 LLM tab 都已解锁并跑出真实内容，公司页信息完整。详细过程见 TODOS.md P0 ②。
+>
+> **2026-08-06 更新：Entity 种子改为自动查询**，见下方 Phase 1 第 3 点和 TODOS.md P0 ④——原「两家公司手工录入，不先建批量管线」是 P0 ② 当时的决定，规模扩大到未来 100+ 家后已不成立，`scripts/fetch-cn-hk-company-profile-ak.py` 用 akshare 自动查询公司名/交易所/行业，`cn-hk-company-seeds.ts` 降级为坏数据兜底的手工覆盖表。A 股路径（五粮液 000858.SZ）端到端真实验证通过；港股路径代码完成、关键环节离线验证过，尚未有真实港股新公司跑过完整端到端。
 
 ### 扩展动机
 
@@ -476,7 +478,7 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 2. **URL 路由**：`/company/[cik]` → `/company/[id]`，解析逻辑在 `src/lib/company-data.ts`（`parseCompanyIdentifier`/`getCompanyByIdentifier`/`formatCompanyUrl`，见下方「技术方案」），不是本节最初设想的独立 `parseCompanyId` 函数——这套 helper 統一了此前两套已经互相 drift 的 CIK→URL 实现（`company-data.ts` 自己的一套 + 独立的 `src/lib/cik.ts`，后者已删除）。
    - `/company/CIK0000320193` → SEC 公司（向后兼容）
    - `/company/hk-09992` → 港股（注意补零，不是 `hk-9992`——港股代码规范用 `09992`，见「首批目标公司」表）
-3. **公司信息**：不走 akshare 公司信息管线（P0 ②里已拍板"两家公司手工录入，不先建批量管线"），手工种子表在 `scripts/lib/cn-hk-company-seeds.ts`。
+3. **公司信息**（**2026-08-06 更新，见 TODOS.md P0 ④**）：最初（P0 ②）拍板"两家公司手工录入，不先建批量管线"，规模扩大到未来 100+ 家后不再成立——现改为 `scripts/fetch-cn-hk-company-profile-ak.py` 用 akshare 自动查询 canonicalName/nameZh/nameEnShort/exchange/行业原文（A 股 `stock_profile_cninfo`，港股 `stock_hk_security_profile_em`+`stock_hk_company_profile_em`），`sector` 由 `cn-hk-sector-classify.ts` 用 LLM 分类到与美股 `mapSectorFromSic()` 相同的 9 桶英文词表。`scripts/lib/cn-hk-company-seeds.ts` 降级为坏数据兜底的手工覆盖表（ticker 在表里则用手填值，否则自动查），不再是 onboard 新公司的必需前置步骤。
 4. **股价**：`npm run import:stock-prices:yf -- --ticker 9992.HK --import-db` 零改动直接用，`StockPrice` 按 ticker 字符串查询，与 CIK/market 完全无关。
 
 **公司页适配（已实现）**：
@@ -506,7 +508,7 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 | 经营活动产生的现金流量净额 | OperatingCashFlow |
 | 购建固定资产、无形资产和其他长期资产所支付的现金 | CapEx |
 
-**货币不能从 market 推断**：akshare 港股接口不暴露货币字段，且泡泡玛特虽在港交所上市，报表货币是人民币不是港币（对着真实 FY2024 营收数字核对过）——`currency` 是 `cn-hk-company-seeds.ts` 里逐公司手工核实的字段，不是派生值。A 股本身受监管要求恒为 CNY，同样按显式字段记录而非从 market 推断代码逻辑。
+**货币不能从 market 推断**：akshare 港股接口不暴露货币字段，且泡泡玛特虽在港交所上市，报表货币是人民币不是港币（对着真实 FY2024 营收数字核对过）——不是从 market 派生的值。**2026-08-06 更新**：不再靠逐公司手工核实——`scripts/lib/cn-hk-currency-resolve.ts` 里，A 股按监管硬性要求硬编码 CNY（零查询）；港股从已导入的年报正文提取（正则统计 `RMB`/`HK$`/`US$` 等货币单位出现频率，能明确判别时直接用，含糊时退化成一次 LLM 调用读文本确认），因此 `onboard-company.ts` 的港股分支把 `import_annual_report` 排到 `import_financials` 之前。`cn-hk-company-seeds.ts` 里的手填 `currency` 字段仍可作为覆盖值。
 
 **财年对齐**：A 股/港股以日历年度为准，`periodEnd` 统一为 `12-31`（均已验证）。**存储**：复用现有 `Financial` 表结构，未新建表（`ExtSource.kind` 新增 `"akshare"` 值）。
 

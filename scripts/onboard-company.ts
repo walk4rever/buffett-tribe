@@ -22,11 +22,19 @@
  *   7. generate:valuation-analysis
  * (3-7 skippable with --skip-generation)
  *
- * CN/HK steps (--market cn|hk): seed_entity (manual lookup table in
- * scripts/lib/cn-hk-company-seeds.ts) -> import_price -> import_financials
- * (akshare three-statement data -> Financial) -> import_annual_report
- * (HKEXnews for hk / cninfo for cn — different retrieval mechanics per
- * market, see scripts/fetch-hk-annual-report.py and
+ * CN/HK steps (--market cn|hk): seed_entity (canonicalName/nameZh/
+ * nameEnShort/exchange/industry auto-fetched via akshare — see
+ * scripts/fetch-cn-hk-company-profile-ak.py; sector LLM-classified into the
+ * same 9-bucket vocabulary the US path's mapSectorFromSic() produces — see
+ * scripts/lib/cn-hk-sector-classify.ts. scripts/lib/cn-hk-company-seeds.ts
+ * is now only a manual override for the rare bad-data case, not required to
+ * onboard a new company — TODOS.md P0 ④) -> import_price -> [cn:
+ * import_financials -> import_annual_report | hk: import_annual_report ->
+ * import_financials, reordered because HK's reporting currency can only be
+ * resolved from the annual report text — see
+ * scripts/lib/cn-hk-currency-resolve.ts; CN's is a hardcoded regulatory
+ * fact, no such dependency] (HKEXnews for hk / cninfo for cn — different
+ * retrieval mechanics per market, see scripts/fetch-hk-annual-report.py and
  * scripts/fetch-cn-annual-report.py; both search+download+pypdf text
  * extraction+R2 PDF archive; --from applies here too, same "2020" default
  * as the US path) -> the same 5 generate_* steps as US.
@@ -50,6 +58,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import prisma from "@/lib/prisma";
 import { CN_HK_SEEDS } from "./lib/cn-hk-company-seeds";
+import { resolveCnCurrency, resolveHkCurrencyFromAnnualReport } from "./lib/cn-hk-currency-resolve";
 
 type Market = "us" | "cn" | "hk";
 
@@ -154,50 +163,78 @@ function parseMarket(value: string | undefined): Market {
   return market;
 }
 
-// No @@unique([market, code]) constraint exists on Entity (only @@index), so
-// this upserts by hand rather than via Prisma's where-unique upsert().
-function buildSeedEntityStep(ticker: string, market: "cn" | "hk"): Step {
+// TODOS.md P0 ④: canonicalName/nameZh/nameEnShort/exchange/industry are
+// fetched automatically via akshare (scripts/fetch-cn-hk-company-profile-ak.py
+// + scripts/import-cn-hk-company-profile-from-file.ts, sector classified by
+// LLM) — CN_HK_SEEDS is no longer required to onboard a new CN/HK company.
+// It's kept only as an optional manual override (a ticker present there wins
+// verbatim) for the rare case akshare returns something wrong for a specific
+// company — a bug-fix escape hatch, not the normal path.
+function deriveCnHkCode(ticker: string, market: "cn" | "hk"): string {
+  if (market === "cn") {
+    const match = ticker.match(/^(\d{6})\.(SS|SZ|BJ)$/i);
+    if (!match) throw new Error(`Cannot derive CN exchange code from ticker "${ticker}". Expected format like 600900.SS.`);
+    return match[1];
+  }
+  const match = ticker.match(/^(\d{1,5})\.HK$/i);
+  if (!match) throw new Error(`Cannot derive HK exchange code from ticker "${ticker}". Expected format like 9992.HK.`);
+  return match[1].padStart(5, "0");
+}
+
+function resolveCnHkCode(ticker: string, market: "cn" | "hk"): string {
   const seed = CN_HK_SEEDS[ticker];
-  if (!seed) {
-    throw new Error(
-      `No CN_HK_SEEDS entry for ticker "${ticker}". Add one to scripts/onboard-company.ts before onboarding a new ${market.toUpperCase()} company.`,
-    );
+  if (seed) {
+    if (seed.market !== market) {
+      throw new Error(`CN_HK_SEEDS entry for "${ticker}" is market "${seed.market}", but --market ${market} was passed.`);
+    }
+    return seed.code;
   }
-  if (seed.market !== market) {
-    throw new Error(`CN_HK_SEEDS entry for "${ticker}" is market "${seed.market}", but --market ${market} was passed.`);
-  }
+  return deriveCnHkCode(ticker, market);
+}
+
+// No @@unique([market, code]) constraint exists on Entity (only @@index), so
+// both the manual-override and auto-lookup paths upsert by hand rather than
+// via Prisma's where-unique upsert().
+function buildSeedEntityStep(ticker: string, market: "cn" | "hk", code: string): Step {
+  const seed = CN_HK_SEEDS[ticker];
 
   return {
     id: "seed_entity",
-    label: `写入 Entity（${seed.nameZh} / ${seed.market.toUpperCase()} ${seed.code}）`,
+    label: seed
+      ? `写入 Entity（${seed.nameZh} / ${market.toUpperCase()} ${code}，手工种子表覆盖）`
+      : `写入 Entity（${market.toUpperCase()} ${code}，akshare 自动查询）`,
     run: async () => {
-      const existing = await prisma.entity.findFirst({
-        where: { type: "company", market: seed.market, code: seed.code },
-        select: { id: true },
-      });
-      const data = {
-        type: "company" as const,
-        canonicalName: seed.canonicalName,
-        ticker,
-        market: seed.market,
-        code: seed.code,
-        sector: seed.sector,
-        metadata: {
-          nameZh: seed.nameZh,
-          nameEnShort: seed.nameEnShort,
-          industry: seed.industry,
-          exchange: seed.exchange,
-        },
-      };
-      if (existing) {
-        await prisma.entity.update({ where: { id: existing.id }, data });
-      } else {
-        await prisma.entity.create({ data });
+      if (seed) {
+        const existing = await prisma.entity.findFirst({
+          where: { type: "company", market, code },
+          select: { id: true },
+        });
+        const data = {
+          type: "company" as const,
+          canonicalName: seed.canonicalName,
+          ticker,
+          market,
+          code,
+          sector: seed.sector,
+          metadata: {
+            nameZh: seed.nameZh,
+            nameEnShort: seed.nameEnShort,
+            industry: seed.industry,
+            exchange: seed.exchange,
+          },
+        };
+        if (existing) {
+          await prisma.entity.update({ where: { id: existing.id }, data });
+        } else {
+          await prisma.entity.create({ data });
+        }
+        return;
       }
+      await runNpmScript("import:cn-hk-company-profile", ["--code", code, "--market", market, "--ticker", ticker, "--import-db"]);
     },
     verify: async () => {
       const entity = await prisma.entity.findFirst({
-        where: { type: "company", market: seed.market, code: seed.code },
+        where: { type: "company", market, code },
         select: { id: true },
       });
       return entity != null;
@@ -205,20 +242,34 @@ function buildSeedEntityStep(ticker: string, market: "cn" | "hk"): Step {
   };
 }
 
-function buildImportFinancialsStep(ticker: string, market: "cn" | "hk"): Step {
-  const seed = CN_HK_SEEDS[ticker]; // already validated to exist by buildSeedEntityStep, called first
+// currency: CN is a hardcoded regulatory fact (resolveCnCurrency); HK is
+// extracted from the annual report text (resolveHkCurrencyFromAnnualReport),
+// which is only available once import_annual_report has run — see the HK
+// step reordering in main() below. A manual CN_HK_SEEDS override still wins
+// verbatim if present.
+async function resolveCnHkCurrency(ticker: string, market: "cn" | "hk"): Promise<string> {
+  const seed = CN_HK_SEEDS[ticker];
+  if (seed) return seed.currency;
+  if (market === "cn") return resolveCnCurrency();
+  const entityId = await findEntityId(ticker);
+  if (!entityId) throw new Error(`No Entity found for ticker ${ticker} — seed_entity must run first.`);
+  return resolveHkCurrencyFromAnnualReport(entityId);
+}
 
+function buildImportFinancialsStep(ticker: string, market: "cn" | "hk", code: string): Step {
   return {
     id: "import_financials",
-    label: `导入财务数据（akshare 三大报表 → Financial，${seed.currency}）`,
-    run: () =>
-      runNpmScript("import:cn-hk-financials", [
-        "--code", seed.code,
+    label: "导入财务数据（akshare 三大报表 → Financial）",
+    run: async () => {
+      const currency = await resolveCnHkCurrency(ticker, market);
+      return runNpmScript("import:cn-hk-financials", [
+        "--code", code,
         "--market", market,
         "--ticker", ticker,
-        "--currency", seed.currency,
+        "--currency", currency,
         "--import-db",
-      ]),
+      ]);
+    },
     verify: async (entityId) => {
       const count = await prisma.financial.count({ where: { entityId } });
       return count > 0;
@@ -226,14 +277,13 @@ function buildImportFinancialsStep(ticker: string, market: "cn" | "hk"): Step {
   };
 }
 
-function buildImportAnnualReportStep(ticker: string, market: "cn" | "hk", fromYear: string): Step {
+function buildImportAnnualReportStep(ticker: string, market: "cn" | "hk", fromYear: string, code: string): Step {
   return {
     id: "import_annual_report",
     label: "导入年报原文（HKEXnews/cninfo → FilingSection + R2 PDF，供 LLM 生成与阅读页使用）",
     run: () => {
-      const seed = CN_HK_SEEDS[ticker];
       const scriptName = market === "hk" ? "import:hk-annual-report" : "import:cn-annual-report";
-      return runNpmScript(scriptName, ["--code", seed.code, "--market", market, "--ticker", ticker, "--from-year", fromYear, "--import-db"]);
+      return runNpmScript(scriptName, ["--code", code, "--market", market, "--ticker", ticker, "--from-year", fromYear, "--import-db"]);
     },
     verify: async (entityId) => {
       // Per-filing, not per-entity — same lesson as the US 10-K path: an
@@ -347,13 +397,21 @@ async function main() {
           importPriceStep,
           ...generateSteps,
         ]
-      : [
-          buildSeedEntityStep(ticker, market),
-          importPriceStep,
-          buildImportFinancialsStep(ticker, market),
-          buildImportAnnualReportStep(ticker, market, fromYear),
-          ...generateSteps,
-        ];
+      : (() => {
+          const code = resolveCnHkCode(ticker, market);
+          const seedEntityStep = buildSeedEntityStep(ticker, market, code);
+          const importFinancialsStep = buildImportFinancialsStep(ticker, market, code);
+          const importAnnualReportStep = buildImportAnnualReportStep(ticker, market, fromYear, code);
+          // HK: import_financials needs the reporting currency, which for HK
+          // is only resolvable from the annual report text — so annual report
+          // must be imported first. CN's currency is a hardcoded constant
+          // (resolveCnCurrency), no such dependency, order unchanged.
+          const marketSteps =
+            market === "hk"
+              ? [importAnnualReportStep, importFinancialsStep]
+              : [importFinancialsStep, importAnnualReportStep];
+          return [seedEntityStep, importPriceStep, ...marketSteps, ...generateSteps];
+        })();
 
   console.log(`\nOnboarding ${ticker} [market: ${market}]${market === "us" ? ` (${fromYear} -> ${toYear})` : ""}`);
   if (dryRun) console.log("(dry run — no commands will execute)");
