@@ -617,101 +617,6 @@ export default async function CompanyPage({ params, searchParams }: Props) {
           </div>
         </section>
 
-        <section className="company-section">
-          <div className="company-section-head">
-            <h2>大师持仓（13F）</h2>
-          </div>
-          {holders.holders.length ? (
-            <>
-              <div className="company-holders-table-wrap">
-                <table className="company-holders-table">
-                  <thead>
-                    <tr>
-                      <th className="holdings-th">机构<br/><span className="holdings-th-en">Holder</span></th>
-                      <th className="holdings-th">证券<br/><span className="holdings-th-en">Ticker</span></th>
-                      <th className="holdings-th holdings-th--num">仓位<br/><span className="holdings-th-en">% of Portfolio</span></th>
-                      <th className="holdings-th">近期动作<br/><span className="holdings-th-en">Recent Activity</span></th>
-                      <th className="holdings-th holdings-th--num">动作季度<br/><span className="holdings-th-en">Activity Quarter</span></th>
-                      <th className="holdings-th holdings-th--num">持股<br/><span className="holdings-th-en">Shares</span></th>
-                      <th className="holdings-th holdings-th--num">申报价<br/><span className="holdings-th-en">Reported Price*</span></th>
-                      <th className="holdings-th holdings-th--num">市值（亿）<br/><span className="holdings-th-en">Value</span></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {holders.holders.map((h, i) => {
-                      const member = h.tribeId ? tribeMemberById.get(h.tribeId) ?? null : null;
-                      const holderName = member?.nameZh ?? h.holderName;
-                      // Show holder name only on first row of the group
-                      const prevHolder = i > 0 ? holders.holders[i - 1] : null;
-                      const isFirstOfGroup = !prevHolder || prevHolder.holderName !== h.holderName;
-                      return (
-                        <tr
-                          key={`${h.id}-${h.ticker ?? "unknown"}-${h.sourceYear ?? "unknown"}-${h.sourceQuarter ?? "unknown"}-${i}`}
-                          className={h.isSoldOut ? "company-holders-row--soldout" : ""}
-                        >
-                          <td className="holdings-td holdings-td--num company-holders-holder">
-                            {isFirstOfGroup ? (
-                              h.tribeId ? (
-                                <Link href={`/master/${h.tribeId}`} className="company-holder-link company-holder-link--name">
-                                  <strong>{holderName}</strong>
-                                </Link>
-                              ) : (
-                                <strong>{holderName}</strong>
-                              )
-                            ) : (
-                              <span />
-                            )}
-                          </td>
-                          <td className="holdings-td holdings-td--num company-holders-stock">
-                            <strong>{h.ticker ?? "—"}</strong>
-                          </td>
-                          <td className="holdings-td holdings-td--num">
-                            {h.percent != null ? `${h.percent.toFixed(2)}%` : "—"}
-                          </td>
-                          <td className="holdings-td holdings-td--act">
-                            {h.activity === "SoldOut" ? (
-                              <span className="holdings-activity-soldout">Sold Out</span>
-                            ) : h.activity === "New" ? (
-                              <span className="holdings-activity-new">New</span>
-                            ) : h.activity === "Added" ? (
-                              <span className="holdings-activity-delta holdings-activity-delta--up">
-                                ↑ {formatSignedPct(h.shareDeltaPct)}
-                              </span>
-                            ) : h.activity === "Reduced" ? (
-                              <span className="holdings-activity-delta holdings-activity-delta--down">
-                                ↓ {formatSignedPct(h.shareDeltaPct)}
-                              </span>
-                            ) : (
-                              <span className="holdings-activity-delta">—</span>
-                            )}
-                          </td>
-                          <td className="holdings-td holdings-td--num">
-                            {h.sourceYear != null && h.sourceQuarter != null
-                              ? `${h.sourceYear} Q${h.sourceQuarter}`
-                              : "—"}
-                          </td>
-                          <td className="holdings-td holdings-td--num">
-                            {formatShares(h.shares)}
-                          </td>
-                          <td className="holdings-td holdings-td--num">
-                            {formatPriceFromValueAndShares(h.valueUsd, h.shares)}
-                          </td>
-                          <td className="holdings-td holdings-td--num">
-                            {formatMoney(h.valueUsd)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <p className="company-holders-note">* Reported Price = 市值 ÷ 持股数，按申报日折算。Sold Out 行的仓位、持股、申报价和市值为清仓前最后一次披露的持仓数据。</p>
-            </>
-          ) : (
-            <p className="company-empty">暂无该公司的持仓记录。</p>
-          )}
-        </section>
-
         <CompanySectionTabs
           tabs={[
             { id: "business", label: "业务分析" },
@@ -719,7 +624,8 @@ export default async function CompanyPage({ params, searchParams }: Props) {
             { id: "value", label: "价值分析" },
             { id: "management", label: "管理分析", ...(hasManagement ? {} : { note: "●" }) },
             { id: "valuation", label: "估值分析", ...(hasValuation ? {} : { note: "●" }) },
-            { id: "references", label: "年度报告" },
+            { id: "holdings", label: "大师持仓" },
+            { id: "references", label: "参考资料" },
           ]}
           initialTabId={initialTabId}
         >
@@ -1027,9 +933,104 @@ export default async function CompanyPage({ params, searchParams }: Props) {
             )}
           </section>
 
+          <section className="company-section" data-tab-panel="holdings">
+            <div className="company-financial-trend-head">
+              <h3>大师持仓（13F）</h3>
+            </div>
+            {holders.holders.length ? (
+              <>
+                <div className="company-holders-table-wrap">
+                  <table className="company-holders-table">
+                    <thead>
+                      <tr>
+                        <th className="holdings-th">机构<br/><span className="holdings-th-en">Holder</span></th>
+                        <th className="holdings-th">证券<br/><span className="holdings-th-en">Ticker</span></th>
+                        <th className="holdings-th holdings-th--num">仓位<br/><span className="holdings-th-en">% of Portfolio</span></th>
+                        <th className="holdings-th">近期动作<br/><span className="holdings-th-en">Recent Activity</span></th>
+                        <th className="holdings-th holdings-th--num">动作季度<br/><span className="holdings-th-en">Activity Quarter</span></th>
+                        <th className="holdings-th holdings-th--num">持股<br/><span className="holdings-th-en">Shares</span></th>
+                        <th className="holdings-th holdings-th--num">申报价<br/><span className="holdings-th-en">Reported Price*</span></th>
+                        <th className="holdings-th holdings-th--num">市值（亿）<br/><span className="holdings-th-en">Value</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {holders.holders.map((h, i) => {
+                        const member = h.tribeId ? tribeMemberById.get(h.tribeId) ?? null : null;
+                        const holderName = member?.nameZh ?? h.holderName;
+                        // Show holder name only on first row of the group
+                        const prevHolder = i > 0 ? holders.holders[i - 1] : null;
+                        const isFirstOfGroup = !prevHolder || prevHolder.holderName !== h.holderName;
+                        return (
+                          <tr
+                            key={`${h.id}-${h.ticker ?? "unknown"}-${h.sourceYear ?? "unknown"}-${h.sourceQuarter ?? "unknown"}-${i}`}
+                            className={h.isSoldOut ? "company-holders-row--soldout" : ""}
+                          >
+                            <td className="holdings-td holdings-td--num company-holders-holder">
+                              {isFirstOfGroup ? (
+                                h.tribeId ? (
+                                  <Link href={`/master/${h.tribeId}`} className="company-holder-link company-holder-link--name">
+                                    <strong>{holderName}</strong>
+                                  </Link>
+                                ) : (
+                                  <strong>{holderName}</strong>
+                                )
+                              ) : (
+                                <span />
+                              )}
+                            </td>
+                            <td className="holdings-td holdings-td--num company-holders-stock">
+                              <strong>{h.ticker ?? "—"}</strong>
+                            </td>
+                            <td className="holdings-td holdings-td--num">
+                              {h.percent != null ? `${h.percent.toFixed(2)}%` : "—"}
+                            </td>
+                            <td className="holdings-td holdings-td--act">
+                              {h.activity === "SoldOut" ? (
+                                <span className="holdings-activity-soldout">Sold Out</span>
+                              ) : h.activity === "New" ? (
+                                <span className="holdings-activity-new">New</span>
+                              ) : h.activity === "Added" ? (
+                                <span className="holdings-activity-delta holdings-activity-delta--up">
+                                  ↑ {formatSignedPct(h.shareDeltaPct)}
+                                </span>
+                              ) : h.activity === "Reduced" ? (
+                                <span className="holdings-activity-delta holdings-activity-delta--down">
+                                  ↓ {formatSignedPct(h.shareDeltaPct)}
+                                </span>
+                              ) : (
+                                <span className="holdings-activity-delta">—</span>
+                              )}
+                            </td>
+                            <td className="holdings-td holdings-td--num">
+                              {h.sourceYear != null && h.sourceQuarter != null
+                                ? `${h.sourceYear} Q${h.sourceQuarter}`
+                                : "—"}
+                            </td>
+                            <td className="holdings-td holdings-td--num">
+                              {formatShares(h.shares)}
+                            </td>
+                            <td className="holdings-td holdings-td--num">
+                              {formatPriceFromValueAndShares(h.valueUsd, h.shares)}
+                            </td>
+                            <td className="holdings-td holdings-td--num">
+                              {formatMoney(h.valueUsd)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="company-holders-note">* Reported Price = 市值 ÷ 持股数，按申报日折算。Sold Out 行的仓位、持股、申报价和市值为清仓前最后一次披露的持仓数据。</p>
+              </>
+            ) : (
+              <p className="company-empty">暂无该公司的持仓记录。</p>
+            )}
+          </section>
+
           <section className="company-section" data-tab-panel="references">
             <div className="company-financial-trend-head">
-              <h3>年度报告</h3>
+              <h3>参考资料</h3>
             </div>
             {referenceFilings.length ? (
               <div className="company-reference-list">
