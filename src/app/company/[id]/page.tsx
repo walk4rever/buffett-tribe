@@ -617,6 +617,15 @@ export default async function CompanyPage({ params, searchParams }: Props) {
           </div>
         </section>
 
+        {availablePriceTickers.length > 0 ? (
+          <section className="company-section company-price-section">
+            <div className="company-price-embed-head">
+              <h3>价格历史</h3>
+            </div>
+            <StockPriceChartLazy tickers={availablePriceTickers} />
+          </section>
+        ) : null}
+
         <CompanySectionTabs
           tabs={[
             { id: "business", label: "业务分析" },
@@ -904,15 +913,6 @@ export default async function CompanyPage({ params, searchParams }: Props) {
           </section>
 
           <section className="company-section" data-tab-panel="valuation">
-            {availablePriceTickers.length > 0 ? (
-              <section className="company-price-section company-price-section--embedded">
-                <div className="company-price-embed-head">
-                  <h3>价格历史</h3>
-                  <span>估值参考</span>
-                </div>
-                <StockPriceChartLazy tickers={availablePriceTickers} />
-              </section>
-            ) : null}
             {hasValuation && valuationArtifact ? (
               <ValuationAnalysisSection artifact={valuationArtifact} />
             ) : (
