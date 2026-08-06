@@ -2,7 +2,7 @@
 
 > 更新：2026-08-06。本文件只保留**未完成项**，按 P0–P3 排优先级；完成项的结论回写 `PRODUCT.md` 后从这里移除（详细过程见 git 历史）。产品定位、架构、数据口径、测试体系设计一律以 `PRODUCT.md` 为准。
 >
-> 当前队列于 2026-07-17 与用户讨论后重排：P0 项是用户点名的紧急项（带完整现状诊断，可直接开工），P1 三项是围绕"Agent 是核心入口"主线的既定建议。2026-07-18 新增两项来自 `anthropics/financial-services` 仓库调研的建议（P2）。2026-07-26 复盘法拉利（RACE）onboarding 全过程后新增 P0 ③；泡泡玛特（港股）Phase 1+2 端到端完成并上线；12 家回填公司里 11 家跑完，MTB 剩 1 条独立问题。2026-07-27 贵州茅台（A股）Phase 1+2+3 端到端完成，② 三个市场全部收官（美股/港股/A股）。2026-08-06 长江电力（A股 600900）onboard 测试跑通后，用户点名种子表手工录入撑不到未来 100+ 家规模，核实 akshare 自动查询可行性后新增 P0 ④；当场直接实现（不等下次 onboard），A股路径用五粮液（000858.SZ）端到端真实验证通过，港股路径代码完成但未做真实端到端验证。
+> 当前队列于 2026-07-17 与用户讨论后重排：P0 项是用户点名的紧急项（带完整现状诊断，可直接开工），P1 三项是围绕"Agent 是核心入口"主线的既定建议。2026-07-18 新增两项来自 `anthropics/financial-services` 仓库调研的建议（P2）。2026-07-26 复盘法拉利（RACE）onboarding 全过程后新增 P0 ③；泡泡玛特（港股）Phase 1+2 端到端完成并上线；12 家回填公司里 11 家跑完，MTB 剩 1 条独立问题。2026-07-27 贵州茅台（A股）Phase 1+2+3 端到端完成，② 三个市场全部收官（美股/港股/A股）。2026-08-06 长江电力（A股 600900）onboard 测试跑通后，用户点名种子表手工录入撑不到未来 100+ 家规模，核实 akshare 自动查询可行性后新增 P0 ④；当场直接实现（不等下次 onboard），A股路径用五粮液（000858.SZ）、港股路径用智谱（02513.HK）分别端到端真实验证通过，P0 ④ 两条市场路径均已闭环。
 
 ## P0 — 下一步就做（用户点名，2026-07-17）
 
@@ -62,7 +62,13 @@
     - **新增文件**：`scripts/fetch-cn-hk-company-profile-ak.py`（akshare 抓取，A股/港股两条路径）、`scripts/import-cn-hk-company-profile-from-file.ts`（Node/Prisma 写 Entity，调 LLM 分类 sector）、`scripts/lib/cn-hk-sector-classify.ts`（LLM sector 分类，复用 `company-name-zh.ts` 的 DeepSeek 调用模式，输出约束到 `mapSectorFromSic()`——美股 SIC 映射——已经在用的同一套 9 桶英文词表，而不是种子表原来用的 GICS 11 分类，两边此前不一致：种子表用过 "Consumer Discretionary"，美股从来只产出过 "Consumer"）、`scripts/lib/cn-hk-currency-resolve.ts`（CN 硬编码 CNY；HK 正则频率统计 + LLM 兜底）；`onboard-company.ts` 的 `buildSeedEntityStep`/`buildImportFinancialsStep`/`buildImportAnnualReportStep` 三个 builder 改成"种子表有则用（覆盖），没有则自动查"，新增 `deriveCnHkCode()` 从 ticker 反推交易所代码（A股正则 `\d{6}\.(SS|SZ|BJ)`；港股 `\d{1,5}\.HK` 补零到 5 位），`main()` 里 CN/HK 的 steps 数组按市场分叉（HK: `annual_report → financials`；CN 顺序不变）。
     - **CN 路径已端到端真实验证**：五粮液（000858.SZ，此前从未出现在种子表或数据库里的全新公司）跑 `onboard:company -- --ticker 000858.SZ --market cn`，全程零人工种子表条目，9 步全部完成（第 9 步估值分析首次遇到偶发 LLM JSON 格式错误，重跑同一条命令走 checkpoint 断点续跑即修复，与本次改动无关，是老问题）。`/company/cn-000858` 截图确认公司名/英文名/行业/sector/业务概览全部为真实抓取生成内容。长江电力（600900.SS）用同样的 profile 脚本单独测过（不经过完整 onboarding），公司名/简称/交易所/行业逐字对上此前手填的种子值，LLM 把"电力、热力生产和供应业"正确分成 "Utilities"。
     - **过程中发现并修的两个真 bug（不是重新设计，是数据质量问题）**：① `stock_profile_cninfo` 的 "A股简称" 字段对五粮液返回 `"五 粮 液"`（字符间夹带空格，cninfo 源数据本身的噪音，不是本脚本产生的）——新增 `clean_cn_name()`，只对保证是纯中文的字段（`canonicalName`/`nameZh`）剥离内部空白，不动英文字段。② "所属市场" 对深交所公司返回带板块后缀的变体（`"深交所主板"`/`"深交所创业板"`，只有上交所目前只见过不带后缀的 `"上交所"`），原来的精确匹配查表命不中直接把原始值透传出去——改成前缀匹配（`map_cn_exchange()`）。两处都用真实返回值验证过再修的，不是猜的。
-    - **HK 路径：代码已完成、typecheck/lint 通过、关键环节离线验证过，但没有跑过一次真正全新港股公司的端到端 onboarding**——`ak.stock_hk_security_profile_em`/`stock_hk_company_profile_em` 两个接口单独测过泡泡玛特（09992），字段逐字对上；`resolveHkCurrencyFromAnnualReport()` 直接对泡泡玛特库里已有的年报正文跑过一次，正确解出 "CNY"（泡泡玛特真实答案，见 ②），不需要走到 LLM 兜底；`--dry-run` 确认了两个新公司（`000858.SZ`/`1810.HK`）的 code 派生、`seed_entity` 标签、HK 步骤重排序（年报导入变成第 3 步、财务导入变成第 4 步）都符合预期。**没验证的**：完整 9 步跑一遍全新港股公司（尤其是 `resolveHkCurrencyFromAnnualReport` 的正则模式——`RMB'000`/`HK\$`/`港元`/`港幣` 这套频率统计——只针对泡泡玛特一家公司的年报措辞验证过，换一家公司的年报排版/措辞可能不完全一样，需要下次真实港股 onboarding 时盯一下）。
+    - **HK 路径：2026-08-06 当天补上了真实端到端验证**——智谱（Z.AI，02513.HK，2026-01-08 刚上市，此前完全没在数据库/种子表里出现过）跑 `onboard:company -- --ticker 2513.HK --market hk`，验证了此前唯一没有真实测过的环节：
+      - `resolveHkCurrencyFromAnnualReport()` 在一家跟泡泡玛特完全不同行业（AI 软件 vs 消费品）的公司年报正文上正确解出 "CNY"——逐字核对了判定依据：正则统计命中 `RMB` 134 次 / `HK$`+港元港幣 9 次 / `US$`+美元 2 次，134 对 9 是压倒性优势，正则阶段直接判定，没有退化到 LLM 兜底。证明这套频率统计不是只对泡泡玛特这一个样本凑巧管用。
+      - HK 步骤重排序按预期工作：`import_annual_report`（第 3 步）先于 `import_financials`（第 4 步）执行，financials 步骤成功拿到了重排序之后才能解析出的 currency。
+      - `ak.stock_hk_security_profile_em`/`stock_hk_company_profile_em` 两个 profile 接口对智谱返回完整数据（`canonicalName="Z.AI Co., Ltd."`、`nameZh="智谱"`、`exchange="香港交易所"`、`industryRaw="软件服务"`），sector 被 LLM 正确分类为 "Technology"。
+      - 8/9 步成功；第 9 步（估值分析）被脚本自己判定"数据不足"主动跳过（`SKIP: insufficient data (need FY financials with EPS + stock prices)`）——智谱上市刚 7 个月，股价历史短、无真实二级市场 EPS，这是既有的 evidence-guard 设计在正确工作（拒绝在数据不够时编造），不是本次改动引入的新问题，不需要处理。
+      - `/company/hk-02513` 截图确认页面正常渲染，业务概览是真实生成内容（提到 GLM 大模型、MaaS 等真实业务细节，不是占位文案）。
+      - 之前记录的 `000858.SZ`/`1810.HK` 只是 `--dry-run` 验证过步骤顺序/标签，这次是完整真实 9 步跑通，是更强的证据。
 
 ## P1 — 近期排队（Agent 主线，2026-07-17 讨论确认）
 
