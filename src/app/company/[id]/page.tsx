@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { CompanyDisplayName } from "@/components/CompanyDisplayName";
 import { CompanyBusinessCanvas } from "@/components/CompanyBusinessCanvas";
 import { CompanySectionTabs } from "@/components/CompanySectionTabs";
+import { CompanyAgentDialog } from "@/components/CompanyAgentDialog";
 import { SiteNav } from "@/components/SiteNav";
 import db from "@/lib/prisma";
 import { getTribeMembers } from "@/lib/tribe";
@@ -581,6 +582,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   return (
     <div className="company-page">
       <SiteNav />
+      <CompanyAgentDialog companyName={zhName} ticker={company.ticker} />
 
       <div className="company-wrap">
         <section className="company-hero">
