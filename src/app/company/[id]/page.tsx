@@ -537,9 +537,18 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     },
   ];
 
-  const moat: MoatMock = analysis?.moat
-    ? (analysis.moat as unknown as MoatMock)
-    : getMoatMock(company.canonicalName, company.ticker);
+  // A CompanyAnalysis row can exist with moat: {} — generate-company-profile.ts
+  // writes narrative but deliberately leaves moat untouched (it's
+  // generate-value-analysis.ts's job) when there's no Financial data to
+  // ground a moat assessment (e.g. a freshly-IPO'd company with only
+  // prospectus text, no 10-K yet). {} is truthy, so check for real
+  // dimensions rather than just field presence, or every access below
+  // throws on an undefined array.
+  const rawMoat = analysis?.moat as unknown as Partial<MoatMock> | undefined;
+  const moat: MoatMock =
+    rawMoat?.dimensions && rawMoat.dimensions.length > 0
+      ? (rawMoat as MoatMock)
+      : getMoatMock(company.canonicalName, company.ticker);
   const companyNarrative: CompanyNarrative = analysis?.narrative
     ? (analysis.narrative as unknown as CompanyNarrative)
     : buildCompanyNarrative({
@@ -708,8 +717,8 @@ export default async function CompanyPage({ params, searchParams }: Props) {
             { id: "business", label: "业务分析" },
             { id: "financial", label: "财务分析" },
             { id: "value", label: "价值分析" },
-            { id: "management", label: "管理分析", ...(hasManagement ? {} : { note: "构建中" }) },
-            { id: "valuation", label: "估值分析", ...(hasValuation ? {} : { note: "构建中" }) },
+            { id: "management", label: "管理分析", ...(hasManagement ? {} : { note: "●" }) },
+            { id: "valuation", label: "估值分析", ...(hasValuation ? {} : { note: "●" }) },
             { id: "references", label: "年度报告" },
           ]}
           initialTabId={initialTabId}
