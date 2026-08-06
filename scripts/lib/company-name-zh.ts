@@ -51,7 +51,7 @@ export async function translateCompanyNameToZh(input: TranslateInput): Promise<s
     body: JSON.stringify({
       model,
       temperature: 0,
-      max_tokens: 1000,
+      max_tokens: 4000,
       stream: false,
       messages: [
         {
@@ -64,7 +64,7 @@ export async function translateCompanyNameToZh(input: TranslateInput): Promise<s
         },
       ],
     }),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(60000),
   });
 
   if (!res.ok) {

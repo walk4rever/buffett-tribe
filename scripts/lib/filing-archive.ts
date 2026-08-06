@@ -51,7 +51,7 @@ function traceArchive(message: string) {
 
 function isRetryableDbError(error: unknown) {
   const code = (error as { code?: string } | null)?.code;
-  if (code && ["P1001", "P1002", "P2024"].includes(code)) return true;
+  if (code && ["P1001", "P1002", "P1017", "P2024"].includes(code)) return true;
 
   const message = error instanceof Error ? error.message : String(error);
   return /Can't reach database|Timed out|Connection terminated|ECONNRESET|ETIMEDOUT/i.test(message);
