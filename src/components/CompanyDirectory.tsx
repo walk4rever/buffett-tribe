@@ -21,7 +21,7 @@ const MARKET_SECTIONS: Array<{ market: CompanyMarket; label: string }> = [
   { market: "us", label: "美股" },
 ];
 
-function CompanyGrid({ items }: { items: CompanyDirectoryItem[] }) {
+export function CompanyGrid({ items }: { items: CompanyDirectoryItem[] }) {
   // Pad to a full row of 6 (the desktop column count) so a short section's
   // last row still reads as a complete grid rather than one lone box.
   const fillerCount = (6 - (items.length % 6)) % 6;
