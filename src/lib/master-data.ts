@@ -370,25 +370,38 @@ export async function getHoldingsHistoryBySecurity(tribeId: string): Promise<Sec
       const last = history[history.length - 1];
       const isCurrentlyHeld = last.year === latestQuarter.year && last.quarter === latestQuarter.quarter;
 
-      // Position no longer shows up in the latest 13F — append a synthetic point for
-      // the first quarter after it disappeared so the chart/table show the drop to
-      // zero instead of trailing off at the last real (nonzero) holding.
-      if (!isCurrentlyHeld) {
-        const lastIdx = quarterIndex.get(`${last.year}-${last.quarter}`)!;
-        const exitQuarter = quartersAsc[lastIdx + 1];
-        history.push({
-          year: exitQuarter.year,
-          quarter: exitQuarter.quarter,
-          time: quarterMidDate(exitQuarter.year, exitQuarter.quarter),
-          percentOfPortfolio: 0,
-          sharesNumber: 0,
-          valueUsdNumber: 0,
-          sharesDisplay: formatShares(BigInt(0)),
-          valueUsdDisplay: formatValueUsd(BigInt(0)),
-          reportedPriceDisplay: formatPriceFromValueAndShares(BigInt(0), BigInt(0)),
-          activity: "Unchanged",
-          isExitPoint: true,
-        });
+      // A position can be exited and later re-initiated more than once across an
+      // investor's history (e.g. sold in 2021, bought back in 2025) — 13F filings just
+      // omit a security once fully sold, so there's never a real row confirming an
+      // exit. Walk every real point and, wherever the next real point (or "now", for
+      // the last one) isn't the very next available quarter, insert one synthetic
+      // zero-value point right after so the chart/table show the drop to zero instead
+      // of a real row jumping straight to "New" (or trailing off at the last holding).
+      const historyWithExits: SecurityHistoryPoint[] = [];
+      for (let i = 0; i < history.length; i++) {
+        const point = history[i];
+        historyWithExits.push(point);
+        const thisIdx = quarterIndex.get(`${point.year}-${point.quarter}`)!;
+        const nextReal = history[i + 1];
+        const nextIdx = nextReal
+          ? quarterIndex.get(`${nextReal.year}-${nextReal.quarter}`)!
+          : quarterIndex.get(`${latestQuarter.year}-${latestQuarter.quarter}`)! + 1;
+        if (nextIdx > thisIdx + 1) {
+          const exitQuarter = quartersAsc[thisIdx + 1];
+          historyWithExits.push({
+            year: exitQuarter.year,
+            quarter: exitQuarter.quarter,
+            time: quarterMidDate(exitQuarter.year, exitQuarter.quarter),
+            percentOfPortfolio: 0,
+            sharesNumber: 0,
+            valueUsdNumber: 0,
+            sharesDisplay: formatShares(BigInt(0)),
+            valueUsdDisplay: formatValueUsd(BigInt(0)),
+            reportedPriceDisplay: formatPriceFromValueAndShares(BigInt(0), BigInt(0)),
+            activity: "Unchanged",
+            isExitPoint: true,
+          });
+        }
       }
 
       const first = group[0];
@@ -403,7 +416,7 @@ export async function getHoldingsHistoryBySecurity(tribeId: string): Promise<Sec
         lastHeldYear: last.year,
         lastHeldQuarter: last.quarter,
         latestPercentOfPortfolio: last.percentOfPortfolio,
-        history,
+        history: historyWithExits,
       });
     }
 

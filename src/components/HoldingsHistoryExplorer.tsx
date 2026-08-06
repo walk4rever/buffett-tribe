@@ -9,8 +9,8 @@ import type { SecurityHistoryItem } from "@/lib/master-data";
 type Metric = "pct" | "shares" | "value";
 
 const METRIC_OPTIONS: Array<{ label: string; value: Metric }> = [
-  { label: "占比 %", value: "pct" },
   { label: "持股数", value: "shares" },
+  { label: "占比 %", value: "pct" },
   { label: "市值", value: "value" },
 ];
 
@@ -96,7 +96,15 @@ function HoldingHistoryChart({
       setHoverPoint(byTimeRef.current.get(String(param.time)) ?? null);
     });
 
+    // Switching metric changes the right price-scale label width (e.g. "3,336,752"
+    // vs "2.00%"), which resizes the plot area — a single rAF right after setData can
+    // fire before that resize settles, leaving year labels positioned for the old
+    // (narrower) plot width. This event fires once the resize actually happens.
+    const handleTimeScaleSizeChange = () => recomputeYearLabelPositions();
+    chart.timeScale().subscribeSizeChange(handleTimeScaleSizeChange);
+
     return () => {
+      chart.timeScale().unsubscribeSizeChange(handleTimeScaleSizeChange);
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
@@ -109,19 +117,33 @@ function HoldingHistoryChart({
     seriesRef.current?.applyOptions({ lineColor: color, topColor: `${color}33`, bottomColor: `${color}03` });
   }, [color]);
 
-  // One entry per fund quarter (ascending, strictly required by lightweight-charts),
-  // real {time,value} where this security has a point, whitespace-only {time}
-  // elsewhere — so fitContent() spans the fund's full history instead of clamping to
-  // just this security's own held-quarters range (setVisibleRange can't extrapolate
-  // past a series' actual data, whitespace points are the supported way to pad it).
+  // Index of this security's first-ever real holding (never an isExitPoint — those
+  // are always inserted after a real point). Quarters before this are genuinely
+  // "before this security entered the portfolio" (whitespace); quarters after it
+  // with no history row are a known zero (13F import has no gaps, so absence means
+  // sold out that quarter), not missing data.
+  const firstHeldTime = useMemo(() => item.history.find((p) => !p.isExitPoint)?.time, [item]);
+  const firstHeldIdx = firstHeldTime != null ? allQuarterTimes.indexOf(firstHeldTime) : -1;
+
+  // One entry per fund quarter (ascending, strictly required by lightweight-charts).
+  // Real {time,value} where this security has a history row; a known-zero {time,value:0}
+  // for quarters after the first holding with no row (fully sold that quarter — flat-lines
+  // the chart at 0 instead of lightweight-charts bridging the gap with a misleading
+  // diagonal straight from the last real point to the next); whitespace-only {time}
+  // before the first holding, so fitContent() still spans the fund's full history instead
+  // of clamping to just this security's own held-quarters range.
   const data = useMemo(
     () =>
-      allQuarterTimes.map((time) => {
+      allQuarterTimes.map((time, idx) => {
         const point = byTime.get(time);
-        const value = point ? metricValue(point, metric) : null;
-        return value != null ? { time, value } : { time };
+        if (point) {
+          const value = metricValue(point, metric);
+          return value != null ? { time, value } : { time };
+        }
+        if (firstHeldIdx >= 0 && idx > firstHeldIdx) return { time, value: 0 };
+        return { time };
       }),
-    [byTime, metric, allQuarterTimes],
+    [byTime, metric, allQuarterTimes, firstHeldIdx],
   );
 
   useEffect(() => {
@@ -225,7 +247,7 @@ export function HoldingsHistoryExplorer({
   allQuarterTimes: string[];
 }) {
   const [selectedId, setSelectedId] = useState<string | undefined>(items[0]?.securityId);
-  const [metric, setMetric] = useState<Metric>("pct");
+  const [metric, setMetric] = useState<Metric>("shares");
   const selected = items.find((i) => i.securityId === selectedId) ?? items[0];
 
   if (!items.length) {
