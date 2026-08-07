@@ -462,7 +462,7 @@ export async function assertDbCapacityForBatch(companyCount: number) {
     throw new Error(
       `Database is ${totalMb.toFixed(0)}MB (> ${blockMb}MB block threshold). ` +
         `Refusing batch generation for ${companyCount} companies. ` +
-        `Run capacity governance (TODOS.md) or raise DB_SIZE_BLOCK_MB explicitly.`,
+        `Run capacity governance (TODO.md) or raise DB_SIZE_BLOCK_MB explicitly.`,
     );
   }
 }

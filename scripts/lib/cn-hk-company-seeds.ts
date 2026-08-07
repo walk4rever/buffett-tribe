@@ -1,4 +1,4 @@
-// Manual entry per TODOS.md P0 ②: "两家公司写小种子脚本手工录入，不先建
+// Manual entry per TODO.md P0 ②: "两家公司写小种子脚本手工录入，不先建
 // akshare 公司信息管线，等链路验证后再决定批量化". Add one row per company
 // as it's onboarded — no code changes needed elsewhere.
 //

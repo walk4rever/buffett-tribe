@@ -1,5 +1,5 @@
 // Agent tool contract test — hits the real Supabase DB (pgvector) and the
-// real DashScope embeddings API (no mocks). See TODOS.md "测试体系设计" for why
+// real DashScope embeddings API (no mocks). See TODO.md "测试体系设计" for why
 // L3 runs against live data.
 //
 // "Circle of competence" is one of Buffett/Munger's most repeated concepts

@@ -153,7 +153,7 @@ async function main() {
   // A filer that is ALSO a public company (currently: buffett/Berkshire) is
   // the one case where a security's ticker/CIK legitimately corresponds to
   // a Filer's companyEntityId. Preload it so resolution never has to guess
-  // via scoring for this case — see TODOS.md「Filer / Company 拆分」.
+  // via scoring for this case — see TODO.md「Filer / Company 拆分」.
   const filerLinks = await db.filer.findMany({
     where: { companyEntityId: { not: null } },
     select: { filerCik: true, companyEntityId: true, companyEntity: { select: { ticker: true } } },

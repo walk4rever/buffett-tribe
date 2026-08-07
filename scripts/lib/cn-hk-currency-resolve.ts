@@ -10,7 +10,7 @@
 // exceptions.
 //
 // HK genuinely varies — 泡泡玛特 (09992) is HK-listed but reports in RMB, not
-// HKD, confirmed against real FY2024 revenue figures (see TODOS.md P0 ②).
+// HKD, confirmed against real FY2024 revenue figures (see TODO.md P0 ②).
 // So HK currency is extracted from the annual report text itself, which by
 // pipeline order is only available after import_annual_report runs (see
 // onboard-company.ts's HK step reordering) — this can't run at seed_entity

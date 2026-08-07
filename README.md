@@ -10,10 +10,11 @@
 
 核心定位：用价值投资框架帮助用户更好地理解和分析一家公司。你有一个投资想法——"泡泡玛特值得买吗？"——平台把这个问题放进价值投资框架里：护城河在哪里？管理层可信吗？现在的价格有安全边际吗？大师们怎么看这类生意？
 
-三层知识驱动 Agent：
+四层知识驱动 Agent：
 - 大师说了什么 → 年会记录、股东信、演讲、书（GBrain 知识图谱，语义检索）
-- 大师买了什么 → 巴菲特 / 李录 / 段永平 13F 持仓（Supabase SQL）
-- 公司披露了什么 → 10-K / 20-F 年报章节（FilingSection 结构化抽取）
+- 大师买了什么 → 追踪投资人 13F 持仓（Supabase SQL）
+- 公司披露了什么 → 10-K / 20-F / 40-F 年报章节，美股+港股+A股（FilingSection 结构化抽取）
+- 网站自己写过什么 → 已生成的公司分析、`/insights` 洞见文章
 
 **目标规模**：不追求覆盖全部上市公司/投资者，是精选价值投资框架下有意义的标的——公司封顶约 1000 家（全球三市场合计 1-1.5 万家）、追踪投资人封顶约 100 个；`/insights` 内容持续累积，无封顶。目标用户是中国的价值投资实践者，量级在几万人。
 
@@ -23,9 +24,9 @@
 
 | 路由 | 功能 |
 |------|------|
-| `/agent` | 投资研究 Agent（主入口，三工具驱动） |
-| `/master` | 巴菲特、李录、段永平的信件、演讲、持仓 |
-| `/company` | 任意公司的结构化研究画布（6 Tab） |
+| `/agent` | 投资研究 Agent（主入口，五工具驱动） |
+| `/master` | 追踪投资人的信件、演讲、持仓（3 位核心大师 + 8 位 Alpha 部落） |
+| `/company` | 任意公司的结构化研究画布（7 Tab，美股/港股/A股） |
 | `/insights` | 投资洞见，按播客/栏目过滤 |
 
 ### /agent — 投资研究 Agent
@@ -34,23 +35,27 @@
 
 - **`search_wisdom`** 查询资料库 — 大师说过什么（语义搜索）
 - **`search_holdings`** 查询持仓明细 — 大师买了什么（SQL 结构化）
-- **`search_filings`** 查询公司年报 — 公司披露了什么（10-K / 20-F 章节）
+- **`search_filings`** 查询公司年报 — 公司披露了什么（10-K / 20-F / 40-F 章节，美股+港股+A股）
+- **`get_company_analysis`** 查询公司分析 — 网站已生成的业务/护城河/管理层/估值分析
+- **`get_insight_content`** 查询洞见全文 — `/insights` 文章原文
 
-工具调用有实时指示器，显示工具名、参数摘要、返回条数。
+工具调用有实时指示器，显示工具名、参数摘要、返回条数。公司页右下角还有一个直接锚定当前公司的 "AI 解读" 悬浮入口。
 
 ### /company — 公司研究画布
 
-独立公司页面，6 Tab 结构化呈现：业务分析 · 财务分析 · 价值分析 · 管理分析 · 估值分析 · 年度报告。
+独立公司页面，7 Tab 结构化呈现：业务分析 · 财务分析 · 价值分析 · 管理分析 · 估值分析 · 大师持仓 · 参考资料。
+
+支持美股（SEC EDGAR）、港股（HKEXnews）、A 股（巨潮资讯网）三个市场，同一套页面结构。
 
 数据来自两层：
-1. **Fact 层**：财务数据（EDGAR XBRL）、价格（Yahoo Finance）
-2. **生成层**：LLM 生成的业务概览、商业画布、价值分析、管理分析、估值分析
+1. **Fact 层**：财务数据（美股 EDGAR XBRL / 港股 A 股 akshare 三大报表）、价格（Yahoo Finance）
+2. **生成层**：LLM 生成的公司概览、业务概览、商业画布、价值分析、管理分析、估值分析
 
-### /master — 大师
+### /master — 大师 / 投资人
 
-每位大师的独立主页：原文材料（可全文阅读）、13F 持仓快照。
+每位投资人的独立主页：13F 持仓快照、季度点评。3 位核心"大师"额外拥有完整原文材料库（可全文阅读），另外 8 位是仅追踪 13F 持仓的 Alpha 部落投资人。
 
-大师覆盖范围：
+核心大师覆盖范围：
 - **巴菲特**：年会记录 1994–2023（Unscripted）、股东信 1965–2025、合伙人信 1958–1970
 - **李录**：书籍与演讲 PDF（5 份）
 - **段永平**：雪球问答录商业 + 投资逻辑篇
@@ -82,7 +87,7 @@ Agent 服务（pi-gateway）运行在 air7 服务器，由 PM2 管理，通过 `
 | **样式** | 手写 CSS，Apple HIG 精简风格 |
 | **数据库** | PostgreSQL · Prisma · Supabase |
 | **Agent 服务** | pi-gateway（Express SSE，air7，PM2），`@earendil-works/pi-coding-agent` |
-| **LLM** | DeepSeek（Agent 对话） · Claude API（批量生成分析） |
+| **LLM** | DeepSeek（Agent 对话 + 批量生成分析） |
 | **知识层** | GBrain（air7，Supabase 后端，pgvector 1536d） |
 | **持仓数据** | SEC EDGAR 13F-HR |
 | **财务数据** | SEC EDGAR XBRL（CompanyFacts + inline XBRL） |
@@ -104,26 +109,29 @@ src/
     insights/      # 投资洞见
     page.tsx       # 首页
   components/
-    AgentChat.tsx      # Agent 对话组件（SSE 流、工具调用指示器、Markdown 渲染）
-    CompanyCanvas.tsx  # 六 Tab 研究画布
+    AgentChat.tsx           # Agent 对话组件（SSE 流、工具调用指示器、Markdown 渲染）
+    CompanySectionTabs.tsx  # 七 Tab 研究画布
+    CompanyAgentDialog.tsx  # 公司页右下角 "AI 解读" 悬浮入口
 services/
   pi-gateway/      # Agent 服务（Express SSE，部署到 air7）
     src/tools/
-      search-wisdom.ts    # 大师知识库语义检索
-      search-holdings.ts  # 13F 持仓 SQL 查询
-      search-filings.ts   # 年报章节查询
-    AGENTS.md      # Agent system prompt（投研定位 + 三工具说明）
+      search-wisdom.ts         # 大师知识库语义检索
+      search-holdings.ts       # 13F 持仓 SQL 查询
+      search-filings.ts        # 年报章节查询
+      get-company-analysis.ts  # 已生成公司分析查询
+      get-insight-content.ts   # 洞见文章全文查询
+    AGENTS.md      # Agent system prompt（投研定位 + 五工具说明）
     deploy.sh      # 部署脚本（rsync → npm install → pm2 restart）
 ```
 
 ---
 
-## 当前状态（v0.38.8）
+## 当前状态（v0.42.1）
 
-- `/agent` 投资研究 Agent，三工具上线，工具调用有实时指示器
-- `/master` 大师主页、资料阅读、最新持仓（巴菲特 / 李录 / 段永平）
-- `/company/[id]` 公司页，财务、持仓、管理分析、估值分析（55 家覆盖）
-- `/insights` 投资洞见，按来源栏目过滤
-- 13F / 10-K 批处理导入，FilingSection 覆盖约 120 家公司（2020–2025）
+- `/agent` 投资研究 Agent，五工具上线，工具调用有实时指示器；公司页额外有独立锚定当前公司的 "AI 解读" 入口
+- `/master` 投资人主页、资料阅读、最新持仓 + 季度点评——3 位核心大师（巴菲特 / 李录 / 段永平）+ 8 位 Alpha 部落投资人
+- `/company/[id]` 公司研究画布，覆盖美股 / 港股 / A 股三个市场；约 150 家公司有完整的财务 + LLM 生成分析
+- `/insights` 投资洞见，按来源栏目过滤，71 篇已发布
+- 13F / 10-K / 20-F / 40-F 批处理导入 + 港股披露易 / A 股巨潮资讯网年报导入
 
-更完整的产品与数据说明见 [PRODUCT.md](PRODUCT.md)。
+更完整的产品与数据说明见 [PRODUCT.md](PRODUCT.md)，活跃工作队列见 [TODO.md](TODO.md)。

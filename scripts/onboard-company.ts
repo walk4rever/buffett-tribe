@@ -28,7 +28,7 @@
  * same 9-bucket vocabulary the US path's mapSectorFromSic() produces — see
  * scripts/lib/cn-hk-sector-classify.ts. scripts/lib/cn-hk-company-seeds.ts
  * is now only a manual override for the rare bad-data case, not required to
- * onboard a new company — TODOS.md P0 ④) -> import_price -> [cn:
+ * onboard a new company — TODO.md P0 ④) -> import_price -> [cn:
  * import_financials -> import_annual_report | hk: import_annual_report ->
  * import_financials, reordered because HK's reporting currency can only be
  * resolved from the annual report text — see
@@ -179,7 +179,7 @@ function parseMarket(value: string | undefined): Market {
   return market;
 }
 
-// TODOS.md P0 ④: canonicalName/nameZh/nameEnShort/exchange/industry are
+// TODO.md P0 ④: canonicalName/nameZh/nameEnShort/exchange/industry are
 // fetched automatically via akshare (scripts/fetch-cn-hk-company-profile-ak.py
 // + scripts/import-cn-hk-company-profile-from-file.ts, sector classified by
 // LLM) — CN_HK_SEEDS is no longer required to onboard a new CN/HK company.

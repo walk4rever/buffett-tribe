@@ -414,7 +414,7 @@ export async function upsertFilerEntity(filer: FilerConfig) {
         },
       });
 
-  // Keep the Filer companion table in sync (see TODOS.md「Filer / Company
+  // Keep the Filer companion table in sync (see TODO.md「Filer / Company
   // 拆分」) so every filer is discoverable there the moment it's first
   // imported, before any 10-K import for it ever runs.
   //

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 巴菲特部落 (Buffett Tribe) — a knowledge-base + agent-driven value-investing research platform. Core loop: pick a company, understand it through value-investing frameworks (moat, management, valuation), see what the "masters" (tracked investors) actually hold and have said. Three data layers drive the `/agent` chat: what masters *said* (GBrain semantic search over letters/transcripts), what masters *hold* (13F data in Postgres), what companies *disclosed* (10-K/20-F filing sections).
 
-Full product spec: `PRODUCT.md` (large; prefer targeted `grep`/section reads over reading it whole — it has a table of contents at the top). Script catalog: `scripts/README.md` (numbered index of the ~90 scripts in `scripts/`, grouped by pipeline — read this before writing a new script; there is very likely already one that does most of what you need). Data model notes: `DATA.md`. Design tokens: `APPLE-DESIGN.md`.
+Full product spec: `PRODUCT.md` (large; prefer targeted `grep`/section reads over reading it whole — it has a table of contents at the top; data model notes live in its "数据字典与工程口径" and "数据资产清单" sections — `DATA.md` was retired 2026-08-07, folded in here). Script catalog: `scripts/README.md` (numbered index of the ~90 scripts in `scripts/`, grouped by pipeline — read this before writing a new script; there is very likely already one that does most of what you need). Design tokens: `APPLE-DESIGN.md`.
 
 ## Commands
 

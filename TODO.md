@@ -1,4 +1,4 @@
-# TODOS — 活跃工作队列
+# TODO — 活跃工作队列
 
 > 更新：2026-08-06。本文件只保留**未完成项**，按 P0–P3 排优先级；完成项的结论回写 `PRODUCT.md` 后从这里移除（详细过程见 git 历史）。产品定位、架构、数据口径、测试体系设计一律以 `PRODUCT.md` 为准。
 >
@@ -83,6 +83,18 @@
   - **⑤ 再追加：`(构建中)` 占位改成轻量标记（2026-08-06，同一轮用户反馈）**：`CompanySectionTabs.tsx` 组件本来就把 `note` 渲染成独立的 `<span className="company-tab-note">`（不是拼进 `label` 文字里，纯文本提取时读起来像连读只是视觉巧合），改动纯粹是内容 + 样式层——`src/app/company/[id]/page.tsx` 里两处 `note: "构建中"` 改成 `note: "●"`；`globals.css` 的 `.company-tab` 从 `flex-direction: column`（label 和 note 竖排两行，tab 按钮因此变高）改成 `flex-direction: row; align-items: center`（同一行内联），`.company-tab-note` 字号从 `0.64rem` 缩到 `0.45rem`、颜色调淡（`#94a3b8`）。**验证**：SpaceX 页面截图确认"管理分析"/"估值分析"两个 tab 后面各跟一个不抢眼的小圆点，跟其余 tab 高度对齐；AAPL（数据完整、没有 note 的公司）回归截图确认没有受影响。
   - **⑤ 再追加：SPCX 缺"价格历史"排查，牵出 onboard-company.ts 编排逻辑的一个通用缺口（2026-08-06）**：查库确认 `StockPrice` 表里 SPCX 一条记录都没有——根因不是这次改动的 bug，是**漏跑了一步**：`onboard-company.ts` 的 9 个步骤按数组顺序**严格串行**执行，SPCX 第 1 步"导入 10-K"因为没有年报直接失败，整条流水线当场停在第 1 步（"Onboarding incomplete — rerun..."），**从未执行到第 2 步"导入股价"**；后续是单独手动跑 `import-us-prospectus.ts` + 两个 `generate:*` 脚本补的基本信息入口，跳过了正常编排链条，没人补跑 `import:stock-prices:yf`——而这一步跟"有没有 10-K"完全无关，SPCX 是纳斯达克真实交易的股票，本来就查得到公开股价。**已修**：单独跑 `npm run import:stock-prices:yf -- --ticker SPCX --import-db`，37 条记录（2026-06-12 上市首日至今）导入成功，`/company/CIK0001181412` 截图确认 K 线图正常渲染（从 240 附近跌到 108.27，-13.61%）。
     - **牵出的通用问题（未处理，先记一笔）**：`onboard-company.ts` 现在是"一步失败、后面全部不跑"的严格串行编排，不区分某个后续步骤是否真的依赖失败的那一步——`import_price`（股价）、`import_annual_report`/`import_financials`（CN/HK 那条链路）等步骤之间已经存在真实的依赖关系差异（见 P0 ④ 港股 currency 那次专门为此调整过 steps 顺序），但美股这条路径的 `import_price` 明明和 `import_10k` 互不依赖，却因为排在它后面而被连坐卡住。以后任何"部分数据源缺失"的边界公司（不止 SpaceX 这种没有 10-K 的，也可能是股价源本身查不到的冷门票）都可能重复踩这个坑。值得考虑的方向：把"允许后续独立步骤继续跑，即使前面某步失败"作为编排层的默认行为，而不是每次靠人工发现+手动补跑；这次没有现场重构，只是记录下来，下次遇到类似情况再决定要不要做。
+  - **⑤ 再追加：`/company` 目录页"完整/待完善"信号只看 `Financial`，IPO 阶段公司会被误判（2026-08-07，隔天复盘时发现，未处理）**：`src/app/company/page.tsx` 的 `isComplete` 判定是 `Financial._count > 0`。SpaceX 已经有真实的 `CompanyAnalysis`/`BusinessCanvas` 内容（招股书没有 XBRL，`Financial` 按设计就是 0 行），但目录页依然把它归进"待完善"，跟它实际的完成度不符。现在只有 SpaceX 一个样本，但每次以后 onboard 刚上市公司都会重演。值得考虑把判定信号换成"有 `CompanyAnalysis` 或 `Financial` 任一即算完整"，或者干脆分两种"完整"状态（有财务数据 / 有分析内容）分别展示，未拍板。
+
+- [ ] **⑦ 数据架构：停止 `GeneratedContentVersion` 镜像，公司分析类工具改读权威表**（2026-08-07，onboard SAP 时发现 `/agent` 的 `get_company_analysis` 工具报"无分析"，但网页上有真实内容，端到端查证后定位到架构层问题；详细数据见 `PRODUCT.md`「数据资产清单 > LLM 生成内容版本表现状」）
+  - **现状**：6 个 LLM 生成 artifact（company_profile/business_overview/value_analysis/business_canvas/master_profile/portfolio_insight）都在生成时双写——权威表（`CompanyAnalysis`/`BusinessCanvas`/`MasterProfile`/`PortfolioInsight`）+ `GeneratedContentVersion` 镜像。搜了 `src/` 全部代码，没有任何功能读取镜像表的非最新版本（无回滚 UI、无版本对比）——版本历史机制全项目零消费。
+  - **公司数据的镜像同步率只有 15%**（149 家里 126 家没有镜像，2026-06-02 加镜像机制之前生成、之后未重跑的存量 + 1 次跨部署边界的批量任务），`get_company_analysis` 只读镜像表，导致对 85% 已经有真实分析的公司报"无分析"。大师画像/持仓点评镜像率 100%，纯粹因为样本小（~11 个大师）都被重跑过，不是设计更稳健。
+  - **`management_analysis`/`valuation_analysis` 是另一个独立问题**：这两项从来没有专属表，`GeneratedContentVersion` 是它们唯一的存储，不是镜像——148 家已 onboard 公司里 71 家两项全无、6 家缺估值，这是真实生成缺口（要跑 `generate:management-analysis -- --all` / `generate:valuation-analysis -- --all`，有 LLM 成本），跟镜像同步是两码事，不要混着修。
+  - **候选方案（讨论中，未拍板）**：
+    - A. 彻底统一成一张通用表，退休 `CompanyAnalysis`/`BusinessCanvas`——最干净但要重写 `/company` 页面读取路径，回归面最大。
+    - B. 给 `management_analysis`/`valuation_analysis` 也建专属存储（新字段或新表），停止公司数据的镜像写入，`get_company_analysis` 直接读权威表——跟项目里已有的 4 个先例（`CompanyAnalysis`/`BusinessCanvas`/`MasterProfile`/`PortfolioInsight`）保持一致，当前倾向选这个。
+    - C. 最小改动：只停止 3 个已有专属表的 artifact 镜像写入 + 改 agent 工具读取逻辑，不新建表，`management_analysis`/`valuation_analysis` 保持现状。
+  - **下一步**：跟用户确认往 B 还是 C 定，B 要新建表/加字段，C 改动面更小但留着"部分类型有专属表、部分没有"的混合状态。
+  - **顺带发现，还没处理**：大师/持仓点评那边虽然镜像率 100%、暂无功能性 bug，但同样的双写模式若以后被抄去做类似 agent 工具会复现同一个坑；`BusinessCanvasVersion`（153 行，写了没人读）建议一并停止写入观察。
 
 - [ ] **⑥ /insights 文章关联公司，接进公司页"参考资料" tab — 方案已验证，未实现/未接入，等以后再讨论排期**（2026-08-06，用户提出"insights 里的文章能不能按公司列到公司页参考资料下"）
   - **发现：读取端已经建好，写入端从未跑过**——`InsightPost.entityIds: String[]` 这个字段本来就存在，`/insights/[slug]/page.tsx` 的 `getEntitiesByIds()` 已经在用它渲染"相关公司"标签（文章详情页 → 公司，反向链接）；但查库确认 **68 篇已发布文章，`entityIds` 全部是空数组**——`scripts/import-insight.ts` 导入链路从来没写过这个字段。所以真正要做的不是"公司页怎么展示"（这部分数据一旦有了，实现很轻，照抄 `getCompanyReferenceFilings` 那个查询风格就行），是"怎么把 entityIds 填起来"。

@@ -1,7 +1,7 @@
 /**
  * fix-berkshire-entity-split.ts
  *
- * One-time data fix for the Berkshire duplicate-entity bug (see TODOS.md
+ * One-time data fix for the Berkshire duplicate-entity bug (see TODO.md
  * 「Filer / Company 拆分」). Berkshire Hathaway exists as two Entity rows —
  * a type=master filer row (tribeId=buffett) and a type=company row with the
  * real Financial/10-K data — and 4 buggy code paths (fixed separately)

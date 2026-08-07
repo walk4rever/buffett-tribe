@@ -1,5 +1,5 @@
 // Agent tool contract test — hits the real Supabase DB + real R2 (no mocks).
-// See TODOS.md "测试体系设计" for why L3 deliberately runs against live data:
+// See TODO.md "测试体系设计" for why L3 deliberately runs against live data:
 // this exact case (DIS 2020 10-K, keyword deep in item_1_business) is the
 // regression that motivated building this harness — FilingSection.content
 // was silently truncated in production and search_filings couldn't find

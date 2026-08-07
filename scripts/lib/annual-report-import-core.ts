@@ -712,7 +712,7 @@ export async function upsertCompanyEntity(cik: string, ticker: string, title: st
 
   // Never retype/mutate a filer's Entity(type="master") row into a company —
   // that's the exact collision that produced the Berkshire duplicate-entity
-  // bug (see TODOS.md「Filer / Company 拆分」). If resolution landed on a
+  // bug (see TODO.md「Filer / Company 拆分」). If resolution landed on a
   // master row, treat it as "not found" and fall through to creating a
   // proper company row; the Filer.companyEntityId link is written below.
   if (target?.type === "master") {
@@ -803,7 +803,7 @@ export async function upsertCompanyEntity(cik: string, ticker: string, title: st
 
   // If this company's CIK belongs to one of our tracked filers (currently:
   // Berkshire/buffett), link it back so future runs never have to guess via
-  // scoring again — see TODOS.md「Filer / Company 拆分」.
+  // scoring again — see TODO.md「Filer / Company 拆分」.
   await db.filer.updateMany({
     where: { filerCik: cik, companyEntityId: null },
     data: { companyEntityId: resolved.id },

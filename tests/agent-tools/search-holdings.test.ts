@@ -1,5 +1,5 @@
 // Agent tool contract test — hits the real Supabase DB (no mocks). See
-// TODOS.md "测试体系设计" for why L3 runs against live data.
+// TODO.md "测试体系设计" for why L3 runs against live data.
 //
 // AAPL has been Berkshire's largest 13F position for years; we assert on
 // presence, not an exact percentage, since the weight legitimately drifts

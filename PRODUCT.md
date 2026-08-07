@@ -17,7 +17,7 @@
 | `CHANGELOG.md` | 发布记录 | 只记录已经发布的用户可见变化和重要修复 |
 | `APPLE-DESIGN.md` | 设计参考资料 | 可保留为参考，但设计决策和项目落地规范应摘要进 `PRODUCT.md` |
 
-原则：以后讨论“要做什么、为什么做、怎么做、数据从哪里来、设计口径是什么”，默认更新 `PRODUCT.md`；对外只更新 `README.md` 和 `CHANGELOG.md`。`NEXT.md` / `DATA_GLOSSARY.md` 的内容已经合并进本文档，不再作为单独入口维护。`TODOS.md` 承载**活跃工作队列**（按 P0–P3 排优先级）：完成项的结论回写本文档后从清单移除，只保留未完成项和必要背景（2026-07-17 起口径）。
+原则：以后讨论“要做什么、为什么做、怎么做、数据从哪里来、设计口径是什么”，默认更新 `PRODUCT.md`；对外只更新 `README.md` 和 `CHANGELOG.md`。`NEXT.md` / `DATA_GLOSSARY.md` 的内容已经合并进本文档，不再作为单独入口维护。`TODO.md` 承载**活跃工作队列**（按 P0–P3 排优先级）：完成项的结论回写本文档后从清单移除，只保留未完成项和必要背景（2026-07-17 起口径）。
 
 ---
 
@@ -32,9 +32,10 @@
 7. [测试体系](#测试体系)
 8. [当前实现状态](#当前实现状态v03815)
 9. [数据字典与工程口径](#数据字典与工程口径)
-10. [公司页财务看板](#公司页财务看板truth-of-source-设计)
-11. [数据与脚本](#数据与脚本)
-12. [运维速查表](#运维速查表)
+10. [数据资产清单](#数据资产清单)
+11. [公司页财务看板](#公司页财务看板truth-of-source-设计)
+12. [数据与脚本](#数据与脚本)
+13. [运维速查表](#运维速查表)
 
 ---
 
@@ -426,9 +427,9 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 
 当前系统深度绑定 SEC EDGAR 体系（CIK、XBRL、10-K/20-F/40-F），公司页路由、Entity 模型、财务导入链路、年报阅读器都围绕这一体系构建。扩展支持 A 股和港股公司，验证目标为贵州茅台（600519.SS）和泡泡玛特（9992.HK）——两家均已完成，美股/港股/A股三个市场至此全部对等支持。
 
-> **实施状态（2026-07-27 更新）**：**泡泡玛特（hk-09992）与贵州茅台（cn-600519）Phase 1+2+3 均已完成并上线**——路由泛化（`/company/[id]`，`parseCompanyIdentifier`/`formatCompanyUrl`/`getCompanyByIdentifier` 统一入口）、Entity 种子（`scripts/lib/cn-hk-company-seeds.ts`）、股价、财务数据（`akshare` 三大报表 → `Financial`）、年报原文（HKEXnews/cninfo → `FilingSection` evidence + R2 PDF + 本地阅读页，见下方 Phase 3）均已验证；`onboard-company.ts --market hk|cn` 均为完整 9 步，业务/价值/管理/估值分析四个 LLM tab 都已解锁并跑出真实内容，公司页信息完整。详细过程见 TODOS.md P0 ②。
+> **实施状态（2026-07-27 更新）**：**泡泡玛特（hk-09992）与贵州茅台（cn-600519）Phase 1+2+3 均已完成并上线**——路由泛化（`/company/[id]`，`parseCompanyIdentifier`/`formatCompanyUrl`/`getCompanyByIdentifier` 统一入口）、Entity 种子（`scripts/lib/cn-hk-company-seeds.ts`）、股价、财务数据（`akshare` 三大报表 → `Financial`）、年报原文（HKEXnews/cninfo → `FilingSection` evidence + R2 PDF + 本地阅读页，见下方 Phase 3）均已验证；`onboard-company.ts --market hk|cn` 均为完整 9 步，业务/价值/管理/估值分析四个 LLM tab 都已解锁并跑出真实内容，公司页信息完整。详细过程见 TODO.md P0 ②。
 >
-> **2026-08-06 更新：Entity 种子改为自动查询**，见下方 Phase 1 第 3 点和 TODOS.md P0 ④——原「两家公司手工录入，不先建批量管线」是 P0 ② 当时的决定，规模扩大到未来 100+ 家后已不成立，`scripts/fetch-cn-hk-company-profile-ak.py` 用 akshare 自动查询公司名/交易所/行业，`cn-hk-company-seeds.ts` 降级为坏数据兜底的手工覆盖表。A 股路径（五粮液 000858.SZ）端到端真实验证通过；港股路径代码完成、关键环节离线验证过，尚未有真实港股新公司跑过完整端到端。
+> **2026-08-06 更新：Entity 种子改为自动查询**，见下方 Phase 1 第 3 点和 TODO.md P0 ④——原「两家公司手工录入，不先建批量管线」是 P0 ② 当时的决定，规模扩大到未来 100+ 家后已不成立，`scripts/fetch-cn-hk-company-profile-ak.py` 用 akshare 自动查询公司名/交易所/行业，`cn-hk-company-seeds.ts` 降级为坏数据兜底的手工覆盖表。A 股路径（五粮液 000858.SZ）端到端真实验证通过；港股路径代码完成、关键环节离线验证过，尚未有真实港股新公司跑过完整端到端。
 
 ### 扩展动机
 
@@ -482,12 +483,12 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 
 #### Phase 1：基础信息 + 股价 —— ✅ 泡泡玛特已完成，茅台未开始
 
-**改动点（实际实现，见 TODOS.md P0 ②）**：
+**改动点（实际实现，见 TODO.md P0 ②）**：
 1. **Entity 模型**：`cik` 本来就是 nullable；`market`/`code` 字段与复合索引 2026-06-15 已加。
 2. **URL 路由**：`/company/[cik]` → `/company/[id]`，解析逻辑在 `src/lib/company-data.ts`（`parseCompanyIdentifier`/`getCompanyByIdentifier`/`formatCompanyUrl`，见下方「技术方案」），不是本节最初设想的独立 `parseCompanyId` 函数——这套 helper 統一了此前两套已经互相 drift 的 CIK→URL 实现（`company-data.ts` 自己的一套 + 独立的 `src/lib/cik.ts`，后者已删除）。
    - `/company/CIK0000320193` → SEC 公司（向后兼容）
    - `/company/hk-09992` → 港股（注意补零，不是 `hk-9992`——港股代码规范用 `09992`，见「首批目标公司」表）
-3. **公司信息**（**2026-08-06 更新，见 TODOS.md P0 ④**）：最初（P0 ②）拍板"两家公司手工录入，不先建批量管线"，规模扩大到未来 100+ 家后不再成立——现改为 `scripts/fetch-cn-hk-company-profile-ak.py` 用 akshare 自动查询 canonicalName/nameZh/nameEnShort/exchange/行业原文（A 股 `stock_profile_cninfo`，港股 `stock_hk_security_profile_em`+`stock_hk_company_profile_em`），`sector` 由 `cn-hk-sector-classify.ts` 用 LLM 分类到与美股 `mapSectorFromSic()` 相同的 9 桶英文词表。`scripts/lib/cn-hk-company-seeds.ts` 降级为坏数据兜底的手工覆盖表（ticker 在表里则用手填值，否则自动查），不再是 onboard 新公司的必需前置步骤。
+3. **公司信息**（**2026-08-06 更新，见 TODO.md P0 ④**）：最初（P0 ②）拍板"两家公司手工录入，不先建批量管线"，规模扩大到未来 100+ 家后不再成立——现改为 `scripts/fetch-cn-hk-company-profile-ak.py` 用 akshare 自动查询 canonicalName/nameZh/nameEnShort/exchange/行业原文（A 股 `stock_profile_cninfo`，港股 `stock_hk_security_profile_em`+`stock_hk_company_profile_em`），`sector` 由 `cn-hk-sector-classify.ts` 用 LLM 分类到与美股 `mapSectorFromSic()` 相同的 9 桶英文词表。`scripts/lib/cn-hk-company-seeds.ts` 降级为坏数据兜底的手工覆盖表（ticker 在表里则用手填值，否则自动查），不再是 onboard 新公司的必需前置步骤。
 4. **股价**：`npm run import:stock-prices:yf -- --ticker 9992.HK --import-db` 零改动直接用，`StockPrice` 按 ticker 字符串查询，与 CIK/market 完全无关。
 
 **公司页适配（已实现）**：
@@ -535,15 +536,15 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 
 **A 股实现（`scripts/fetch-cn-annual-report.py` + `scripts/import-cn-annual-report-from-file.ts`，2026-07-27 完成）**：不是把 HK 脚本改参数复用——获取机制本质不同，符合本节开头「不照搬，按市场格式重新设计」的约束，只共享 `archiveFilingArtifact()`/`buildStoredTextOnlyFilingSectionData()` 两个已有的通用底层 helper。`akshare.stock_zh_a_disclosure_report_cninfo(keyword="年度报告")` 返回的公告标题带 `<em>...</em>` 搜索高亮标记，需要先 strip 再匹配；纯 `"年度报告"` 关键词还会命中"半年度报告"（子串重叠）、"...摘要"、"...（英文版）"，用锚定正则 `^.+?(\d{4})年年度报告$` 精确排除，验证过真实返回结果里这三类变体全部被正确过滤，只保留 6 份年份 2020-2025 的正式中文年报。PDF 直链是可预测的静态 CDN 地址（公告详情页链接里的 `announcementId`+`announcementTime` 拼出 `static.cninfo.com.cn/finalpage/{announcementTime}/{announcementId}.PDF`）——比 HKEXnews 简单得多，不需要 JSF/ViewState 会话周旋，下载速度也快一个数量级（3.6MB 年报实测 0.3 秒，~14MB/s，vs HKEXnews 的 ~85KB/s），因此不需要 HK 那种保守超时设计。`ExtSource.kind = "cn-annual-report"`，`FilingSection` 前缀 `cn_annual_report_1..4`，同样按页数机械四等分。`hasUsableFilingEvidence()`/`fetchLatestFilingEvidence()`（`scripts/lib/company-generation.ts`）、`src/lib/company-data.ts` 四处 kind 过滤、阅读页 `PdfViewer` 分支、`onboard-company.ts` 的 `buildImportAnnualReportStep` 均按 HK 已有模式加一行泛化；`services/pi-gateway` 的 `search_filings` 工具核心逻辑**零改动**自动覆盖（fallback 判断依据是"有没有 primary_html"，不认 kind 名字）——新增贵州茅台 L3 回归用例（`tests/agent-tools/search-filings.test.ts`，同 HK 一样用中文名 + 截断点之后的深层关键词）跑通确认，不只是理论推断。唯一实际要改的是工具 `description`/`company` 参数说明，之前完全没提 A 股，同样有"LLM 因描述不提及而不选用该工具"的风险，照 HK 那次的措辞补上了。
 
-**验证**：`onboard:company -- --ticker 600519.SS --market cn` 一次性跑完全部 9 步（含 5 个 LLM 生成步骤），无需分次补跑；`/company/cn-600519` 六个 tab 截图确认业务/财务/价值分析均为真实生成内容，年度报告 tab 6 张卡片、PDF 阅读页正常渲染（143 页）；Pop Mart（HK）与 AAPL（US）回归截图确认无副作用——详细过程见 TODOS.md P0 ②。
+**验证**：`onboard:company -- --ticker 600519.SS --market cn` 一次性跑完全部 9 步（含 5 个 LLM 生成步骤），无需分次补跑；`/company/cn-600519` 六个 tab 截图确认业务/财务/价值分析均为真实生成内容，年度报告 tab 6 张卡片、PDF 阅读页正常渲染（143 页）；Pop Mart（HK）与 AAPL（US）回归截图确认无副作用——详细过程见 TODO.md P0 ②。
 
-**验证**：`onboard:company -- --ticker 9992.HK --market hk` 端到端跑通，业务/价值/管理/估值分析四个 tab 从"构建中"占位变成真实生成内容（业务概览提到 Molly/DIMOO 等真实 IP 名称与真实 FY2025 财务数字，价值分析护城河评分附"年报未提及重大监管壁垒"这类可追溯到原文的具体论据）——详细过程见 TODOS.md P0 ②。
+**验证**：`onboard:company -- --ticker 9992.HK --market hk` 端到端跑通，业务/价值/管理/估值分析四个 tab 从"构建中"占位变成真实生成内容（业务概览提到 Molly/DIMOO 等真实 IP 名称与真实 FY2025 财务数字，价值分析护城河评分附"年报未提及重大监管壁垒"这类可追溯到原文的具体论据）——详细过程见 TODO.md P0 ②。
 
 **本地阅读页（2026-07-27 追加）**：年度报告 tab 卡片过去对港股恒为空，因为 `getCompanyReferenceFilings`/`getCompanyAnnualFiling` 的 `kind` 过滤硬编码只认 `10k`/`20f`/`40f`——加上 `hk-annual-report` 后卡片直接复用既有 SEC 卡片 UI 出现，无需新写。点进去的阅读页原本只会渲染 `FilingReader`（依赖 `primary_html`），港股年报是纯文本没有这个 artifact；按用户要求复用大师资料库已有的通用 `PdfViewer` 组件（`src/components/PdfViewer.tsx`，纯 `url` prop，不绑定任何数据模型），`annual-report/[year]/page.tsx` 按 `filing.kind === "hk-annual-report"` 分支到它。PDF 原件不再依赖披露易原站（已知限速 ~85KB/s），下载后连同文本一起归档到 R2（`archiveFilingArtifact()`，`kind: "primary_pdf"`，复用 SEC 附件同一套归档/去重逻辑）。年份范围从"最近 2 份"改为 `--from-year`（默认 2020），复用 `onboard-company.ts` 已有的 `--from` 参数贯通，不新增用户可见 flag；泡泡玛特回填至 6 份（2020-2025）。**踩到一个 CORS 坑**：`PdfViewer` 若直接拿 `FilingArtifact.publicUrl`（R2 公开域名）当 `url`，pdfjs 内部的跨域 `fetch` 会被 CORS 拦截（R2 公开桶不带 `Access-Control-Allow-Origin`）——大师资料库的 PDF 从未暴露这个问题，因为它们从不直接把 R2 URL 给客户端，而是走 `/api/documents/*/[slug]` 同源代理（`getR2Stream()` 服务端转发）。照同一模式新增 `/api/filing-pdf/[...key]/route.ts`（用 `FilingArtifact.objectKey`，`@unique`，catch-all 路径还原后查库转发），阅读页改传代理路径而非 `publicUrl`。
 
 ### 跨市场扩展的三条结构约束
 
-> 2026-07-26 复盘法拉利（RACE）onboarding 后补充。RACE 的核心教训是**管线把"抽取"当成确定性操作，而它实际是概率性的**（完整复盘见 TODOS.md P0 ③）。这三条约束是把该教训前置到跨市场扩展上，避免在新市场重演。
+> 2026-07-26 复盘法拉利（RACE）onboarding 后补充。RACE 的核心教训是**管线把"抽取"当成确定性操作，而它实际是概率性的**（完整复盘见 TODO.md P0 ③）。这三条约束是把该教训前置到跨市场扩展上，避免在新市场重演。
 
 **1. 不要直接照搬美股抽取逻辑到 A 股/港股，要按各自数据格式重新设计。**（2026-07-26 用户订正表述，原文把这条写成了"外链是长期终点"，是误读）
 
@@ -703,7 +704,7 @@ Apple HIG 精简风格：
 
 ## 测试体系
 
-> 2026-07-08 从零设计，L0/L1/L3/L4 已于 v0.38.13~15 落地；设计与落地过程记录见 git 历史（`TODOS.md` 2026-07 版本）。
+> 2026-07-08 从零设计，L0/L1/L3/L4 已于 v0.38.13~15 落地；设计与落地过程记录见 git 历史（`TODO.md` 2026-07 版本）。
 
 按数据链路风险分层设计，**风险对应优先，不追求覆盖率指标**。这个代码库的风险集中在"数据从外部进来（SEC EDGAR / Supabase / R2 / DeepSeek / GBrain / Yahoo Finance）、流经管线、呈现给用户"这条链路的完整性上，不是纯算法错误；生产数据自身漂移（如 `FilingSection.content` 被无留痕截断的事故）只有对真实数据跑的测试才能抓到——这是 L3/L4 权重高的原因。
 
@@ -743,13 +744,13 @@ Apple HIG 精简风格：
 ### v0.39.18 变更（2026-07-23，当前）
 
 - **Ferrari (RACE) onboarding 收尾**：补跑 `import:stock-prices:yf`（501 天股价）和 `generate:valuation-analysis`（此前因缺 `StockPrice` 被脚本判定"数据不足"跳过），RACE 的 5 个生成物（company_profile / business_overview / value_analysis / management_analysis / valuation_analysis）现已全部齐全。
-- **修复 10-K 印刷体标题（尾随句号）导致的 item 边界扫描全军覆没**（`isLikelyHeadingText()`，`scripts/lib/extract-10k-sections.ts`）：v0.39.17 新增的 `check:filing-section:integrity` 静默失败检测上线后命中 65 家 filing，逐个排查后发现主因——该函数在检查"是否以 ITEM/NOTE 开头"之前，先无条件拒绝"以句号/冒号结尾"的文本；但"Item 1. Business."这种把句号也印在标题里的格式在 SEC inline-XBRL filer 里很常见（GE/JPMorgan 优先股/Kraft Heinz/P&G 等都是这个格式），导致这条判断顺序把真正的 Item 标题当句子误杀，10-K 的 block-scan 兜底路径（`extractTargetSections()` 里 `preferTocAnchors`/20-F 交叉引用表都不适用时的最后一层）因此完全找不到任何 item 边界。改成先判 ITEM/NOTE 模式再判尾标点。本地对 12 家公司的真实原文重跑验证：CHTR/DPZ/FND/HPQ/JEF/JPM-PM/KHC/MCK/MDLZ/MTB/NVR/PG 全部从 0 section 恢复到 20–23 个；反向验证法拉利/GOTU/JOYY 三家不受影响（它们走 20-F 专属路径，不经过这个函数）。**代码已修复，生产库尚未回填**，详见 `TODOS.md`。
-- 剩余 65 家名单里另外三类，均非本次代码 bug 范畴：GE/C-PR(Citigroup)/SYF(Synchrony) 是 10-K 正文本身"incorporated by reference"到单独 exhibit，没有可抽取的正文；BN/GOLD 2021/PG 2020 的一份是 10-K/A 等修正案，0 章节属正常；INOD 2020 是旧式 SGML 格式的孤例。详见 `TODOS.md`。
+- **修复 10-K 印刷体标题（尾随句号）导致的 item 边界扫描全军覆没**（`isLikelyHeadingText()`，`scripts/lib/extract-10k-sections.ts`）：v0.39.17 新增的 `check:filing-section:integrity` 静默失败检测上线后命中 65 家 filing，逐个排查后发现主因——该函数在检查"是否以 ITEM/NOTE 开头"之前，先无条件拒绝"以句号/冒号结尾"的文本；但"Item 1. Business."这种把句号也印在标题里的格式在 SEC inline-XBRL filer 里很常见（GE/JPMorgan 优先股/Kraft Heinz/P&G 等都是这个格式），导致这条判断顺序把真正的 Item 标题当句子误杀，10-K 的 block-scan 兜底路径（`extractTargetSections()` 里 `preferTocAnchors`/20-F 交叉引用表都不适用时的最后一层）因此完全找不到任何 item 边界。改成先判 ITEM/NOTE 模式再判尾标点。本地对 12 家公司的真实原文重跑验证：CHTR/DPZ/FND/HPQ/JEF/JPM-PM/KHC/MCK/MDLZ/MTB/NVR/PG 全部从 0 section 恢复到 20–23 个；反向验证法拉利/GOTU/JOYY 三家不受影响（它们走 20-F 专属路径，不经过这个函数）。**代码已修复，生产库尚未回填**，详见 `TODO.md`。
+- 剩余 65 家名单里另外三类，均非本次代码 bug 范畴：GE/C-PR(Citigroup)/SYF(Synchrony) 是 10-K 正文本身"incorporated by reference"到单独 exhibit，没有可抽取的正文；BN/GOLD 2021/PG 2020 的一份是 10-K/A 等修正案，0 章节属正常；INOD 2020 是旧式 SGML 格式的孤例。详见 `TODO.md`。
 
 ### v0.39.17 变更（2026-07-23）
 
-- **Ferrari (RACE) 20-F `FilingSection` 抽取修复**（`scripts/lib/extract-10k-sections.ts`，解决 v0.39.12 遗留的"未解决"项）：根因是 EU 合并版 20-F（Dutch 法定年报 + SEC 20-F 合一）用居中 `<span>` 渲染裸页码（如 `<div style="text-align:center"><span>44</span></div>`），不含"Page 44"这类上下文文字，原有 `parsePageNumber()` 的文本正则完全命中不到；且该版式一页内容平均跨 ~18 个顶层 `<div>`，不满足既有"一个顶层 div = 一页"的假设。新增 `collectPageFooterMarkers()`：扫描每个顶层 div 内是否有"叶子 `<span>` + 纯数字文本 + 父级 `<div style="text-align:center">` + 不在 `<table>` 内"的居中页码 span，建立 `页码 → 顶层 div 索引` 映射（对法拉利 2022/2024 两份原文实测：299/296 个候选页码，4→302 / 4→299 严格递增，0 异常 0 重复）；再用 `resolvePageDivRange()` 把"某页码"解析成"上一个已知页码的 div 之后 → 本页码 div（含）"的顶层 div 区间，拼接区间内所有顶层 div 的 HTML 作为该 section 的原文片段。作为 `extractVia20FCrossReferenceTables()` 里逐 section 的 fallback（原有基于文本页码的路径失败时才触发），不影响 GOTU/JOYY 等已工作的 20-F filer（回归验证：两家 2024 年报仍分别抽出 29/30 个 section，和修复前一致）。修复后法拉利 2022–2025 四年 `FilingSection` 从 0 个恢复到 18–21 个，`onboard-company.ts` 剩余的 4 个生成脚本（company_profile / business_overview / value_analysis / management_analysis）已补跑完成；`generate:valuation-analysis` 因 RACE 缺 `StockPrice` 数据被跳过，见 `TODOS.md`。
-- **`check:filing-section:integrity` 补上"静默抽取失败"检测**（同一次排查发现的监控盲区，见 v0.39.12 的 P2 记录）：原巡检只检查"已有 section 的 filing 是否缺 `primary_html` artifact"，一个 filing 抽取返回 0 个 section（无异常，纯静默）完全不在检查范围内。新增第二个查询：有 `primary_html` artifact 但 `sections: { none: {} }` 的 filing，计入 `--strict` 判定。上线即命中 **65 个此前不可见的历史静默失败**（10-K 和 20-F 都有，样例含 GE/DEO/KHC/CHTR/DPZ/LEN/NVR/JEF/C-PR/INOD），根因未逐一排查，记入 `TODOS.md` P2 待处理；`data-integrity-check.yml` 周检从这次起会因此持续标红开 issue，直到清掉积压或加豁免清单。
+- **Ferrari (RACE) 20-F `FilingSection` 抽取修复**（`scripts/lib/extract-10k-sections.ts`，解决 v0.39.12 遗留的"未解决"项）：根因是 EU 合并版 20-F（Dutch 法定年报 + SEC 20-F 合一）用居中 `<span>` 渲染裸页码（如 `<div style="text-align:center"><span>44</span></div>`），不含"Page 44"这类上下文文字，原有 `parsePageNumber()` 的文本正则完全命中不到；且该版式一页内容平均跨 ~18 个顶层 `<div>`，不满足既有"一个顶层 div = 一页"的假设。新增 `collectPageFooterMarkers()`：扫描每个顶层 div 内是否有"叶子 `<span>` + 纯数字文本 + 父级 `<div style="text-align:center">` + 不在 `<table>` 内"的居中页码 span，建立 `页码 → 顶层 div 索引` 映射（对法拉利 2022/2024 两份原文实测：299/296 个候选页码，4→302 / 4→299 严格递增，0 异常 0 重复）；再用 `resolvePageDivRange()` 把"某页码"解析成"上一个已知页码的 div 之后 → 本页码 div（含）"的顶层 div 区间，拼接区间内所有顶层 div 的 HTML 作为该 section 的原文片段。作为 `extractVia20FCrossReferenceTables()` 里逐 section 的 fallback（原有基于文本页码的路径失败时才触发），不影响 GOTU/JOYY 等已工作的 20-F filer（回归验证：两家 2024 年报仍分别抽出 29/30 个 section，和修复前一致）。修复后法拉利 2022–2025 四年 `FilingSection` 从 0 个恢复到 18–21 个，`onboard-company.ts` 剩余的 4 个生成脚本（company_profile / business_overview / value_analysis / management_analysis）已补跑完成；`generate:valuation-analysis` 因 RACE 缺 `StockPrice` 数据被跳过，见 `TODO.md`。
+- **`check:filing-section:integrity` 补上"静默抽取失败"检测**（同一次排查发现的监控盲区，见 v0.39.12 的 P2 记录）：原巡检只检查"已有 section 的 filing 是否缺 `primary_html` artifact"，一个 filing 抽取返回 0 个 section（无异常，纯静默）完全不在检查范围内。新增第二个查询：有 `primary_html` artifact 但 `sections: { none: {} }` 的 filing，计入 `--strict` 判定。上线即命中 **65 个此前不可见的历史静默失败**（10-K 和 20-F 都有，样例含 GE/DEO/KHC/CHTR/DPZ/LEN/NVR/JEF/C-PR/INOD），根因未逐一排查，记入 `TODO.md` P2 待处理；`data-integrity-check.yml` 周检从这次起会因此持续标红开 issue，直到清掉积压或加豁免清单。
 
 ### v0.39.12 变更（2026-07-21）
 
@@ -918,7 +919,7 @@ Apple HIG 精简风格：
 
 ### 当前工作队列
 
-**活跃工作队列与优先级以 `TODOS.md` 为准**（当前 P0：年报阅读器导航修复、A 股/港股 Phase 1；P1：Agent 接入公司页等 Agent 主线三项）。以下为产品层 backlog，未纳入当前排期：
+**活跃工作队列与优先级以 `TODO.md` 为准**（当前 P0：年报阅读器导航修复、A 股/港股 Phase 1；P1：Agent 接入公司页等 Agent 主线三项）。以下为产品层 backlog，未纳入当前排期：
 
 #### 体验收尾
 
@@ -1020,6 +1021,65 @@ Apple HIG 精简风格：
 - 文本关系抽取当前不落任何存储；`Mention` / `EntityRelation`（Postgres）与 Neo4j 图谱链路均已下线。结构化知识沉淀路径：大师内容走 GBrain（Takes / Links / Timeline）；公司维度无对话沉淀层（Company Brain / Claim 方向已于 2026-07-17 从计划移除）。
 - 原始 filing 文件通过 `FilingArtifact` 归档到 R2，结构化章节通过 `FilingSection` 保留可追溯数据；原始 XBRL facts 以 R2 data_file artifact 形式归档。
 - 非美市场公司的查询主键：`{ market, code }` 组合（A 股/港股），`{ cik }` 继续用于美股。URL 路由层统一解析为 `companyId`，下游按 `market` 分发查询策略。
+
+---
+
+## 数据资产清单
+
+按「大师/持仓」「公司」「原始文档」三块列出每种 artifact 的来源、落库表、生产脚本与当前状态（原 `DATA.md`，2026-08-07 并入本文件；`DATA.md` 已退役）。规则：**页面一律读各自的"latest"权威表，不读 `GeneratedContentVersion`**（历史版本表，目前全项目没有任何功能消费它——见下方「LLM 生成内容版本表现状」）。
+
+### 大师 / 持仓数据
+
+本项目里 `fund` 特指 master 关联的 SEC 13F 申报人/基金主体，不是独立通用 fund 数据库。链路：`master` → 关联 `fund/filer` → 历史 `13F filings` → 季度 `holdings` → 生成的 `portfolio insight`。
+
+| 数据 / artifact | 来源 | 权威表 / 文件 | 脚本 | 状态 |
+|---|---|---|---|---|
+| Master 实体（`buffett`/`lilu`/`duan`/`gavin-baker` 等） | 代码/种子数据 | `Entity(type=master)` | `npm run import:13f` | 核心大师是主力部落；Gavin Baker 是首个 `alpha` 大师，单独展示分组 |
+| Fund/filer 身份 | SEC filer 元数据 + 项目映射 | `Entity(type=master)`, `ExtSource.filerEntityId` | `npm run import:13f` | 当前模型把申报 filer 直接当成 master 关联的 fund/filer 身份 |
+| 13F 申报 | SEC EDGAR 13F | `ExtSource(kind=13f)`, `Holding`, `Security`, `Entity` | `npm run import:13f`, `npm run pipeline:13f` | 核心链路已跑通 |
+| 13F 公司关联 | 13F + ticker/name 映射 | `Security.companyEntityId`, `CompanyNameMap` | `npm run backfill:security:company-links`, `npm run sync:company-name-map` | 已有修复脚本，13F 导入后按需跑 |
+| 持仓变化信号 | `Holding` 历史 | 脚本/查询内派生 | `scripts/generate-portfolio-insight.ts` | portfolio insight 生成用 |
+| 大师主页画像 | 最新持仓 + 素材量 | `MasterProfile`，镜像至 `GeneratedContentVersion(artifactType=master_profile)` | `npm run generate:master-profile` | 页面读 `MasterProfile`。2026-08-07 查证：11/11 有镜像（大师数量少、基本都被重跑过），但**没有任何代码读取这份镜像**——纯写入成本，见下方「LLM 生成内容版本表现状」 |
+| 季度持仓点评 | 持仓变化 + 大师画像 | `PortfolioInsight`，镜像至 `GeneratedContentVersion(artifactType=portfolio_insight)` | `npm run generate:portfolio-insight` | 同上，12/12 有镜像，同样没有消费方 |
+
+### 公司数据
+
+| 数据 / artifact | 来源 | 权威表 / 文件 | 脚本 | 状态 |
+|---|---|---|---|---|
+| 公司实体（CIK/ticker/元数据） | SEC submissions + ticker 映射 | `Entity(type=company)` | `npm run import:10k`, `npm run backfill:company:profiles` | CIK 作为主要身份；重复 ticker/share class 需人工核对 |
+| 年报（10-K/20-F/40-F，2020 至今） | SEC EDGAR | `ExtSource(kind=10k/20f/40f)`, `FilingArtifact`, `FilingSection`, `FilingAttachment` | `npm run import:10k -- --ticker AAPL --from 2020 --to 2026` | 抽取器覆盖 10-K/20-F/40-F 目标章节；新公司缺 pre-IPO 年报要与真实缺失区分 |
+| XBRL 原始事实 | SEC CompanyFacts + inline XBRL | `FinancialFact` | `npm run import:10k` | 已按 filing accession 过滤 |
+| 财务标准化行项 | `FinancialFact`/CompanyFacts/inline XBRL | `Financial` | `npm run import:10k`, `npm run check:financial:integrity` | 核心指标层已维护，行项按页面需求扩展 |
+| 年报章节 | 主文档 HTML / 40-F 附件 | `FilingSection` | `npm run import:10k` | 抽取器覆盖 10-K/20-F/40-F 目标 section |
+| 年报归档 | SEC EDGAR + R2 | `FilingArtifact`, R2 object key | `npm run import:10k` | 按 object key 复用，避免重复上传 |
+| 股价 | Yahoo Finance | `StockPrice` | `npm run import:company-stock-prices:yf` | 已有脚本，按 ticker 跟踪覆盖范围 |
+| 公司概览（company_profile） | SEC filings + 元数据 + 财务看板 | `CompanyAnalysis.narrative.overview`，镜像至 `GeneratedContentVersion(artifactType=company_profile)` | `npm run generate:company-profile` | `/company` 页面读 `CompanyAnalysis` 直接。2026-08-07 查证：149 家里 126 家**没有**镜像（85%，2026-06-02 加镜像机制之前生成、之后未重跑的存量），`/agent` 的 `get_company_analysis` 工具只读镜像，因此对这 126 家报"无分析"——实际网页上是有内容的。真实命中案例：星巴克。详见下方「LLM 生成内容版本表现状」 |
+| 业务概览（business_overview） | SEC filings + 财务数据 | `CompanyAnalysis.narrative.business`，镜像至 `GeneratedContentVersion(artifactType=business_overview)` | `npm run generate:business-model` | 同上镜像缺口（同一条 `CompanyAnalysis` 行） |
+| 业务画布 | SEC filings + 财务数据 | `BusinessCanvas`，历史版本 `BusinessCanvasVersion` | `npm run generate:business-model` | 149/149 有画布；`BusinessCanvasVersion` 累计 153 行但只写不读，没有任何页面展示画布历史 |
+| 价值分析（value_analysis） | SEC filings + 财务数据 + 持仓 | `CompanyAnalysis.moat`，镜像至 `GeneratedContentVersion(artifactType=value_analysis)` | `npm run generate:value-analysis` | 同上镜像缺口 |
+| 管理分析（management_analysis） | SEC filings + 财务数据 + 大师信件 | `GeneratedContentVersion(artifactType=management_analysis)`，**没有专属表** | `npm run generate:management-analysis -- --all` | 2026-08-07 查证：148 家已 onboard 公司里只有 71 家生成过——不是镜像问题，是真没跑过，属于批量待办，重跑有真实 LLM 成本 |
+| 估值分析（valuation_analysis） | SEC filings + 财务数据 | `GeneratedContentVersion(artifactType=valuation_analysis)`，**没有专属表** | `npm run generate:valuation-analysis -- --all` | 71/148 完全没有，另 6 家缺这一项（有管理分析），共 77/148 缺口，同上是批量待办 |
+
+### 原始文档数据
+
+| 数据 / artifact | 来源 | 权威表 / 文件 | 脚本 | 状态 |
+|---|---|---|---|---|
+| Berkshire 股东信 | 本地 markdown / Berkshire 原始材料 | `data/shareholder/*.md`, `Source`, `Chunk` | `scripts/import-markdown.ts` | 本地语料覆盖到 2025 |
+| Buffett 合伙人信 | 本地 markdown | `data/partnership/*.md`, `Source`, `Chunk` | `scripts/import-markdown.ts` | 本地语料已有 |
+| 股东大会逐字稿 | 本地 markdown | `data/annual_meeting/raw_en/*.md`, `Source`, `Chunk` | `scripts/import-markdown.ts` | 覆盖多个年份 |
+| 大师 PDF | Li Lu / 段永平 / Buffett PDF | `data/documents/raw/**`, document 路由 | `scripts/upload-documents-to-r2.ts` | 已有上传脚本 |
+
+### LLM 生成内容版本表现状
+
+**2026-08-07 数据架构复盘**（起因：onboard SAP 时发现 `get_company_analysis` 报"无分析"，但网页上明明有内容，端到端查证后的记录，详细过程见 git 历史 / 本次会话）：
+
+上表 6 个 LLM 生成 artifact 全部走"双写"——生成脚本在同一个事务里，既写各自的权威表（`CompanyAnalysis`/`BusinessCanvas`/`MasterProfile`/`PortfolioInsight`），又另外写一份进 `GeneratedContentVersion`（一条不覆盖、只追加的历史版本行）。搜了整个 `src/` 应用代码，**没有找到任何读取 `GeneratedContentVersion` 非最新版本的代码**（没有回滚 UI、没有版本对比、没有审计页）；`BusinessCanvasVersion` 同理，153 行数据只有一处写入、零处读取。版本历史这套机制完整实现了，但从未被任何产品功能用起来。（这个"创建版本行"的写入逻辑还在代码里独立实现了 3 遍——`scripts/lib/company-generation.ts`、`generate-master-profile.ts`、`generate-portfolio-insight.ts` 各一份。）
+
+镜像同步率：公司数据（`company_profile`/`business_overview`/`value_analysis`）149 家里只有 23 家（15%）有镜像；大师画像/持仓点评镜像率 100%，纯粹因为大师样本小（~11 个）、基本都被重新生成过，不是设计更稳健——若以后有人给大师加一个类似 `get_company_analysis` 的 agent 工具、照抄现在这个"读镜像表"的写法，会复现同样的脆弱性。
+
+**这个缺口只在公司数据上真正造成了功能性 bug**，根源是 `get_company_analysis` 选择读镜像表而不是权威表（图省事——5 种类型一条 SQL 搞定，而不是分类型各写查询），把一份冗余拷贝变成了单点故障。
+
+后续要不要重构成"专属表覆盖 `management_analysis`/`valuation_analysis`，停止镜像写入，agent 工具直接读权威表"，作为独立架构决策项跟进，见 `TODO.md`「数据架构：停止 `GeneratedContentVersion` 镜像」。
 
 ---
 
@@ -1176,6 +1236,7 @@ FinancialFact
 - `npm run onboard:company -- --ticker XXXX`：给全新美股公司（不在任何大师持仓里）一键建立完整公司页，编排导入 10-K/20-F/40-F + 股价 + 5 个 LLM 生成脚本共 7 步，每步验证真实写入、按 ticker checkpoint 支持断点续跑。用法见 `scripts/README.md`「00. 新公司一键 onboarding 入口」。
 - `npm run import:13f` / `npm run import:13f:range`：导入 13F 持仓
 - `npm run import:10k`：按 ticker / 年份导入 10-K、20-F、40-F 财务数据
+- `npm run import:10k:all -- --from 2020 --to 2026 --concurrency 1 --filing-concurrency 1`：全量公司年报批量回填，checkpoint 存 `.cache/import-10k-all.json`，保守并发避免 SEC/R2/DB 限流；失败年份重试加 `--no-edgartools-html --extract-timeout-ms 1800000 --company-timeout-ms 5400000 --retries 5 --retry-delay-ms 30000`
 - `npm run import:stock-prices:yf`：按 ticker 从 Yahoo Finance 拉取日线价格，可选择写入 `StockPrice`
 - `npm run import:company-stock-prices:yf`：按公司批量补齐价格数据
 - `npm run import:10k:from13f`：从 13F 持仓反推需要补齐的公司财务
@@ -1195,7 +1256,9 @@ FinancialFact
 - `npm run check:financial:integrity`：检查财务数据完整性（默认覆盖全部 5 位投资人）
 - `npm run check:filing-section:integrity`：检查有抽取内容的 FilingSection 背后 primary_html 归档是否齐全（search_filings 全文来源）
 - `npm run check:db`：数据库健康检查
+- `node --env-file=.env.local ./node_modules/.bin/tsx scripts/check-latest-holdings-company-coverage.ts`：最新一期持仓里缺财务/分析数据的公司覆盖率
 - `scripts/check-all-company-financials.ts`：全量公司财务巡检
+- `npm run backfill:filing-section-jobs -- --kinds 10k --sample 20 --seed-only`（只入队）/ `--run-only --limit 20 --delay-ms 60000`（只执行）：source 级别 v3 结构化章节回填的低 QPS 队列，用于观测 Supabase Disk IO 时分两步跑
 - `.github/workflows/data-integrity-check.yml`：每周一自动跑上述只读巡检，`--strict` 命中才开 issue
 
 ### 自动补齐
