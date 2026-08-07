@@ -1,7 +1,30 @@
 import prisma from "@/lib/prisma";
 import { buildCompanyFinancialDashboard } from "@/lib/company-financial-dashboard";
 import { normalizeTicker } from "@/lib/ticker";
+import { SECTION_ALIASES } from "./filing-section-aliases";
 import { Prisma } from "@prisma/client";
+
+// Every key that SECTION_ALIASES maps some friendly category to (business,
+// mda, market_risk, ...) — same set the /agent search_filings tool resolves
+// against, so a section that's usable there is usable here too. Markets
+// without an item-numbering scheme (HK/CN annual reports, US prospectuses)
+// store their whole document under a handful of fixed keys instead, which
+// SECTION_ALIASES has no reason to know about, so they're listed separately.
+const FILING_EVIDENCE_SECTION_KEYS = [
+  ...new Set(Object.values(SECTION_ALIASES).flat()),
+  "hk_annual_report_1",
+  "hk_annual_report_2",
+  "hk_annual_report_3",
+  "hk_annual_report_4",
+  "cn_annual_report_1",
+  "cn_annual_report_2",
+  "cn_annual_report_3",
+  "cn_annual_report_4",
+  "us_prospectus_1",
+  "us_prospectus_2",
+  "us_prospectus_3",
+  "us_prospectus_4",
+];
 
 export const AI_API_KEY = process.env.AI_API_KEY;
 export const AI_API_BASE_URL = process.env.AI_API_BASE_URL;
@@ -224,26 +247,7 @@ export async function fetchLatestFilingEvidence(entityId: string): Promise<Filin
         },
         where: {
           section: {
-            in: [
-              "item_1_business",
-              "item_1a_risk_factors",
-              "item_4_company_information",
-              "item_7_mda",
-              "item_7a_market_risk",
-              "item_8_notes",
-              "hk_annual_report_1",
-              "hk_annual_report_2",
-              "hk_annual_report_3",
-              "hk_annual_report_4",
-              "cn_annual_report_1",
-              "cn_annual_report_2",
-              "cn_annual_report_3",
-              "cn_annual_report_4",
-              "us_prospectus_1",
-              "us_prospectus_2",
-              "us_prospectus_3",
-              "us_prospectus_4",
-            ],
+            in: FILING_EVIDENCE_SECTION_KEYS,
           },
         },
         orderBy: [{ section: "asc" }],

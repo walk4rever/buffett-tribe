@@ -85,7 +85,13 @@ type Step = {
   label: string;
   skip?: boolean;
   run: () => Promise<void>;
-  verify: (entityId: string) => Promise<boolean>;
+  // stepStartedAt lets a step's verify distinguish "this run actually wrote
+  // something" from "the entity already had this artifact from a prior run" —
+  // see wasArtifactGeneratedSince, needed because generate:*.ts scripts catch
+  // their own errors and exit 0, so a plain existence check on a --force
+  // rerun would report success even when the LLM call timed out and nothing
+  // new was written.
+  verify: (entityId: string, stepStartedAt: number) => Promise<boolean>;
 };
 
 const CHECKPOINT_DIR = path.join(process.cwd(), ".cache", "onboard-company");
@@ -148,11 +154,21 @@ async function findEntityId(ticker: string): Promise<string | null> {
   return entity?.id ?? null;
 }
 
-async function hasGeneratedArtifact(entityId: string, artifactType: string): Promise<boolean> {
-  const count = await prisma.generatedContentVersion.count({
+// Only passes if the *latest* version was written during this step's own
+// run — a plain existence check would report "done" on a --force rerun
+// whose LLM call actually timed out, as long as an older version from a
+// previous run was still sitting there.
+async function wasArtifactGeneratedSince(
+  entityId: string,
+  artifactType: string,
+  sinceMs: number,
+): Promise<boolean> {
+  const latest = await prisma.generatedContentVersion.findFirst({
     where: { scopeType: "entity", scopeId: entityId, artifactType },
+    orderBy: { generatedAt: "desc" },
+    select: { generatedAt: true },
   });
-  return count > 0;
+  return latest != null && latest.generatedAt.getTime() >= sinceMs;
 }
 
 function parseMarket(value: string | undefined): Market {
@@ -335,35 +351,35 @@ async function main() {
       label: "生成公司概览（company_profile）",
       skip: skipGeneration,
       run: () => runNpmScript("generate:company-profile", buildGenerateArgs(ticker, force)),
-      verify: (entityId) => hasGeneratedArtifact(entityId, "company_profile"),
+      verify: (entityId, stepStartedAt) => wasArtifactGeneratedSince(entityId, "company_profile", stepStartedAt),
     },
     {
       id: "generate_business_model",
       label: "生成业务概览与商业画布（business_overview）",
       skip: skipGeneration,
       run: () => runNpmScript("generate:business-model", buildGenerateArgs(ticker, force)),
-      verify: (entityId) => hasGeneratedArtifact(entityId, "business_overview"),
+      verify: (entityId, stepStartedAt) => wasArtifactGeneratedSince(entityId, "business_overview", stepStartedAt),
     },
     {
       id: "generate_value_analysis",
       label: "生成价值分析（value_analysis）",
       skip: skipGeneration,
       run: () => runNpmScript("generate:value-analysis", buildGenerateArgs(ticker, force)),
-      verify: (entityId) => hasGeneratedArtifact(entityId, "value_analysis"),
+      verify: (entityId, stepStartedAt) => wasArtifactGeneratedSince(entityId, "value_analysis", stepStartedAt),
     },
     {
       id: "generate_management_analysis",
       label: "生成管理分析（management_analysis）",
       skip: skipGeneration,
       run: () => runNpmScript("generate:management-analysis", buildGenerateArgs(ticker, force)),
-      verify: (entityId) => hasGeneratedArtifact(entityId, "management_analysis"),
+      verify: (entityId, stepStartedAt) => wasArtifactGeneratedSince(entityId, "management_analysis", stepStartedAt),
     },
     {
       id: "generate_valuation_analysis",
       label: "生成估值分析（valuation_analysis）",
       skip: skipGeneration,
       run: () => runNpmScript("generate:valuation-analysis", buildGenerateArgs(ticker, force)),
-      verify: (entityId) => hasGeneratedArtifact(entityId, "valuation_analysis"),
+      verify: (entityId, stepStartedAt) => wasArtifactGeneratedSince(entityId, "valuation_analysis", stepStartedAt),
     },
   ];
 
@@ -456,7 +472,7 @@ async function main() {
       throw new Error(`Entity for ${ticker} not found after step "${step.id}" — cannot verify or continue`);
     }
 
-    const ok = await step.verify(entityId);
+    const ok = await step.verify(entityId, stepStartedAt);
     const durationMs = Date.now() - stepStartedAt;
     if (!ok) {
       summary.push({ step: step.id, label: step.label, status: "failed", durationMs });

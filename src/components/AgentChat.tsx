@@ -34,6 +34,8 @@ const TOOL_META: Record<string, { icon: string; label: string }> = {
   search_wisdom:   { icon: "🧠", label: "查询资料库" },
   search_holdings: { icon: "📊", label: "查询持仓明细" },
   search_filings:  { icon: "📄", label: "查询公司年报" },
+  get_company_analysis: { icon: "🔍", label: "查询公司分析" },
+  get_insight_content:  { icon: "📰", label: "查询洞见全文" },
 };
 
 function resolveToolDetail(name: string, args: Record<string, unknown> | undefined): string | undefined {
@@ -51,6 +53,13 @@ function resolveToolDetail(name: string, args: Record<string, unknown> | undefin
   if (name === "search_filings") {
     const parts = [str("company"), str("section"), num("year") ? String(num("year")) : undefined, str("keyword") ? `"${str("keyword")}"` : undefined].filter(Boolean);
     return parts.join(" · ") || undefined;
+  }
+  if (name === "get_company_analysis") {
+    const parts = [str("company"), str("artifactType")].filter(Boolean);
+    return parts.join(" · ") || undefined;
+  }
+  if (name === "get_insight_content") {
+    return str("slug");
   }
   return str("query");
 }

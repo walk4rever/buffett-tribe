@@ -2,29 +2,13 @@
 // be unit tested without pulling in the DB pool (which throws at import time if
 // DIRECT_URL isn't set) or any network/R2 dependency.
 
-// Friendly alias → one or more exact section keys (ordered by priority)
-export const SECTION_ALIASES: Record<string, string[]> = {
-  business:    ["item_1_business", "item_4_company_information"],
-  risk:        ["item_1a_risk_factors"],
-  mda:         ["item_7_mda", "item_5_operating_financial_review", "management_discussion_and_analysis"],
-  financial:   ["item_8_financial_statements", "item_8_financial_information", "item_17_financial_statements", "item_18_financial_statements_us_gaap"],
-  notes:       ["item_8_notes"],
-  cybersecurity: ["item_1c_cybersecurity", "item_16k_cybersecurity"],
-  compensation: ["item_11_compensation"],
-  governance:  ["item_16g_corporate_governance"],
-  market_risk: ["item_7a_market_risk", "item_11_market_risk"],
-  properties:  ["item_2_properties"],
-  legal:       ["item_3_legal"],
-};
+// SECTION_ALIASES / resolveSectionKeys live in the synced shared copy — see
+// scripts/lib/filing-section-aliases.ts (repo root) for the source of truth
+// and services/pi-gateway/scripts/sync-shared-lib.sh for how it gets here.
+export { SECTION_ALIASES, resolveSectionKeys } from "../shared/filing-section-aliases.js";
 
 export const MAX_CONTENT_CHARS = 4000;
 export const EXCERPT_WINDOW = 1800;
-
-export function resolveSectionKeys(section: string | null): string[] | null {
-  if (!section) return null;
-  const alias = section.toLowerCase().trim().replace(/[\s-]/g, "_");
-  return SECTION_ALIASES[alias] ?? [alias];
-}
 
 export function extractExcerpt(content: string, keyword: string | null): string {
   if (!keyword) {

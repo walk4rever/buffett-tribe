@@ -1044,13 +1044,19 @@ function extractViaTocAnchors(
     const text = normalizeHeadingText($(link).text());
     if (!text) return;
     const foldedText = foldComparableText(text);
+    // Some 20-F filers (e.g. SAP) combine the item number and a
+    // company-customized caption into one TOC link — "ITEM 4. INFORMATION
+    // ABOUT SAP" instead of the generic "INFORMATION ON THE COMPANY". A
+    // fold-then-exact-equal check on "item4" never matches that (trailing
+    // caption text), and the label-substring fallback below only works
+    // when the caption keeps the boilerplate wording. Parsing the item
+    // number as a prefix of the raw text sidesteps both — it doesn't care
+    // what the caption says.
+    const headingItemNum = text.match(/^item\s+(\d+[a-z]?)\b\.?/i)?.[1]?.toUpperCase() ?? null;
 
     for (const section of template.sections) {
-      const itemMatch = section.itemNum
-        ? new RegExp(`^item${section.itemNum.toLowerCase()}$|^item${section.itemNum.toLowerCase()}\\.?$`)
-        : null;
       const labelFolded = foldComparableText(section.label);
-      const matchesItem = itemMatch ? itemMatch.test(foldedText) : false;
+      const matchesItem = section.itemNum ? headingItemNum === section.itemNum : false;
       const matchesLabel = labelFolded ? foldedText.includes(labelFolded) || labelFolded.includes(foldedText) : false;
       if (!matchesItem && !matchesLabel) continue;
 
