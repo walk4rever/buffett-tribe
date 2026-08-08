@@ -1,6 +1,6 @@
 {
   "name": "buffett-tribe",
-  "version": "0.42.2",
+  "version": "0.42.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -54,8 +54,6 @@
     "backfill:company-cik:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-cik.ts --dry-run",
     "backfill:tribe-member-fields": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-tribe-member-fields.ts",
     "backfill:tribe-member-fields:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-tribe-member-fields.ts --dry-run",
-    "fix:berkshire-entity-split": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/fix-berkshire-entity-split.ts",
-    "fix:berkshire-entity-split:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/fix-berkshire-entity-split.ts --dry-run",
     "backfill:company:profiles": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-profiles.ts",
     "backfill:company:profiles:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-profiles.ts --dry-run",
     "check:security:integrity": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/check-security-integrity.ts",
@@ -74,8 +72,6 @@
     "generate:company-profile:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-company-profile.ts --dry-run",
     "generate:business-model": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-business-model.ts",
     "generate:business-model:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-business-model.ts --dry-run",
-    "generate:business-canvas": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-business-canvas.ts",
-    "generate:business-canvas:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-business-canvas.ts --dry-run",
     "generate:value-analysis": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-value-analysis.ts",
     "generate:value-analysis:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-value-analysis.ts --dry-run",
     "generate:management-analysis": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-management-analysis.ts",
