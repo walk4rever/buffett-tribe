@@ -12,7 +12,6 @@ import {
   assertDbCapacityForBatch,
   buildFinancialHistoryText,
   callJsonLLM,
-  createGeneratedContentVersion,
   disconnectPrisma,
   fetchFinancials,
   fetchHolders,
@@ -27,7 +26,6 @@ import {
   truncateText,
 } from "./lib/company-generation";
 
-const PROMPT_VERSION = "management-analysis-v1";
 const ARTIFACT_TYPE = "management_analysis";
 
 type ManagementPayload = {
@@ -214,13 +212,12 @@ async function main() {
     const label = `${company.canonicalName}${company.ticker ? ` (${company.ticker})` : ""}`;
     console.log(`--- ${label} ---`);
 
-    const existing = await prisma.generatedContentVersion.findFirst({
-      where: { scopeType: "entity", scopeId: company.id, artifactType: ARTIFACT_TYPE },
-      orderBy: { versionSeq: "desc" },
-      select: { versionSeq: true, generatedAt: true },
+    const existing = await prisma.companyAnalysis.findUnique({
+      where: { entityId: company.id },
+      select: { management: true, version: true, updatedAt: true },
     });
-    if (existing && !force) {
-      console.log(`  SKIP: already has ${ARTIFACT_TYPE} v${existing.versionSeq} (${existing.generatedAt.toISOString()}), use --force`);
+    if (existing?.management != null && !force) {
+      console.log(`  SKIP: already has ${ARTIFACT_TYPE} v${existing.version} (${existing.updatedAt.toISOString()}), use --force`);
       continue;
     }
 
@@ -273,14 +270,21 @@ Generate the management analysis payload.`;
         maxTokens: 7000,
       });
       const payload = parsePayload(content);
+      const source = AI_MODEL ?? "unknown";
 
-      await createGeneratedContentVersion({
-        scopeType: "entity",
-        scopeId: company.id,
-        artifactType: ARTIFACT_TYPE,
-        payload: toJsonValue(payload),
-        source: AI_MODEL ?? "unknown",
-        promptVersion: PROMPT_VERSION,
+      await prisma.companyAnalysis.upsert({
+        where: { entityId: company.id },
+        create: {
+          entityId: company.id,
+          management: toJsonValue(payload),
+          source,
+          version: 1,
+        },
+        update: {
+          management: toJsonValue(payload),
+          source,
+          version: { increment: 1 },
+        },
       });
       console.log(`  Saved ${ARTIFACT_TYPE} (cards: ${payload.capitalAllocation.cards.length}, masters: ${payload.masterViews.length})`);
     } catch (err) {

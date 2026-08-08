@@ -87,33 +87,31 @@ async function getCompanies(): Promise<CompanyDirectoryItem[]> {
   }
 }
 
-// "最近更新" = most recently generated LLM content (company_profile/
-// business_model/value_analysis/management_analysis/valuation_analysis),
-// not "most recently created" (misses refreshed old companies) or "any DB
-// write" (StockPrice updates daily, which would just permanently pin every
-// actively-priced company here and defeat the point). GeneratedContentVersion
-// gets a new row every time any of those five scripts actually produces
-// content, so its latest generatedAt per entity is the closest signal to
-// "when did this company last get worked on."
+// "最近更新" = most recently generated LLM content (profile/business/moat/
+// management/valuation), not "most recently created" (misses refreshed old
+// companies) or "any DB write" (StockPrice updates daily, which would just
+// permanently pin every actively-priced company here and defeat the point).
+// CompanyAnalysis is one row per entity with all 5 fields, so its updatedAt
+// is already the "when did this company's analysis last change" signal —
+// no groupBy needed (unlike the old GeneratedContentVersion-per-artifact
+// scheme, where the max had to be computed across 5 separate rows).
 async function getRecentlyUpdatedCompanies(limit = 18): Promise<CompanyDirectoryItem[]> {
   try {
-    const latestByEntity = await prisma.generatedContentVersion.groupBy({
-      by: ["scopeId"],
-      where: { scopeType: "entity" },
-      _max: { generatedAt: true },
-      orderBy: { _max: { generatedAt: "desc" } },
+    const latest = await prisma.companyAnalysis.findMany({
+      orderBy: { updatedAt: "desc" },
       take: limit,
+      select: { entityId: true },
     });
-    if (!latestByEntity.length) return [];
+    if (!latest.length) return [];
 
-    const entityIds = latestByEntity.map((row) => row.scopeId);
+    const entityIds = latest.map((row) => row.entityId);
     const rows = await prisma.entity.findMany({
       where: { id: { in: entityIds }, type: "company" },
       select: ENTITY_DIRECTORY_SELECT,
     });
     const byId = new Map(rows.map((row) => [row.id, row]));
-    // findMany doesn't preserve `in` order — reapply the groupBy's
-    // generatedAt-desc order explicitly.
+    // findMany doesn't preserve `in` order — reapply the updatedAt-desc order
+    // explicitly.
     return entityIds
       .map((id) => byId.get(id))
       .filter((row): row is EntityDirectoryRow => row != null)

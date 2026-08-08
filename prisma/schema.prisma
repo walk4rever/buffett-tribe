@@ -176,8 +176,6 @@ model Entity {
   securitiesAsCompany         Security[]              @relation("SecurityCompany")
   extSourcesAsFiler           ExtSource[]
   analyses                    CompanyAnalysis[]
-  businessCanvas              BusinessCanvas?
-  businessCanvasVersions      BusinessCanvasVersion[]
   profile                     MasterProfile?
   filerAsFiler                Filer?                  @relation("FilerFilerEntity")
   filerAsCompany              Filer?                  @relation("FilerCompanyEntity")
@@ -472,24 +470,34 @@ model MasterProfile {
   entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
 }
 
+// One field = one independently-regenerable unit (one generate-*.ts script /
+// one LLM call each) — not split by content shape (prose vs structured).
+// All 5 nullable: a company can have any subset generated so far.
 model CompanyAnalysis {
-  id        String   @id @default(cuid())
-  entityId  String   @unique
-  narrative Json // { overview: {title, content}, business: {title, content} }
-  moat      Json // { summary: {type, strength, durability, allocation, thesis}, dimensions: [...], notes: [...] }
-  source    String   @default("claude")
-  version   Int      @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  entityId   String   @unique
+  profile    Json? // { title, content } — generate-company-profile.ts
+  business   Json? // { narrative: {title, content}, canvas: {...9 sections...} } — generate-business-model.ts
+  moat       Json? // { summary, dimensions, notes } — generate-value-analysis.ts
+  management Json? // capital allocation behavior — generate-management-analysis.ts
+  valuation  Json? // scenarios, multiples — generate-valuation-analysis.ts
+  source     String   @default("claude")
+  version    Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
 }
 
+// Company-scoped artifacts (company_profile | business_overview | value_analysis |
+// management_analysis | valuation_analysis) no longer write here — they live
+// directly on CompanyAnalysis. This table now only serves master | portfolio scope
+// (master_profile | portfolio_insight).
 model GeneratedContentVersion {
   id            String   @id @default(cuid())
   scopeType     String // entity | master | portfolio | other
   scopeId       String
-  artifactType  String // company_profile | business_overview | value_analysis | master_profile | portfolio_insight
+  artifactType  String // master_profile | portfolio_insight
   versionSeq    Int
   payload       Json
   source        String   @default("llm")
@@ -500,43 +508,6 @@ model GeneratedContentVersion {
   @@unique([scopeType, scopeId, artifactType, versionSeq])
   @@index([scopeType, scopeId, artifactType])
   @@index([artifactType])
-}
-
-model BusinessCanvas {
-  id            String   @id @default(cuid())
-  entityId      String   @unique
-  canvas        Json // { customerSegments, valuePropositions, channels, customerRelationships, revenueStreams, keyResources, keyActivities, keyPartnerships, costStructure }
-  source        String   @default("llm")
-  version       Int      @default(1)
-  versionSeq    Int      @default(1)
-  promptVersion String   @default("business-canvas-v1")
-  generatedAt   DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  entity   Entity                  @relation(fields: [entityId], references: [id], onDelete: Cascade)
-  versions BusinessCanvasVersion[]
-}
-
-model BusinessCanvasVersion {
-  id               String   @id @default(cuid())
-  businessCanvasId String
-  entityId         String
-  versionSeq       Int
-  canvas           Json
-  source           String   @default("llm")
-  promptVersion    String   @default("business-canvas-v1")
-  generatedAt      DateTime @default(now())
-  filingLabel      String?
-  filingAccession  String?
-  createdAt        DateTime @default(now())
-
-  businessCanvas BusinessCanvas @relation(fields: [businessCanvasId], references: [id], onDelete: Cascade)
-  entity         Entity         @relation(fields: [entityId], references: [id], onDelete: Cascade)
-
-  @@unique([entityId, versionSeq])
-  @@index([businessCanvasId])
-  @@index([entityId])
 }
 
 model PortfolioInsight {

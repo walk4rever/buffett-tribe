@@ -166,7 +166,7 @@ npm run import:10k:all -- --from 2020 --to 2026 --concurrency 1 --filing-concurr
 - 文件：[generate-company-profile.ts](/Users/rafael/R129/buffett-tribe/scripts/generate-company-profile.ts)
 - 命令：`npm run generate:company-profile`
 - 命令：`npm run generate:company-profile:dry`
-- 作用：生成并入库 `CompanyAnalysis.narrative.overview`，只负责公司基本信息，不生成业务概览或价值分析。
+- 作用：生成并入库 `CompanyAnalysis.profile`，只负责公司基本信息，不生成业务概览或价值分析。
 
 常用示例：
 
@@ -179,9 +179,7 @@ npm run generate:company-profile -- --company AAPL --force
 - 文件：[generate-business-model.ts](/Users/rafael/R129/buffett-tribe/scripts/generate-business-model.ts)
 - 命令：`npm run generate:business-model`
 - 命令：`npm run generate:business-model:dry`
-- 命令：`npm run generate:business-canvas`
-- 命令：`npm run generate:business-canvas:dry`
-- 作用：生成并入库 `CompanyAnalysis.narrative.business` 与 `BusinessCanvas`；旧的 `generate:business-canvas` 是兼容入口。
+- 作用：一次调用生成叙述文本与商业画布，一起写入 `CompanyAnalysis.business`（`{ narrative, canvas }`）。
 
 常用示例：
 
@@ -194,7 +192,7 @@ npm run generate:business-model -- --company AAPL --force
 - 文件：[generate-value-analysis.ts](/Users/rafael/R129/buffett-tribe/scripts/generate-value-analysis.ts)
 - 命令：`npm run generate:value-analysis`
 - 命令：`npm run generate:value-analysis:dry`
-- 作用：生成并入库 `CompanyAnalysis.moat`，只负责护城河、资本配置、风险与观察指标等价值分析。
+- 作用：生成并入库 `CompanyAnalysis.moat`（不叫 `value`——同一行还有 `valuation` 字段，一字之差易读混/敲错），只负责护城河、资本配置、风险与观察指标等价值分析。
 
 常用示例：
 

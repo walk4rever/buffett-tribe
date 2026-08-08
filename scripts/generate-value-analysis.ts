@@ -12,7 +12,6 @@ import {
   buildFilingEvidenceText,
   buildFinancialHistoryText,
   callJsonLLM,
-  createGeneratedContentVersion,
   disconnectPrisma,
   fetchFinancials,
   fetchHolders,
@@ -23,13 +22,10 @@ import {
   hasFlag,
   hasUsableFilingEvidence,
   jsonObject,
-  normalizeText,
   parseJsonObject,
   prisma,
   toJsonValue,
 } from "./lib/company-generation";
-
-const PROMPT_VERSION = "value-analysis-v1";
 
 type MoatPayload = {
   summary: Record<string, unknown>;
@@ -89,23 +85,6 @@ function parseMoat(raw: string): MoatPayload {
     throw new Error("Invalid moat structure");
   }
   return moat as MoatPayload;
-}
-
-function existingOrEmptyNarrative(existing: unknown) {
-  const object = jsonObject(existing);
-  const overview = jsonObject(object?.overview);
-  const business = jsonObject(object?.business);
-
-  return {
-    overview: {
-      title: normalizeText(overview?.title) || "公司基本信息",
-      content: normalizeText(overview?.content),
-    },
-    business: {
-      title: normalizeText(business?.title) || "主打产品、服务与营收结构",
-      content: normalizeText(business?.content),
-    },
-  };
 }
 
 function buildPrompt(params: {
@@ -170,7 +149,7 @@ async function main() {
 
     const existing = await prisma.companyAnalysis.findUnique({
       where: { entityId: company.id },
-      select: { narrative: true, moat: true, updatedAt: true },
+      select: { moat: true, updatedAt: true },
     });
     const existingMoat = jsonObject(existing?.moat);
     if (existingMoat && Array.isArray(existingMoat.dimensions) && existingMoat.dimensions.length > 0 && !force) {
@@ -215,35 +194,21 @@ async function main() {
         maxTokens: 7000,
       });
       const moat = parseMoat(content);
-      const narrative = existingOrEmptyNarrative(existing?.narrative);
       const source = AI_MODEL ?? "unknown";
 
-      await prisma.$transaction(async (tx) => {
-        await tx.companyAnalysis.upsert({
-          where: { entityId: company.id },
-          create: {
-            entityId: company.id,
-            narrative: toJsonValue(narrative),
-            moat: toJsonValue(moat),
-            source,
-            version: 1,
-          },
-          update: {
-            moat: toJsonValue(moat),
-            source,
-            version: { increment: 1 },
-          },
-        });
-
-        await createGeneratedContentVersion({
-          tx,
-          scopeType: "entity",
-          scopeId: company.id,
-          artifactType: "value_analysis",
-          payload: toJsonValue({ moat }),
+      await prisma.companyAnalysis.upsert({
+        where: { entityId: company.id },
+        create: {
+          entityId: company.id,
+          moat: toJsonValue(moat),
           source,
-          promptVersion: PROMPT_VERSION,
-        });
+          version: 1,
+        },
+        update: {
+          moat: toJsonValue(moat),
+          source,
+          version: { increment: 1 },
+        },
       });
 
       console.log(`  Saved value analysis (dimensions: ${moat.dimensions.length}, notes: ${moat.notes.length})`);

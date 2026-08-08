@@ -1,8 +1,8 @@
 /**
  * Server-rendered sections for the LLM-generated 管理分析 / 估值分析 tabs.
- * Payloads come from GeneratedContentVersion (artifactType:
- * management_analysis / valuation_analysis). All numbers in the valuation
- * payload were computed in code; the LLM only wrote the narratives.
+ * Payloads come from CompanyAnalysis.management / CompanyAnalysis.valuation.
+ * All numbers in the valuation payload were computed in code; the LLM only
+ * wrote the narratives.
  */
 
 type GeneratedArtifact = {

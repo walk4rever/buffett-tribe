@@ -1053,12 +1053,11 @@ Apple HIG 精简风格：
 | 年报章节 | 主文档 HTML / 40-F 附件 | `FilingSection` | `npm run import:10k` | 抽取器覆盖 10-K/20-F/40-F 目标 section |
 | 年报归档 | SEC EDGAR + R2 | `FilingArtifact`, R2 object key | `npm run import:10k` | 按 object key 复用，避免重复上传 |
 | 股价 | Yahoo Finance | `StockPrice` | `npm run import:company-stock-prices:yf` | 已有脚本，按 ticker 跟踪覆盖范围 |
-| 公司概览（company_profile） | SEC filings + 元数据 + 财务看板 | `CompanyAnalysis.narrative.overview`，镜像至 `GeneratedContentVersion(artifactType=company_profile)` | `npm run generate:company-profile` | `/company` 页面读 `CompanyAnalysis` 直接。2026-08-07 查证：149 家里 126 家**没有**镜像（85%，2026-06-02 加镜像机制之前生成、之后未重跑的存量），`/agent` 的 `get_company_analysis` 工具只读镜像，因此对这 126 家报"无分析"——实际网页上是有内容的。真实命中案例：星巴克。详见下方「LLM 生成内容版本表现状」 |
-| 业务概览（business_overview） | SEC filings + 财务数据 | `CompanyAnalysis.narrative.business`，镜像至 `GeneratedContentVersion(artifactType=business_overview)` | `npm run generate:business-model` | 同上镜像缺口（同一条 `CompanyAnalysis` 行） |
-| 业务画布 | SEC filings + 财务数据 | `BusinessCanvas`，历史版本 `BusinessCanvasVersion` | `npm run generate:business-model` | 149/149 有画布；`BusinessCanvasVersion` 累计 153 行但只写不读，没有任何页面展示画布历史 |
-| 价值分析（value_analysis） | SEC filings + 财务数据 + 持仓 | `CompanyAnalysis.moat`，镜像至 `GeneratedContentVersion(artifactType=value_analysis)` | `npm run generate:value-analysis` | 同上镜像缺口 |
-| 管理分析（management_analysis） | SEC filings + 财务数据 + 大师信件 | `GeneratedContentVersion(artifactType=management_analysis)`，**没有专属表** | `npm run generate:management-analysis -- --all` | 2026-08-07 查证：148 家已 onboard 公司里只有 71 家生成过——不是镜像问题，是真没跑过，属于批量待办，重跑有真实 LLM 成本 |
-| 估值分析（valuation_analysis） | SEC filings + 财务数据 | `GeneratedContentVersion(artifactType=valuation_analysis)`，**没有专属表** | `npm run generate:valuation-analysis -- --all` | 71/148 完全没有，另 6 家缺这一项（有管理分析），共 77/148 缺口，同上是批量待办 |
+| 公司概览（profile） | SEC filings + 元数据 + 财务看板 | `CompanyAnalysis.profile` | `npm run generate:company-profile` | `/company` 页面与 `/agent` 的 `get_company_analysis` 工具都直接读这个权威字段（2026-08-08 起，退休了此前的 `GeneratedContentVersion` 镜像，见下方「LLM 生成内容版本表现状」） |
+| 业务概览与画布（business） | SEC filings + 财务数据 | `CompanyAnalysis.business`（`{ narrative, canvas }`） | `npm run generate:business-model` | 同上；`BusinessCanvas`/`BusinessCanvasVersion` 表已物理删除（见下） |
+| 价值分析（moat） | SEC filings + 财务数据 + 持仓 | `CompanyAnalysis.moat` | `npm run generate:value-analysis` | 同上 |
+| 管理分析（management） | SEC filings + 财务数据 + 大师信件 | `CompanyAnalysis.management` | `npm run generate:management-analysis -- --all` | 2026-08-08 起有专属字段（此前唯一存储是 `GeneratedContentVersion`）。148 家已 onboard 公司里 77 家已生成，71 家是真实生成缺口（非存储问题），重跑有 LLM 成本，待批量补 |
+| 估值分析（valuation） | SEC filings + 财务数据 | `CompanyAnalysis.valuation` | `npm run generate:valuation-analysis -- --all` | 同上，77 家已生成，71 家生成缺口 |
 
 ### 原始文档数据
 
@@ -1071,15 +1070,31 @@ Apple HIG 精简风格：
 
 ### LLM 生成内容版本表现状
 
-**2026-08-07 数据架构复盘**（起因：onboard SAP 时发现 `get_company_analysis` 报"无分析"，但网页上明明有内容，端到端查证后的记录，详细过程见 git 历史 / 本次会话）：
+**2026-08-07 发现问题，2026-08-08 设计并实施完成**（起因：onboard SAP 时发现 `get_company_analysis` 报"无分析"，但网页上明明有内容）：
 
-上表 6 个 LLM 生成 artifact 全部走"双写"——生成脚本在同一个事务里，既写各自的权威表（`CompanyAnalysis`/`BusinessCanvas`/`MasterProfile`/`PortfolioInsight`），又另外写一份进 `GeneratedContentVersion`（一条不覆盖、只追加的历史版本行）。搜了整个 `src/` 应用代码，**没有找到任何读取 `GeneratedContentVersion` 非最新版本的代码**（没有回滚 UI、没有版本对比、没有审计页）；`BusinessCanvasVersion` 同理，153 行数据只有一处写入、零处读取。版本历史这套机制完整实现了，但从未被任何产品功能用起来。（这个"创建版本行"的写入逻辑还在代码里独立实现了 3 遍——`scripts/lib/company-generation.ts`、`generate-master-profile.ts`、`generate-portfolio-insight.ts` 各一份。）
+原问题：6 个 LLM 生成 artifact 全部走"双写"——生成脚本在同一个事务里，既写各自的权威表，又另外写一份进 `GeneratedContentVersion`（一条不覆盖、只追加的历史版本行）。搜了整个 `src/` 应用代码，**没有找到任何读取 `GeneratedContentVersion` 非最新版本的代码**（没有回滚 UI、没有版本对比、没有审计页），版本历史这套机制完整实现了，但从未被任何产品功能用起来。公司数据镜像同步率只有 15%（149 家里只有 23 家有镜像），`get_company_analysis` 只读镜像表，导致 85% 已有真实分析的公司被报"无分析"，是这份冗余拷贝变成单点故障的直接后果。
 
-镜像同步率：公司数据（`company_profile`/`business_overview`/`value_analysis`）149 家里只有 23 家（15%）有镜像；大师画像/持仓点评镜像率 100%，纯粹因为大师样本小（~11 个）、基本都被重新生成过，不是设计更稳健——若以后有人给大师加一个类似 `get_company_analysis` 的 agent 工具、照抄现在这个"读镜像表"的写法，会复现同样的脆弱性。
+**已实施（方案 B）**：`CompanyAnalysis` 扩到 5 个可空字段，退休 `BusinessCanvas`/`BusinessCanvasVersion`，`GeneratedContentVersion` 退出公司数据：
 
-**这个缺口只在公司数据上真正造成了功能性 bug**，根源是 `get_company_analysis` 选择读镜像表而不是权威表（图省事——5 种类型一条 SQL 搞定，而不是分类型各写查询），把一份冗余拷贝变成了单点故障。
+```
+CompanyAnalysis {
+  profile       // { title, content } —— generate-company-profile.ts
+  business      // { narrative: { title, content }, canvas: {...9项...} } —— generate-business-model.ts 一次调用的完整输出
+  moat          // { summary, dimensions, notes } —— generate-value-analysis.ts（不叫 value——同对象里有 valuation 字段，一字之差易读混/敲错）
+  management    // generate-management-analysis.ts，之前只存在 GeneratedContentVersion
+  valuation     // generate-valuation-analysis.ts，之前只存在 GeneratedContentVersion
+}
+```
 
-后续要不要重构成"专属表覆盖 `management_analysis`/`valuation_analysis`，停止镜像写入，agent 工具直接读权威表"，作为独立架构决策项跟进，见 `TODO.md`「数据架构：停止 `GeneratedContentVersion` 镜像」。
+划分标准：**一个字段 = 一个能独立重新生成的单元**（对应一个 `generate-*.ts` 脚本 / 一次 LLM 调用），不按内容形态（叙述文本 vs 结构化数据）分——`BusinessCanvas` 之前单独建表的理由（"数据形状不一样"）站不住脚，它跟 `business` 字段的叙述部分来自同一次 LLM 调用、同一个事务写入，从无独立更新节奏。字段命名不重复 `CompanyAnalysis` 已经隐含的 `company`/`Analysis`（`profile` 而非 `companyProfile`），字段内部也不重复嵌套同义 key（`profile` 直接是 `{title, content}`，不再包一层 `overview`）。原 `narrative` 字段把 `profile`/`business` 两次独立调用的产出混装在同一 JSON 列，靠 `mergeNarrative()`（读旧值、拼另一半、整体覆盖写回）合并——是镜像同步率低的病灶之一，一次调用失败会污染另一次已写好的数据；拆成独立字段后 `mergeNarrative()` 已整段删除。更新时间只用 `CompanyAnalysis.updatedAt`（Prisma `@updatedAt` 自带）一个字段，不按字段单独加时间戳（没有功能需要这个粒度）。
+
+**Schema 迁移分两阶段**：阶段 A（`prisma/migrations/20260808120000_split_company_analysis_fields`）只新增 4 列 + `moat`/旧 `narrative` 列改可空，不删任何东西；阶段 B 是应用层回填脚本（`backfill-company-analysis-fields.ts`），把旧 `narrative`/`BusinessCanvas`/`GeneratedContentVersion` 数据搬进新字段。跑完实测：profile/business 149/149、moat 148/149（1 家 IPO 无 10-K 属预期）、management 77、valuation 71，与生成缺口数字完全吻合。**同日完成清理**（`prisma/migrations/20260808130000_drop_business_canvas_and_narrative`）：`BusinessCanvas`/`BusinessCanvasVersion` 表、`CompanyAnalysis.narrative` 列、`GeneratedContentVersion` 里公司数据那 238 行历史行全部物理删除，回填脚本本身也已删除；`prisma migrate diff` 复核 schema 与 DB 完全一致。
+
+读取路径改动：`getBusinessCanvas()`/`getGeneratedArtifact()`（`src/lib/company-data.ts`）整个删除，`company/[id]/page.tsx` 改成直接从 `CompanyAnalysis` 已取到的字段派生；`getRecentlyUpdatedCompanies()`（`src/app/company/page.tsx`，`/company` 页"最近更新" section）从 `GeneratedContentVersion.groupBy(scopeId)` 简化成 `companyAnalysis.findMany({ orderBy: { updatedAt: "desc" } })`；`services/pi-gateway/src/tools/get-company-analysis.ts` 改成直接查 `CompanyAnalysis` 5 个字段，已部署上线。公司页头部的 CIK/行业/交易所/证券代码信息（来自 `Entity`/`Security`）不在这次范围内，未改动。
+
+实施中意外发现：`scripts/onboard-company.ts` 的 checkpoint 校验函数原来读 `GeneratedContentVersion`，公司数据停写后会一直误报生成步骤失败，已改名 `wasCompanyAnalysisFieldUpdatedSince()` 直接检查 `CompanyAnalysis` 对应字段。详见 `TODO.md` 条目⑦。
+
+跟踪见 `TODO.md`「数据架构：停止 `GeneratedContentVersion` 镜像」。
 
 ---
 

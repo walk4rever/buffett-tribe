@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CompanyDisplayName } from "@/components/CompanyDisplayName";
-import { CompanyBusinessCanvas } from "@/components/CompanyBusinessCanvas";
+import { CompanyBusinessCanvas, type BusinessCanvasData } from "@/components/CompanyBusinessCanvas";
 import { CompanySectionTabs } from "@/components/CompanySectionTabs";
 import { CompanyAgentDialog } from "@/components/CompanyAgentDialog";
 import { SiteNav } from "@/components/SiteNav";
@@ -9,7 +9,6 @@ import db from "@/lib/prisma";
 import { getTribeMembers } from "@/lib/tribe";
 import {
   formatMoney,
-  getBusinessCanvas,
   getCompanyAnalysis,
   getCompanyByIdentifier,
   getCompanyFinancials,
@@ -17,7 +16,6 @@ import {
   getCompanySecurities,
   formatCompanyUrl,
   parseCompanyIdentifier,
-  getGeneratedArtifact,
   getRecentHolders,
   getCompanyReferenceFilings,
 } from "@/lib/company-data";
@@ -455,20 +453,26 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   const company = await getCompanyByIdentifier(trimmedId);
   if (!company) notFound();
 
-  const [financials, financialsCurrency, holders, securities, analysis, businessCanvas, referenceFilings, managementArtifact, valuationArtifact, tribeMembers] = await Promise.all([
+  const [financials, financialsCurrency, holders, securities, analysis, referenceFilings, tribeMembers] = await Promise.all([
     getCompanyFinancials(company.id, 5),
     getFinancialsCurrency(company.id),
     getRecentHolders(company.id, 30),
     getCompanySecurities(company.id),
     getCompanyAnalysis(company.id),
-    getBusinessCanvas(company.id),
     getCompanyReferenceFilings(company.id, 12),
-    getGeneratedArtifact(company.id, "management_analysis"),
-    getGeneratedArtifact(company.id, "valuation_analysis"),
     getTribeMembers(),
   ]);
   const tribeMemberById = new Map(tribeMembers.map((m) => [m.id, m] as const));
 
+  // management/valuation live directly on CompanyAnalysis now (no separate
+  // GeneratedContentVersion lookup) — reconstruct the GeneratedArtifact shape
+  // the render components expect from the row already fetched above.
+  const managementArtifact = analysis?.management != null
+    ? { payload: analysis.management, generatedAt: analysis.updatedAt, source: analysis.source }
+    : null;
+  const valuationArtifact = analysis?.valuation != null
+    ? { payload: analysis.valuation, generatedAt: analysis.updatedAt, source: analysis.source }
+    : null;
   const hasManagement = managementArtifact != null && parseManagementPayload(managementArtifact.payload) != null;
   const hasValuation = valuationArtifact != null && parseValuationPayload(valuationArtifact.payload) != null;
 
@@ -538,29 +542,35 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     },
   ];
 
-  // A CompanyAnalysis row can exist with moat: {} — generate-company-profile.ts
-  // writes narrative but deliberately leaves moat untouched (it's
-  // generate-value-analysis.ts's job) when there's no Financial data to
-  // ground a moat assessment (e.g. a freshly-IPO'd company with only
-  // prospectus text, no 10-K yet). {} is truthy, so check for real
-  // dimensions rather than just field presence, or every access below
-  // throws on an undefined array.
-  const rawMoat = analysis?.moat as unknown as Partial<MoatMock> | undefined;
+  // moat/profile/business are independently generated (see
+  // scripts/generate-value-analysis.ts / generate-company-profile.ts /
+  // generate-business-model.ts) and can each be missing on their own — e.g.
+  // a freshly-IPO'd company with only prospectus text has a profile but no
+  // moat yet. Fall back to mock content per-field, not all-or-nothing.
+  const rawMoat = analysis?.moat as unknown as MoatMock | null | undefined;
   const moat: MoatMock =
     rawMoat?.dimensions && rawMoat.dimensions.length > 0
-      ? (rawMoat as MoatMock)
+      ? rawMoat
       : getMoatMock(company.canonicalName, company.ticker);
-  const companyNarrative: CompanyNarrative = analysis?.narrative
-    ? (analysis.narrative as unknown as CompanyNarrative)
-    : buildCompanyNarrative({
-        companyName: company.canonicalName,
-        ticker: company.ticker,
-        sector: company.sector ?? null,
-        industry: typeof meta.industry === "string" ? meta.industry : null,
-        exchange: typeof meta.exchange === "string" ? meta.exchange : null,
-        latestYear,
-        revenue: rev,
-      });
+  const profile = analysis?.profile as unknown as { title: string; content: string } | null | undefined;
+  const business = (analysis?.business as unknown as { narrative?: { title: string; content: string } } | null | undefined)?.narrative;
+  const mockNarrative = buildCompanyNarrative({
+    companyName: company.canonicalName,
+    ticker: company.ticker,
+    sector: company.sector ?? null,
+    industry: typeof meta.industry === "string" ? meta.industry : null,
+    exchange: typeof meta.exchange === "string" ? meta.exchange : null,
+    latestYear,
+    revenue: rev,
+  });
+  const companyNarrative: CompanyNarrative = {
+    overview: profile ?? mockNarrative.overview,
+    business: business ?? mockNarrative.business,
+  };
+  const rawCanvas = (analysis?.business as unknown as { canvas?: BusinessCanvasData } | null | undefined)?.canvas;
+  const businessCanvas = rawCanvas && analysis
+    ? { canvas: rawCanvas, versionSeq: analysis.version, generatedAt: analysis.updatedAt }
+    : null;
   const strongestDimensions = [...moat.dimensions]
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);

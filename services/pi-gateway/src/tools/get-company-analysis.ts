@@ -2,25 +2,25 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { pool } from "../db.js";
 
-// The 5 entity-scoped artifact types written by scripts/generate-*.ts during
+// The 5 fields on CompanyAnalysis written by scripts/generate-*.ts during
 // onboarding (see scripts/onboard-company.ts) — the same content rendered on
 // the company page tabs. master_profile / portfolio_insight are a different
-// scopeType ("master", not "entity") and out of scope for this tool.
+// scope (master, not company) and out of scope for this tool.
 const ARTIFACT_TYPES = [
-  "company_profile",
-  "business_overview",
-  "value_analysis",
-  "management_analysis",
-  "valuation_analysis",
+  "profile",
+  "business",
+  "moat",
+  "management",
+  "valuation",
 ] as const;
 type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 
 const ARTIFACT_LABELS: Record<ArtifactType, string> = {
-  company_profile: "Company Profile",
-  business_overview: "Business Overview & Model",
-  value_analysis: "Moat / Value Analysis",
-  management_analysis: "Management Analysis (capital allocation, alignment)",
-  valuation_analysis: "Valuation Analysis (scenarios, multiples)",
+  profile: "Company Profile",
+  business: "Business Overview & Model",
+  moat: "Moat / Value Analysis",
+  management: "Management Analysis (capital allocation, alignment)",
+  valuation: "Valuation Analysis (scenarios, multiples)",
 };
 
 function isArtifactType(value: string): value is ArtifactType {
@@ -49,22 +49,26 @@ async function findEntity(company: string): Promise<EntityRow | null> {
 type ArtifactRow = { artifact_type: string; payload: unknown; generated_at: string };
 
 async function queryArtifacts(entityId: string, types: readonly string[]): Promise<ArtifactRow[]> {
-  const r = await pool.query<ArtifactRow>(
-    `SELECT DISTINCT ON ("artifactType") "artifactType" AS artifact_type, payload, "generatedAt"::text AS generated_at
-     FROM "GeneratedContentVersion"
-     WHERE "scopeType" = 'entity' AND "scopeId" = $1 AND "artifactType" = ANY($2::text[])
-     ORDER BY "artifactType", "versionSeq" DESC`,
-    [entityId, types],
+  const r = await pool.query<Record<string, unknown>>(
+    `SELECT profile, business, moat, management, valuation, "updatedAt"::text AS updated_at
+     FROM "CompanyAnalysis"
+     WHERE "entityId" = $1`,
+    [entityId],
   );
-  return r.rows;
+  const row = r.rows[0];
+  if (!row) return [];
+  const updatedAt = row.updated_at as string;
+  return types
+    .filter((type) => row[type] != null)
+    .map((type) => ({ artifact_type: type, payload: row[type], generated_at: updatedAt }));
 }
 
 export const getCompanyAnalysisTool = defineTool({
   name: "get_company_analysis",
   label: "Get Buffett Tribe Company Analysis",
   description:
-    "Fetch Buffett Tribe's own generated analysis for a company — the same synthesized content shown on the company page tabs: company_profile, business_overview, value_analysis (moat), management_analysis (capital allocation, alignment), valuation_analysis (scenarios, multiples). Prefer this over search_filings when the question is about a conclusion or assessment (moat strength, valuation scenarios, management capital allocation) — it's already synthesized from filings and financials. Use search_filings instead when the question needs exact filing quotes or raw text.",
-  promptSnippet: "get_company_analysis(company, artifactType?) → generated company/business/value/management/valuation analysis",
+    "Fetch Buffett Tribe's own generated analysis for a company — the same synthesized content shown on the company page tabs: profile (company basics), business (business model & canvas), moat (competitive advantage), management (capital allocation, alignment), valuation (scenarios, multiples). Prefer this over search_filings when the question is about a conclusion or assessment (moat strength, valuation scenarios, management capital allocation) — it's already synthesized from filings and financials. Use search_filings instead when the question needs exact filing quotes or raw text.",
+  promptSnippet: "get_company_analysis(company, artifactType?) → generated profile/business/moat/management/valuation analysis",
   parameters: Type.Object({
     company: Type.String({
       description: "Company ticker (e.g. AAPL, 9992.HK, or 600519.SS) or partial name in English or Chinese (e.g. Apple, 泡泡玛特)",

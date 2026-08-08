@@ -14,7 +14,6 @@ import {
   buildFinancialDashboardText,
   buildFinancialHistoryText,
   callJsonLLM,
-  createGeneratedContentVersion,
   disconnectPrisma,
   fetchFinancials,
   fetchLatestFilingEvidence,
@@ -28,8 +27,6 @@ import {
   prisma,
   toJsonValue,
 } from "./lib/company-generation";
-
-const PROMPT_VERSION = "business-model-v1";
 
 type NarrativeSection = {
   title: string;
@@ -166,19 +163,6 @@ function parseBusinessModel(raw: string): { businessNarrative: NarrativeSection;
   };
 }
 
-function mergeNarrative(existing: unknown, business: NarrativeSection) {
-  const object = jsonObject(existing);
-  const overview = jsonObject(object?.overview);
-
-  return {
-    overview: {
-      title: normalizeText(overview?.title) || "公司基本信息",
-      content: normalizeText(overview?.content),
-    },
-    business,
-  };
-}
-
 function buildPrompt(params: {
   name: string;
   ticker: string | null;
@@ -236,18 +220,14 @@ async function main() {
     console.log(`--- ${label} ---`);
     let lastModelResponse = "";
 
-    const existingCanvas = await prisma.businessCanvas.findUnique({
-      where: { entityId: company.id },
-      select: { id: true, updatedAt: true, versionSeq: true },
-    });
     const existingAnalysis = await prisma.companyAnalysis.findUnique({
       where: { entityId: company.id },
-      select: { narrative: true, moat: true, source: true, version: true },
+      select: { business: true, source: true, version: true, updatedAt: true },
     });
-    const existingBusiness = jsonObject(jsonObject(existingAnalysis?.narrative)?.business);
-    if (existingCanvas && normalizeText(existingBusiness?.content) && !force) {
-      const versionLabel = `V${existingCanvas.versionSeq}`;
-      console.log(`  SKIP: already has business model (${versionLabel}, updatedAt: ${existingCanvas.updatedAt.toISOString()}), use --force to overwrite`);
+    const existingBusiness = jsonObject(existingAnalysis?.business);
+    const existingNarrative = jsonObject(existingBusiness?.narrative);
+    if (existingBusiness && normalizeText(existingNarrative?.content) && !force) {
+      console.log(`  SKIP: already has business model (V${existingAnalysis?.version}, updatedAt: ${existingAnalysis?.updatedAt.toISOString()}), use --force to overwrite`);
       continue;
     }
 
@@ -286,76 +266,26 @@ async function main() {
       });
       lastModelResponse = content;
       const parsed = parseBusinessModel(content);
-      const nextVersionSeq = existingCanvas ? existingCanvas.versionSeq + 1 : 1;
-      const generatedAt = new Date();
       const source = AI_MODEL ?? "unknown";
-      const narrative = mergeNarrative(existingAnalysis?.narrative, parsed.businessNarrative);
+      const business = { narrative: parsed.businessNarrative, canvas: parsed.canvas };
 
-      await prisma.$transaction(async (tx) => {
-        const current = await tx.businessCanvas.upsert({
-          where: { entityId: company.id },
-          create: {
-            entityId: company.id,
-            canvas: toJsonValue(parsed.canvas),
-            source,
-            version: nextVersionSeq,
-            versionSeq: nextVersionSeq,
-            promptVersion: PROMPT_VERSION,
-            generatedAt,
-          },
-          update: {
-            canvas: toJsonValue(parsed.canvas),
-            source,
-            version: nextVersionSeq,
-            versionSeq: nextVersionSeq,
-            promptVersion: PROMPT_VERSION,
-            generatedAt,
-          },
-        });
-
-        await tx.businessCanvasVersion.create({
-          data: {
-            businessCanvasId: current.id,
-            entityId: company.id,
-            versionSeq: nextVersionSeq,
-            canvas: toJsonValue(parsed.canvas),
-            source,
-            promptVersion: PROMPT_VERSION,
-            generatedAt,
-            filingLabel: filingEvidence?.filingLabel ?? null,
-            filingAccession: filingEvidence?.accession ?? null,
-          },
-        });
-
-        await tx.companyAnalysis.upsert({
-          where: { entityId: company.id },
-          create: {
-            entityId: company.id,
-            narrative: toJsonValue(narrative),
-            moat: toJsonValue(existingAnalysis?.moat ?? {}),
-            source,
-            version: 1,
-          },
-          update: {
-            narrative: toJsonValue(narrative),
-            source,
-            version: { increment: 1 },
-          },
-        });
-
-        await createGeneratedContentVersion({
-          tx,
-          scopeType: "entity",
-          scopeId: company.id,
-          artifactType: "business_overview",
-          payload: toJsonValue({ business: parsed.businessNarrative }),
+      const saved = await prisma.companyAnalysis.upsert({
+        where: { entityId: company.id },
+        create: {
+          entityId: company.id,
+          business: toJsonValue(business),
           source,
-          promptVersion: PROMPT_VERSION,
-          generatedAt,
-        });
+          version: 1,
+        },
+        update: {
+          business: toJsonValue(business),
+          source,
+          version: { increment: 1 },
+        },
+        select: { version: true },
       });
 
-      console.log(`  Saved business overview and business canvas V${nextVersionSeq} (${CANVAS_KEYS.length} sections)`);
+      console.log(`  Saved business overview and business canvas V${saved.version} (${CANVAS_KEYS.length} sections)`);
     } catch (err) {
       if (err instanceof Error && err.message.includes("JSON")) {
         try {

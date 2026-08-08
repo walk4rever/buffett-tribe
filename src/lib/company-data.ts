@@ -3,7 +3,6 @@ import { formatUsdInYi } from "@/lib/currency";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
 import { normalizeTicker } from "@/lib/ticker";
 import { Prisma } from "@prisma/client";
-import type { BusinessCanvasData } from "@/components/CompanyBusinessCanvas";
 
 export function normalizeCompanyCik(cikRaw: string | null | undefined) {
   const digits = String(cikRaw ?? "").replace(/\D/g, "");
@@ -548,16 +547,7 @@ export function formatMoney(v: string | bigint | null) {
 export async function getCompanyAnalysis(entityId: string) {
   const row = await db.companyAnalysis.findUnique({
     where: { entityId },
-    select: { narrative: true, moat: true, source: true, version: true },
-  });
-  return row ?? null;
-}
-
-export async function getGeneratedArtifact(entityId: string, artifactType: string) {
-  const row = await db.generatedContentVersion.findFirst({
-    where: { scopeType: "entity", scopeId: entityId, artifactType },
-    orderBy: { versionSeq: "desc" },
-    select: { payload: true, generatedAt: true, source: true, versionSeq: true },
+    select: { profile: true, business: true, moat: true, management: true, valuation: true, source: true, version: true, updatedAt: true },
   });
   return row ?? null;
 }
@@ -752,20 +742,6 @@ export async function getCompanyReferenceFilings(entityId: string, limit = 12): 
     logDbFallback("getCompanyReferenceFilings", err);
     return [];
   }
-}
-
-export async function getBusinessCanvas(entityId: string) {
-  const row = await db.businessCanvas.findUnique({
-    where: { entityId },
-    select: { canvas: true, versionSeq: true, generatedAt: true },
-  });
-  if (!row) return null;
-
-  return {
-    canvas: row.canvas as BusinessCanvasData,
-    versionSeq: row.versionSeq,
-    generatedAt: row.generatedAt,
-  };
 }
 
 export type CompanyAnnualFilingOutlineNode = {

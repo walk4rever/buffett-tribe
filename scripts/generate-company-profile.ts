@@ -13,7 +13,6 @@ import {
   buildFinancialDashboardText,
   buildFinancialHistoryText,
   callJsonLLM,
-  createGeneratedContentVersion,
   disconnectPrisma,
   fetchFinancials,
   fetchLatestFilingEvidence,
@@ -27,8 +26,6 @@ import {
   prisma,
   toJsonValue,
 } from "./lib/company-generation";
-
-const PROMPT_VERSION = "company-profile-v1";
 
 type NarrativeSection = {
   title: string;
@@ -65,19 +62,6 @@ function parseProfile(raw: string): NarrativeSection {
     throw new Error("Invalid overview title/content");
   }
   return { title, content };
-}
-
-function mergeNarrative(existing: unknown, overview: NarrativeSection) {
-  const object = jsonObject(existing);
-  const business = jsonObject(object?.business);
-
-  return {
-    overview,
-    business: {
-      title: normalizeText(business?.title) || "主打产品、服务与营收结构",
-      content: normalizeText(business?.content),
-    },
-  };
 }
 
 function buildPrompt(params: {
@@ -140,10 +124,10 @@ async function main() {
 
     const existing = await prisma.companyAnalysis.findUnique({
       where: { entityId: company.id },
-      select: { narrative: true, moat: true, updatedAt: true },
+      select: { profile: true, updatedAt: true },
     });
-    const existingOverview = jsonObject(jsonObject(existing?.narrative)?.overview);
-    if (existingOverview && normalizeText(existingOverview.content) && !force) {
+    const existingProfile = jsonObject(existing?.profile);
+    if (existingProfile && normalizeText(existingProfile.content) && !force) {
       console.log(`  SKIP: already has company profile (updatedAt: ${existing?.updatedAt.toISOString()}), use --force to overwrite`);
       continue;
     }
@@ -182,36 +166,22 @@ async function main() {
         temperature: 0.2,
         maxTokens: 1500,
       });
-      const overview = parseProfile(content);
-      const narrative = mergeNarrative(existing?.narrative, overview);
+      const profile = parseProfile(content);
       const source = AI_MODEL ?? "unknown";
 
-      await prisma.$transaction(async (tx) => {
-        await tx.companyAnalysis.upsert({
-          where: { entityId: company.id },
-          create: {
-            entityId: company.id,
-            narrative: toJsonValue(narrative),
-            moat: toJsonValue(existing?.moat ?? {}),
-            source,
-            version: 1,
-          },
-          update: {
-            narrative: toJsonValue(narrative),
-            source,
-            version: { increment: 1 },
-          },
-        });
-
-        await createGeneratedContentVersion({
-          tx,
-          scopeType: "entity",
-          scopeId: company.id,
-          artifactType: "company_profile",
-          payload: toJsonValue({ overview }),
+      await prisma.companyAnalysis.upsert({
+        where: { entityId: company.id },
+        create: {
+          entityId: company.id,
+          profile: toJsonValue(profile),
           source,
-          promptVersion: PROMPT_VERSION,
-        });
+          version: 1,
+        },
+        update: {
+          profile: toJsonValue(profile),
+          source,
+          version: { increment: 1 },
+        },
       });
 
       console.log("  Saved company profile");

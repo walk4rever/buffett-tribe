@@ -87,10 +87,10 @@ type Step = {
   run: () => Promise<void>;
   // stepStartedAt lets a step's verify distinguish "this run actually wrote
   // something" from "the entity already had this artifact from a prior run" —
-  // see wasArtifactGeneratedSince, needed because generate:*.ts scripts catch
-  // their own errors and exit 0, so a plain existence check on a --force
-  // rerun would report success even when the LLM call timed out and nothing
-  // new was written.
+  // see wasCompanyAnalysisFieldUpdatedSince, needed because generate:*.ts
+  // scripts catch their own errors and exit 0, so a plain existence check on
+  // a --force rerun would report success even when the LLM call timed out
+  // and nothing new was written.
   verify: (entityId: string, stepStartedAt: number) => Promise<boolean>;
 };
 
@@ -154,21 +154,26 @@ async function findEntityId(ticker: string): Promise<string | null> {
   return entity?.id ?? null;
 }
 
-// Only passes if the *latest* version was written during this step's own
+type CompanyAnalysisField = "profile" | "business" | "moat" | "management" | "valuation";
+
+// Only passes if CompanyAnalysis was actually written during this step's own
 // run — a plain existence check would report "done" on a --force rerun
-// whose LLM call actually timed out, as long as an older version from a
-// previous run was still sitting there.
-async function wasArtifactGeneratedSince(
+// whose LLM call actually timed out, as long as an older value from a
+// previous run was still sitting there. All 5 fields share one row-level
+// updatedAt (see TODO.md 「数据架构：停止 GeneratedContentVersion 镜像」), so
+// this also checks the target field is actually non-null — updatedAt alone
+// can't distinguish "this step wrote its field" from "some other field on
+// the same row got touched at the same instant."
+async function wasCompanyAnalysisFieldUpdatedSince(
   entityId: string,
-  artifactType: string,
+  field: CompanyAnalysisField,
   sinceMs: number,
 ): Promise<boolean> {
-  const latest = await prisma.generatedContentVersion.findFirst({
-    where: { scopeType: "entity", scopeId: entityId, artifactType },
-    orderBy: { generatedAt: "desc" },
-    select: { generatedAt: true },
+  const row = await prisma.companyAnalysis.findUnique({
+    where: { entityId },
+    select: { profile: true, business: true, moat: true, management: true, valuation: true, updatedAt: true },
   });
-  return latest != null && latest.generatedAt.getTime() >= sinceMs;
+  return row != null && row[field] != null && row.updatedAt.getTime() >= sinceMs;
 }
 
 function parseMarket(value: string | undefined): Market {
@@ -351,35 +356,35 @@ async function main() {
       label: "生成公司概览（company_profile）",
       skip: skipGeneration,
       run: () => runNpmScript("generate:company-profile", buildGenerateArgs(ticker, force)),
-      verify: (entityId, stepStartedAt) => wasArtifactGeneratedSince(entityId, "company_profile", stepStartedAt),
+      verify: (entityId, stepStartedAt) => wasCompanyAnalysisFieldUpdatedSince(entityId, "profile", stepStartedAt),
     },
     {
       id: "generate_business_model",
       label: "生成业务概览与商业画布（business_overview）",
       skip: skipGeneration,
       run: () => runNpmScript("generate:business-model", buildGenerateArgs(ticker, force)),
-      verify: (entityId, stepStartedAt) => wasArtifactGeneratedSince(entityId, "business_overview", stepStartedAt),
+      verify: (entityId, stepStartedAt) => wasCompanyAnalysisFieldUpdatedSince(entityId, "business", stepStartedAt),
     },
     {
       id: "generate_value_analysis",
       label: "生成价值分析（value_analysis）",
       skip: skipGeneration,
       run: () => runNpmScript("generate:value-analysis", buildGenerateArgs(ticker, force)),
-      verify: (entityId, stepStartedAt) => wasArtifactGeneratedSince(entityId, "value_analysis", stepStartedAt),
+      verify: (entityId, stepStartedAt) => wasCompanyAnalysisFieldUpdatedSince(entityId, "moat", stepStartedAt),
     },
     {
       id: "generate_management_analysis",
       label: "生成管理分析（management_analysis）",
       skip: skipGeneration,
       run: () => runNpmScript("generate:management-analysis", buildGenerateArgs(ticker, force)),
-      verify: (entityId, stepStartedAt) => wasArtifactGeneratedSince(entityId, "management_analysis", stepStartedAt),
+      verify: (entityId, stepStartedAt) => wasCompanyAnalysisFieldUpdatedSince(entityId, "management", stepStartedAt),
     },
     {
       id: "generate_valuation_analysis",
       label: "生成估值分析（valuation_analysis）",
       skip: skipGeneration,
       run: () => runNpmScript("generate:valuation-analysis", buildGenerateArgs(ticker, force)),
-      verify: (entityId, stepStartedAt) => wasArtifactGeneratedSince(entityId, "valuation_analysis", stepStartedAt),
+      verify: (entityId, stepStartedAt) => wasCompanyAnalysisFieldUpdatedSince(entityId, "valuation", stepStartedAt),
     },
   ];
 

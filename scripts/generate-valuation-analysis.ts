@@ -13,7 +13,6 @@ import {
   AI_MODEL,
   assertDbCapacityForBatch,
   callJsonLLM,
-  createGeneratedContentVersion,
   disconnectPrisma,
   fetchHolders,
   findCompanies,
@@ -32,7 +31,6 @@ import {
   type ValuationMetrics,
 } from "@/lib/valuation-metrics";
 
-const PROMPT_VERSION = "valuation-analysis-v1";
 const ARTIFACT_TYPE = "valuation_analysis";
 
 const SYSTEM_PROMPT = `You are a professional value investment analyst. Generate a Chinese valuation analysis in JSON format.
@@ -165,13 +163,12 @@ async function main() {
       continue;
     }
 
-    const existing = await prisma.generatedContentVersion.findFirst({
-      where: { scopeType: "entity", scopeId: company.id, artifactType: ARTIFACT_TYPE },
-      orderBy: { versionSeq: "desc" },
-      select: { versionSeq: true, generatedAt: true },
+    const existing = await prisma.companyAnalysis.findUnique({
+      where: { entityId: company.id },
+      select: { valuation: true, version: true, updatedAt: true },
     });
-    if (existing && !force) {
-      console.log(`  SKIP: already has ${ARTIFACT_TYPE} v${existing.versionSeq} (${existing.generatedAt.toISOString()}), use --force`);
+    if (existing?.valuation != null && !force) {
+      console.log(`  SKIP: already has ${ARTIFACT_TYPE} v${existing.version} (${existing.updatedAt.toISOString()}), use --force`);
       continue;
     }
 
@@ -231,13 +228,20 @@ Generate the valuation analysis payload.`;
         conclusion: llm.conclusion,
       };
 
-      await createGeneratedContentVersion({
-        scopeType: "entity",
-        scopeId: company.id,
-        artifactType: ARTIFACT_TYPE,
-        payload: toJsonValue(payload),
-        source: AI_MODEL ?? "unknown",
-        promptVersion: PROMPT_VERSION,
+      const source = AI_MODEL ?? "unknown";
+      await prisma.companyAnalysis.upsert({
+        where: { entityId: company.id },
+        create: {
+          entityId: company.id,
+          valuation: toJsonValue(payload),
+          source,
+          version: 1,
+        },
+        update: {
+          valuation: toJsonValue(payload),
+          source,
+          version: { increment: 1 },
+        },
       });
       console.log(`  Saved ${ARTIFACT_TYPE} (scenarios: ${scenarioResults.map((s) => `${s.name} ${s.impliedAnnualReturnPct}%`).join(", ")})`);
     } catch (err) {
