@@ -6,7 +6,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import crypto from "node:crypto";
 import { hasChineseText, issuerKey, resolveCompanyNamesFromMaps } from "../../src/lib/company-name-map";
-import { normalizeTicker } from "../../src/lib/ticker";
+import { isValidTickerFormat, normalizeTicker } from "../../src/lib/ticker";
 import { translateCompanyNameToZh, upsertNameMapEntries } from "./company-name-zh";
 import { ImportTimer } from "./import-timer";
 
@@ -63,6 +63,10 @@ function resolveTickerWithCusipOverride(cusip: string, ticker: string | null) {
   if (mapped) return mapped;
   const override = CUSIP_TICKER_OVERRIDES[cusip];
   if (override) return override;
+  if (ticker && !isValidTickerFormat(ticker)) {
+    console.warn(`  [ticker] rejecting malformed ticker "${ticker}" for CUSIP ${cusip}`);
+    return null;
+  }
   return ticker;
 }
 
