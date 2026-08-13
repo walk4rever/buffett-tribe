@@ -127,6 +127,44 @@ async function upsertHoldingsBulk(rows: Array<{
   return { count };
 }
 
+/**
+ * A quarter's true reportable portfolio is sometimes split across multiple
+ * accessions — e.g. a fund discloses most positions in the primary 13F-HR,
+ * then adds one that was under a confidential treatment order via a separate
+ * 13F-HR/A once it expires. importFiling() only sees one filing's entries at
+ * a time, so percentOfPortfolio computed there is scoped to that single
+ * document. Re-derive it here from every Holding row sharing the same
+ * (holderEntityId, asOfDate) — the table's actual unique-key scope, and the
+ * real boundary of "this filer's quarter" — so a same-quarter sibling filing
+ * (imported before or after this one) is always reflected correctly.
+ */
+async function reconcilePercentOfPortfolio(
+  holderEntityId: string,
+  asOfDate: Date,
+  timer?: ImportTimer,
+) {
+  await runTimed(timer, "reconcile percentOfPortfolio", async () => {
+    const rows = (await db.holding.findMany({
+      where: { holderEntityId, asOfDate },
+      select: { id: true, valueUsd: true },
+    })).map((r) => ({ id: r.id, valueUsd: r.valueUsd ?? BigInt(0) }));
+    const total = rows.reduce((sum, r) => sum + r.valueUsd, BigInt(0));
+    if (total <= BigInt(0)) return { updated: 0 };
+
+    const cases = rows.map((r) => {
+      const pct = Number((r.valueUsd * BigInt(10000)) / total) / 100;
+      return Prisma.sql`WHEN ${r.id} THEN ${pct}`;
+    });
+
+    await db.$executeRaw`
+      UPDATE "Holding"
+      SET "percentOfPortfolio" = CASE "id" ${Prisma.join(cases, " ")} END
+      WHERE "id" IN (${Prisma.join(rows.map((r) => r.id))})
+    `;
+    return { updated: rows.length };
+  }, (result) => `rows=${result.updated}`);
+}
+
 async function runTimed<T>(
   timer: ImportTimer | undefined,
   step: string,
@@ -718,6 +756,7 @@ export async function importFiling(
   prepared.push(...aggregated.values());
 
   await runTimed(timer, "upsert holdings", () => upsertHoldingsBulk(prepared), (result) => `rows=${prepared.length}, affected=${result.count}`);
+  await reconcilePercentOfPortfolio(filerEntityId, asOfDate, timer);
 
   return { imported: prepared.length, year, quarter };
 }
