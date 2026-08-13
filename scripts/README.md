@@ -33,13 +33,15 @@
 - 命令：`npm run import:13f`
 - 命令：`npm run import:13f:range`
 - 作用：用 `edgartools` 获取 13F-HR filing 与 holdings，按季度区间导入原始持仓。
-- 支持 filer：`buffett`、`lilu`、`duan`、`gavin-baker`。其中 `gavin-baker` 映射 Atreides Management, LP，CIK `0001777813`，在产品上作为 Alpha master 与核心部落成员分开展示。
+- 支持 filer：不是硬编码列表——`getTrackedFilers()`（`scripts/lib/13f-import-core.ts`）从 `Filer` 表动态读取，新 onboard 的投资人下次 `import:13f --all` 自动纳入，无需改代码。核心三位 `buffett`/`lilu`/`duan` + Alpha 若干（截至 2026-08-13：`gavin-baker`/`alex-sacerdote`/`leopold-aschenbrenner`/`christopher-begg`/`terry-smith`/`mohnish-pabrai`/`chris-hohn`/`micky-malka`/`bill-ackman`）。
+- 不传 `--quarter-list`/`--from`/`--to` 时默认只拉最近 4 个季度（`--quarters` 默认值）——onboard 新投资人若要对齐既有惯例（`buffett`/`lilu`/`duan`/`gavin-baker`/`alex-sacerdote` 已做到 2020Q1–2026Q1 连续无缺），必须显式传 `--from 2020Q1 --to <最新季度>`，否则会静默漏掉早期历史。
 - 示例：`npm run import:13f -- --filer gavin-baker --quarter-list 2026Q1,2025Q4`。
 
 共享入库 core：
 
 - 文件：[13f-import-core.ts](/Users/rafael/R129/buffett-tribe/scripts/lib/13f-import-core.ts)
 - 作用：承载 Entity / ExtSource / Security / Holding 的共享入库逻辑。
+- `percentOfPortfolio` 按 `(holderEntityId, asOfDate)` 汇总重算（`reconcilePercentOfPortfolio()`），不是单份 accession 内自算——同一季度若跨多份 13F 文件披露（常见于新建仓位保密期满后单独补报），据此才能算出正确份额，详见 `PRODUCT.md` 数据字典「稳定主键原则」（2026-08-13 修复）。
 
 ## 02. 10-K 导入主入口
 
@@ -205,7 +207,7 @@ npm run generate:value-analysis -- --company AAPL --force
 - 文件：[generate-master-profile.ts](/Users/rafael/R129/buffett-tribe/scripts/generate-master-profile.ts)
 - 命令：`npm run generate:master-profile`
 - 命令：`npm run generate:master-profile:dry`
-- 作用：生成并入库 `MasterProfile`，用于大师主页画像与投资方法摘要。
+- 作用：生成并入库 `MasterProfile`，用于大师主页画像与投资方法摘要。`bio` 只写人物经历/投资理念，`fundOverview` 只写基金背景+规模（规模数字用真实计算的最新一期 13F 可报告持仓总市值，模型不自行估算）——两者都不涉及持仓集中度/行业分布/季度调仓，那部分由 10 号入口 `PortfolioInsight` 单独承担，避免重复（2026-08-13 起）。
 
 常用示例：
 

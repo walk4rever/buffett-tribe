@@ -739,9 +739,14 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.39.18）
+## 当前实现状态（v0.42.6）
 
-### v0.39.18 变更（2026-07-23，当前）
+### v0.42.6 变更（2026-08-13）
+
+- **Bill Ackman（Pershing Square Capital Management, L.P., CIK 1336528）onboard 为 Alpha 大师**：`tribeId=bill-ackman`，13F 覆盖 2020Q1–2026Q1 全季连续（27 份 filing），持仓 4 家公司（UBER/HHH/SEG/HTZ）全部补齐公司页；SEG 因 2024 年中分拆、暂无可用于 P/E 估值的正 EPS 历史，`valuation_analysis` 暂缺（数据层面正常，非 bug）。
+- **修复 `percentOfPortfolio` 跨文件披露的错误计算**：`importFiling()` 此前把单份 accession 内的持仓总值当成整季度总值来算份额，一个季度若跨多份 13F 文件披露（Pershing Square 常见的保密期满补报模式）就会把补报的单一仓位错算成 100%。新增 `reconcilePercentOfPortfolio()`（`scripts/lib/13f-import-core.ts`），按 `(holderEntityId, asOfDate)` 重新计算整季度真实份额，导入顺序无关。已用 Bill Ackman 2021Q4（CP：100%→1.87%）、2024Q4（HTZ：100%→0.36%）验证修复，其余 261 个已有 `(filer, quarter)` 组合本就未跨文件披露，不受影响。
+- **修复多个 LLM 生成脚本的 reasoning 模型 token 截断**：当前 `AI_MODEL=deepseek-v4-flash` 是推理模型，`reasoning_content` 会与 `content` 抢占同一份 `max_tokens` 预算；`generate-portfolio-insight.ts`（800）与 `scripts/lib/company-generation.ts` 的共享 `callJsonLLM()`（各调用方原为 1500–10000 不等）在推理耗时较长的 prompt 上会把预算耗尽在 reasoning 阶段，导致 `content` 截断成非法 JSON。全部统一提到 16000（经 API 实测：同一 prompt 推理消耗曾达 4700–9000+ token，16000 留有余量）。
+- **`MasterProfile` 的 `bio`/`fundOverview` 分工收紧**：`fundOverview` 此前会复述持仓集中度/行业分布/季度调仓，与 `PortfolioInsight` 内容重复，且这些数字曾出现模型自行估算（如"资产规模曾达百亿美元级别"这类无法核实的模糊描述）。现在 `bio` 专注人物经历与投资理念，`fundOverview` 只写基金背景+规模（规模改用真实计算的最新一期 13F 可报告持仓总市值，不再由模型猜测），两者都不再涉及具体持仓——已对全部 9 位 Alpha 大师重新生成验证。
 
 - **Ferrari (RACE) onboarding 收尾**：补跑 `import:stock-prices:yf`（501 天股价）和 `generate:valuation-analysis`（此前因缺 `StockPrice` 被脚本判定"数据不足"跳过），RACE 的 5 个生成物（company_profile / business_overview / value_analysis / management_analysis / valuation_analysis）现已全部齐全。
 - **修复 10-K 印刷体标题（尾随句号）导致的 item 边界扫描全军覆没**（`isLikelyHeadingText()`，`scripts/lib/extract-10k-sections.ts`）：v0.39.17 新增的 `check:filing-section:integrity` 静默失败检测上线后命中 65 家 filing，逐个排查后发现主因——该函数在检查"是否以 ITEM/NOTE 开头"之前，先无条件拒绝"以句号/冒号结尾"的文本；但"Item 1. Business."这种把句号也印在标题里的格式在 SEC inline-XBRL filer 里很常见（GE/JPMorgan 优先股/Kraft Heinz/P&G 等都是这个格式），导致这条判断顺序把真正的 Item 标题当句子误杀，10-K 的 block-scan 兜底路径（`extractTargetSections()` 里 `preferTocAnchors`/20-F 交叉引用表都不适用时的最后一层）因此完全找不到任何 item 边界。改成先判 ITEM/NOTE 模式再判尾标点。本地对 12 家公司的真实原文重跑验证：CHTR/DPZ/FND/HPQ/JEF/JPM-PM/KHC/MCK/MDLZ/MTB/NVR/PG 全部从 0 section 恢复到 20–23 个；反向验证法拉利/GOTU/JOYY 三家不受影响（它们走 20-F 专属路径，不经过这个函数）。**代码已修复，生产库尚未回填**，详见 `TODO.md`。
@@ -1017,6 +1022,7 @@ Apple HIG 精简风格：
 - 13F 导入与增量对比的工程主键使用 `Holding.securityId`；`ticker` 主要用于展示和价格图早期查询。
 - `Security` 通过 `companyEntityId` 关联公司实体；同一公司可以有多个 `Security`。
 - 投资人（filer）身份与公司（company）身份通过 `Filer` 表拆分（`tribeId` / `filerEntityId` / `companyEntityId` / `isMasterPersona`），它是"这个投资人是不是也是一家公司"的唯一权威来源。Berkshire 是目前唯一 filer=company 的特例；公司候选查询一律只认 `type="company"`，禁止把 `type="master"` Entity 当公司候选（2026-07-10 收口，v0.38.15）。`Holding.holderEntityId` / `ExtSource.filerEntityId` 的物理指向不变。
+- `percentOfPortfolio` 的正确计算范围是 `(holderEntityId, asOfDate)`，不是单份 `ExtSource`/accession——一个季度的真实持仓有时会跨多份 13F 文件披露（常见于对新建仓位申请保密处理、保密期满后单独用 13F-HR/A 补报一个仓位，Pershing Square 属实践此类操作的典型基金）。`importFiling()` 写入 Holding 后会调用 `reconcilePercentOfPortfolio(holderEntityId, asOfDate)`（`scripts/lib/13f-import-core.ts`），按该 `(holder, asOfDate)` 分组重新计算所有行的份额，与导入顺序无关（2026-08-13 修复；此前 Bill Ackman 2021Q4/2024Q4 各有一个仓位因跨文件披露被错误算成 100%）。
 - `ExtSource` 对 SEC filing 使用 `(filerEntityId, accessionNumber)` 去重，避免同一份 filing 重复入库。A 股/港股暂无 filing 归档，ExtSource 相关表对其不适用。
 - 文本关系抽取当前不落任何存储；`Mention` / `EntityRelation`（Postgres）与 Neo4j 图谱链路均已下线。结构化知识沉淀路径：大师内容走 GBrain（Takes / Links / Timeline）；公司维度无对话沉淀层（Company Brain / Claim 方向已于 2026-07-17 从计划移除）。
 - 原始 filing 文件通过 `FilingArtifact` 归档到 R2，结构化章节通过 `FilingSection` 保留可追溯数据；原始 XBRL facts 以 R2 data_file artifact 形式归档。
@@ -1039,7 +1045,7 @@ Apple HIG 精简风格：
 | 13F 申报 | SEC EDGAR 13F | `ExtSource(kind=13f)`, `Holding`, `Security`, `Entity` | `npm run import:13f`, `npm run pipeline:13f` | 核心链路已跑通 |
 | 13F 公司关联 | 13F + ticker/name 映射 | `Security.companyEntityId`, `CompanyNameMap` | `npm run backfill:security:company-links`, `npm run sync:company-name-map` | 已有修复脚本，13F 导入后按需跑 |
 | 持仓变化信号 | `Holding` 历史 | 脚本/查询内派生 | `scripts/generate-portfolio-insight.ts` | portfolio insight 生成用 |
-| 大师主页画像 | 最新持仓 + 素材量 | `MasterProfile`，镜像至 `GeneratedContentVersion(artifactType=master_profile)` | `npm run generate:master-profile` | 页面读 `MasterProfile`。2026-08-07 查证：11/11 有镜像（大师数量少、基本都被重跑过），但**没有任何代码读取这份镜像**——纯写入成本，见下方「LLM 生成内容版本表现状」 |
+| 大师主页画像 | 最新持仓总市值/数量 + 素材量 | `MasterProfile`，镜像至 `GeneratedContentVersion(artifactType=master_profile)` | `npm run generate:master-profile` | 页面读 `MasterProfile`。2026-08-07 查证：11/11 有镜像（大师数量少、基本都被重跑过），但**没有任何代码读取这份镜像**——纯写入成本，见下方「LLM 生成内容版本表现状」。2026-08-13 起 `bio`/`fundOverview` 分工收紧：`bio` 只写人物经历与投资理念，`fundOverview` 只写基金背景与规模（规模数字用真实计算的 13F 可报告持仓总市值，不再由模型估算），两者都不再涉及持仓集中度/行业分布/季度调仓——那部分已与 `PortfolioInsight` 重复，改由后者单独承担 |
 | 季度持仓点评 | 持仓变化 + 大师画像 | `PortfolioInsight`，镜像至 `GeneratedContentVersion(artifactType=portfolio_insight)` | `npm run generate:portfolio-insight` | 同上，12/12 有镜像，同样没有消费方 |
 
 ### 公司数据
