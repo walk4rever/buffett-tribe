@@ -130,47 +130,9 @@ async function queryHoldings(entityId: string, year: number, quarter: number) {
   });
 }
 
-/** Sector breakdown for the master's latest holdings. */
-function sectorBreakdown(holdings: Awaited<ReturnType<typeof queryHoldings>>) {
-  const bySector = new Map<string, number>();
-  for (const h of holdings) {
-    const sec = h.sector ?? "未知";
-    bySector.set(sec, (bySector.get(sec) ?? 0) + h.pct);
-  }
-  return [...bySector.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([sector, pct]) => ({ sector, pct: Math.round(pct * 10) / 10 }));
-}
-
-/** Portfolio changes across available quarters (for trend analysis). */
-async function fetchPortfolioTrend(entityId: string, maxQuarters = 8) {
-  const sources = await db.extSource.findMany({
-    where: { filerEntityId: entityId, kind: "13f" },
-    select: { periodYear: true, periodQuarter: true },
-    orderBy: [{ periodYear: "desc" }, { periodQuarter: "desc" }],
-    take: maxQuarters,
-  });
-
-  const snapshots: Array<{
-    label: string;
-    count: number;
-    top5Pct: number;
-    top10Pct: number;
-  }> = [];
-
-  for (const src of sources) {
-    const rows = await queryHoldings(entityId, src.periodYear!, src.periodQuarter!);
-    const top5 = rows.slice(0, 5).reduce((s, r) => s + r.pct, 0);
-    const top10 = rows.slice(0, 10).reduce((s, r) => s + r.pct, 0);
-    snapshots.push({
-      label: `${src.periodYear} Q${src.periodQuarter}`,
-      count: rows.length,
-      top5Pct: Math.round(top5 * 10) / 10,
-      top10Pct: Math.round(top10 * 10) / 10,
-    });
-  }
-
-  return snapshots;
+/** Total 13F-reportable value of the master's latest holdings, in USD. */
+function totalAumUsd(holdings: Awaited<ReturnType<typeof queryHoldings>>): bigint {
+  return holdings.reduce((sum, h) => sum + (h.valueUsd ?? BigInt(0)), BigInt(0));
 }
 
 /** Count source materials grouped by type. */
@@ -204,21 +166,10 @@ function buildPrompt(params: {
   tribeId: string;
   latestLabel: string;
   holdings: Awaited<ReturnType<typeof queryHoldings>>;
-  sectors: ReturnType<typeof sectorBreakdown>;
-  trend: Awaited<ReturnType<typeof fetchPortfolioTrend>>;
   materials: Awaited<ReturnType<typeof fetchMaterialCounts>>;
 }): string {
-  const top15 = params.holdings.slice(0, 15)
-    .map((h, i) => `${i + 1}. ${h.ticker ?? h.name} — ${h.pct.toFixed(2)}% (${h.sector ?? "未知"})`)
-    .join("\n");
-
-  const sectorLines = params.sectors
-    .map((s) => `  ${s.sector}: ${s.pct}%`)
-    .join("\n");
-
-  const trendLines = params.trend
-    .map((t) => `  ${t.label}: ${t.count}只持仓, 前5集中度=${t.top5Pct}%, 前10=${t.top10Pct}%`)
-    .join("\n");
+  const aum = totalAumUsd(params.holdings);
+  const aumLabel = formatAum(aum);
 
   const matLines = params.materials.length
     ? params.materials.map((m) => `  ${m.type}: ${m.count}篇 (${m.range})`).join("\n")
@@ -228,15 +179,9 @@ function buildPrompt(params: {
 
 ## 输入数据
 
-### 最新持仓（${params.latestLabel}）
-前15大持仓：
-${top15}
-
-### 行业分布
-${sectorLines}
-
-### 持仓趋势（近${params.trend.length}个季度）
-${trendLines}
+### 基金规模（${params.latestLabel}，真实计算值，请直接引用，不要自行估算或改写）
+最新一期 13F 可报告持仓总市值：${aumLabel}
+持仓数量：${params.holdings.length}只
 
 ### 资料库
 ${matLines}
@@ -246,14 +191,22 @@ ${matLines}
 请严格输出以下 JSON 格式，不要包含 markdown 代码块标记，只输出纯 JSON。所有中文文本句尾使用中文句号（。）。
 
 {
-  "bio": "投资人个人履历亮点，100-200字：出生/教育背景、职业转折、代表著作或知名事件等确凿可信的事实。",
-  "fundOverview": "基金公司历史与业绩概述，100-200字：成立时间与背景（如可考）、投资策略与风格、持仓集中度/行业偏好/换手特征（可结合下方持仓数据说明），以及可获得的规模或业绩信息。"
+  "bio": "投资人个人经历与投资理念，150-250字：教育/职业背景、职业转折、投资理念与方法论、代表性投资/维权事件等确凿可信的事实。",
+  "fundOverview": "基金公司基本情况，80-150字：成立时间与背景（如可考）、组织形式、当前 13F 可报告资产规模（用上方提供的真实数值，不要自行估算）等基本信息。"
 }
 
 重要约束：
 1. 只写你有把握的事实。如果某人公开资料很少，bio 就写得简短，宁可只有一两句话，也不要为了凑够字数编造，更不要使用"未知年份""不详""无可信公开数据"这类占位句式反复堆砌——没有实质内容的条目直接不写。
-2. fundOverview 部分可以放心引用下方持仓数据（集中度、行业、换手率等）做真实描述，这部分不算编造。
+2. fundOverview 不要涉及具体持仓集中度、行业分布、个股仓位、季度调仓变化等内容——这些属于持仓洞察模块，由另一个流程单独生成，这里只写基金本身的背景与规模信息。
 3. 输出必须是纯 JSON，不要包含 \`\`\`json 包裹。`;
+}
+
+function formatAum(usd: bigint): string {
+  const n = Number(usd);
+  if (!Number.isFinite(n) || n <= 0) return "数据暂缺";
+  if (n >= 1e8) return `约${(n / 1e8).toFixed(1)}亿美元`;
+  if (n >= 1e4) return `约${(n / 1e4).toFixed(1)}万美元`;
+  return `$${n.toLocaleString()}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -349,8 +302,6 @@ async function main() {
     }
 
     const { label: latestLabel, rows: holdings } = await fetchLatestHoldings(entity.id);
-    const sectors = sectorBreakdown(holdings);
-    const trend = await fetchPortfolioTrend(entity.id);
     // The Source table only ever holds Buffett's shareholder/partnership letters
     // (no owner column) — only pull it in for the core members it actually
     // describes, or the LLM attributes Buffett's letter archive to whoever
@@ -358,8 +309,6 @@ async function main() {
     const materials = member.category === "core" ? await fetchMaterialCounts() : [];
 
     console.log(`  Holdings: ${holdings.length} (${latestLabel})`);
-    console.log(`  Sectors: ${sectors.length}`);
-    console.log(`  Trend snapshots: ${trend.length}`);
     console.log(`  Material types: ${materials.length}`);
 
     // Prompt with the person's real name (member.name/nameZh), not
@@ -374,8 +323,6 @@ async function main() {
       tribeId,
       latestLabel,
       holdings,
-      sectors,
-      trend,
       materials,
     });
 
