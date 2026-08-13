@@ -191,7 +191,7 @@ async function main() {
         systemPrompt: SYSTEM_PROMPT,
         userPrompt: prompt,
         temperature: 0.4,
-        maxTokens: 7000,
+        maxTokens: 16000,
       });
       const moat = parseMoat(content);
       const source = AI_MODEL ?? "unknown";

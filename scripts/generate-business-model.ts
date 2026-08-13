@@ -262,7 +262,7 @@ async function main() {
         systemPrompt: SYSTEM_PROMPT,
         userPrompt: prompt,
         temperature: 0.2,
-        maxTokens: 10000,
+        maxTokens: 16000,
       });
       lastModelResponse = content;
       const parsed = parseBusinessModel(content);

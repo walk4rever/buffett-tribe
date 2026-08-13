@@ -376,7 +376,7 @@ export async function callJsonLLM(params: {
         { role: "user", content: params.userPrompt },
       ],
       temperature: params.temperature ?? 0.2,
-      max_tokens: params.maxTokens ?? 5000,
+      max_tokens: params.maxTokens ?? 16000,
       response_format: { type: "json_object" },
       stream: false,
     }),

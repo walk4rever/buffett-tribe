@@ -204,7 +204,7 @@ Generate the valuation analysis payload.`;
         systemPrompt: SYSTEM_PROMPT,
         userPrompt: prompt,
         temperature: 0.3,
-        maxTokens: 3000,
+        maxTokens: 16000,
       });
       const llm = parsePayload(content);
 

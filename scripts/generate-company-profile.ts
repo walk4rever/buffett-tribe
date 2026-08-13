@@ -164,7 +164,7 @@ async function main() {
         systemPrompt: SYSTEM_PROMPT,
         userPrompt: prompt,
         temperature: 0.2,
-        maxTokens: 1500,
+        maxTokens: 16000,
       });
       const profile = parseProfile(content);
       const source = AI_MODEL ?? "unknown";

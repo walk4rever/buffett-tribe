@@ -267,7 +267,7 @@ Generate the management analysis payload.`;
         systemPrompt: SYSTEM_PROMPT,
         userPrompt: prompt,
         temperature: 0.4,
-        maxTokens: 7000,
+        maxTokens: 16000,
       });
       const payload = parsePayload(content);
       const source = AI_MODEL ?? "unknown";
