@@ -10481,6 +10481,43 @@ body {
   background: rgba(0, 0, 0, 0.06);
 }
 
+/* Compact variant — /insights reference cards on a master's 资料库 section,
+   denser than the default (which suits buffett's 3-card hero grid fine but
+   reads too airy once a page has 7+ cards). */
+.document-grid--compact {
+  gap: 0.6rem;
+}
+
+.document-card--compact {
+  padding: 0.75rem 0.85rem;
+  gap: 0.5rem;
+}
+
+.document-card--compact .document-card-head {
+  gap: 0.24rem;
+}
+
+.document-card--compact .document-card-title {
+  font-size: 0.92rem;
+}
+
+.document-card--compact .document-card-subtitle {
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.document-card-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.document-card-date {
+  font-size: 0.72rem;
+  color: var(--graphite-text-secondary);
+}
+
 @media (max-width: 800px) {
   .document-grid {
     grid-template-columns: 1fr;

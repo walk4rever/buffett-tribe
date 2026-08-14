@@ -1,6 +1,7 @@
 import db from "@/lib/prisma";
 import { formatUsdInYi } from "@/lib/currency";
 import { formatCompanyUrl } from "@/lib/company-data";
+import { getDocumentsForOwner } from "@/lib/documents";
 import { computeHoldingActivity, computeShareDeltaPct, type HoldingActivity } from "@/lib/holding-activity";
 
 export type QuarterPoint = {
@@ -482,58 +483,135 @@ export async function getLetterListForPerson(personId: string) {
   return list.sort((a, b) => b.year - a.year);
 }
 
-export type MasterClassItem = {
-  key: string;
-  label: string;
-  count: number;
-  range: string;
-  latest: number | null;
+export type LibraryItem = {
+  id: string;
+  badge: string;
+  title: string;
+  subtitle: string;
+  date: Date | null;
   href: string;
 };
 
-export async function getMasterClassSummary(personId: string): Promise<MasterClassItem[]> {
-  const presets: Record<string, Array<{ key: string; label: string; href: string; sourceType?: string }>> = {
-    buffett: [
-      { key: "shareholder", label: "致股东信", href: `/master/${personId}/library?type=shareholder`, sourceType: "shareholder" },
-      { key: "partnership", label: "合伙人信", href: `/master/${personId}/library?type=partnership`, sourceType: "partnership" },
-      { key: "annual_meeting", label: "股东大会", href: `/master/${personId}/library?type=annual_meeting`, sourceType: "annual_meeting" },
-      { key: "article", label: "文章（建设中）", href: `/master/${personId}`, sourceType: undefined },
-      { key: "video", label: "视频（建设中）", href: `/master/${personId}`, sourceType: undefined },
-    ],
-    lilu: [
-      { key: "speech", label: "演讲（建设中）", href: `/master/${personId}` },
-      { key: "article", label: "文章（建设中）", href: `/master/${personId}` },
-      { key: "video", label: "视频（建设中）", href: `/master/${personId}` },
-    ],
-    duan: [
-      { key: "post", label: "公开言论（建设中）", href: `/master/${personId}` },
-      { key: "article", label: "文章（建设中）", href: `/master/${personId}` },
-      { key: "video", label: "视频（建设中）", href: `/master/${personId}` },
-    ],
-  };
+// Display order when badges are mixed in one grid — signature primary-
+// source content (this master's own words) before third-party coverage.
+const LIBRARY_BADGE_ORDER = ["信件", "书籍", "演讲", "文章", "访谈"];
 
-  const config = presets[personId] ?? [];
-  if (personId !== "buffett") {
-    return config.map((c) => ({
-      key: c.key,
-      label: c.label,
-      count: 0,
-      range: "—",
-      latest: null,
-      href: c.href,
-    }));
+// document-card's other sources (buffett's hardcoded cards, GBrain
+// documents) always provide a subtitle, so a card missing one renders
+// visibly shorter than its grid siblings. Falls back to a plain-text
+// excerpt of the article body when description is unset, so every card
+// in this grid has one.
+function excerptFromMarkdown(markdown: string, maxLength = 68): string {
+  const plain = markdown
+    .replace(/^>\s*\[!.*?\].*$/gm, "") // callout header lines, e.g. "> [!Overview] 背景概览"
+    .replace(/^#{1,6}\s*/gm, "")
+    .replace(/^>\s?/gm, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[*_`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return plain.length <= maxLength ? plain : `${plain.slice(0, maxLength).trimEnd()}...`;
+}
+
+// InsightPost.source is the podcast/publication name — a small, slowly-
+// growing closed set (~11 values seen). Classified from reading actual
+// content, not the show's reputation: e.g. Acquired is mostly two-host
+// company narrative/analysis with no named guest, not an investor
+// interview, despite "sounding" like one; the one Ribbit Capital entry is
+// a translated LP letter, not an article. Unrecognized future sources
+// default to 文章 — the safest generic label, since claiming 访谈 asserts a
+// format that could be wrong.
+const INSIGHT_SOURCE_BADGE: Record<string, string> = {
+  "Invest Like the Best": "访谈",
+  "Capital Allocators": "访谈",
+  "Business Breakdowns": "访谈",
+  "No Priors": "访谈",
+  "Generating Alpha": "访谈",
+  "David Senra": "访谈",
+  Acquired: "文章",
+  Founders: "文章",
+  SemiAnalysis: "文章",
+  "Buffett Tribe": "文章",
+  "Ribbit Capital": "信件",
+};
+
+// Unifies three otherwise-incompatible sources into one {badge, title,
+// subtitle, date, href} shape for /master/[id]'s 资料库 section:
+//  - Source table: buffett's own shareholder/partnership letters (信件) —
+//    the table only ever holds his letters, so a no-op for everyone else.
+//  - Document table: GBrain-ingested primary works (演讲/文章/书籍),
+//    scoped to buffett/duan/lilu only (Document.ownerId's type union).
+//  - InsightPost: third-party coverage (访谈/文章/信件) tagged to this
+//    master via entityIds (scripts/tag-insight-masters.ts) — the only
+//    source that can cover Alpha masters, who have no ingested primary
+//    material of their own.
+export async function getLibraryItems(tribeId: string): Promise<LibraryItem[]> {
+  const items: LibraryItem[] = [];
+
+  if (tribeId === "buffett") {
+    const byType = await getLetterYearsByType();
+    const partnershipYears = Array.from(byType.get("partnership") ?? []).sort((a, b) => a - b);
+    const shareholderYears = Array.from(byType.get("shareholder") ?? []).sort((a, b) => a - b);
+    if (partnershipYears.length) {
+      items.push({
+        id: "letters-partnership",
+        badge: "信件",
+        title: `合伙人信件（${partnershipYears[0]}–${partnershipYears[partnershipYears.length - 1]}）`,
+        subtitle: "巴菲特合伙人时期致投资者的年度信件。",
+        date: null,
+        href: `/master/${tribeId}/library?category=letter&type=partnership`,
+      });
+    }
+    if (shareholderYears.length) {
+      items.push({
+        id: "letters-shareholder",
+        badge: "信件",
+        title: `股东信件（${shareholderYears[0]}–${shareholderYears[shareholderYears.length - 1]}）`,
+        subtitle: "伯克希尔·哈撒韦历年致股东的信。",
+        date: null,
+        href: `/master/${tribeId}/library?category=letter&type=shareholder`,
+      });
+    }
   }
 
-  const byType = await getLetterYearsByType();
-  return config.map((c) => {
-    if (!c.sourceType) {
-      return { key: c.key, label: c.label, count: 0, range: "—", latest: null, href: c.href };
+  if (tribeId === "buffett" || tribeId === "duan" || tribeId === "lilu") {
+    const docs = await getDocumentsForOwner(tribeId);
+    for (const doc of docs) {
+      items.push({
+        id: doc.id,
+        badge: doc.badge || "书籍",
+        title: doc.title,
+        subtitle: doc.subtitle,
+        date: null,
+        href: doc.readerHref,
+      });
     }
-    const years = Array.from(byType.get(c.sourceType) ?? []).sort((a, b) => a - b);
-    const count = years.length;
-    const latest = count ? years[count - 1] : null;
-    const range = count ? `${years[0]}-${years[count - 1]}` : "—";
-    return { key: c.key, label: c.label, count, range, latest, href: c.href };
+  }
+
+  const entity = await db.entity.findFirst({ where: { tribeId, type: "master" }, select: { id: true } });
+  if (entity) {
+    const posts = await db.insightPost.findMany({
+      where: { status: "published", entityIds: { has: entity.id } },
+      select: { id: true, slug: true, title: true, description: true, contentRaw: true, source: true, publishedAt: true },
+      orderBy: { publishedAt: "desc" },
+    });
+    for (const post of posts) {
+      items.push({
+        id: post.id,
+        badge: (post.source && INSIGHT_SOURCE_BADGE[post.source]) || "文章",
+        title: post.title,
+        subtitle: post.description ?? excerptFromMarkdown(post.contentRaw),
+        date: post.publishedAt,
+        href: `/insights/${post.slug}`,
+      });
+    }
+  }
+
+  return items.sort((a, b) => {
+    const orderDiff = LIBRARY_BADGE_ORDER.indexOf(a.badge) - LIBRARY_BADGE_ORDER.indexOf(b.badge);
+    if (orderDiff !== 0) return orderDiff;
+    if (a.date && b.date) return b.date.getTime() - a.date.getTime();
+    return 0;
   });
 }
 
