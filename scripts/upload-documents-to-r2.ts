@@ -64,6 +64,12 @@ const DOCUMENTS: DocEntry[] = [
     title: "文明、现代化、价值投资与中国（2020年2月）",
     badge: "书籍",
   },
+  {
+    id: "bill-ackman-2q26-letter",
+    rawPath: "data/documents/raw/master/bill-ackman/2q26-letter-to-shareholders.pdf",
+    title: "Pershing Square, Inc. 2026年第二季度致股东信",
+    badge: "信件",
+  },
 ];
 
 function r2Key(rawPath: string): string {

@@ -560,7 +560,7 @@ model StockPrice {
 
 model Document {
   id         String   @id @default(cuid())
-  ownerId    String // 'buffett' | 'duan' | 'lilu' — links to TRIBE_MEMBERS
+  ownerId    String // Filer.tribeId; core masters (buffett/duan/lilu) by default, plus any Alpha master given a one-off document (e.g. bill-ackman)
   title      String
   subtitle   String?
   badge      String? // '书籍' | '演讲' | '文章'

@@ -1,6 +1,6 @@
 import prisma from "./prisma";
 
-export type DocumentOwnerId = "buffett" | "duan" | "lilu";
+export type DocumentOwnerId = "buffett" | "duan" | "lilu" | "bill-ackman";
 
 export type DocumentItem = {
   id: string;

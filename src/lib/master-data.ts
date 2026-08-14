@@ -539,12 +539,12 @@ const INSIGHT_SOURCE_BADGE: Record<string, string> = {
 // subtitle, date, href} shape for /master/[id]'s 资料库 section:
 //  - Source table: buffett's own shareholder/partnership letters (信件) —
 //    the table only ever holds his letters, so a no-op for everyone else.
-//  - Document table: GBrain-ingested primary works (演讲/文章/书籍),
-//    scoped to buffett/duan/lilu only (Document.ownerId's type union).
+//  - Document table: ingested primary works (信件/演讲/文章/书籍), scoped to
+//    Document.ownerId's type union (buffett/duan/lilu plus any Alpha master
+//    with a one-off primary document, e.g. bill-ackman's shareholder letter).
 //  - InsightPost: third-party coverage (访谈/文章/信件) tagged to this
-//    master via entityIds (scripts/tag-insight-masters.ts) — the only
-//    source that can cover Alpha masters, who have no ingested primary
-//    material of their own.
+//    master via entityIds (scripts/tag-insight-masters.ts) — covers Alpha
+//    masters who have no ingested primary material of their own.
 export async function getLibraryItems(tribeId: string): Promise<LibraryItem[]> {
   const items: LibraryItem[] = [];
 
@@ -574,7 +574,7 @@ export async function getLibraryItems(tribeId: string): Promise<LibraryItem[]> {
     }
   }
 
-  if (tribeId === "buffett" || tribeId === "duan" || tribeId === "lilu") {
+  if (tribeId === "buffett" || tribeId === "duan" || tribeId === "lilu" || tribeId === "bill-ackman") {
     const docs = await getDocumentsForOwner(tribeId);
     for (const doc of docs) {
       items.push({

@@ -95,6 +95,17 @@ const DOCUMENTS = [
     apiPath: "/api/documents/lilu/civilization-modernization-value-investing-china",
     sortOrder: 4,
   },
+  {
+    id: "bill-ackman-2q26-letter",
+    ownerId: "bill-ackman",
+    title: "Pershing Square, Inc. 2026年第二季度致股东信",
+    subtitle: "Bill Ackman 致 Pershing Square, Inc. 股东的季度信件。",
+    badge: "信件",
+    rawPath: "data/documents/raw/master/bill-ackman/2q26-letter-to-shareholders.pdf",
+    readerPath: "/documents/bill-ackman/2q26-letter",
+    apiPath: "/api/documents/bill-ackman/2q26-letter",
+    sortOrder: 0,
+  },
 ];
 
 async function main() {

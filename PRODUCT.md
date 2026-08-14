@@ -77,7 +77,7 @@ Agent 是核心入口。三层知识驱动 Agent 自主决定如何回答：
 
 价值投资大师的原始资料库：股东信、合伙人信、演讲、访谈。每位大师有独立页面，展示材料列表与 13F 持仓快照。材料全文可阅读。
 
-Alpha 投资人作为独立分类展示，不进入核心大师主导航。第一位 Alpha master 是 Gavin Baker / Atreides Management, LP，用于承载科技成长、AI、半导体、crossover 等现代投资风格；第二位是 Alex Sacerdote / Whale Rock Capital Management（科技成长）。Alpha 投资人有 master 页与 13F 持仓页，但没有 wisdom 资料内容（`Filer.isMasterPersona = false`）；其持仓页需要明确说明 13F 不代表完整组合。
+Alpha 投资人作为独立分类展示，不进入核心大师主导航。第一位 Alpha master 是 Gavin Baker / Atreides Management, LP，用于承载科技成长、AI、半导体、crossover 等现代投资风格；第二位是 Alex Sacerdote / Whale Rock Capital Management（科技成长）。Alpha 投资人有 master 页与 13F 持仓页，默认没有 wisdom 资料内容（`Filer.isMasterPersona = false`），个别 Alpha 投资人可按需通过 `Document` 表单独补充原始材料（如 Bill Ackman 的 Pershing Square 股东信，见 `src/app/documents/bill-ackman/`），不影响 `isMasterPersona` 判定；其持仓页需要明确说明 13F 不代表完整组合。
 
 ### /company — 公司
 
@@ -739,7 +739,11 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.42.7）
+## 当前实现状态（v0.42.8）
+
+### v0.42.8 变更（2026-08-14）
+
+- **Bill Ackman 资料库新增一份原始文档（Pershing Square, Inc. 2026 Q2 致股东信）**：作为一次性例外写入 `Document` 表（`ownerId=bill-ackman`），不改变 `Filer.isMasterPersona=false`——Alpha 投资人默认仍无 wisdom 资料内容，仅个别投资人可按需补充单篇原始材料。为此照搬 buffett/duan/lilu 既有的"每个 owner 一份阅读路由文件夹"模式，新增 `/documents/bill-ackman/[slug]` 和 `/api/documents/bill-ackman/[slug]`，并放宽 `DocumentOwnerId` 类型联合与 `getLibraryItems()`（`src/lib/master-data.ts`）的 owner 白名单。评估过是否借此机会把 4 个 owner 路由收成一份动态路由 + `Document` 表加 `slug` 字段，从第一性原理判断为过早抽象（目前只出现过一次，真正的"持续、零代码"扩展场景已有 `InsightPost` + `tag-insight-masters.ts` 承担），故按既有风格复制而非重构；等这类需求再出现 2–3 次后再收敛。
 
 ### v0.42.7 变更（2026-08-14）
 
