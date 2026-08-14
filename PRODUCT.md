@@ -739,7 +739,13 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.42.6）
+## 当前实现状态（v0.42.7）
+
+### v0.42.7 变更（2026-08-14）
+
+- **`MasterProfile` 改为纯公开知识总结，不再读任何持仓/13F 数据**：v0.42.6 曾让 `fundOverview` 引用真实计算的 13F 可报告持仓总市值当"基金规模"，但这个口径本身就窄于基金真实 AUM（13F 只覆盖美股多头且过披露门槛的部分，不含空头/现金/非美股/私募），把内部统计冒充成整体规模是误导——已撤回。现在 `generate-master-profile.ts` 的 prompt 只传投资人姓名，等价于直接问 LLM"总结一下这个人和他的基金公司"；system prompt 也从"价值投资分析师"改成中性的"研究助理"，避免把非价值投资风格的大师（如成长股/VC 出身的 Gavin Baker、Micky Malka）统一套上价值投资腔调。
+- **`/master/[id]` 资料库区改为统一渲染，替换掉三套互不兼容的实现**：此前 buffett 硬编码 3 张卡、lilu/duan 走 `Document` 表、（v0.42.6 新增的）Alpha 投资人访谈走 `InsightPost` 表，三条路径各自处理、样式易失衡（比如某篇文章 `description` 为空时卡片会明显变矮）。新增 `getLibraryItems()`（`src/lib/master-data.ts`）统一成 `{badge, title, subtitle, date, href}`，合并三个数据源：`Source` 表信件（信件）、`Document` 表（演讲/文章/书籍，已有真实数据，非占位）、`InsightPost` 表（访谈/文章/信件，按 `source` 播客/媒体名分类，如 Acquired 是双主持人商业解构不算访谈、Ribbit Capital 那篇是致 LP 信不是文章——分类前逐个读了实际正文，不是按栏目名猜的）。顺带删除了确认为死代码的 `getMasterClassSummary`（`masterClass` 预设的 lilu/duan 分支从未真正取数，buffett 分支被硬编码分支抢先短路，从未被执行到）。`description` 为空时用文章正文生成摘要兜底，卡片不再高矮不一。
+- **新增 `tag-insight-masters.ts`**：把 `/insights` 里实质讨论某位大师的文章关联到其 `entityIds`，供资料库区展示。标题含人名或 `tags` 命中人名即匹配，不需要 LLM（这批译文标题本身就是"标题 (英文人名)"的可靠格式，与 `tag-insight-companies.ts` 需要语义判断公司提及是否成立不同）。首次运行覆盖 9 位大师：Gavin Baker 7 篇、Alex Sacerdote/Leopold Aschenbrenner/Micky Malka 各 1 篇，其余大师暂无匹配。
 
 ### v0.42.6 变更（2026-08-13）
 
@@ -1045,7 +1051,7 @@ Apple HIG 精简风格：
 | 13F 申报 | SEC EDGAR 13F | `ExtSource(kind=13f)`, `Holding`, `Security`, `Entity` | `npm run import:13f`, `npm run pipeline:13f` | 核心链路已跑通 |
 | 13F 公司关联 | 13F + ticker/name 映射 | `Security.companyEntityId`, `CompanyNameMap` | `npm run backfill:security:company-links`, `npm run sync:company-name-map` | 已有修复脚本，13F 导入后按需跑 |
 | 持仓变化信号 | `Holding` 历史 | 脚本/查询内派生 | `scripts/generate-portfolio-insight.ts` | portfolio insight 生成用 |
-| 大师主页画像 | 最新持仓总市值/数量 + 素材量 | `MasterProfile`，镜像至 `GeneratedContentVersion(artifactType=master_profile)` | `npm run generate:master-profile` | 页面读 `MasterProfile`。2026-08-07 查证：11/11 有镜像（大师数量少、基本都被重跑过），但**没有任何代码读取这份镜像**——纯写入成本，见下方「LLM 生成内容版本表现状」。2026-08-13 起 `bio`/`fundOverview` 分工收紧：`bio` 只写人物经历与投资理念，`fundOverview` 只写基金背景与规模（规模数字用真实计算的 13F 可报告持仓总市值，不再由模型估算），两者都不再涉及持仓集中度/行业分布/季度调仓——那部分已与 `PortfolioInsight` 重复，改由后者单独承担 |
+| 大师主页画像 | 无（纯公开知识总结，不读我们数据库） | `MasterProfile`，镜像至 `GeneratedContentVersion(artifactType=master_profile)` | `npm run generate:master-profile` | 页面读 `MasterProfile`。2026-08-07 查证：11/11 有镜像（大师数量少、基本都被重跑过），但**没有任何代码读取这份镜像**——纯写入成本，见下方「LLM 生成内容版本表现状」。2026-08-14 起 `bio`/`fundOverview` 不再传入任何我们算出的持仓/13F 数据——等价于直接问 LLM"总结一下这个人和他的基金公司"，只传姓名。两者都不涉及持仓集中度/行业分布/季度调仓，那部分与 `PortfolioInsight` 重复，由后者单独承担。（中途曾改成引用真实计算的 13F 总市值当"基金规模"，后发现这个口径本身就窄于基金真实 AUM，把内部统计冒充成整体规模，已撤回） |
 | 季度持仓点评 | 持仓变化 + 大师画像 | `PortfolioInsight`，镜像至 `GeneratedContentVersion(artifactType=portfolio_insight)` | `npm run generate:portfolio-insight` | 同上，12/12 有镜像，同样没有消费方 |
 
 ### 公司数据

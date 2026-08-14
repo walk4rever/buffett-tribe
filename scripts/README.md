@@ -207,12 +207,26 @@ npm run generate:value-analysis -- --company AAPL --force
 - 文件：[generate-master-profile.ts](/Users/rafael/R129/buffett-tribe/scripts/generate-master-profile.ts)
 - 命令：`npm run generate:master-profile`
 - 命令：`npm run generate:master-profile:dry`
-- 作用：生成并入库 `MasterProfile`，用于大师主页画像与投资方法摘要。`bio` 只写人物经历/投资理念，`fundOverview` 只写基金背景+规模（规模数字用真实计算的最新一期 13F 可报告持仓总市值，模型不自行估算）——两者都不涉及持仓集中度/行业分布/季度调仓，那部分由 10 号入口 `PortfolioInsight` 单独承担，避免重复（2026-08-13 起）。
+- 作用：生成并入库 `MasterProfile`，用于大师主页画像与投资方法摘要。**不基于我们数据库里任何持仓/13F/10-K 数据**——`bio`/`fundOverview` 是纯公开知识总结，等价于直接问 LLM"总结一下这个人和他的基金公司"，只传投资人姓名进 prompt。`bio` 写人物经历/投资理念，`fundOverview` 写基金背景+组织形式；两者都不涉及持仓集中度/行业分布/季度调仓，那部分由 10 号入口 `PortfolioInsight` 单独承担，避免重复（2026-08-14 改为纯公开知识总结，此前一度改成过引用我们自己算出的 13F 总市值，后发现这会把一个更窄口径的内部统计冒充成基金真实规模，撤回）。
 
 常用示例：
 
 ```bash
 npm run generate:master-profile -- --master buffett
+```
+
+## 09b. 大师资料库文章挂载入口
+
+- 文件：[tag-insight-masters.ts](/Users/rafael/R129/buffett-tribe/scripts/tag-insight-masters.ts)
+- 命令：`npm run tag:insight-masters`
+- 命令：`npm run tag:insight-masters:dry`
+- 作用：把 `/insights` 里实质讨论某位大师的文章，写入该文章 `InsightPost.entityIds`（追加，不覆盖，与 `tag-insight-companies.ts` 共用同一字段时安全共存），使其出现在 `/master/[id]` 资料库区。匹配靠标题包含人名或 `tags` 数组命中人名，不需要 LLM——这批内容（`import:insight` 导入的译文）的标题/标签本身就是可靠信号，与 `tag-insight-companies.ts` 需要 LLM 语义判断公司提及是否成立不同。
+- 常用参数：`--master <tribeId>` 单个大师，`--all` 全部大师（含核心成员，无匹配自动跳过）。
+
+常用示例：
+
+```bash
+npm run tag:insight-masters -- --master gavin-baker
 ```
 
 ## 10. 季度持仓点评入口
