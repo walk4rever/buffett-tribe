@@ -286,11 +286,6 @@ export default async function PersonHubPage({ params }: Props) {
             <div>
               <h2 className="person-section-title">最新持仓({latestLabel})</h2>
               <p className="person-compare-note">对比基准:{baseLabel}</p>
-              {isAlphaMaster ? (
-                <p className="person-compare-note">
-                  13F 仅覆盖可披露的美国公开市场多头及部分期权仓位，不代表{member.nameZh}全部组合。
-                </p>
-              ) : null}
             </div>
             {latest ? (
               <Link href={`/master/${id}/holdings`} className="person-view-all">
@@ -406,8 +401,6 @@ export default async function PersonHubPage({ params }: Props) {
                                 </div>
                               )}
                             </div>
-
-                            <p className="person-insight-overview-text">{summaryInsight.detail}</p>
                           </>
                         )}
 
