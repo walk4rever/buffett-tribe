@@ -127,6 +127,13 @@
 
 ## P2 — 待评估 / 择机
 
+- [ ] **数据更新节奏自动化**（2026-08-15 与用户讨论后梳理，完整节奏表见 PRODUCT.md「数据更新节奏与自动化现状」）：13F 导入本次连续挖出两个静默漏跑（alex-sacerdote 缺 2026Q1、leopold-aschenbrenner 缺 2024Q4/2025Q1），根源是全站所有"更新节奏"都只是人工约定、没有强制机制。用户提的三点方向：① 每类数据要有清晰一致的权威触发脚本、② 运行要稳定到能放进 cron、③ 要有完整的数据完整性巡检。具体待办（按 PRODUCT.md 里排的优先级）：
+  - `pipeline:13f` 补"目标季度自动判断"逻辑 + 修掉 `tee` 吞真实退出码的问题（cron 化前置阻塞项）。
+  - `generate:portfolio-insight` 并入 `pipeline:13f` 变成固定第 4 步，不再是要人记得的独立命令。
+  - 10-K/20-F/40-F 年报导入补批量入口 + "哪些公司到期该更新了"的覆盖度巡检（目前逐家公司手动传 ticker，链路最长、影响最大，无自动化）。
+  - `CompanyAnalysis` 五个 LLM 字段补"是否早于最新 10-K"的过时巡检。
+  - GBrain 语义索引 vs Postgres `Source`/`Chunk` 补一致性巡检（本次梳理才发现这条链路完全没人管）。
+  - 决定要不要真正接 cron（GitHub Actions schedule 或其他），还是继续人工触发但把巡检做扎实。
 - [ ] **Thesis Tracker 化投资论点跟踪**（来源：2026-07-18 读 `anthropics/financial-services` 仓库 `thesis-tracker` skill 后讨论）：现在 `MasterProfile.flagshipCases`（thesis/outcome/stillHolding）和 `generate-portfolio-insight.ts` 的季度点评都是每次让 LLM 重新写一段叙事文字，没有版本化的"论点是否还成立"记分卡。`thesis-tracker` skill 的纪律是"thesis 必须可证伪"——建仓时写清楚支撑 pillar + 会推翻论点的 risk，之后每次更新都要判断新数据是强化/削弱/推翻了哪个 pillar，并像追踪确认证据一样认真追踪证伪证据。改造思路：`generate-master-profile.ts` 的 flagshipCases schema 加 `invalidationCriteria` 字段；`generate-portfolio-insight.ts` 生成时对照检查本季持仓变化对每个 thesis 的影响，输出结构化的 `thesisStatus`（intact/weakening/broken）而不只是一段叙事。只改两个已有生成脚本的 prompt/schema，不需要新数据源，三个建议里成本最低、见效最快。
 - [ ] **Catalyst Calendar 重仓股事件日历**（来源同上，`catalyst-calendar` skill）：现在网站完全被动——13F 季度披露后约 45 天延迟才能看到调仓，两次披露之间没有新内容。可以给每位投资人的前 10 大重仓股维护一个"未来两周有什么"小模块（财报日、行业会议、监管决定等），填补季度空窗，让网站从纯回顾变成有前瞻性。需要新数据源（财报日历/新闻），项目目前没有接入渠道，是三项里成本最高的一个，需要先确认数据源再评估。
 - [ ] **13F 历史证券承接页**（2026-07-17 从 P1 顺延）：`Security.ticker = null` 且 `companyEntityId = null` 的历史证券无可访问页面。产品口径与处理方案见 PRODUCT.md「待办：13F 历史证券承接页」（company shell 补齐 / `/security/[id]` 承接页 / orphan 巡检纳入 `check:security:integrity`）。

@@ -1125,6 +1125,46 @@ CompanyAnalysis {
 
 ---
 
+## 数据更新节奏与自动化现状（2026-08-15）
+
+背景：v0.42.9/v0.42.10 修 13F 导入 bug 时发现，"每季度更新"这个节奏完全没有自动化兜底——全靠人记得手动跑，已经连续两次悄悄漏掉某个 filer 某一季（alex-sacerdote 漏 2026Q1、leopold-aschenbrenner 漏 2024Q4/2025Q1），靠新建的 `check:13f-quarter-coverage` 才发现。借这次机会把全站数据的更新节奏梳理一遍，目的不是马上接 cron，是先把每类数据的**权威触发命令**和**完整性巡检**理清楚、记录下来——没有这两样，接不接 cron 都会继续悄悄漏数据。
+
+### 设计原则
+
+1. **一类数据只有一个权威触发命令**，不允许"默认参数"和"显式参数"两条路径行为不一致地并存（13F 那个 bug 的诱因之一：不传 `--quarter-list` 时默认只拉"最近 4 份"，跟显式指定季度是两套逻辑，容易让人以为默认命令能兜住历史）。
+2. **命令必须显式声明目标范围**（`--quarter-list`/`--from`/`--to`/等价参数），不依赖隐式默认值——cron 场景没有人在旁边纠偏。
+3. **幂等**：所有更新脚本按 upsert 设计，可以放心重跑，不会因为重复执行产生脏数据。
+4. **退出码必须真实反映成败**——`npm run pipeline:13f | tee xxx.log` 这种写法会让 shell 拿到 `tee` 的退出码而不是真正命令的退出码，今天排查 13F 崩溃就踩过一次；接 cron 前所有多步骤 pipeline 都要过一遍这条。
+5. **每类"更新脚本"配一个对应的"覆盖度巡检脚本"，巡检的基准是外部权威数据源（SEC EDGAR / Yahoo Finance），不是自己库里的数据自证自洽**——这是 `check-latest-holdings-company-coverage.ts`（拿 SEC 年报清单核对）和新的 `check-13f-quarter-coverage.ts`（拿 EDGAR report date 核对）已经在用的模式，之后新建的巡检脚本都应该照此设计，而不是只检查"库里数据内部是否自洽"。
+
+### 节奏与自动化现状一览
+
+| 数据类型 | 权威触发命令 | 建议节奏 / 锚点 | 完整性巡检 | Cron 就绪度 |
+|---|---|---|---|---|
+| 13F 持仓 | `npm run pipeline:13f -- --quarter-list <当季>` | 季度，锚定 13F-HR 法定截止日（季末+45天：约 2/14、5/15、8/14、11/14） | ✅ `check:13f-quarter-coverage`（2026-08-15 新增） | 基本就绪；仍需解决 ④ 那个 `tee` 吞退出码的问题，以及"当前该跑哪个季度"这层判断目前是人算的，cron 化要补 |
+| 季度持仓点评 `PortfolioInsight` | `npm run generate:portfolio-insight -- --all --quarter <当季>` | 紧跟在 13F 导入之后，**不是独立周期**——本次就是因为这两步被当成两个独立环节，导致 11 位大师的 2026Q2 持仓点评漏生成了一整轮才被发现 | ❌ 待建（比对每位 filer 的 13F 季度集合 vs `PortfolioInsight` 季度集合，缺口即报） | 幂等 upsert，脚本本身就绪；应该直接串进 `pipeline:13f` 变成第 4 步，而不是继续靠人手动补跑第二条命令 |
+| 公司股价 `StockPrice` | `npm run import:company-stock-prices:yf` | 每周 | ❌ 待建（"每家公司最新价格日期是否在 7 天内"） | 已经是本站设计最好的一个——不需要传 ticker，默认批量遍历全部公司、带 checkpoint 文件可断点续跑，是其他脚本应该看齐的模板 |
+| 10-K/20-F/40-F 年报 | `npm run import:10k -- --ticker X --from Y --to Z` | 每年，锚定**各公司自己的**财年结束+法定截止日（不是统一日历日期，148 家公司各不相同） | ❌ 待建，也是设计上最复杂的一个（锚点因公司而异，需要先按财年结束时间算出"哪些公司到期该有新年报了"） | 未就绪——目前逐家公司手动传 ticker 触发，没有批量入口，也没有"到期提醒"逻辑；建议优先级最高，因为它是财务/估值分析链路的源头，源头不更新，下游全部悄悄过时 |
+| `CompanyAnalysis` 五个 LLM 字段（profile/business/moat/management/valuation） | `npm run generate:company-profile -- --all` 等（各脚本自带 `--all`） | 跟着上一行的年报更新走，不是独立周期；`valuation` 额外可考虑在股价大幅波动后单独触发（P/E 分子分母任一变了都可能使结论过时） | ❌ 待建（`CompanyAnalysis.updatedAt` 是否早于该公司最新一次 10-K 的 `filedAt`） | 未就绪，同上一行 |
+| 大师资料库 · 访谈（`InsightPost` 打标） | `npm run tag:insight-masters` | 定期（例如每次 `/insights` 有新文章发布后），不锚定日历日期 | 不需要额外巡检——打标本身幂等，不存在"漏更新"风险，只有"还没打"的滞后 | 就绪 |
+| 大师资料库 · 信件/文章/书籍（`Document`/`Source` 表） | `scripts/import-markdown.ts` / `scripts/upload-documents-to-r2.ts` + 手动加 seed 条目 | 不定期，有新材料才做；但 Buffett 年度股东信（每年 2 月末）、股东大会（每年 5 月）是可预期的日历事件，可以只对这两个固定窗口设"提醒"而非自动导入 | 无 | 不适合无脑 cron——"这是不是真的新材料"需要人工判断，自动化空间有限 |
+| GBrain 语义索引（`search_wisdom`） | `scripts/export-letters-gbrain.ts` + GBrain 侧 ingest | 跟着上一行走，**不是独立周期**——新信件进 Postgres 的 `Source`/`Chunk` 后，如果忘了导出同步进 GBrain，`search_wisdom` 检索到的内容会和网页上展示的落后一整代 | ❌ 待建（比对 `Source`/`Chunk` 条目数 vs GBrain `pages` 条目数，按 `master` 分组） | 未就绪；这条链路是本次梳理才第一次被系统性记录下来的空档 |
+| `BeneficialOwnership`（13D/13G） | `npm run import:beneficial-ownership` | 本质是事件驱动（越过披露阈值才会有新 filing），不是日历节奏——"多久检查一次有没有新披露"才是节奏参数，不是"数据多久变一次" | 无 | 暂缓——展示层（`/master/[id]` 的"重大持仓披露"表格）v0.42.10 之前已下线（逻辑与数据处理都不成熟），先不投入自动化 |
+| 大师主页画像 `MasterProfile` | `npm run generate:master-profile -- --master X` | 很慢，季度到半年一次，或有重大新闻时手动触发；纯公开知识总结，没有独立数据源可比对 | 无法有效巡检"是否过时"——没有 ground truth 可对比 | 手动为主，不建议 cron |
+| 巡检脚本本身 | 各 `check:*` 命令 | 应配合它所巡检的数据节奏跑（13F 巡检每季度，未来的 10-K 巡检每年） | — | 目前只有 4 个巡检（`security`/`financial`/`filing-section`/`holdings-company-coverage`）接进了 `data-integrity-check.yml`（周度 + 发布前跑），新增的 `check:13f-quarter-coverage` 还没接进去 |
+
+### 已知空档（按优先级）
+
+1. `pipeline:13f` 缺"目标季度自动判断"+ 缺退出码可靠性（`tee` 吞码问题）——是 13F 这条能不能真正 cron 化的前置阻塞项。
+2. `generate:portfolio-insight` 没有和 13F 导入绑定成一步，是本次已经实际发生过的漏跑根源。
+3. 10-K 年报没有批量入口、没有到期提醒、没有覆盖度巡检——链路最长、影响最大（下游连着 5 个 LLM 生成字段），但目前完全靠人记得逐家公司手动触发。
+4. GBrain 与 Postgres 信件表之间没有一致性巡检，两边可能已经在悄悄 drift。
+5. 全站没有任何真正的定时任务（cron/GitHub Actions schedule）——所有"节奏"目前都只是约定，不是强制执行的机制。
+
+以上是本轮梳理的结论，尚未实施；后续排期见 `TODO.md`。
+
+---
+
 ## 公司页财务看板：truth-of-source 设计
 
 公司页财务看板要以 SEC 10-K / 20-F / 40-F 的 XBRL 原始事实为事实来源，不把推导值伪装成申报值。目标是专业、可解释、可追溯。
