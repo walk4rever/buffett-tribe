@@ -12,6 +12,7 @@
 
 import { Prisma, PrismaClient } from "@prisma/client";
 import "dotenv/config";
+import { computeShareDeltaPct } from "@/lib/holding-activity";
 import { getTribeMember, getTribeMembers } from "@/lib/tribe";
 
 const db = new PrismaClient();
@@ -91,6 +92,7 @@ type PortfolioInsightItem = {
   ticker?: string;
   nameZh?: string;
   deltaPct?: number;
+  shareDeltaPct?: number;
   percentOfPortfolio?: number;
   top5Pct?: number;
   holdingCount?: number;
@@ -161,7 +163,7 @@ async function getHoldingsByQuarter(tribeId: string, year: number, quarter: numb
     include: {
       security: {
         include: {
-          company: { select: { canonicalName: true, ticker: true } },
+          company: { select: { canonicalName: true, ticker: true, sector: true } },
         },
       },
     },
@@ -170,17 +172,37 @@ async function getHoldingsByQuarter(tribeId: string, year: number, quarter: numb
   return rows;
 }
 
+// GICS-ish sector taxonomy stored on Entity.sector (English) — translate the
+// ones we have real data for; leave everything else unlabeled rather than
+// let the LLM guess a sector from the company name alone (that guessing is
+// exactly what mislabeled H&R Block as a "financial" name in 2026Q2).
+const SECTOR_LABEL_ZH: Record<string, string> = {
+  "Health Care": "医疗保健",
+  "Financials": "金融",
+  "Technology": "科技",
+  "Industrials": "工业",
+  "Consumer": "消费",
+  "Materials": "材料",
+  "Energy": "能源",
+  "Consumer Staples": "必需消费",
+  "Communication Services": "通信服务",
+  "Consumer Discretionary": "可选消费",
+  "Utilities": "公用事业",
+};
+
 function getSecurityNameParts(row: (Awaited<ReturnType<typeof getHoldingsByQuarter>>)[number]) {
   const meta = ((row.security.metadata && typeof row.security.metadata === "object" && !Array.isArray(row.security.metadata))
     ? row.security.metadata
     : {}) as { nameZh?: string; nameEnShort?: string };
   const ticker = row.security.ticker ?? row.security.company?.ticker ?? null;
   const nameZh = meta.nameZh?.trim() || meta.nameEnShort?.trim() || row.security.company?.canonicalName || row.security.titleOfClass || "";
-  return { ticker, nameZh };
+  const sector = row.security.company?.sector ? SECTOR_LABEL_ZH[row.security.company.sector] ?? null : null;
+  return { ticker, nameZh, sector };
 }
 
-function formatDisplayName(nameZh: string, ticker: string | null) {
-  return ticker ? `${nameZh}（${ticker}）` : nameZh;
+function formatDisplayName(nameZh: string, ticker: string | null, sector?: string | null) {
+  const label = ticker ? `${nameZh}（${ticker}）` : nameZh;
+  return sector ? `${label}[${sector}]` : label;
 }
 
 async function buildChangeSet(tribeId: string, targetQuarter?: QuarterPoint) {
@@ -203,32 +225,42 @@ async function buildChangeSet(tribeId: string, targetQuarter?: QuarterPoint) {
   const keyOf = (r: (typeof latestRows)[number]) => r.securityId;
   const baseById = new Map(baseRows.map((r) => [keyOf(r), r] as const));
 
-  const adds: Array<{ ticker: string | null; nameZh: string; nowPct: number; deltaPct: number }> = [];
-  const trims: Array<{ ticker: string | null; nameZh: string; nowPct: number; deltaPct: number }> = [];
-  const newPositions: Array<{ ticker: string | null; nameZh: string; nowPct: number }> = [];
-  const exits: Array<{ ticker: string | null; nameZh: string; prevPct: number }> = [];
+  const adds: Array<{ ticker: string | null; nameZh: string; sector: string | null; nowPct: number; deltaPct: number; shareDeltaPct: number }> = [];
+  const trims: Array<{ ticker: string | null; nameZh: string; sector: string | null; nowPct: number; deltaPct: number; shareDeltaPct: number }> = [];
+  const newPositions: Array<{ ticker: string | null; nameZh: string; sector: string | null; nowPct: number }> = [];
+  const exits: Array<{ ticker: string | null; nameZh: string; sector: string | null; prevPct: number }> = [];
 
   for (const row of latestRows) {
     const prev = baseById.get(keyOf(row));
     const nowPct = row.percentOfPortfolio ?? 0;
-    const { ticker, nameZh } = getSecurityNameParts(row);
+    const { ticker, nameZh, sector } = getSecurityNameParts(row);
 
     if (!prev) {
-      newPositions.push({ ticker, nameZh, nowPct });
+      newPositions.push({ ticker, nameZh, sector, nowPct });
       continue;
     }
+    // percentOfPortfolio delta moves with price and with how fast *other*
+    // positions grow, not with whether this position was actually traded
+    // (e.g. flat share count but the position's own price fell, or another
+    // position ballooned and diluted everyone else's weight). Classify
+    // add/trim off the real share-count delta — the same signal the
+    // holdings table already uses (computeShareDeltaPct) — and use
+    // percentOfPortfolio purely for display magnitude.
+    const shareDeltaPct = computeShareDeltaPct(prev.shares, row.shares);
+    if (shareDeltaPct == null || Math.abs(shareDeltaPct) < 1) continue;
     const prevPct = prev.percentOfPortfolio ?? 0;
-    const delta = nowPct - prevPct;
-    if (delta > 0.08) adds.push({ ticker, nameZh, nowPct, deltaPct: delta });
-    if (delta < -0.08) trims.push({ ticker, nameZh, nowPct, deltaPct: delta });
+    const deltaPct = nowPct - prevPct;
+    if (shareDeltaPct > 0) adds.push({ ticker, nameZh, sector, nowPct, deltaPct, shareDeltaPct });
+    else trims.push({ ticker, nameZh, sector, nowPct, deltaPct, shareDeltaPct });
   }
 
   for (const row of baseRows) {
     if (!latestRows.find((r) => keyOf(r) === keyOf(row))) {
-      const { ticker, nameZh } = getSecurityNameParts(row);
+      const { ticker, nameZh, sector } = getSecurityNameParts(row);
       exits.push({
         ticker,
         nameZh,
+        sector,
         prevPct: row.percentOfPortfolio ?? 0,
       });
     }
@@ -260,7 +292,7 @@ function buildHoldingInsights(changeSet: Awaited<ReturnType<typeof buildChangeSe
   ];
 
   for (const pos of changeSet.newPositions.slice(0, 4)) {
-    const displayName = formatDisplayName(pos.nameZh, pos.ticker);
+    const displayName = formatDisplayName(pos.nameZh, pos.ticker, pos.sector);
     items.push({
       kind: "new",
       label: "新进",
@@ -272,33 +304,35 @@ function buildHoldingInsights(changeSet: Awaited<ReturnType<typeof buildChangeSe
   }
 
   for (const item of changeSet.adds.slice(0, 4)) {
-    const displayName = formatDisplayName(item.nameZh, item.ticker);
+    const displayName = formatDisplayName(item.nameZh, item.ticker, item.sector);
     items.push({
       kind: "add",
       label: "增持",
-      detail: `${displayName} +${item.deltaPct.toFixed(2)}pp → ${item.nowPct.toFixed(2)}%`,
+      detail: `${displayName} 份额+${item.shareDeltaPct.toFixed(1)}%（占比+${item.deltaPct.toFixed(2)}pp → ${item.nowPct.toFixed(2)}%）`,
       ticker: item.ticker ?? undefined,
       nameZh: item.nameZh,
       deltaPct: item.deltaPct,
+      shareDeltaPct: item.shareDeltaPct,
       percentOfPortfolio: item.nowPct,
     });
   }
 
   for (const item of changeSet.trims.slice(0, 4)) {
-    const displayName = formatDisplayName(item.nameZh, item.ticker);
+    const displayName = formatDisplayName(item.nameZh, item.ticker, item.sector);
     items.push({
       kind: "trim",
       label: "减持",
-      detail: `${displayName} ${item.deltaPct.toFixed(2)}pp → ${item.nowPct.toFixed(2)}%`,
+      detail: `${displayName} 份额${item.shareDeltaPct.toFixed(1)}%（占比${item.deltaPct.toFixed(2)}pp → ${item.nowPct.toFixed(2)}%）`,
       ticker: item.ticker ?? undefined,
       nameZh: item.nameZh,
       deltaPct: item.deltaPct,
+      shareDeltaPct: item.shareDeltaPct,
       percentOfPortfolio: item.nowPct,
     });
   }
 
   for (const exit of changeSet.exits.slice(0, 4)) {
-    const displayName = formatDisplayName(exit.nameZh, exit.ticker);
+    const displayName = formatDisplayName(exit.nameZh, exit.ticker, exit.sector);
     items.push({
       kind: "exit",
       label: "清仓",
@@ -349,26 +383,30 @@ function buildPrompt(
   const topList = changeSet.top
     .slice(0, 5)
     .map((h, i) => {
-      const { ticker, nameZh } = getSecurityNameParts(h);
-      return `${i + 1}. ${formatDisplayName(nameZh, ticker)} (${formatPct(h.percentOfPortfolio ?? 0)})`;
+      const { ticker, nameZh, sector } = getSecurityNameParts(h);
+      return `${i + 1}. ${formatDisplayName(nameZh, ticker, sector)} (${formatPct(h.percentOfPortfolio ?? 0)})`;
     })
     .join("；");
 
   const newList =
     changeSet.newPositions.length > 0
-      ? changeSet.newPositions.map((p) => `${formatDisplayName(p.nameZh, p.ticker)} (${formatPct(p.nowPct)})`).join("、")
+      ? changeSet.newPositions.map((p) => `${formatDisplayName(p.nameZh, p.ticker, p.sector)} (${formatPct(p.nowPct)})`).join("、")
       : "无";
   const addList =
     changeSet.adds.length > 0
-      ? changeSet.adds.map((a) => `${formatDisplayName(a.nameZh, a.ticker)} +${a.deltaPct.toFixed(2)}pp → ${formatPct(a.nowPct)}`).join("、")
+      ? changeSet.adds
+          .map((a) => `${formatDisplayName(a.nameZh, a.ticker, a.sector)} 份额+${a.shareDeltaPct.toFixed(1)}%（占比+${a.deltaPct.toFixed(2)}pp → ${formatPct(a.nowPct)}）`)
+          .join("、")
       : "无";
   const trimList =
     changeSet.trims.length > 0
-      ? changeSet.trims.map((t) => `${formatDisplayName(t.nameZh, t.ticker)} ${t.deltaPct.toFixed(2)}pp → ${formatPct(t.nowPct)}`).join("、")
+      ? changeSet.trims
+          .map((t) => `${formatDisplayName(t.nameZh, t.ticker, t.sector)} 份额${t.shareDeltaPct.toFixed(1)}%（占比${t.deltaPct.toFixed(2)}pp → ${formatPct(t.nowPct)}）`)
+          .join("、")
       : "无";
   const exitList =
     changeSet.exits.length > 0
-      ? changeSet.exits.map((e) => `${formatDisplayName(e.nameZh, e.ticker)}（上季${formatPct(e.prevPct)}）`).join("、")
+      ? changeSet.exits.map((e) => `${formatDisplayName(e.nameZh, e.ticker, e.sector)}（上季${formatPct(e.prevPct)}）`).join("、")
       : "无";
 
   return `作为一位资深价值投资分析师，请基于以下数据，为 **${masterName}** 基金撰写一份 ${quarter} 持仓洞察。用中文输出。300字以内。
@@ -379,10 +417,10 @@ ${topList || "无数据"}
 **本季新进**：
 ${newList}
 
-**增持**（仓位变化 > 0.08pp）：
+**增持**（份额较上季增加 ≥1%，非仅占比上升）：
 ${addList}
 
-**减持**（仓位变化 > 0.08pp）：
+**减持**（份额较上季减少 ≥1%，非仅占比下降）：
 ${trimList}
 
 **清仓退出**：
@@ -392,7 +430,7 @@ ${exitList}
 
 请撰写 3-5 句连贯的持仓洞察，从以下角度分析：
 1. **整体仓位方向**：该季度是进攻还是防御？仓位是集中还是分散？
-2. **行业侧重变化**：科技、消费、金融、能源等行业的增减情况
+2. **行业侧重变化**：科技、消费、金融、能源等行业的增减情况——只使用上面标的名称后方括号里给出的行业标签，没有标出行业的标的不要臆测或归类
 3. **风格一致性**：这些操作是否符合其一贯的投资理念？有无值得注意的背离？
 
 输出为纯中文文本段落，不要 markdown 标记，不要标题。语气冷静客观，有数据支撑。`;

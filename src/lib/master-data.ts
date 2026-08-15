@@ -621,76 +621,19 @@ export type HoldingChangeSet = {
   latest: QuarterPoint | null;
   base: QuarterPoint | null;
   top: HoldingRow[];
-  adds: Array<{ row: HoldingRow; delta: number }>;
-  trims: Array<{ row: HoldingRow; delta: number }>;
-  newPositions: HoldingRow[];
-  exits: Array<{ securityId: string; ticker: string | null; name: string; prevPct: number }>;
 };
 
 export async function getLatestHoldingChangeSet(tribeId: string): Promise<HoldingChangeSet> {
   const quarters = await getAvailableQuarters(tribeId);
   if (!quarters.length) {
-    return {
-      latest: null,
-      base: null,
-      top: [],
-      adds: [],
-      trims: [],
-      newPositions: [],
-      exits: [],
-    };
+    return { latest: null, base: null, top: [] };
   }
 
   const latest = quarters[0];
   const base = quarters[1] ?? null;
   const latestRows = await getHoldingsByQuarter(tribeId, latest.year, latest.quarter);
-  const baseRows = base ? await getHoldingsByQuarter(tribeId, base.year, base.quarter) : [];
 
-  const top = latestRows.slice(0, 10);
-  const keyOf = (r: HoldingRow) => r.securityId;
-  const baseById = new Map(baseRows.map((r) => [keyOf(r), r] as const));
-  const latestById = new Map(latestRows.map((r) => [keyOf(r), r] as const));
-
-  const adds: Array<{ row: HoldingRow; delta: number }> = [];
-  const trims: Array<{ row: HoldingRow; delta: number }> = [];
-  const newPositions: HoldingRow[] = [];
-  for (const row of latestRows) {
-    const prev = baseById.get(keyOf(row));
-    const nowPct = row.percentOfPortfolio ?? 0;
-    const prevPct = prev?.percentOfPortfolio ?? 0;
-    const delta = nowPct - prevPct;
-
-    if (!prev) {
-      newPositions.push(row);
-      continue;
-    }
-    if (delta > 0.08) adds.push({ row, delta });
-    if (delta < -0.08) trims.push({ row, delta });
-  }
-
-  const exits = baseRows
-    .filter((r) => !latestById.has(keyOf(r)))
-    .map((r) => ({
-      securityId: r.securityId!,
-      ticker: r.security.ticker,
-      name: r.security.company?.canonicalName ?? r.security.ticker ?? "",
-      prevPct: r.percentOfPortfolio ?? 0,
-    }))
-    .sort((a, b) => b.prevPct - a.prevPct);
-
-  adds.sort((a, b) => b.delta - a.delta);
-  trims.sort((a, b) => a.delta - b.delta);
-  newPositions.sort((a, b) => (b.percentOfPortfolio ?? 0) - (a.percentOfPortfolio ?? 0));
-
-  return {
-    latest,
-    base,
-    top,
-    adds: adds.slice(0, 5),
-    trims: trims.slice(0, 5),
-    newPositions: newPositions.slice(0, 5),
-    exits: exits.slice(0, 5),
-  };
+  return { latest, base, top: latestRows.slice(0, 10) };
 }
 
 export type PortfolioInsightItem = {
@@ -720,103 +663,6 @@ export type PortfolioInsightStructured = {
   };
   items: PortfolioInsightItem[];
 };
-
-export function buildHoldingInsights(changeSet: HoldingChangeSet): PortfolioInsightItem[] {
-  if (!changeSet.latest || !changeSet.top.length) return [];
-  const nowCount = changeSet.top.length >= 10 ? changeSet.top.length : null;
-  const totalChanged =
-    changeSet.newPositions.length + changeSet.adds.length + changeSet.trims.length + changeSet.exits.length;
-  const top5 = changeSet.top.slice(0, 5).reduce((sum, h) => sum + (h.percentOfPortfolio ?? 0), 0);
-
-  const items: PortfolioInsightItem[] = [
-    {
-      kind: "summary",
-      label: "组合概况",
-      detail: `前五大持仓合计 ${top5.toFixed(2)}%，组合集中度${top5 >= 60 ? "较高" : "中等"}${totalChanged > 0 ? `，本季${totalChanged}笔变动` : ""}`,
-      top5Pct: top5,
-      holdingCount: nowCount ?? undefined,
-      totalChanged,
-    },
-  ];
-
-  for (const pos of changeSet.newPositions.slice(0, 4)) {
-    const ticker = pos.security.ticker ?? pos.security.company?.canonicalName ?? "";
-    items.push({
-      kind: "new",
-      label: "新进",
-      detail: `${ticker} 仓位 ${(pos.percentOfPortfolio ?? 0).toFixed(2)}%`,
-      ticker,
-      nameZh: pos.security.company?.canonicalName ?? pos.security.ticker ?? "",
-      percentOfPortfolio: pos.percentOfPortfolio ?? 0,
-    });
-  }
-
-  for (const { row, delta } of changeSet.adds.slice(0, 4)) {
-    const ticker = row.security.ticker ?? row.security.company?.canonicalName ?? "";
-    items.push({
-      kind: "add",
-      label: "增持",
-      detail: `${ticker} +${delta.toFixed(2)}pp → ${(row.percentOfPortfolio ?? 0).toFixed(2)}%`,
-      ticker,
-      nameZh: row.security.company?.canonicalName ?? row.security.ticker ?? "",
-      deltaPct: delta,
-      percentOfPortfolio: row.percentOfPortfolio ?? 0,
-    });
-  }
-
-  for (const { row, delta } of changeSet.trims.slice(0, 4)) {
-    const ticker = row.security.ticker ?? row.security.company?.canonicalName ?? "";
-    items.push({
-      kind: "trim",
-      label: "减持",
-      detail: `${ticker} ${delta.toFixed(2)}pp → ${(row.percentOfPortfolio ?? 0).toFixed(2)}%`,
-      ticker,
-      nameZh: row.security.company?.canonicalName ?? row.security.ticker ?? "",
-      deltaPct: delta,
-      percentOfPortfolio: row.percentOfPortfolio ?? 0,
-    });
-  }
-
-  for (const exit of changeSet.exits.slice(0, 4)) {
-    const ticker = exit.ticker ?? exit.name;
-    items.push({
-      kind: "exit",
-      label: "清仓",
-      detail: `${ticker} 上季仓位 ${exit.prevPct.toFixed(2)}%`,
-      ticker,
-      nameZh: exit.name,
-      percentOfPortfolio: exit.prevPct,
-    });
-  }
-
-  return items;
-}
-
-export function buildStructuredPortfolioInsight(
-  changeSet: HoldingChangeSet,
-): PortfolioInsightStructured | null {
-  if (!changeSet.latest || !changeSet.top.length) return null;
-
-  const items = buildHoldingInsights(changeSet);
-  return {
-    latest: changeSet.latest,
-    base: changeSet.base,
-    summary: {
-      holdingCount: changeSet.top.length,
-      top5Pct: changeSet.top.slice(0, 5).reduce((sum, h) => sum + (h.percentOfPortfolio ?? 0), 0),
-      totalChanged:
-        changeSet.newPositions.length +
-        changeSet.adds.length +
-        changeSet.trims.length +
-        changeSet.exits.length,
-      newCount: changeSet.newPositions.length,
-      addCount: changeSet.adds.length,
-      trimCount: changeSet.trims.length,
-      exitCount: changeSet.exits.length,
-    },
-    items,
-  };
-}
 
 export function formatValueUsd(valueUsd: bigint | null): string {
   return formatUsdInYi(valueUsd);

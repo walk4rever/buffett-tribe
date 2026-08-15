@@ -739,7 +739,12 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.42.9）
+## 当前实现状态（v0.42.10）
+
+### v0.42.10 变更（2026-08-15）
+
+- **修复 `PortfolioInsight` 增减持误判**：`generate-portfolio-insight.ts` 此前用 `percentOfPortfolio` 季度差值（阈值 0.08pp）判定"增持/减持"，但这个指标会被股价波动和其他仓位膨胀稀释污染，跟"这个人有没有真的交易"无关。对抗式审查发现两个已生成并展示在线上的真实案例：巴菲特那份 2026Q2 洞察把股数完全未变的可口可乐（400,000,000 股，持有多年从未卖出）、穆迪、西方石油、雪佛龙说成"被小幅减仓"；李录那份把股数同样未变的腾讯音乐说成"减持"、谷歌 A/C 类说成"增持"。改为用真实份额变化判定（复用持仓表已有的 `computeShareDeltaPct`，阈值 1%），`percentOfPortfolio` 只用于展示占比，不再参与分类。顺带接入真实的 `Entity.sector` 字段做行业标注（没有数据的标的不让 LLM 瞎猜，堵住了把 H&R Block 误标"金融能源"的口子），删掉了 `src/lib/master-data.ts` 里从未被调用、带着同样 bug 的重复实现（`buildHoldingInsights`/`buildStructuredPortfolioInsight`，`getLatestHoldingChangeSet` 精简为只返回实际被用到的 `latest/base/top`）。修复后用李录、巴菲特两份重新逐条核对份额数据全部通过；2026Q1、2026Q2 全部 filer 的 `PortfolioInsight` 已用修复后的脚本重新生成（Q1 因为是 Q2 的对比基准，即使不展示也需要保证数据正确）。
+- **新增 13F 季度覆盖巡检**（`scripts/check-13f-quarter-coverage.ts`，`npm run check:13f-quarter-coverage`）：13F 导入没有定时任务、全靠手动触发，某位投资人某一季被漏掉不会有任何提示——用 SEC EDGAR 的真实 report date 列表（新增 [edgartools_13f_report_dates.py](/Users/rafael/R129/buffett-tribe/scripts/edgartools_13f_report_dates.py)，只读 `filing.report_date`、不调用 `.obj()`，快且不会踩到 SGML 解析崩溃）当基准，核对每位 filer 从 2020Q1（或其自身首份 13F 更晚的话，以那份为准）到 EDGAR 最新 filing 是否连续无缺。首次跑就抓出两个此前完全没人发现的静默空档：alex-sacerdote 缺 2026Q1（filing 早在 2026-05-15 就已披露，只是没人导入过）、leopold-aschenbrenner 缺 2024Q4 和 2025Q1；均已排查确认 EDGAR 数据本身完好（不是 v0.42.9 修的那个 SGML 崩溃 bug）、补齐导入并补跑对应季度的 `PortfolioInsight`，复跑巡检 12/12 全绿。
 
 ### v0.42.9 变更（2026-08-15）
 
