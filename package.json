@@ -1,6 +1,6 @@
 {
   "name": "buffett-tribe",
-  "version": "0.42.9",
+  "version": "0.42.10",
   "private": true,
   "type": "module",
   "scripts": {
@@ -60,6 +60,7 @@
     "check:financial:integrity": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/check-financial-integrity.ts",
     "check:filing-section:integrity": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/check-filing-section-integrity.ts",
     "check:holdings-company-coverage": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/check-latest-holdings-company-coverage.ts",
+    "check:13f-quarter-coverage": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/check-13f-quarter-coverage.ts",
     "sync:company-name-map": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/sync-company-name-map.ts",
     "sync:company-name-map:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/sync-company-name-map.ts --dry-run",
     "backfill:names": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-names.ts",
