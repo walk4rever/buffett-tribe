@@ -739,7 +739,11 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.42.12）
+## 当前实现状态（v0.42.13）
+
+### v0.42.13 变更（2026-08-15）
+
+- **Bill Ackman 2026Q2 13F"查不到"排查：基金重组了申报主体，不是导入空档**：`check:13f-quarter-coverage`（v0.42.10 新增）一直显示 bill-ackman 缺 2026Q2，但直接查 SEC `data.sec.gov/submissions` 才发现，老 CIK（1336528，Pershing Square Capital Management, L.P.）在 2026-08-14 按时申报了，只是类型变成了 **13F-NT**（"通知"——本主体持仓已并入另一份合并报告，自己不再单独报数字），真正的 13F-HR 转由新主体 **CIK 2026053（Pershing Square Inc.，2026-04-23 由 "Pershing Square Holdco, L.P." 改名而来）**申报——早有伏笔，v0.42.8 导入的股东信标题就是"Pershing Square, Inc. 2026年第二季度致股东信"，当时没意识到这也意味着 13F 申报主体换了。`edgartools_13f_report_dates.py`/`edgartools_13f_extract.py` 都只认 `form="13F-HR"`，13F-NT 被自然过滤，所以之前"查不到"是正确行为，不是 bug。**修复**：`Filer.filerCik`（bill-ackman）改成 `2026053`，`name` 改成 "Pershing Square Inc."；`upsertFilerEntity()` 按 `tribeId` 匹配 Entity、不靠 CIK，所以换 CIK 不影响已导入的历史 Holding 数据（2020Q1–2026Q1 仍是用老 CIK 导入的，物理上留在库里不受影响）。重跑 2026Q2 导入拿到 14 条持仓（市值 $194.7亿），补跑对应季度 `PortfolioInsight`，`check:13f-quarter-coverage` 复跑显示 `2025Q2–2026Q2, 5/5` 全绿（新 CIK 自己的申报历史只从 2025Q2 开始，检查脚本按新 CIK 的实际起点算基准，不影响库里更早的历史数据）。**这是一个值得记住的模式**：投资人的基金结构可能中途重组（换报告主体、改名等），13F-NT 是识别信号——以后遇到"某投资人某季突然查不到"，先查该 CIK 是否申报了 13F-NT 而非静默假设是导入遗漏。
 
 ### v0.42.12 变更（2026-08-15）
 
