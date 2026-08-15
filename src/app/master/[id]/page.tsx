@@ -4,6 +4,7 @@ import { CompanyDisplayName } from "@/components/CompanyDisplayName";
 import { MasterAgentDialog } from "@/components/MasterAgentDialog";
 import { SiteNav } from "@/components/SiteNav";
 import { formatCompanyUrl } from "@/lib/company-data";
+import { formatUsdInYi } from "@/lib/currency";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
 import { getTribeMember, getTribeMemberColor } from "@/lib/tribe";
 import { getMasterProfile } from "@/lib/master-profile";
@@ -355,22 +356,53 @@ export default async function PersonHubPage({ params }: Props) {
                         {summaryInsight && (
                           <>
                             <div className="person-insight-metrics">
+                              {summaryInsight.totalValueUsd != null && (
+                                <div className="person-insight-metric" title="13F 可报告持仓市值，不代表基金完整 AUM">
+                                  <span className="person-insight-metric-label">组合市值</span>
+                                  <strong className="person-insight-metric-value">${formatUsdInYi(summaryInsight.totalValueUsd)}</strong>
+                                </div>
+                              )}
+                              {summaryInsight.holdingCount != null && (
+                                <div className="person-insight-metric">
+                                  <span className="person-insight-metric-label">持仓数量</span>
+                                  <strong className="person-insight-metric-value">{summaryInsight.holdingCount}</strong>
+                                </div>
+                              )}
                               {summaryInsight.top5Pct != null && (
                                 <div className="person-insight-metric">
                                   <span className="person-insight-metric-label">前五集中度</span>
                                   <strong className="person-insight-metric-value">{summaryInsight.top5Pct.toFixed(1)}%</strong>
                                 </div>
                               )}
-                              {summaryInsight.holdingCount != null && (
-                                <div className="person-insight-metric">
-                                  <span className="person-insight-metric-label">跟踪持仓</span>
-                                  <strong className="person-insight-metric-value">{summaryInsight.holdingCount}</strong>
-                                </div>
-                              )}
-                              {summaryInsight.totalChanged != null && (
-                                <div className="person-insight-metric">
-                                  <span className="person-insight-metric-label">本季变动</span>
-                                  <strong className="person-insight-metric-value">{summaryInsight.totalChanged}</strong>
+                              {(summaryInsight.newCount != null ||
+                                summaryInsight.addCount != null ||
+                                summaryInsight.trimCount != null ||
+                                summaryInsight.exitCount != null) && (
+                                <div className="person-insight-metric person-insight-metric--actions">
+                                  {summaryInsight.newCount != null && (
+                                    <div className="person-insight-action person-insight-action--new">
+                                      <span className="person-insight-metric-label">新进</span>
+                                      <strong className="person-insight-metric-value">{summaryInsight.newCount}</strong>
+                                    </div>
+                                  )}
+                                  {summaryInsight.addCount != null && (
+                                    <div className="person-insight-action person-insight-action--add">
+                                      <span className="person-insight-metric-label">加仓</span>
+                                      <strong className="person-insight-metric-value">{summaryInsight.addCount}</strong>
+                                    </div>
+                                  )}
+                                  {summaryInsight.trimCount != null && (
+                                    <div className="person-insight-action person-insight-action--trim">
+                                      <span className="person-insight-metric-label">减仓</span>
+                                      <strong className="person-insight-metric-value">{summaryInsight.trimCount}</strong>
+                                    </div>
+                                  )}
+                                  {summaryInsight.exitCount != null && (
+                                    <div className="person-insight-action person-insight-action--exit">
+                                      <span className="person-insight-metric-label">清仓</span>
+                                      <strong className="person-insight-metric-value">{summaryInsight.exitCount}</strong>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>

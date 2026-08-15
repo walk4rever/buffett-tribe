@@ -5616,6 +5616,34 @@ body.layout-no-header {
   font-variant-numeric: tabular-nums;
 }
 
+.person-insight-metric--actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: stretch;
+}
+
+.person-insight-action {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 0.5rem;
+}
+
+.person-insight-action + .person-insight-action {
+  border-left: 1px solid rgba(0,0,0,0.08);
+}
+
+.person-insight-action .person-insight-metric-label {
+  margin-bottom: 0.15rem;
+}
+
+.person-insight-action--new .person-insight-metric-value { color: #10b981; }
+.person-insight-action--add .person-insight-metric-value { color: var(--apple-blue); }
+.person-insight-action--trim .person-insight-metric-value { color: #d97706; }
+.person-insight-action--exit .person-insight-metric-value { color: #ef4444; }
+
 .person-insight-overview-text {
   margin: 0;
   font-size: 0.8125rem;

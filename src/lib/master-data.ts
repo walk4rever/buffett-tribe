@@ -643,9 +643,15 @@ export type PortfolioInsightItem = {
   ticker?: string;
   nameZh?: string;
   deltaPct?: number;
+  shareDeltaPct?: number;
   percentOfPortfolio?: number;
   top5Pct?: number;
   holdingCount?: number;
+  totalValueUsd?: number;
+  newCount?: number;
+  addCount?: number;
+  trimCount?: number;
+  exitCount?: number;
   totalChanged?: number;
 };
 
@@ -655,6 +661,7 @@ export type PortfolioInsightStructured = {
   summary: {
     holdingCount: number;
     top5Pct: number;
+    totalValueUsd: number;
     totalChanged: number;
     newCount: number;
     addCount: number;

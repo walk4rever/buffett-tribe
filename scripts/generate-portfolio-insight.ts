@@ -12,7 +12,9 @@
 
 import { Prisma, PrismaClient } from "@prisma/client";
 import "dotenv/config";
+import { formatUsdInYi } from "@/lib/currency";
 import { computeShareDeltaPct } from "@/lib/holding-activity";
+import { getMasterProfile } from "@/lib/master-profile";
 import { getTribeMember, getTribeMembers } from "@/lib/tribe";
 
 const db = new PrismaClient();
@@ -96,6 +98,11 @@ type PortfolioInsightItem = {
   percentOfPortfolio?: number;
   top5Pct?: number;
   holdingCount?: number;
+  totalValueUsd?: number;
+  newCount?: number;
+  addCount?: number;
+  trimCount?: number;
+  exitCount?: number;
   totalChanged?: number;
 };
 
@@ -105,6 +112,7 @@ type PortfolioInsightStructured = {
   summary: {
     holdingCount: number;
     top5Pct: number;
+    totalValueUsd: number;
     totalChanged: number;
     newCount: number;
     addCount: number;
@@ -205,6 +213,75 @@ function formatDisplayName(nameZh: string, ticker: string | null, sector?: strin
   return sector ? `${label}[${sector}]` : label;
 }
 
+// ---------------------------------------------------------------------------
+// Price context — 13F only discloses a quarter-end snapshot, never the date
+// of the trade itself, so this describes the quarter's price backdrop
+// (change, range) rather than claiming to know exactly when within the
+// quarter a position was opened, added to, or trimmed.
+// ---------------------------------------------------------------------------
+
+type PriceContext = {
+  quarterChangePct: number | null;
+  low: number;
+  high: number;
+  periodEndClose: number;
+};
+
+function quarterDateRange(year: number, quarter: number): { start: Date; end: Date } {
+  const startMonth = (quarter - 1) * 3;
+  return {
+    start: new Date(Date.UTC(year, startMonth, 1)),
+    end: new Date(Date.UTC(year, startMonth + 3, 0)),
+  };
+}
+
+// import-company-stock-prices-yf.ts is nominally weekly but has no cron
+// behind it (see PRODUCT.md "数据更新节奏"), so the last row inside a
+// quarter's window is often well short of the actual quarter end. Presenting
+// that partial window as "本季" price action would be the same kind of
+// unsupported claim the sector-guessing fix closed off — so if the data
+// doesn't reach within STALE_TOLERANCE_DAYS of quarter end, skip it.
+const STALE_TOLERANCE_DAYS = 14;
+
+async function getQuarterPriceContext(ticker: string, year: number, quarter: number): Promise<PriceContext | null> {
+  const { start, end } = quarterDateRange(year, quarter);
+  const rows = await db.stockPrice.findMany({
+    where: { ticker, date: { gte: start, lte: end } },
+    orderBy: { date: "asc" },
+    select: { date: true, close: true, high: true, low: true },
+  });
+  if (!rows.length) return null;
+
+  const lastRowDate = rows[rows.length - 1].date;
+  const staleDays = (end.getTime() - lastRowDate.getTime()) / (1000 * 60 * 60 * 24);
+  if (staleDays > STALE_TOLERANCE_DAYS) return null;
+
+  const closes = rows.map((r) => Number(r.close));
+  const highs = rows.map((r) => Number(r.high ?? r.close));
+  const lows = rows.map((r) => Number(r.low ?? r.close));
+  const periodEndClose = closes[closes.length - 1];
+
+  const priorRow = await db.stockPrice.findFirst({
+    where: { ticker, date: { lt: start } },
+    orderBy: { date: "desc" },
+    select: { close: true },
+  });
+  const priorClose = priorRow ? Number(priorRow.close) : null;
+
+  return {
+    quarterChangePct: priorClose && priorClose > 0 ? ((periodEndClose - priorClose) / priorClose) * 100 : null,
+    low: Math.min(...lows),
+    high: Math.max(...highs),
+    periodEndClose,
+  };
+}
+
+function formatPriceContext(pc: PriceContext): string {
+  const range = `$${pc.low.toFixed(pc.low < 10 ? 2 : 0)}–$${pc.high.toFixed(pc.high < 10 ? 2 : 0)}`;
+  const change = pc.quarterChangePct != null ? `本季${pc.quarterChangePct >= 0 ? "+" : ""}${pc.quarterChangePct.toFixed(1)}%，` : "";
+  return `${change}区间${range}`;
+}
+
 async function buildChangeSet(tribeId: string, targetQuarter?: QuarterPoint) {
   const quarters = await getAvailableQuarters(tribeId);
   if (!quarters.length) throw new Error(`No holdings data for ${tribeId}`);
@@ -271,22 +348,68 @@ async function buildChangeSet(tribeId: string, targetQuarter?: QuarterPoint) {
   newPositions.sort((a, b) => b.nowPct - a.nowPct);
   exits.sort((a, b) => b.prevPct - a.prevPct);
 
-  return { latest, base, top, adds: adds.slice(0, 7), trims: trims.slice(0, 7), newPositions: newPositions.slice(0, 7), exits: exits.slice(0, 7) };
+  // Real counts, captured before the display lists below get capped to 7
+  // each — the summary card shows these, not len(sliced list), so a fund
+  // with e.g. 24 real changes reports 24, not "up to 28 minus whatever got
+  // cut off".
+  const totalHoldingCount = latestRows.length;
+  const totalValueUsd = latestRows.reduce((sum, r) => sum + (r.valueUsd ?? BigInt(0)), BigInt(0));
+  const newCount = newPositions.length;
+  const addCount = adds.length;
+  const trimCount = trims.length;
+  const exitCount = exits.length;
+
+  const topSlice = top;
+  const addsSlice = adds.slice(0, 7);
+  const trimsSlice = trims.slice(0, 7);
+
+  const priceTickers = [...new Set([
+    ...topSlice.map((r) => getSecurityNameParts(r).ticker),
+    ...addsSlice.map((r) => r.ticker),
+    ...trimsSlice.map((r) => r.ticker),
+  ].filter((t): t is string => Boolean(t)))];
+  const priceByTicker = new Map<string, PriceContext>();
+  await Promise.all(priceTickers.map(async (ticker) => {
+    const pc = await getQuarterPriceContext(ticker, latest.year, latest.quarter);
+    if (pc) priceByTicker.set(ticker, pc);
+  }));
+
+  return {
+    latest,
+    base,
+    top: topSlice,
+    adds: addsSlice,
+    trims: trimsSlice,
+    newPositions: newPositions.slice(0, 7),
+    exits: exits.slice(0, 7),
+    priceByTicker,
+    totalHoldingCount,
+    totalValueUsd,
+    newCount,
+    addCount,
+    trimCount,
+    exitCount,
+  };
 }
 
 function buildHoldingInsights(changeSet: Awaited<ReturnType<typeof buildChangeSet>>): PortfolioInsightItem[] {
   if (!changeSet.latest || !changeSet.top.length) return [];
-  const totalChanged =
-    changeSet.newPositions.length + changeSet.adds.length + changeSet.trims.length + changeSet.exits.length;
+  const { newCount, addCount, trimCount, exitCount } = changeSet;
+  const totalChanged = newCount + addCount + trimCount + exitCount;
   const top5 = changeSet.top.slice(0, 5).reduce((sum, h) => sum + (h.percentOfPortfolio ?? 0), 0);
 
   const items: PortfolioInsightItem[] = [
     {
       kind: "summary",
       label: "组合概况",
-      detail: `前五大持仓合计 ${top5.toFixed(2)}%，组合集中度${top5 >= 60 ? "较高" : "中等"}${totalChanged > 0 ? `，本季${totalChanged}笔变动` : ""}`,
+      detail: `${changeSet.totalHoldingCount} 只持仓，市值 $${formatUsdInYi(changeSet.totalValueUsd)}，前五大合计 ${top5.toFixed(2)}%，本季新进${newCount}/加仓${addCount}/减仓${trimCount}/清仓${exitCount}`,
       top5Pct: top5,
-      holdingCount: changeSet.top.length,
+      holdingCount: changeSet.totalHoldingCount,
+      totalValueUsd: Number(changeSet.totalValueUsd),
+      newCount,
+      addCount,
+      trimCount,
+      exitCount,
       totalChanged,
     },
   ];
@@ -355,17 +478,14 @@ function buildStructuredInsight(
     latest: changeSet.latest,
     base: changeSet.base,
     summary: {
-      holdingCount: changeSet.top.length,
+      holdingCount: changeSet.totalHoldingCount,
       top5Pct: changeSet.top.slice(0, 5).reduce((sum, h) => sum + (h.percentOfPortfolio ?? 0), 0),
-      totalChanged:
-        changeSet.newPositions.length +
-        changeSet.adds.length +
-        changeSet.trims.length +
-        changeSet.exits.length,
-      newCount: changeSet.newPositions.length,
-      addCount: changeSet.adds.length,
-      trimCount: changeSet.trims.length,
-      exitCount: changeSet.exits.length,
+      totalValueUsd: Number(changeSet.totalValueUsd),
+      totalChanged: changeSet.newCount + changeSet.addCount + changeSet.trimCount + changeSet.exitCount,
+      newCount: changeSet.newCount,
+      addCount: changeSet.addCount,
+      trimCount: changeSet.trimCount,
+      exitCount: changeSet.exitCount,
     },
     items,
   };
@@ -379,12 +499,18 @@ function buildPrompt(
   masterName: string,
   quarter: string,
   changeSet: Awaited<ReturnType<typeof buildChangeSet>>,
+  bio: string | null,
 ): string {
+  const priceSuffix = (ticker: string | null) => {
+    const pc = ticker ? changeSet.priceByTicker.get(ticker) : undefined;
+    return pc ? `，${formatPriceContext(pc)}` : "";
+  };
+
   const topList = changeSet.top
     .slice(0, 5)
     .map((h, i) => {
       const { ticker, nameZh, sector } = getSecurityNameParts(h);
-      return `${i + 1}. ${formatDisplayName(nameZh, ticker, sector)} (${formatPct(h.percentOfPortfolio ?? 0)})`;
+      return `${i + 1}. ${formatDisplayName(nameZh, ticker, sector)} (${formatPct(h.percentOfPortfolio ?? 0)}${priceSuffix(ticker)})`;
     })
     .join("；");
 
@@ -395,13 +521,13 @@ function buildPrompt(
   const addList =
     changeSet.adds.length > 0
       ? changeSet.adds
-          .map((a) => `${formatDisplayName(a.nameZh, a.ticker, a.sector)} 份额+${a.shareDeltaPct.toFixed(1)}%（占比+${a.deltaPct.toFixed(2)}pp → ${formatPct(a.nowPct)}）`)
+          .map((a) => `${formatDisplayName(a.nameZh, a.ticker, a.sector)} 份额+${a.shareDeltaPct.toFixed(1)}%（占比+${a.deltaPct.toFixed(2)}pp → ${formatPct(a.nowPct)}${priceSuffix(a.ticker)}）`)
           .join("、")
       : "无";
   const trimList =
     changeSet.trims.length > 0
       ? changeSet.trims
-          .map((t) => `${formatDisplayName(t.nameZh, t.ticker, t.sector)} 份额${t.shareDeltaPct.toFixed(1)}%（占比${t.deltaPct.toFixed(2)}pp → ${formatPct(t.nowPct)}）`)
+          .map((t) => `${formatDisplayName(t.nameZh, t.ticker, t.sector)} 份额${t.shareDeltaPct.toFixed(1)}%（占比${t.deltaPct.toFixed(2)}pp → ${formatPct(t.nowPct)}${priceSuffix(t.ticker)}）`)
           .join("、")
       : "无";
   const exitList =
@@ -409,8 +535,10 @@ function buildPrompt(
       ? changeSet.exits.map((e) => `${formatDisplayName(e.nameZh, e.ticker, e.sector)}（上季${formatPct(e.prevPct)}）`).join("、")
       : "无";
 
-  return `作为一位资深价值投资分析师，请基于以下数据，为 **${masterName}** 基金撰写一份 ${quarter} 持仓洞察。用中文输出。300字以内。
+  const bioBlock = bio ? `\n**投资人背景**（仅供判断风格一致性参考，不作为本季操作依据）：\n${bio}\n` : "";
 
+  return `作为一位资深价值投资分析师，请基于以下数据，为 **${masterName}** 基金撰写一份 ${quarter} 持仓洞察。用中文输出。300字以内。
+${bioBlock}
 **前五大持仓**：
 ${topList || "无数据"}
 
@@ -431,7 +559,8 @@ ${exitList}
 请撰写 3-5 句连贯的持仓洞察，从以下角度分析：
 1. **整体仓位方向**：该季度是进攻还是防御？仓位是集中还是分散？
 2. **行业侧重变化**：科技、消费、金融、能源等行业的增减情况——只使用上面标的名称后方括号里给出的行业标签，没有标出行业的标的不要臆测或归类
-3. **风格一致性**：这些操作是否符合其一贯的投资理念？有无值得注意的背离？
+3. **价格背景**：结合标的名称后面给出的季度涨跌幅/区间，客观描述加仓/减仓发生的价格环境（例如"逢股价回落期间增持"或"逆着涨势加仓"）——13F 只披露季末持仓快照，不披露具体交易日期，不要声称精确知道某笔交易发生在哪一天或"精准抄底/逃顶"
+4. **风格一致性**：结合上方"投资人背景"（如果有），判断本季操作是否符合其一贯理念，有无值得注意的背离；如果没有提供背景资料，跳过这一点，不要凭空猜测
 
 输出为纯中文文本段落，不要 markdown 标记，不要标题。语气冷静客观，有数据支撑。`;
 }
@@ -563,7 +692,8 @@ async function generateFor(masterId: string, dryRun: boolean, targetQuarter?: Qu
   const structured = buildStructuredInsight(changeSet);
 
   // 2. Build prompt and call AI
-  const prompt = buildPrompt(name, quarter, changeSet);
+  const profileResult = await getMasterProfile(masterId);
+  const prompt = buildPrompt(name, quarter, changeSet, profileResult?.profile.bio ?? null);
   console.log(`  Prompt: ${prompt.length} chars`);
 
   if (dryRun) {
