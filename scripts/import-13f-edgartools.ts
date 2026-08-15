@@ -15,6 +15,7 @@ import {
   parseQuarterListArg,
   parseQuarterToken,
   parseReportDate,
+  quarterEndDate,
   quarterKey,
   quarterRange,
   seedEntityCache,
@@ -100,6 +101,7 @@ async function extractWithEdgarTools(params: {
   cik: string;
   maxFilings: number;
   python: string;
+  reportDates?: string[];
 }) {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "buffett-13f-edgartools-"));
   const outputPath = path.join(tempDir, "13f.json");
@@ -112,6 +114,7 @@ async function extractWithEdgarTools(params: {
       String(params.maxFilings),
       "--output",
       outputPath,
+      ...(params.reportDates?.length ? ["--report-dates", params.reportDates.join(",")] : []),
     ], {
       cwd: process.cwd(),
       env: process.env,
@@ -180,10 +183,16 @@ async function main() {
     const filerEntity = await filerTimer.time("upsert filer entity", () => upsertFilerEntity(filer));
     console.log(`  Entity: ${filerEntity.id}`);
 
-    const fetchCount = quarterList.length > 0 ? 120 : maxQuarters;
+    // When targeting specific quarters, edgartools_13f_extract.py filters by the
+    // cheap filing.report_date field before parsing full SGML, so this cap only
+    // bounds the (free) metadata scan, not the number of filings actually parsed.
+    const fetchCount = quarterList.length > 0 ? 500 : maxQuarters;
+    const reportDates = quarterList.length > 0
+      ? quarterList.map((q) => quarterEndDate(q.year, q.quarter))
+      : undefined;
     const payload = await filerTimer.time(
       "extract edgartools",
-      () => extractWithEdgarTools({ cik: filer.cik, maxFilings: fetchCount, python }),
+      () => extractWithEdgarTools({ cik: filer.cik, maxFilings: fetchCount, python, reportDates }),
       (result) => `filings=${result.filings.length}`,
     );
     console.log(`  Found ${payload.filings.length} 13F filings via edgartools ${payload.toolVersion ?? "unknown"} (fetched window: ${fetchCount})`);

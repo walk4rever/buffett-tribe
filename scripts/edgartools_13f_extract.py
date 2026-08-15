@@ -96,11 +96,38 @@ def extract(args: argparse.Namespace) -> dict[str, Any]:
     company = Company(args.cik)
     filings = company.get_filings(form="13F-HR")
 
+    # filing.report_date is metadata already present on the filing list (no
+    # extra fetch) — checking it here lets us skip filing.obj() (a full
+    # SGML/XML parse) for every filing that isn't a target quarter. Without
+    # this, extracting one quarter meant fully parsing the filer's entire
+    # 13F history, which is both slow and exposes old/malformed SGML that
+    # can crash edgartools for filings we never wanted in the first place.
+    target_dates: set[str] | None = None
+    if args.report_dates:
+        target_dates = {d.strip() for d in args.report_dates.split(",") if d.strip()}
+
     selected = []
     for index, filing in enumerate(filings):
         if index >= args.max_filings:
             break
-        selected.append(_filing_to_dict(filing))
+
+        if target_dates is not None:
+            report_date = _safe_str(
+                _get_attr(filing, "report_date") or _get_attr(filing, "period_of_report")
+            )
+            if report_date not in target_dates:
+                continue
+
+        try:
+            selected.append(_filing_to_dict(filing))
+        except Exception as exc:  # noqa: BLE001 - edgartools can raise on malformed legacy SGML
+            accession = _get_attr(filing, "accession_number") or _get_attr(filing, "accession_no") or "?"
+            filed = _get_attr(filing, "filing_date") or "?"
+            print(
+                f"WARN: skipping filing {accession} (filed {filed}): {exc}",
+                file=sys.stderr,
+            )
+            continue
 
     return {
         "tool": "edgartools",
@@ -114,6 +141,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Extract 13F-HR filings with edgartools.")
     parser.add_argument("--cik", required=True)
     parser.add_argument("--max-filings", type=int, default=4)
+    parser.add_argument(
+        "--report-dates",
+        default=None,
+        help="Comma-separated quarter-end dates (YYYY-MM-DD) to filter to before parsing full filings.",
+    )
     parser.add_argument("--identity", default=DEFAULT_IDENTITY)
     parser.add_argument("--output", help="Write JSON payload to this path instead of stdout.")
     args = parser.parse_args()

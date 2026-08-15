@@ -270,6 +270,13 @@ function quarterOrdinal(year: number, quarter: number): number {
   return year * 4 + quarter;
 }
 
+// 13F-HR "period of report" is always a calendar quarter-end date — used to
+// pre-filter edgartools filing metadata (cheap) before parsing full SGML (expensive).
+export function quarterEndDate(year: number, quarter: number): string {
+  const month = quarter * 3;
+  return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+}
+
 export function quarterRange(from: { year: number; quarter: number }, to: { year: number; quarter: number }) {
   const start = quarterOrdinal(from.year, from.quarter);
   const end = quarterOrdinal(to.year, to.quarter);

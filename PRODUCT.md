@@ -739,7 +739,13 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.42.8）
+## 当前实现状态（v0.42.9）
+
+### v0.42.9 变更（2026-08-15）
+
+- **修复 `--quarter-list` 模式下 edgartools 13F 提取器的崩溃**：`edgartools_13f_extract.py` 此前对扫描窗口内每一份 filing 都无条件调用 `filing.obj()`（完整解析 SGML/XML info table）来读取 `report_period`，季度过滤反而放在 TS 侧、等全部解析完之后才做——为了要一个季度，实际上把 filer 的全部历史 filing 都解析了一遍。Terry Smith（Fundsmith）、Chris Hohn（TCI Fund Management）各有一份 2018/2020 年的老 filing，edgartools 当前版本解析不动其 SGML，直接把整个 CIK 的导入进程崩溃退出。根因是解析顺序反了：`filing.report_date` 其实是 filing 列表自带的免费字段，不需要 `.obj()` 就能读到。修复为两层：① `import-13f-edgartools.ts` 把目标季度换算成 report-date（新增 `quarterEndDate()`，`scripts/lib/13f-import-core.ts`）传给 Python，脚本先用免费的 `report_date` 筛出目标季度再调用 `.obj()`，避免解析任何不需要的历史 filing；② 单份 `.obj()` 调用包 try/except，解析失败 warn 并跳过而不是让整批崩溃。修复后 terry-smith/chris-hohn 的 2026Q2 提取从崩溃变为 ~3 秒（只解析 1 份而不是上百份）。
+- **2026Q2 13F 全量导入 + `PortfolioInsight` 补齐**：12 位 tracked filer 里 11 位已导入 2026Q2 持仓（含前述修复解锁的 terry-smith/chris-hohn），Bill Ackman（Pershing Square）截至发布时 SEC 上仍无 2026Q2 filing，非 bug；随后为这 11 位补跑 `generate:portfolio-insight`（此前遗漏——持仓导入不会自动触发这一步，两者是分开的手动环节）。
+- **`/master/[id]` 移除"重大持仓披露"（`BeneficialOwnership` / 13D-13G）表格**：仅去掉展示层（`src/app/master/[id]/page.tsx` 的 `#ownership` section 及其数据获取），原因是这块的产品逻辑和数据处理都还不成熟，不适合展示给用户。`BeneficialOwnership` 数据表、`import:beneficial-ownership` 导入脚本、`getBeneficialOwnershipFilings()` 均保留不动——是独立数据管线，等展示逻辑想清楚后可以随时重新接回。
 
 ### v0.42.8 变更（2026-08-14）
 
