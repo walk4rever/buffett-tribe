@@ -1,6 +1,6 @@
 import db from "@/lib/prisma";
 import { getAvailableQuarters, getHoldingsByQuarter } from "@/lib/master-data";
-import { getTribeMember } from "@/lib/tribe";
+import { getTribeMember, getTribeMembers } from "@/lib/tribe";
 import { normalizeTicker } from "@/lib/ticker";
 
 export type HomeSignalTone = "positive" | "negative" | "neutral";
@@ -38,7 +38,6 @@ export type HomeSignalSnapshotPayload = {
 
 const HOME_SIGNAL_SCOPE = "home";
 const HOME_SIGNAL_LIMIT = 3;
-const MASTER_ORDER = ["buffett", "lilu", "duan"] as const;
 
 const CHIP_STYLES: Record<HomeSignalTone, { background: string; color: string }> = {
   positive: { background: "#eff6ff", color: "#1d4ed8" },
@@ -578,8 +577,9 @@ function selectFromBuckets(buckets: Record<string, ScoredSignalCard[]>) {
 export async function buildHomeSignalSnapshotPayload(): Promise<HomeSignalSnapshotPayload> {
   const masterResults: MasterEventsBundle[] = [];
   const sourceQuarters: Record<string, string> = {};
+  const masterIds = (await getTribeMembers()).map((member) => member.id);
 
-  for (const masterId of MASTER_ORDER) {
+  for (const masterId of masterIds) {
     const result = await buildMasterEvents(masterId);
     if (!result) continue;
     masterResults.push(result);

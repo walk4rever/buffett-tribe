@@ -1086,7 +1086,7 @@ Apple HIG 精简风格：
 
 | 数据 / artifact | 来源 | 权威表 / 文件 | 脚本 | 状态 |
 |---|---|---|---|---|
-| 公司实体（CIK/ticker/元数据） | SEC submissions + ticker 映射 | `Entity(type=company)` | `npm run import:10k`, `npm run backfill:company:profiles` | CIK 作为主要身份；重复 ticker/share class 需人工核对 |
+| 公司实体（CIK/ticker/元数据） | SEC submissions + ticker 映射 | `Entity(type=company)` | `npm run import:10k`, `npm run backfill:company:profiles` | CIK 作为主要身份；重复 ticker/share class 需人工核对。2026-08-16 发现一类新根因：13F 导入 ticker 解析失败时会新建重复空壳公司实体而不核对已有同名/CIK 实体（SpaceX 等 5 组重复），已人工合并，脚本层面待修，见 TODO.md「13F 导入公司实体去重缺口」 |
 | 年报（10-K/20-F/40-F，2020 至今） | SEC EDGAR | `ExtSource(kind=10k/20f/40f)`, `FilingArtifact`, `FilingSection`, `FilingAttachment` | `npm run import:10k -- --ticker AAPL --from 2020 --to 2026` | 抽取器覆盖 10-K/20-F/40-F 目标章节；新公司缺 pre-IPO 年报要与真实缺失区分 |
 | XBRL 原始事实 | SEC CompanyFacts + inline XBRL | `FinancialFact` | `npm run import:10k` | 已按 filing accession 过滤 |
 | 财务标准化行项 | `FinancialFact`/CompanyFacts/inline XBRL | `Financial` | `npm run import:10k`, `npm run check:financial:integrity` | 核心指标层已维护，行项按页面需求扩展 |
