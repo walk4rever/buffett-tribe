@@ -101,7 +101,7 @@ export function AgentChat({
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sessionIdRef = useRef<string>("");
 
@@ -123,9 +123,17 @@ export function AgentChat({
     sessionIdRef.current = id;
   }, []);
 
-  function scrollToBottom() {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }
+  // Pin the list after React has painted the new content. Calling this from the
+  // SSE handlers scrolled to the *previous* bottom — one render behind — and a
+  // smooth scrollIntoView() restarted its animation on every delta, so the view
+  // crept up a little and then stalled. `streaming` is a dependency because the
+  // finished reply re-renders through ReactMarkdown, which is taller than the
+  // plain text shown while it streams.
+  useEffect(() => {
+    const el = scrollAreaRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages, streaming]);
 
   async function sendMessage(text: string) {
     if (!text.trim() || streaming) return;
@@ -187,7 +195,6 @@ export function AgentChat({
               setMessages((prev) =>
                 prev.map((m, i) => i === assistantIndex ? { ...m, text: m.text + delta } : m),
               );
-              scrollToBottom();
             } else if (eventType === "tool_start") {
               const id = typeof data.id === "string" ? data.id : String(Date.now());
               const name = typeof data.name === "string" ? data.name : "tool";
@@ -199,7 +206,6 @@ export function AgentChat({
                   i === assistantIndex ? { ...m, toolCalls: [...(m.toolCalls ?? []), toolCall] } : m,
                 ),
               );
-              scrollToBottom();
             } else if (eventType === "tool_end") {
               const id = typeof data.id === "string" ? data.id : "";
               const details = data.details as { count?: number } | null;
@@ -251,7 +257,7 @@ export function AgentChat({
   return (
     <div className="agent-chat">
       {/* Messages */}
-      <div className="agent-scroll-area">
+      <div ref={scrollAreaRef} className="agent-scroll-area">
         {messages.length === 0 ? (
           <div className="empty-chat">
             <p className="empty-chat-title">{emptyTitle}</p>
@@ -310,7 +316,6 @@ export function AgentChat({
                 </div>
               ),
             )}
-            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
