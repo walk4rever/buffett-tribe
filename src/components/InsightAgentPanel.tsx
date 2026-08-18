@@ -29,7 +29,7 @@ export function InsightAgentPanel({
           context={{ insightSlug, insightTitle }}
           emptyTitle={`理解这篇文章`}
           emptySubtitle="选中正文中的段落，或者直接提问"
-          placeholder=""
+          placeholder="针对这篇文章提问，或选中正文段落讨论… (Enter 发送，Shift+Enter 换行)"
           pendingQuote={pendingQuote}
           suggestions={[
             "这篇文章的核心论点是什么？",

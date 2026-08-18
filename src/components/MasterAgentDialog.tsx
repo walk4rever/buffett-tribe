@@ -38,7 +38,7 @@ export function MasterAgentDialog({ masterId, masterName }: MasterAgentDialogPro
                 context={{ masterId, masterName }}
                 emptyTitle={`理解${masterName}`}
                 emptySubtitle="以他的投资框架，看穿公司的本质"
-                placeholder=""
+                placeholder={`问${masterName}的投资框架、持仓或某家公司… (Enter 发送，Shift+Enter 换行)`}
                 suggestions={[
                   `${masterName}如何看待护城河与定价权？`,
                   `${masterName}最近的持仓有哪些变化？`,

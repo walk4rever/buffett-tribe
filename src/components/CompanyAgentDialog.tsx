@@ -38,7 +38,7 @@ export function CompanyAgentDialog({ companyName, ticker }: CompanyAgentDialogPr
                 context={{ companyName, ticker: ticker ?? undefined }}
                 emptyTitle={`理解${companyName}`}
                 emptySubtitle="以价值投资框架，看穿公司的本质"
-                placeholder=""
+                placeholder={`问${companyName}的护城河、财务表现或持仓… (Enter 发送，Shift+Enter 换行)`}
                 suggestions={[
                   `${companyName}的护城河是什么？`,
                   `${companyName}最近的财务表现如何？`,

@@ -37,7 +37,7 @@ export function FilingAgentPanel({
           }}
           emptyTitle={`理解${companyName}`}
           emptySubtitle="基于年报原文，看懂这家公司在说什么"
-          placeholder=""
+          placeholder={`针对${companyName}这份年报提问，或选中原文讨论… (Enter 发送，Shift+Enter 换行)`}
           pendingQuote={pendingQuote}
           suggestions={[
             `${companyName}这份年报最大的风险是什么？`,
