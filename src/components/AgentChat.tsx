@@ -94,7 +94,7 @@ export function AgentChat({
   suggestions = SUGGESTIONS,
   emptyTitle = "理解一家公司",
   emptySubtitle = "以价值投资大师的视角，看穿公司的本质",
-  placeholder = "问关于巴菲特投资哲学、具体公司、历年决策的问题… (⌘Enter 发送)",
+  placeholder = "问关于巴菲特投资哲学、具体公司、历年决策的问题… (Enter 发送，Shift+Enter 换行)",
   pendingQuote,
 }: AgentChatProps = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -327,7 +327,7 @@ export function AgentChat({
             disabled={streaming}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 sendMessage(input);
               }
