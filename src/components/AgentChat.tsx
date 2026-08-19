@@ -13,6 +13,11 @@ const mdComponents = {
       <a {...props} target={isExternal ? "_blank" : props.target} rel={isExternal ? "noopener noreferrer" : props.rel} />
     );
   },
+  table: (props: ComponentPropsWithoutRef<"table">) => (
+    <div className="msg-table-wrap">
+      <table {...props} />
+    </div>
+  ),
 };
 
 interface ToolCall {
