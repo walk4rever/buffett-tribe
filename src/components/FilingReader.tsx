@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { ALargeSmall, AlignVerticalSpaceAround, ChevronLeft, ExternalLink, Sparkles } from "lucide-react";
 import { formatCompanyUrl, type CompanyAnnualFiling } from "@/lib/company-data";
 import { FilingAgentPanel } from "@/components/FilingAgentPanel";
+import { useAgentChat } from "@/hooks/useAgentChat";
 
 type FilingReaderProps = {
   company: {
@@ -117,6 +118,15 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
 
   const companyUrl = formatCompanyUrl(company) ?? "/company";
   const displayCompanyName = company.nameZh?.trim() || company.name;
+  // Called here (not inside FilingAgentPanel, which unmounts when aiPanelOpen is
+  // false) so closing the panel doesn't unmount the conversation state with it.
+  const { messages, input, setInput, streaming, sendMessage, abort } = useAgentChat({
+    context: {
+      companyName: displayCompanyName,
+      ticker: company.ticker ?? undefined,
+      periodYear: filing.periodYear ?? undefined,
+    },
+  });
   const reportLabel = `${filing.periodYear ?? "—"}${filing.periodQuarter ? ` Q${filing.periodQuarter}` : ""}`;
   const reportMetaLabel = [
     reportLabel,
@@ -304,10 +314,15 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
         {aiPanelOpen ? (
           <FilingAgentPanel
             companyName={displayCompanyName}
-            ticker={company.ticker}
             periodYear={filing.periodYear}
             onClose={() => setAiPanelOpen(false)}
             pendingQuote={pendingQuote}
+            messages={messages}
+            input={input}
+            setInput={setInput}
+            streaming={streaming}
+            sendMessage={sendMessage}
+            abort={abort}
           />
         ) : null}
       </div>

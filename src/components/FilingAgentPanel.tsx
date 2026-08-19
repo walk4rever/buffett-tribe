@@ -2,21 +2,34 @@
 
 import { X } from "lucide-react";
 import { AgentChat } from "@/components/AgentChat";
+import type { Message } from "@/hooks/useAgentChat";
 
 interface FilingAgentPanelProps {
   companyName: string;
-  ticker: string | null;
   periodYear: number | null;
   onClose: () => void;
   pendingQuote?: { text: string } | null;
+  /** Conversation state — owned by a `useAgentChat()` call in the parent reader that
+   *  stays mounted while this panel toggles open/closed. */
+  messages: Message[];
+  input: string;
+  setInput: (value: string) => void;
+  streaming: boolean;
+  sendMessage: (text: string) => void;
+  abort: () => void;
 }
 
 export function FilingAgentPanel({
   companyName,
-  ticker,
   periodYear,
   onClose,
   pendingQuote,
+  messages,
+  input,
+  setInput,
+  streaming,
+  sendMessage,
+  abort,
 }: FilingAgentPanelProps) {
   const yearLabel = periodYear ? `${periodYear} 年报` : "年报";
 
@@ -30,11 +43,12 @@ export function FilingAgentPanel({
       </div>
       <div className="filing-reader-ai-panel-body">
         <AgentChat
-          context={{
-            companyName,
-            ticker: ticker ?? undefined,
-            periodYear: periodYear ?? undefined,
-          }}
+          messages={messages}
+          input={input}
+          setInput={setInput}
+          streaming={streaming}
+          sendMessage={sendMessage}
+          abort={abort}
           emptyTitle={`理解${companyName}`}
           emptySubtitle="基于年报原文，看懂这家公司在说什么"
           placeholder={`针对${companyName}这份年报提问，或选中原文讨论… (Enter 发送，Shift+Enter 换行)`}

@@ -2,19 +2,32 @@
 
 import { X } from "lucide-react";
 import { AgentChat } from "@/components/AgentChat";
+import type { Message } from "@/hooks/useAgentChat";
 
 interface InsightAgentPanelProps {
-  insightSlug: string;
   insightTitle: string;
   onClose: () => void;
   pendingQuote?: { text: string } | null;
+  /** Conversation state — owned by a `useAgentChat()` call in the parent shell that
+   *  stays mounted while this panel toggles open/closed. */
+  messages: Message[];
+  input: string;
+  setInput: (value: string) => void;
+  streaming: boolean;
+  sendMessage: (text: string) => void;
+  abort: () => void;
 }
 
 export function InsightAgentPanel({
-  insightSlug,
   insightTitle,
   onClose,
   pendingQuote,
+  messages,
+  input,
+  setInput,
+  streaming,
+  sendMessage,
+  abort,
 }: InsightAgentPanelProps) {
   return (
     <aside className="filing-reader-ai-panel">
@@ -26,7 +39,12 @@ export function InsightAgentPanel({
       </div>
       <div className="filing-reader-ai-panel-body">
         <AgentChat
-          context={{ insightSlug, insightTitle }}
+          messages={messages}
+          input={input}
+          setInput={setInput}
+          streaming={streaming}
+          sendMessage={sendMessage}
+          abort={abort}
           emptyTitle={`理解这篇文章`}
           emptySubtitle="选中正文中的段落，或者直接提问"
           placeholder="针对这篇文章提问，或选中正文段落讨论… (Enter 发送，Shift+Enter 换行)"

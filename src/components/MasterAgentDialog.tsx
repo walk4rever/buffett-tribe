@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Sparkles, X } from "lucide-react";
 import { AgentChat } from "@/components/AgentChat";
+import { useAgentChat } from "@/hooks/useAgentChat";
 
 interface MasterAgentDialogProps {
   masterId: string;
@@ -11,6 +12,11 @@ interface MasterAgentDialogProps {
 
 export function MasterAgentDialog({ masterId, masterName }: MasterAgentDialogProps) {
   const [open, setOpen] = useState(false);
+  // Called here (not inside the conditionally-rendered modal below) so closing the
+  // dialog doesn't unmount the conversation state along with it.
+  const { messages, input, setInput, streaming, sendMessage, abort } = useAgentChat({
+    context: { masterId, masterName },
+  });
 
   return (
     <>
@@ -35,7 +41,12 @@ export function MasterAgentDialog({ masterId, masterName }: MasterAgentDialogPro
             </div>
             <div className="master-agent-modal-body">
               <AgentChat
-                context={{ masterId, masterName }}
+                messages={messages}
+                input={input}
+                setInput={setInput}
+                streaming={streaming}
+                sendMessage={sendMessage}
+                abort={abort}
                 emptyTitle={`理解${masterName}`}
                 emptySubtitle="以他的投资框架，看穿公司的本质"
                 placeholder={`问${masterName}的投资框架、持仓或某家公司… (Enter 发送，Shift+Enter 换行)`}

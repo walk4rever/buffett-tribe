@@ -1,4 +1,4 @@
-import { AgentChat } from "@/components/AgentChat";
+import { AgentPageChat } from "@/components/AgentPageChat";
 import { SiteNav } from "@/components/SiteNav";
 
 export const metadata = {
@@ -11,7 +11,7 @@ export default function AgentPage() {
     <div className="idea-screen">
       <SiteNav />
       <div className="idea-screen-main">
-        <AgentChat />
+        <AgentPageChat />
       </div>
     </div>
   );

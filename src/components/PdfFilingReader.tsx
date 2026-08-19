@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import PdfViewer from "@/components/PdfViewer";
 import { FilingAgentPanel } from "@/components/FilingAgentPanel";
+import { useAgentChat } from "@/hooks/useAgentChat";
 
 interface PdfFilingReaderProps {
   pdfUrl: string;
@@ -23,6 +24,11 @@ export function PdfFilingReader({
   periodYear,
 }: PdfFilingReaderProps) {
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  // Called here (not inside FilingAgentPanel, which unmounts when aiPanelOpen is
+  // false) so closing the panel doesn't unmount the conversation state with it.
+  const { messages, input, setInput, streaming, sendMessage, abort } = useAgentChat({
+    context: { companyName, ticker: ticker ?? undefined, periodYear: periodYear ?? undefined },
+  });
 
   return (
     <div className="pdf-reader-body">
@@ -33,9 +39,14 @@ export function PdfFilingReader({
       {aiPanelOpen ? (
         <FilingAgentPanel
           companyName={companyName}
-          ticker={ticker}
           periodYear={periodYear}
           onClose={() => setAiPanelOpen(false)}
+          messages={messages}
+          input={input}
+          setInput={setInput}
+          streaming={streaming}
+          sendMessage={sendMessage}
+          abort={abort}
         />
       ) : null}
 

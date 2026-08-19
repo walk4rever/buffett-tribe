@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Sparkles } from "lucide-react";
 import { InsightAgentPanel } from "@/components/InsightAgentPanel";
+import { useAgentChat } from "@/hooks/useAgentChat";
 
 interface InsightChatShellProps {
   slug: string;
@@ -48,6 +49,11 @@ export function InsightChatShell({ slug, title, children }: InsightChatShellProp
   const pendingScrollRef = useRef<number | null>(null);
   const isDesktop = useIsDesktop();
   const docked = open && isDesktop;
+  // Called here (not inside InsightAgentPanel, which unmounts when `open` is
+  // false) so closing the panel doesn't unmount the conversation state with it.
+  const { messages, input, setInput, streaming, sendMessage, abort } = useAgentChat({
+    context: { insightSlug: slug, insightTitle: title },
+  });
 
   // While the panel is open, .site-main shouldn't also scroll — on desktop the
   // article becomes its own scroll box (see below), on mobile the panel is a
@@ -153,10 +159,15 @@ export function InsightChatShell({ slug, title, children }: InsightChatShellProp
         <div className="insight-chat-row">
           {articleNode}
           <InsightAgentPanel
-            insightSlug={slug}
             insightTitle={title}
             onClose={closePanel}
             pendingQuote={pendingQuote}
+            messages={messages}
+            input={input}
+            setInput={setInput}
+            streaming={streaming}
+            sendMessage={sendMessage}
+            abort={abort}
           />
         </div>
       ) : (
@@ -164,10 +175,15 @@ export function InsightChatShell({ slug, title, children }: InsightChatShellProp
           {articleNode}
           {open ? (
             <InsightAgentPanel
-              insightSlug={slug}
               insightTitle={title}
               onClose={closePanel}
               pendingQuote={pendingQuote}
+              messages={messages}
+              input={input}
+              setInput={setInput}
+              streaming={streaming}
+              sendMessage={sendMessage}
+              abort={abort}
             />
           ) : null}
         </>
