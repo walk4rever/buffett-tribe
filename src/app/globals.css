@@ -1717,6 +1717,12 @@ body.layout-no-header {
   max-width: 82%;
 }
 
+/* Assistant replies are often long-form markdown/tables — give them more
+   room than the user's one-line questions instead of sharing the 82% cap. */
+.msg--assistant .msg-body {
+  max-width: 95%;
+}
+
 .msg-text {
   margin: 0;
   font-size: 0.95rem;
