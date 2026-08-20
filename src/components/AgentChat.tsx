@@ -22,10 +22,10 @@ const mdComponents = {
 };
 
 const SUGGESTIONS = [
-  "如何判断一家公司是否有真正的护城河？",
-  "大师们如何看待管理层的诚信与能力？",
-  "什么样的公司值得长期持有？",
-  "怎么用价值投资框架分析一家公司？",
+  "段永平为什么长期持有泡泡玛特？",
+  "Meta 过去 5 年的自由现金流变化如何？",
+  "伯克希尔哈撒韦最新一季持仓有什么变化？",
+  "茅台的护城河体现在哪些方面？",
 ];
 
 interface AgentChatProps {
@@ -57,7 +57,7 @@ export function AgentChat({
   suggestions = SUGGESTIONS,
   emptyTitle = "理解一家公司",
   emptySubtitle = "以价值投资大师的视角，看穿公司的本质",
-  placeholder = "问关于巴菲特投资哲学、具体公司、历年决策的问题… (Enter 发送，Shift+Enter 换行)",
+  placeholder = "问一家公司的护城河、财务表现或大师持仓… (Enter 发送，Shift+Enter 换行)",
   pendingQuote,
 }: AgentChatProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
