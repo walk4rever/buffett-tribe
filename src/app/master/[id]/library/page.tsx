@@ -70,7 +70,7 @@ export default async function LibraryPage({ params, searchParams }: Props) {
         <div className="masterclass-layout">
           <aside className="masterclass-sidebar">
             <Link href={`/master/${id}#library`} className="masterclass-sidebar-head masterclass-sidebar-head--link">
-              {member.nameZh} · 资料库
+              ← {member.nameZh} · 资料库
             </Link>
             <nav className="library-cats" aria-label="资料分类">
               <Link
@@ -254,7 +254,7 @@ export default async function LibraryPage({ params, searchParams }: Props) {
         {/* ── Sidebar ── */}
         <aside className="masterclass-sidebar">
           <Link href={`/master/${id}#library`} className="masterclass-sidebar-head masterclass-sidebar-head--link">
-            {member.nameZh} · 资料库
+            ← {member.nameZh} · 资料库
           </Link>
 
           {/* ── Letter nav ── */}

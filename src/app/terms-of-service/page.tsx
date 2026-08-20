@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { SiteNav } from "@/components/SiteNav";
 
 export default function TermsOfService() {
   return (
-    <div className="container">
+    <div>
+      <SiteNav />
+      <div className="container">
       <h1 className="letter-title">使用条款</h1>
       <div className="terms-content">
         <p>最后更新：2026年3月16日</p>
@@ -11,7 +14,7 @@ export default function TermsOfService() {
         <p>通过访问本网站，您同意遵守这些使用条款。如果您不同意，请不要使用本网站。</p>
 
         <h2>使用许可</h2>
-        <p>Learn from Buffett 是一个开源教育项目，仅用于学习和研究用途。</p>
+        <p>巴菲特部落（Buffett Tribe）是一个价值投资研究平台，仅用于学习和研究用途。</p>
 
         <h2>用户责任</h2>
         <p>您同意：</p>
@@ -54,6 +57,7 @@ export default function TermsOfService() {
       <div className="letter-footer">
         <hr />
         <Link href="/" className="back-link">返回首页</Link>
+      </div>
       </div>
     </div>
   );

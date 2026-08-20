@@ -136,16 +136,16 @@
 - [ ] **Agent 接入公司页**："用 Agent 分析此公司"按钮，带 company context（ticker/CIK/公司名）初始化对话。把 `/agent`（三工具已稳定 + L3 契约测试护航）和公司研究闭环连起来，是现有能力的低成本组合。（~1-2 天）
 - [ ] **Agent 会话持久化**：登录用户跨刷新保留对话历史（当前 sessionStorage，30min TTL）。可复用已有 ChatMessage 表思路，把 pi-gateway 会话落库、按用户读取。做完上一项紧接着做，"在公司页发起的分析"才能积累下来。（~1 天）
 - [ ] **Agent 质量验收：30 组真实投研问题**：L3 契约测试只保证"工具能返回数据"，不保证"答得好"。用 30 组覆盖三工具和跨工具联动的问题（单一大师观点 / 持仓对比 / 年报细节 / 观点+持仓+年报组合）人工验收一轮，暴露检索缺口和 `AGENTS.md` prompt 问题。放在前两项之后做，正好覆盖新引入的公司页对话场景。（~半天到 1 天）
-- [ ] **全站页面跳转/返回路径审查（2026-08-20 发现）**：修完 holdings 页面"投资人姓名没链接返回大师主页"这个 bug（`v0.43.2`）后，顺手做了一次全站 23 个路由的只读审查，找到几类同款问题，按优先级：
-  - **真实断链/错跳（跟 holdings 那次同一类，已于 2026-08-20 全部修复，`v0.43.4`）**：
+- [x] **全站页面跳转/返回路径审查（2026-08-20 发现，2026-08-20 全部处理完）**：修完 holdings 页面"投资人姓名没链接返回大师主页"这个 bug（`v0.43.2`）后，顺手做了一次全站 23 个路由的只读审查，找到几类同款问题：
+  - **真实断链/错跳（跟 holdings 那次同一类，`v0.43.4` 修复）**：
     1. ~~`/letters/[type]/[year]`（巴菲特信件阅读页）完全没有返回大师主页的链接~~——已加 `letter-sidebar-back` 链接到 `/master/buffett#library`（两个渲染分支——`partnership` 和 `shareholder`/`annual_meeting`——都要改，缩进不同导致 `replace_all` 第一次只命中了一处，需要单独确认第二处）。
     2. ~~`/company/[id]` 没有返回 `/company` 列表的链接~~——已加 `company-back-link`。
     3. ~~年报阅读页港股/A股分支（`PdfFilingReader`）"返回"会落错 tab~~——`src/app/company/[id]/annual-report/[year]/page.tsx` 的 `backHref` 补上 `?tab=references`，跟 `FilingReader` 一致。
     4. ~~`PdfViewer` 返回按钮 tooltip 写死"返回资料库"~~——加了 `backLabel` prop（默认"返回资料库"），`PdfFilingReader` 传 `backLabel="返回公司页"`。
-  - **值得做但不紧急**：`SiteNav.tsx` 没有当前页高亮（`usePathname()` 接入即可）；`/master/[id]/library` 没有显式返回 `/master/[id]` 的链接。
-  - **纯设计一致性，不是断链**："返回"交互目前有四种模式并存（文字面包屑 `punch-detail-back`/`insight-detail-back`、整块身份区可点击 `holdings-hd`、阅读器图标按钮、完全没有），没人统一过，值得收敛但不紧急。
-  - **旧版遗留（低优先）**：`/contact`、`/privacy-policy`、`/terms-of-service` 没有 `SiteNav`，品牌名还写着"Learn from Buffett"、GitHub 链接指向错误仓库；`src/components/Header.tsx` 是一套完全没人引用的死代码（另一套旧导航，品牌名"Talk with Buffett"），可直接删除。
-  - **审查顺带确认、非新发现**：`/company/[id]` 没有反向链到相关 `/insights` 文章，这条已经在本文件 P0 ⑥ 追踪，仍未实现；公司页/大师页还没链到 `/punch`，符合当前数据量预期，不算缺陷。
+  - **值得做但不紧急（`v0.43.5` 修复）**：~~`SiteNav.tsx` 没有当前页高亮~~——接入 `usePathname()`，`.home-nav-link--active` 加下划线（compound selector 保证盖过后面 Graphite Pro 的颜色覆盖规则）；~~`/master/[id]/library` 没有显式返回 `/master/[id]` 的链接~~——原有的可点击标题（`masterclass-sidebar-head--link`）功能上没问题，只是不像"返回"，加了"←"前缀（两个渲染分支都要改）。
+  - **纯设计一致性，不是断链（跟用户确认后判定无需改动）**："返回"交互的三种模式——文字面包屑（`punch-detail-back`/`insight-detail-back`）、整块身份区可点击（`holdings-hd`，对齐 `/master` 列表页既有模式）、阅读器图标按钮（`PdfViewer`/`FilingReader` 工具栏）——分别适配长文详情页/卡片式身份区/窄工具栏三种不同场景，本身不算冲突；`v0.43.4` 修复断链时新加的链接已经跟着各自场景对齐了最接近的既有模式（`company-back-link`/`letter-sidebar-back` 对齐文字面包屑风格，`PdfFilingReader` 复用 `PdfViewer` 图标按钮），无需再做全站统一成单一样式的大改。
+  - **旧版遗留（`v0.43.5` 修复）**：~~`/contact`、`/privacy-policy`、`/terms-of-service` 没有 `SiteNav`，品牌名还写着"Learn from Buffett"、GitHub 链接指向错误仓库~~——三个页面都加了 `SiteNav`，文案改成"巴菲特部落（Buffett Tribe）"，GitHub 链接改成 `github.com/walk4rever/buffett-tribe`；~~`src/components/Header.tsx` 是一套完全没人引用的死代码~~——已删除（连带只被它引用的 `DarkModeToggle.tsx` 一起删）。
+  - **审查顺带确认、非新发现（按用户要求本次不做）**：`/company/[id]` 没有反向链到相关 `/insights` 文章，这条已经在本文件 P0 ⑥ 追踪，仍未实现；公司页/大师页还没链到 `/punch`，符合当前数据量预期，不算缺陷。
   - 全部尚未实现，等排期决定先做哪几项。
 
 ## P2 — 待评估 / 择机

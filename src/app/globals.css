@@ -4111,6 +4111,26 @@ body.layout-no-header {
   color: var(--apple-white);
 }
 
+/* Compound selector (not a bare .home-nav-link--active) so this outranks the
+   later Graphite Pro override that recolors plain .home-nav-link, same reason
+   as the .home-nav-link--disabled rule below. */
+.home-nav-link.home-nav-link--active {
+  color: var(--apple-white);
+  font-weight: 600;
+  position: relative;
+}
+
+.home-nav-link.home-nav-link--active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 2px;
+  border-radius: 1px;
+  background: #2997ff;
+}
+
 /* Placeholder nav entries for not-yet-built pages (20孔, 活动). Compound
    selector (not a bare .home-nav-link--disabled) so this outranks the later
    Graphite Pro override that recolors plain .home-nav-link. */

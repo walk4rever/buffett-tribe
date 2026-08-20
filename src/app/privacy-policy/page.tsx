@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { SiteNav } from "@/components/SiteNav";
 
 export default function PrivacyPolicy() {
   return (
-    <div className="container">
+    <div>
+      <SiteNav />
+      <div className="container">
       <h1 className="letter-title">隐私政策</h1>
       <div className="privacy-content">
         <p>最后更新：2026年3月16日</p>
@@ -44,6 +47,7 @@ export default function PrivacyPolicy() {
       <div className="letter-footer">
         <hr />
         <Link href="/" className="back-link">返回首页</Link>
+      </div>
       </div>
     </div>
   );
