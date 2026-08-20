@@ -4,7 +4,30 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AreaSeries, ColorType, createChart, type IChartApi, type ISeriesApi, type Logical } from "lightweight-charts";
 import { CompanyDisplayName } from "@/components/CompanyDisplayName";
+import { formatUsdInYi } from "@/lib/currency";
 import type { SecurityHistoryItem } from "@/lib/master-data";
+
+const QUARTER_BY_MID_MONTH: Record<string, number> = { "02": 1, "05": 2, "08": 3, "11": 4 };
+
+// Mirrors the shape (and values) of the synthetic zero rows master-data.ts builds for
+// a sold-out position's exit quarter — used here for every OTHER quarter outside a
+// security's real history range (before its first buy / after a sell-out) so the
+// chart's hover readout has a real point to show instead of falling through to null.
+function zeroPointAt(time: string): SecurityHistoryItem["history"][number] {
+  return {
+    year: Number(time.slice(0, 4)),
+    quarter: QUARTER_BY_MID_MONTH[time.slice(5, 7)] ?? 1,
+    time,
+    percentOfPortfolio: 0,
+    sharesNumber: 0,
+    valueUsdNumber: 0,
+    sharesDisplay: "0",
+    valueUsdDisplay: formatUsdInYi(0),
+    reportedPriceDisplay: "—",
+    activity: "Unchanged",
+    isExitPoint: false,
+  };
+}
 
 type Metric = "pct" | "shares" | "value";
 
@@ -44,7 +67,29 @@ function HoldingHistoryChart({
   const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
   const [hoverPoint, setHoverPoint] = useState<SecurityHistoryItem["history"][number] | null>(null);
 
-  const byTime = useMemo(() => new Map(item.history.map((p) => [p.time, p])), [item]);
+  // Whether this security has any real (non-synthetic) holding row at all — should
+  // always be true given every item is built from at least one Holding row, but
+  // guards the (unreachable in practice) empty-history case defensively.
+  const hasRealHolding = useMemo(() => item.history.some((p) => !p.isExitPoint), [item]);
+
+  // Full quarter-by-quarter lookup covering every plotted point, not just the real
+  // history rows: real point where one exists, a synthetic zero elsewhere (matches
+  // what the chart itself plots below) — so hovering a zero-padded quarter (before
+  // the first buy / after a sell-out) resolves to a real zero point instead of
+  // falling through to null and defaulting the hover readout to the latest quarter.
+  const byTime = useMemo(() => {
+    const real = new Map(item.history.map((p) => [p.time, p]));
+    const map = new Map<string, SecurityHistoryItem["history"][number]>();
+    for (const time of allQuarterTimes) {
+      const point = real.get(time);
+      if (point) {
+        map.set(time, point);
+      } else if (hasRealHolding) {
+        map.set(time, zeroPointAt(time));
+      }
+    }
+    return map;
+  }, [item, allQuarterTimes, hasRealHolding]);
   // Crosshair subscription below is set up once on mount, so it needs a ref to see
   // the current company's data on each hover event rather than a stale closure.
   const byTimeRef = useRef(byTime);
@@ -117,28 +162,20 @@ function HoldingHistoryChart({
     seriesRef.current?.applyOptions({ lineColor: color, topColor: `${color}33`, bottomColor: `${color}03` });
   }, [color]);
 
-  // Whether this security has any real (non-synthetic) holding row at all — should
-  // always be true given every item is built from at least one Holding row, but
-  // guards the (unreachable in practice) empty-history case defensively.
-  const hasRealHolding = useMemo(() => item.history.some((p) => !p.isExitPoint), [item]);
-
-  // One entry per fund quarter (ascending, strictly required by lightweight-charts).
-  // Real {time,value} where this security has a history row; a known-zero {time,value:0}
-  // everywhere else — 13F import has no gaps within `allQuarterTimes` (the fund's own
-  // tracked range), so absence means zero regardless of whether it's before the first
-  // buy or after the last sale, not missing data. (Flat-lining at 0 also avoids
-  // lightweight-charts bridging real points with a misleading diagonal.)
+  // One entry per fund quarter (ascending, strictly required by lightweight-charts),
+  // read straight from `byTime` — which already carries a real point or a synthetic
+  // zero for every quarter in `allQuarterTimes` — so the plotted line and the hover
+  // readout can never disagree about which quarters are zero. (Flat-lining at 0 also
+  // avoids lightweight-charts bridging real points with a misleading diagonal.)
   const data = useMemo(
     () =>
       allQuarterTimes.map((time) => {
         const point = byTime.get(time);
-        if (point) {
-          const value = metricValue(point, metric);
-          return value != null ? { time, value } : { time };
-        }
-        return hasRealHolding ? { time, value: 0 } : { time };
+        if (!point) return { time };
+        const value = metricValue(point, metric);
+        return value != null ? { time, value } : { time };
       }),
-    [byTime, metric, allQuarterTimes, hasRealHolding],
+    [byTime, metric, allQuarterTimes],
   );
 
   useEffect(() => {
