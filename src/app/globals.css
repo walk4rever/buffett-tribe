@@ -4990,7 +4990,8 @@ body.layout-no-header {
 .holdings-page { background: var(--apple-light-gray); min-height: 100vh; }
 .holdings-wrap { max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 5rem; }
 
-.holdings-hd { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem; }
+.holdings-hd { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem; text-decoration: none; color: inherit; }
+.holdings-hd:hover .holdings-name { color: var(--apple-blue); }
 .holdings-avatar { width: 56px; height: 56px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; font-size: 1.125rem; flex-shrink: 0; }
 .holdings-hd-info { flex: 1; }
 .holdings-eyebrow { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--apple-secondary); margin-bottom: 0.25rem; }

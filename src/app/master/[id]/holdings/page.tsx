@@ -55,7 +55,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
       <div className="holdings-page">
         <SiteNav />
         <div className="holdings-wrap">
-          <div className="holdings-hd">
+          <Link href={`/master/${id}`} className="holdings-hd">
             <span className="holdings-avatar" style={{ background: getTribeMemberColor(member) }}>
               {member.initials.slice(0, 2)}
             </span>
@@ -67,7 +67,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
                 <p className="holdings-firm">Alpha 部落 · 13F 仅覆盖公开市场披露仓位</p>
               ) : null}
             </div>
-          </div>
+          </Link>
 
           <div className="holdings-view-toggle">
             <Link
@@ -122,7 +122,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
 
       <div className="holdings-wrap">
         {/* Person header */}
-        <div className="holdings-hd">
+        <Link href={`/master/${id}`} className="holdings-hd">
           <span className="holdings-avatar" style={{ background: getTribeMemberColor(member) }}>
             {member.initials.slice(0, 2)}
           </span>
@@ -134,7 +134,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
               <p className="holdings-firm">Alpha 部落 · 13F 仅覆盖公开市场披露仓位</p>
             ) : null}
           </div>
-        </div>
+        </Link>
 
         <div className="holdings-view-toggle">
           <Link

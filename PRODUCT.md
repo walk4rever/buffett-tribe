@@ -31,7 +31,7 @@
 6. [A股与港股覆盖扩展](#a股与港股覆盖扩展)
 7. [设计与技术基线](#设计与技术基线)
 8. [测试体系](#测试体系)
-9. [当前实现状态](#当前实现状态v0431)
+9. [当前实现状态](#当前实现状态v0432)
 10. [数据字典与工程口径](#数据字典与工程口径)
 11. [数据资产清单](#数据资产清单)
 12. [公司页财务看板](#公司页财务看板truth-of-source-设计)
@@ -796,7 +796,11 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.43.1）
+## 当前实现状态（v0.43.2）
+
+### v0.43.2 变更（2026-08-20）
+
+- **修复持仓历史页顶部投资人姓名没有链接返回大师主页**（`src/app/master/[id]/holdings/page.tsx` 两处——`view=quarter` 和 `view=company` 各一处，`src/app/globals.css` 的 `.holdings-hd`）：用户直接指出这个缺口。原来 `.holdings-hd` 是纯 `<div>`，头像+姓名+机构名是死文本，用户从持仓历史页想回投资人主页只能靠 `SiteNav`「大师」重新点、丢失当前上下文。改成 `<Link href={\`/master/${id}\`} className="holdings-hd">` 包住整块（参照 `/master` 列表页 `home-member-main` 整块可点击的既有模式），加 `.holdings-hd:hover .holdings-name { color: var(--apple-blue); }` hover 反馈。顺带触发了一次全站 23 个路由的只读导航审查（见 TODO.md P1「全站页面跳转/返回路径审查」），确认这不是孤例——`/letters/[type]/[year]`、`/company/[id]` 有类似的真实断链，已记录未实现。
 
 ### v0.43.1 变更（2026-08-20）
 
