@@ -117,33 +117,28 @@ function HoldingHistoryChart({
     seriesRef.current?.applyOptions({ lineColor: color, topColor: `${color}33`, bottomColor: `${color}03` });
   }, [color]);
 
-  // Index of this security's first-ever real holding (never an isExitPoint — those
-  // are always inserted after a real point). Quarters before this are genuinely
-  // "before this security entered the portfolio" (whitespace); quarters after it
-  // with no history row are a known zero (13F import has no gaps, so absence means
-  // sold out that quarter), not missing data.
-  const firstHeldTime = useMemo(() => item.history.find((p) => !p.isExitPoint)?.time, [item]);
-  const firstHeldIdx = firstHeldTime != null ? allQuarterTimes.indexOf(firstHeldTime) : -1;
+  // Whether this security has any real (non-synthetic) holding row at all — should
+  // always be true given every item is built from at least one Holding row, but
+  // guards the (unreachable in practice) empty-history case defensively.
+  const hasRealHolding = useMemo(() => item.history.some((p) => !p.isExitPoint), [item]);
 
   // One entry per fund quarter (ascending, strictly required by lightweight-charts).
   // Real {time,value} where this security has a history row; a known-zero {time,value:0}
-  // for quarters after the first holding with no row (fully sold that quarter — flat-lines
-  // the chart at 0 instead of lightweight-charts bridging the gap with a misleading
-  // diagonal straight from the last real point to the next); whitespace-only {time}
-  // before the first holding, so fitContent() still spans the fund's full history instead
-  // of clamping to just this security's own held-quarters range.
+  // everywhere else — 13F import has no gaps within `allQuarterTimes` (the fund's own
+  // tracked range), so absence means zero regardless of whether it's before the first
+  // buy or after the last sale, not missing data. (Flat-lining at 0 also avoids
+  // lightweight-charts bridging real points with a misleading diagonal.)
   const data = useMemo(
     () =>
-      allQuarterTimes.map((time, idx) => {
+      allQuarterTimes.map((time) => {
         const point = byTime.get(time);
         if (point) {
           const value = metricValue(point, metric);
           return value != null ? { time, value } : { time };
         }
-        if (firstHeldIdx >= 0 && idx > firstHeldIdx) return { time, value: 0 };
-        return { time };
+        return hasRealHolding ? { time, value: 0 } : { time };
       }),
-    [byTime, metric, allQuarterTimes, firstHeldIdx],
+    [byTime, metric, allQuarterTimes, hasRealHolding],
   );
 
   useEffect(() => {
