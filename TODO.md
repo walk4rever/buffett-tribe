@@ -137,11 +137,11 @@
 - [ ] **Agent 会话持久化**：登录用户跨刷新保留对话历史（当前 sessionStorage，30min TTL）。可复用已有 ChatMessage 表思路，把 pi-gateway 会话落库、按用户读取。做完上一项紧接着做，"在公司页发起的分析"才能积累下来。（~1 天）
 - [ ] **Agent 质量验收：30 组真实投研问题**：L3 契约测试只保证"工具能返回数据"，不保证"答得好"。用 30 组覆盖三工具和跨工具联动的问题（单一大师观点 / 持仓对比 / 年报细节 / 观点+持仓+年报组合）人工验收一轮，暴露检索缺口和 `AGENTS.md` prompt 问题。放在前两项之后做，正好覆盖新引入的公司页对话场景。（~半天到 1 天）
 - [ ] **全站页面跳转/返回路径审查（2026-08-20 发现）**：修完 holdings 页面"投资人姓名没链接返回大师主页"这个 bug（`v0.43.2`）后，顺手做了一次全站 23 个路由的只读审查，找到几类同款问题，按优先级：
-  - **真实断链/错跳（跟 holdings 那次同一类，值得优先修）**：
-    1. `/letters/[type]/[year]`（巴菲特信件阅读页）完全没有返回大师主页的链接——`documents/{owner}/[slug]` 阅读页早就做对了（`backHref="/master/{owner}#library"`），letters 这条更老的通道没跟上，且内容比 documents 更核心（61 封股东信 + 33 封合伙人信）。
-    2. `/company/[id]` 没有返回 `/company` 列表的链接——全站最核心的详情页，`/insights/[slug]` 有"← 返回洞见列表"，公司页反而没有。
-    3. 年报阅读页港股/A股分支（`PdfFilingReader`）"返回"会落错 tab：美股分支 `FilingReader` 带 `` `${companyUrl}?tab=references` `` 精确落回"参考资料"tab（`src/components/FilingReader.tsx:257`），港股/A股分支只传了裸 `canonicalUrl`（`src/app/company/[id]/annual-report/[year]/page.tsx:58`），返回会落到默认的"业务分析"tab。
-    4.（伴生小问题）`PdfViewer` 返回按钮 tooltip 写死"返回资料库"（`src/components/PdfViewer.tsx:800`），复用到年报页（实际是"返回公司页"）时文案对不上，影响很小顺手可改成 prop。
+  - **真实断链/错跳（跟 holdings 那次同一类，已于 2026-08-20 全部修复，`v0.43.4`）**：
+    1. ~~`/letters/[type]/[year]`（巴菲特信件阅读页）完全没有返回大师主页的链接~~——已加 `letter-sidebar-back` 链接到 `/master/buffett#library`（两个渲染分支——`partnership` 和 `shareholder`/`annual_meeting`——都要改，缩进不同导致 `replace_all` 第一次只命中了一处，需要单独确认第二处）。
+    2. ~~`/company/[id]` 没有返回 `/company` 列表的链接~~——已加 `company-back-link`。
+    3. ~~年报阅读页港股/A股分支（`PdfFilingReader`）"返回"会落错 tab~~——`src/app/company/[id]/annual-report/[year]/page.tsx` 的 `backHref` 补上 `?tab=references`，跟 `FilingReader` 一致。
+    4. ~~`PdfViewer` 返回按钮 tooltip 写死"返回资料库"~~——加了 `backLabel` prop（默认"返回资料库"），`PdfFilingReader` 传 `backLabel="返回公司页"`。
   - **值得做但不紧急**：`SiteNav.tsx` 没有当前页高亮（`usePathname()` 接入即可）；`/master/[id]/library` 没有显式返回 `/master/[id]` 的链接。
   - **纯设计一致性，不是断链**："返回"交互目前有四种模式并存（文字面包屑 `punch-detail-back`/`insight-detail-back`、整块身份区可点击 `holdings-hd`、阅读器图标按钮、完全没有），没人统一过，值得收敛但不紧急。
   - **旧版遗留（低优先）**：`/contact`、`/privacy-policy`、`/terms-of-service` 没有 `SiteNav`，品牌名还写着"Learn from Buffett"、GitHub 链接指向错误仓库；`src/components/Header.tsx` 是一套完全没人引用的死代码（另一套旧导航，品牌名"Talk with Buffett"），可直接删除。

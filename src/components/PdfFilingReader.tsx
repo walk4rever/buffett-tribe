@@ -33,7 +33,7 @@ export function PdfFilingReader({
   return (
     <div className="pdf-reader-body">
       <div className="pdf-reader-main">
-        <PdfViewer key={pdfUrl} url={pdfUrl} title={title} backHref={backHref} />
+        <PdfViewer key={pdfUrl} url={pdfUrl} title={title} backHref={backHref} backLabel="返回公司页" />
       </div>
 
       {aiPanelOpen ? (

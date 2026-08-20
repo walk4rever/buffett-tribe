@@ -598,6 +598,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
         <section className="company-hero">
           <div className="company-hero-main">
             <div className="company-hero-copy">
+              <Link href="/company" className="company-back-link">← 返回公司列表</Link>
               <p className="company-eyebrow">{company.cik ? "SEC 公司档案" : "公司档案"}</p>
               <h1 className="company-name">
                 <CompanyDisplayName

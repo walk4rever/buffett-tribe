@@ -19,6 +19,7 @@ interface PdfViewerProps {
   url: string;
   title?: string;
   backHref?: string;
+  backLabel?: string;
 }
 
 type ViewMode = 'continuous' | 'single';
@@ -175,7 +176,7 @@ function ContinuousPage({
   );
 }
 
-export default function PdfViewer({ url, title, backHref }: PdfViewerProps) {
+export default function PdfViewer({ url, title, backHref, backLabel = '返回资料库' }: PdfViewerProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const singleCanvasRef = useRef<HTMLCanvasElement>(null);
   const singleTextLayerRef = useRef<HTMLDivElement>(null);
@@ -798,7 +799,7 @@ export default function PdfViewer({ url, title, backHref }: PdfViewerProps) {
       <div className="pdf-viewer-toolbar">
         <div className="pdf-viewer-heading">
           {backHref && (
-            <Link href={backHref} className="pdf-viewer-back" title="返回资料库" aria-label="返回资料库">
+            <Link href={backHref} className="pdf-viewer-back" title={backLabel} aria-label={backLabel}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M15 18l-6-6 6-6" />
               </svg>

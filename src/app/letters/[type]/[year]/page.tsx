@@ -54,6 +54,7 @@ export default async function LetterPage({ params }: LetterPageProps) {
         <SiteNav />
         <div className="letter-reader-shell">
           <aside className="letter-sidebar">
+            <Link href="/master/buffett#library" className="letter-sidebar-back">← 返回巴菲特主页</Link>
             <div className="letter-sidebar-header">
               <span className="letter-sidebar-title">{typeLabel.title}</span>
               <span className="letter-sidebar-subtitle">{typeLabel.subtitle}</span>
@@ -94,6 +95,7 @@ export default async function LetterPage({ params }: LetterPageProps) {
       <SiteNav />
       <div className="letter-reader-shell">
         <aside className="letter-sidebar">
+          <Link href="/master/buffett#library" className="letter-sidebar-back">← 返回巴菲特主页</Link>
           <div className="letter-sidebar-header">
             <span className="letter-sidebar-title">{typeLabel.title}</span>
             <span className="letter-sidebar-subtitle">{typeLabel.subtitle}</span>

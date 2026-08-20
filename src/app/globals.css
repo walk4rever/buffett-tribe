@@ -5981,6 +5981,19 @@ body.layout-no-header {
   opacity: 0.3;
 }
 
+.company-back-link {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--company-text-secondary);
+  text-decoration: none;
+}
+
+.company-back-link:hover {
+  color: var(--apple-blue);
+  text-decoration: underline;
+}
+
 .company-eyebrow {
   margin: 0;
   font-size: 0.7rem;
@@ -9741,6 +9754,19 @@ body {
   overflow: hidden;
   background: rgba(255, 255, 255, 0.6);
   border-right: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.letter-sidebar-back {
+  display: block;
+  padding: 0.7rem 0.85rem 0;
+  font-size: 0.78rem;
+  color: var(--apple-secondary);
+  text-decoration: none;
+}
+
+.letter-sidebar-back:hover {
+  color: var(--apple-blue);
+  text-decoration: underline;
 }
 
 .letter-sidebar-header {

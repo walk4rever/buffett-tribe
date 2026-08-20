@@ -56,7 +56,7 @@ export default async function AnnualReportPage({ params }: Props) {
           <PdfFilingReader
             pdfUrl={pdfUrl}
             title={`${zhName ?? company.canonicalName} ${year} 年报`}
-            backHref={canonicalUrl}
+            backHref={`${canonicalUrl}?tab=references`}
             companyName={zhName ?? company.canonicalName}
             ticker={company.ticker ?? company.code ?? null}
             periodYear={year}
