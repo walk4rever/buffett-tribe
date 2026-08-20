@@ -180,10 +180,44 @@ model Entity {
   filerAsFiler                Filer?                  @relation("FilerFilerEntity")
   filerAsCompany              Filer?                  @relation("FilerCompanyEntity")
   beneficialOwnershipAsIssuer BeneficialOwnership[]
+  punchesAsFiler              Punch[]                 @relation("PunchFilerEntity")
+  punchesAsCompany            Punch[]                 @relation("PunchCompanyEntity")
 
   @@index([type])
   @@index([ticker])
   @@index([market, code])
+}
+
+// Punch ("打孔") = a curated, forward-looking record of a master's proven big-bet
+// judgment — named after Buffett's "20 punches in a lifetime" metaphor. Not a
+// retrospective case study: a punch is meant to be watched going forward, so it
+// carries a `status` that can change as new data comes in (see `filerEntityId`/
+// `companyEntityId` below). Current position size is deliberately NOT stored here
+// — it's computed live from `Holding` at read time so it can never go stale.
+model Punch {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  filerEntityId   String? // Entity(type=master), e.g. Duan Yongping — enables live 13F lookups
+  companyEntityId String? // Entity(type=company), e.g. Apple
+  source          String // 'curated' | '13f_derived' | 'user_submitted'
+  status          String   @default("active") // 'active' | 'exited' | 'thesis_broken'
+  punchYear       Int? // earliest year we can confirm the investor seriously placed this bet — not necessarily the exact first-buy date, just the earliest verifiable evidence of conviction
+  headline        String // one-line judgment shown on the wall card
+  thesis          String // why this counts as a "punch" — narrative
+  catalyst        String?
+  valuation       String?
+  risk            String?
+  quotes          Json? // [{ text, date, sourceTitle, sourceUrl? }] — verbatim citations, not paraphrase
+  entrySummary    String? // short "how/when this bet was made" note
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  filerEntity   Entity? @relation("PunchFilerEntity", fields: [filerEntityId], references: [id], onDelete: SetNull)
+  companyEntity Entity? @relation("PunchCompanyEntity", fields: [companyEntityId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([filerEntityId])
+  @@index([companyEntityId])
 }
 
 // Filer = a fund/investment vehicle that submits 13F on behalf of a tracked

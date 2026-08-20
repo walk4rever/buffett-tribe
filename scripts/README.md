@@ -390,6 +390,8 @@ npm run import:hk-annual-report -- --code 09992 --market hk --years 2 --import-d
   - `test-*`
 - 草稿 / 迁移中脚本
   - 目前不在 `package.json` 主命令里，或者已被 `tsconfig.scripts.json` 排除
+- 一次性数据种子脚本
+  - `seed-punch-duan-apple.ts` — 打孔（Punch）功能第一条种子数据（段永平 × 苹果），已跑过写入生产库，保留作为未来其他"孔"录入的模板参考，不是重复运行的主入口
 
 使用原则：
 

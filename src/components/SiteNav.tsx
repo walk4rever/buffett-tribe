@@ -42,9 +42,9 @@ export function SiteNav() {
           <Link href="/agent" className="home-nav-link">
             对话
           </Link>
-          <span className="home-nav-link home-nav-link--disabled" aria-disabled="true">
+          <Link href="/punch" className="home-nav-link">
             打孔
-          </span>
+          </Link>
           <span className="home-nav-link home-nav-link--disabled" aria-disabled="true">
             活动
           </span>

@@ -26,16 +26,17 @@
 1. [产品定位](#产品定位)
 2. [产品体验与核心页面](#产品体验与核心页面)
 3. [文档系统路线图](#文档系统路线图)
-4. [公司研究闭环路线图](#公司研究闭环路线图)
-5. [A股与港股覆盖扩展](#a股与港股覆盖扩展)
-6. [设计与技术基线](#设计与技术基线)
-7. [测试体系](#测试体系)
-8. [当前实现状态](#当前实现状态v03815)
-9. [数据字典与工程口径](#数据字典与工程口径)
-10. [数据资产清单](#数据资产清单)
-11. [公司页财务看板](#公司页财务看板truth-of-source-设计)
-12. [数据与脚本](#数据与脚本)
-13. [运维速查表](#运维速查表)
+4. [打孔（Punch）路线图](#打孔punch路线图)
+5. [公司研究闭环路线图](#公司研究闭环路线图)
+6. [A股与港股覆盖扩展](#a股与港股覆盖扩展)
+7. [设计与技术基线](#设计与技术基线)
+8. [测试体系](#测试体系)
+9. [当前实现状态](#当前实现状态v03815)
+10. [数据字典与工程口径](#数据字典与工程口径)
+11. [数据资产清单](#数据资产清单)
+12. [公司页财务看板](#公司页财务看板truth-of-source-设计)
+13. [数据与脚本](#数据与脚本)
+14. [运维速查表](#运维速查表)
 
 ---
 
@@ -282,6 +283,62 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 2. 先把公司财报和段永平问答录接入统一文档对象。
 3. 再把既有 `Source` 逐步迁成 `Document` 的一种实现方式。
 4. 最后再考虑是否把老的 `letter` / `article` 页面归并到同一文档阅读器。
+
+---
+
+## 打孔（Punch）路线图
+
+（2026-08-20 /office-hours 设计会话产出并当场实现第一版，设计文档见 `~/.gstack/projects/walk4rever-buffett-tribe/rafael-main-design-20260820-114747.md`；状态：**核心页面 + 第一条真实数据已上线（`/punch`），13F 自动化与状态自动刷新待补**，见 TODO.md P0 ⑨）
+
+### 概念
+
+借用巴菲特"一生只有 20 次打孔机会"的投资哲学比喻。**引言已定稿并核实**：原话出自 2001 年 7 月 18 日佐治亚大学特里商学院（University of Georgia, Terry College of Business）演讲问答（非本条目早前 WebSearch 初步找到的 1994 年芒格转述版本——后者是另一场合的独立转述，不是同一句话的出处，已被用户核实的原始出处替换），交叉核对 Speakola/Kingswell 两份独立转录稿确认原文与日期后写入 `src/app/punch/page.tsx`（英文原话 + 中文翻译 + 准确来源标注）。
+
+一个"孔"= 一位大师做出的、被证明是真正 big bet 的重仓/长期持有判断。**孔是精选出来的、面向未来的、持续被验证的判断，不是对历史的回顾性记录**——孔不是"案例陈列柜"，而是一面能追更、能验证对错的判断墙，读者应该能看到"这个判断后来怎么样了"。
+
+页面形态：独立顶级导航页面 `/punch`（与 `/agent` `/master` `/company` `/insights` 同级，`SiteNav` 入口已从禁用态改为真实链接），类似投资 idea 的粘贴墙，卡片点击展开进入 `/punch/[slug]` 详情页。
+
+### 与现有 `MasterProfile.flagshipCases` 的关系（重要澄清）
+
+`MasterProfile.flagshipCases`（thesis/outcome/stillHolding）和 TODO.md P2 里"Thesis Tracker 化投资论点跟踪"的构想，跟"打孔"在概念上高度重叠——都是"大师一次重仓决策 + 一段可验证的叙事"。**明确拍板：暂不合并，两件事独立推进。** 但风险已记录（见 Claude 项目记忆 `punch-vs-flagship-cases`）：未来大概率需要面对"要不要收敛成一套模型"的问题，避免同一类内容在两个地方各写一份、逐渐 drift（`GeneratedContentVersion` 镜像同步率问题、`fetchLatestFilingEvidence` vs `fetchBuybackEvidence` 的证据选取不一致都是同一类风险的先例）。
+
+### 数据来源（两条并行，第三条预留位置）
+
+1. **平台编辑精选**：人工判定的孔，例如段永平公开承认过泡泡玛特算一个孔。**第一条已实现**：段永平 × 苹果，`scripts/seed-punch-duan-apple.ts`（一次性种子脚本，非可复用录入流程——第二条孔要不要照抄这个模式还是做后台表单，未定案）。
+2. **13F 自动推导**：从已有 `Holding` 历史数据里，按"连续持有 3 年以上"的规则自动生成候选孔。**注意**："3 年以上"只是**筛选条件**，不是孔本身的性质——孔一旦被选中，后续要跟着 13F 季度重导入的新数据走，状态可能变化。**批量脚本尚未实现**，具体判定算法（如何处理中途小幅加减仓仍算同一次判断这类边界情况）待补。
+3. **注册用户分享（未来）**：站点未来的注册用户可以分享自己打的孔。当前用户账号体系只有登录/waitlist，无发布能力，`source` 枚举已预留 `user_submitted` 位置，**本次不实现**。
+
+### 数据模型（已实现）
+
+`Punch` 表（迁移 `prisma/migrations/20260820120000_add_punch_table` + `20260820150000_add_punch_year`，因 shadow DB 历史问题走 CLAUDE.md 记录的手工迁移 workaround 应用）：
+
+- `slug`（唯一，路由用）
+- `source`：`curated` / `13f_derived` / `user_submitted`
+- `status`：`active`（进行中）/ `exited`（已平仓）/ `thesis_broken`（逻辑被推翻），默认 `active`——目前是**人工设置的静态值**，还没有接自动刷新（见下）
+- `punchYear`（可空整数）：我们能确认这位投资人**认真做出这次重仓下注决策**的最早年份——不必是精确的建仓日期，是"有据可查的 conviction 起点"。展示为"20XX年"文案 + 浅灰底纯色胶囊（`.punch-year`，初版曾用虚线圆角边框呼应"打孔"意象，用户反馈不好看后改为跟 `status` 胶囊同一视觉语言的纯色样式）。墙面卡片上与 `status` 徽章一起放在卡片右下角（`.punch-card-footer`，`margin-top: auto` 贴底对齐，避免跟标题/正文同一行挤压掉公司名/ticker）；详情页仍放在身份条右侧（该行宽度够，不需要挪位）
+- `filerEntityId` / `companyEntityId`（均可空，直接指向 `Entity`，字段命名对齐 `Holding.holderEntityId`/`Security.companyEntityId` 便于联查，而不是先经过 `Filer`/`Security` 中间层）
+- `headline`（墙面卡片一句话判断）、`thesis` / `catalyst` / `valuation` / `risk`（参考 Value Investors Club 核心字段，不搬其评分竞赛机制）
+- `quotes`（JSON 数组，`{ text, date, sourceTitle, sourceUrl? }[]`——原话引用，不是复述）
+- `entrySummary`（简短的"何时/如何建仓"说明）
+
+**当前位置的持仓数据是实时算的，不是存进 `Punch` 表的**：`src/lib/punch.ts` 的 `getLivePositionSnapshot()` 每次请求时联查 `Security`（按 `companyEntityId`）→ `Holding`（按 `holderEntityId` + `securityId`），取最新一期 13F 快照现算，不持久化——避免"存一个数字，pipeline 忘记刷新就变假"这类本仓库反复出现过的教训（同 `/company` 目录页"完整/待完善"信号的既定原则：能实时算就不存布尔/数字快照）。
+
+**状态自动刷新尚未实现**：设计上，不区分孔的来源，只要一个孔同时有 `filerEntityId` 和 `companyEntityId`，就能用同一套查询判定"进行中/已平仓"——`getLivePositionSnapshot()` 已经证明这条查询路径可行，但目前只用于detail页展示，还没有写回 `Punch.status` 的刷新脚本、也没有接进 `pipeline:13f`。`thesis_broken` 这类主观判断预期仍需人工标注，不指望自动化。
+
+### 详情页（已实现）
+
+`src/app/punch/[slug]/page.tsx`：master/company 身份条（头像用 `getTribeMemberColor()`，与大师主页 `.person-avatar` 同一套配色规则，不引入新的品牌色用法）+ 状态徽标 + headline + 实时 13F 快照条 + 叙事/催化剂/估值/风险四个字段 + 原话引用列表（每条带日期和可点击的站内来源链接）。master 身份解析走 `getTribeMembers()`（`src/lib/tribe.ts`），不猜测 `Entity.metadata` 的字段形状——`Filer.filerEntityId` 指向的 `Entity` 是记账主体（如"H&H国际投资"），不是人物本名，人物中文名/花名/头像色必须经 `Filer`/`getTribeMembers()` 解析。
+
+### 首条真实数据：段永平 × 苹果
+
+`headline`/`thesis`/`catalyst`/`valuation`/`risk` 及 6 条带日期引用，全部来自站内已有文档《段永平投资问答录 · 投资篇》（`Document` id `duan-investment`，"案例 3：苹果"章节，PDF ~page 376 起）——用 `pypdf` 抽取全文后逐条定位真实原话，不是编造或转述。核心事实：2011 年建仓（苹果当时市值约 3000 亿美元、净现金约 1000 亿美元、年利润不到 200 亿美元）；`Holding` 表里段永平对 AAPL 的仓位从 2020Q1 持续至今（2026Q2 数据 41.0%、此前多个季度 60-80%），验证了"连续持有 3 年以上"这条 13F 筛选条件在真实数据上成立。
+
+### 仍未做
+
+1. 13F 自动推导批量脚本（按"连续持有 3 年以上"扫 `Holding` 生成候选孔）。
+2. 状态自动刷新接入 `pipeline:13f`（写回 `Punch.status`，目前只有只读的 `getLivePositionSnapshot()`）。
+3. 编辑精选孔的正式录入方式（表单 or 脚本模式）——只验证过一次性 seed 脚本这条路。
+4. `MasterProfile.flagshipCases` 收敛问题，暂不处理，风险已记录。
 
 ---
 

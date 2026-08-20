@@ -10874,6 +10874,393 @@ body {
   }
 }
 
+/* ── /punch — 打孔墙 ── */
+
+.punch-shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: clamp(2rem, 5vw, 3.5rem) 1.25rem 4rem;
+}
+
+.punch-head {
+  margin-bottom: 2rem;
+}
+
+.punch-head h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  font-weight: 700;
+}
+
+.punch-quote {
+  margin: 0.9rem 0 0;
+  padding: 0.1rem 0 0.1rem 1rem;
+  border-left: 2px solid rgba(0, 0, 0, 0.12);
+}
+
+.punch-quote-en {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: rgba(0, 0, 0, 0.68);
+}
+
+.punch-quote-zh {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.punch-quote cite {
+  display: block;
+  margin-top: 0.35rem;
+  font-style: normal;
+  font-size: 0.74rem;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.punch-lede {
+  margin: 0.35rem 0 0;
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  letter-spacing: 0;
+}
+
+.punch-empty {
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+  color: rgba(0, 0, 0, 0.4);
+  background: #fff;
+  border-radius: 10px;
+  font-size: 0.88rem;
+}
+
+.punch-wall {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.punch-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1.1rem 1.2rem;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.punch-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.09);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.punch-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+}
+
+.punch-card-badges {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.punch-avatar {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.78rem;
+  background: var(--apple-near-black);
+}
+
+.punch-avatar--lg {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  font-size: 1.1rem;
+}
+
+.punch-card-who {
+  flex: 1;
+  min-width: 150px;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.punch-card-master {
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.75);
+  white-space: nowrap;
+}
+
+.punch-card-arrow {
+  color: rgba(0, 0, 0, 0.3);
+}
+
+.punch-card-company {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.punch-status {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* The year we can first confirm this bet was seriously placed. */
+.punch-year {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.05);
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.punch-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  margin-top: auto;
+  padding-top: 0.2rem;
+}
+
+.punch-status--active {
+  color: var(--up);
+  background: var(--up-bg);
+}
+
+.punch-status--exited {
+  color: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.punch-status--thesis_broken {
+  color: var(--dn);
+  background: var(--dn-bg);
+}
+
+.punch-card-headline {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.punch-card-entry {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── /punch/[slug] — 打孔详情页 ── */
+
+.punch-detail-shell {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 2.5rem) 1.25rem 4rem;
+}
+
+.punch-detail-back {
+  display: inline-block;
+  margin-bottom: 1.25rem;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+.punch-detail-back:hover {
+  color: var(--accent);
+}
+
+.punch-detail-head {
+  margin-bottom: 1.5rem;
+}
+
+.punch-detail-who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.punch-detail-who-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.92rem;
+}
+
+.punch-detail-master {
+  font-weight: 600;
+  color: var(--apple-near-black);
+  text-decoration: none;
+}
+
+.punch-detail-master:hover {
+  color: var(--accent);
+}
+
+.punch-detail-arrow {
+  color: rgba(0, 0, 0, 0.3);
+}
+
+.punch-detail-company {
+  color: rgba(0, 0, 0, 0.6);
+  text-decoration: none;
+}
+
+.punch-detail-company:hover {
+  color: var(--accent);
+}
+
+.punch-detail-headline {
+  margin: 0;
+  font-size: clamp(1.4rem, 3.5vw, 1.9rem);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  font-weight: 700;
+}
+
+.punch-detail-entry {
+  margin: 0.6rem 0 0;
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.punch-live-position {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.7rem;
+  margin-bottom: 1.75rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  background: var(--nl-bg);
+  font-size: 0.78rem;
+}
+
+.punch-live-position-label {
+  font-weight: 600;
+  color: var(--nl);
+}
+
+.punch-live-position-stats {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.punch-detail-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  margin-bottom: 2rem;
+}
+
+.punch-field h2 {
+  margin: 0 0 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(0, 0, 0, 0.4);
+  text-transform: uppercase;
+}
+
+.punch-field p {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.75;
+  color: var(--apple-near-black);
+}
+
+.punch-quotes h2 {
+  margin: 0 0 0.9rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.punch-quote-item {
+  margin: 0 0 1.1rem;
+  padding: 0.1rem 0 0.1rem 1rem;
+  border-left: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+.punch-quote-item p {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.punch-quote-item cite {
+  display: block;
+  margin-top: 0.3rem;
+  font-style: normal;
+  font-size: 0.72rem;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.punch-quote-item cite a {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.punch-quote-item cite a:hover {
+  color: var(--accent);
+}
+
 /* ── Detail page ── */
 
 .insight-detail-shell {
