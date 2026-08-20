@@ -26,8 +26,20 @@ export async function POST(req: Request) {
   });
 
   if (!upstream.ok) {
-    const err = await upstream.text();
-    return NextResponse.json({ error: err || `Gateway error ${upstream.status}` }, { status: upstream.status });
+    const raw = await upstream.text();
+    // pi-gateway's error responses are themselves `{ error: "..." }` JSON — parse and
+    // re-emit the inner message instead of nesting the whole raw body as a string
+    // (previously produced a double-encoded `{"error":"{\"error\":\"...\"}"}` that
+    // rendered as literal braces in the chat UI).
+    const parsed = (() => {
+      try {
+        return JSON.parse(raw) as { error?: unknown };
+      } catch {
+        return null;
+      }
+    })();
+    const message = typeof parsed?.error === "string" ? parsed.error : raw || `Gateway error ${upstream.status}`;
+    return NextResponse.json({ error: message }, { status: upstream.status });
   }
 
   return new Response(upstream.body, {
