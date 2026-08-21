@@ -467,13 +467,19 @@ model Holding {
   isNewPosition      Boolean? @default(false)
   isSoldOut          Boolean? @default(false)
   positionChangePct  Float?
+  // 13F reuses the underlying stock's CUSIP for an option position on it —
+  // 'NONE' | 'PUT' | 'CALL' distinguishes an option leg from an equity leg
+  // (and put from call) on the SAME securityId, so they aggregate/upsert as
+  // separate rows instead of silently summing option notional shares/value
+  // into the real share count (see scripts/lib/13f-import-core.ts).
+  putCall            String   @default("NONE")
   createdAt          DateTime @default(now())
 
   holder   Entity    @relation("HolderEntity", fields: [holderEntityId], references: [id], onDelete: Cascade)
   security Security  @relation(fields: [securityId], references: [id], onDelete: Cascade)
   source   ExtSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
 
-  @@unique([holderEntityId, securityId, asOfDate])
+  @@unique([holderEntityId, securityId, asOfDate, putCall])
   @@index([securityId, asOfDate])
   @@index([holderEntityId, asOfDate])
 }

@@ -1,4 +1,4 @@
-import { getSecurityKindBadgeLabel } from "@/lib/security-kind";
+import { getPutCallBadgeLabel, getSecurityKindBadgeLabel } from "@/lib/security-kind";
 
 type CompanyDisplayNameProps = {
   zhName: string;
@@ -7,6 +7,7 @@ type CompanyDisplayNameProps = {
   className?: string;
   compact?: boolean;
   securityKind?: string | null;
+  putCall?: string | null;
 };
 
 export function CompanyDisplayName({
@@ -16,9 +17,11 @@ export function CompanyDisplayName({
   className,
   compact = false,
   securityKind,
+  putCall,
 }: CompanyDisplayNameProps) {
   const code = ticker?.trim() ? ticker.trim().toUpperCase() : null;
-  const badgeLabel = getSecurityKindBadgeLabel(securityKind);
+  const kindBadgeLabel = getSecurityKindBadgeLabel(securityKind);
+  const putCallBadgeLabel = getPutCallBadgeLabel(putCall);
   const classes = [
     "company-display",
     compact ? "company-display--compact" : "",
@@ -29,7 +32,8 @@ export function CompanyDisplayName({
     <span className={classes}>
       <span className="company-display-zh">
         {code ? `${zhName}（${code}）` : zhName}
-        {badgeLabel ? <span className="company-display-kind-badge">{badgeLabel}</span> : null}
+        {putCallBadgeLabel ? <span className="company-display-kind-badge">{putCallBadgeLabel}</span> : null}
+        {kindBadgeLabel ? <span className="company-display-kind-badge">{kindBadgeLabel}</span> : null}
       </span>
       <span className="company-display-en">{enName}</span>
     </span>

@@ -83,6 +83,19 @@ async function mapLimit<T>(items: T[], concurrency: number, fn: (item: T) => Pro
   await Promise.all(workers);
 }
 
+// 13F reuses the underlying stock's CUSIP for an option position on it — the
+// SEC XML <putCall> element (Put/Call/absent) is the only signal that a row
+// is an option leg rather than the actual equity. Normalized to a NOT NULL
+// column ('NONE'/'PUT'/'CALL') so it can sit in a unique-constraint key
+// without Postgres's "NULLs are distinct" trap collapsing multiple option-less
+// rows into apparent duplicates.
+export function normalizePutCall(raw: string | null | undefined): "NONE" | "PUT" | "CALL" {
+  const v = (raw ?? "").trim().toUpperCase();
+  if (v === "PUT") return "PUT";
+  if (v === "CALL") return "CALL";
+  return "NONE";
+}
+
 async function upsertHoldingsBulk(rows: Array<{
   holderEntityId: string;
   securityId: string;
@@ -91,6 +104,7 @@ async function upsertHoldingsBulk(rows: Array<{
   shares: bigint;
   valueUsd: bigint;
   percentOfPortfolio: number;
+  putCall: "NONE" | "PUT" | "CALL";
 }>) {
   if (!rows.length) return { count: 0 };
 
@@ -102,7 +116,8 @@ async function upsertHoldingsBulk(rows: Array<{
     ${row.asOfDate},
     ${row.shares},
     ${row.valueUsd},
-    ${row.percentOfPortfolio}
+    ${row.percentOfPortfolio},
+    ${row.putCall}
   )`));
 
   const count = await db.$executeRaw`
@@ -114,10 +129,11 @@ async function upsertHoldingsBulk(rows: Array<{
       "asOfDate",
       "shares",
       "valueUsd",
-      "percentOfPortfolio"
+      "percentOfPortfolio",
+      "putCall"
     )
     VALUES ${values}
-    ON CONFLICT ("holderEntityId", "securityId", "asOfDate")
+    ON CONFLICT ("holderEntityId", "securityId", "asOfDate", "putCall")
     DO UPDATE SET
       "sourceId" = EXCLUDED."sourceId",
       "shares" = EXCLUDED."shares",
@@ -666,6 +682,32 @@ async function ensureSecurityProfilesBulk() {
   // This function is kept for backward compatibility during the migration.
 }
 
+// upsertHoldingsBulk only ever adds/updates rows present in this filing's
+// current parse — a position SEC-amended away, or (before putCall was
+// tracked) a stale equity-only row left behind once an option leg on the
+// same CUSIP got its own row, would otherwise live on forever. Scoped to
+// this exact (holder, asOfDate, sourceId) so it never touches a sibling
+// accession covering the same quarter (see reconcilePercentOfPortfolio's
+// confidential-treatment-order case above).
+async function deleteStaleHoldings(
+  holderEntityId: string,
+  asOfDate: Date,
+  sourceId: string,
+  prepared: Array<{ securityId: string; putCall: "NONE" | "PUT" | "CALL" }>,
+) {
+  const keep = new Set(prepared.map((p) => `${p.securityId}::${p.putCall}`));
+  const existing = await db.holding.findMany({
+    where: { holderEntityId, asOfDate, sourceId },
+    select: { id: true, securityId: true, putCall: true },
+  });
+  const staleIds = existing
+    .filter((row) => !keep.has(`${row.securityId}::${row.putCall}`))
+    .map((row) => row.id);
+  if (!staleIds.length) return { deleted: 0 };
+  await db.holding.deleteMany({ where: { id: { in: staleIds } } });
+  return { deleted: staleIds.length };
+}
+
 export async function importFiling(
   filerEntityId: string,
   accno: string,
@@ -715,6 +757,7 @@ export async function importFiling(
     shares: bigint;
     valueUsd: bigint;
     percentOfPortfolio: number;
+    putCall: "NONE" | "PUT" | "CALL";
   }> = [];
   const snapshots: SecuritySnapshot[] = [];
 
@@ -735,6 +778,7 @@ export async function importFiling(
     shares: bigint;
     valueUsd: bigint;
     percentOfPortfolio: number;
+    putCall: "NONE" | "PUT" | "CALL";
   }>();
 
   for (let i = 0; i < entries.length; i++) {
@@ -743,14 +787,19 @@ export async function importFiling(
     const percentOfPortfolio = totalValue > BigInt(0)
       ? Number((entry.value * BigInt(10000)) / totalValue) / 100
       : 0;
+    // Same CUSIP can carry an equity leg AND an option leg (13F has no
+    // separate CUSIP for options) — key by (security, putCall) so they never
+    // sum together (see normalizePutCall).
+    const putCall = normalizePutCall(entry.putCall);
+    const aggKey = `${snapshot.securityId}::${putCall}`;
 
-    const existing = aggregated.get(snapshot.securityId);
+    const existing = aggregated.get(aggKey);
     if (existing) {
       existing.shares += entry.shares;
       existing.valueUsd += entry.value * valueUsdScale;
       existing.percentOfPortfolio += percentOfPortfolio;
     } else {
-      aggregated.set(snapshot.securityId, {
+      aggregated.set(aggKey, {
         holderEntityId: filerEntityId,
         securityId: snapshot.securityId,
         sourceId: extSource.id,
@@ -758,6 +807,7 @@ export async function importFiling(
         shares: entry.shares,
         valueUsd: entry.value * valueUsdScale,
         percentOfPortfolio,
+        putCall,
       });
     }
   }
@@ -765,6 +815,12 @@ export async function importFiling(
   prepared.push(...aggregated.values());
 
   await runTimed(timer, "upsert holdings", () => upsertHoldingsBulk(prepared), (result) => `rows=${prepared.length}, affected=${result.count}`);
+  await runTimed(
+    timer,
+    "delete stale holdings",
+    () => deleteStaleHoldings(filerEntityId, asOfDate, extSource.id, prepared),
+    (result) => `deleted=${result.deleted}`,
+  );
   await reconcilePercentOfPortfolio(filerEntityId, asOfDate, timer);
 
   return { imported: prepared.length, year, quarter };

@@ -186,6 +186,15 @@ function dedupeByKey<T>(rows: T[], keyOf: (row: T) => string, valueOf: (row: T) 
   return [...deduped.values()];
 }
 
+// A 13F option position shares its underlying stock's CUSIP (same securityId)
+// — putCall is what distinguishes an equity row from an option row (and a put
+// from a call) on that same security, so dedupe/grouping must key on both,
+// never securityId alone, or a legitimate option leg looks like a duplicate
+// of the equity leg and gets dropped.
+export function holdingSecurityPutCallKey(h: { securityId: string | null; putCall: string }): string {
+  return `${h.securityId}::${h.putCall}`;
+}
+
 const HOLDING_SECURITY_INCLUDE = {
   security: {
     include: {
@@ -210,7 +219,7 @@ export async function getHoldingsByQuarter(tribeId: string, year: number, quarte
       include: HOLDING_SECURITY_INCLUDE,
       orderBy: { percentOfPortfolio: "desc" },
     });
-    return dedupeByKey(rows, (r) => r.securityId!, (r) => r.valueUsd ?? BigInt(0));
+    return dedupeByKey(rows, holdingSecurityPutCallKey, (r) => r.valueUsd ?? BigInt(0));
   } catch (err) {
     logDbFallback("getHoldingsByQuarter", err);
     return [];
@@ -294,6 +303,8 @@ export type SecurityHistoryItem = {
   zhName: string;
   enName: string;
   companyUrl: string | null;
+  securityKind: string | null | undefined;
+  putCall: string;
   isCurrentlyHeld: boolean;
   lastHeldYear: number;
   lastHeldQuarter: number;
@@ -328,20 +339,23 @@ export async function getHoldingsHistoryBySecurity(tribeId: string): Promise<Sec
 
     const deduped = dedupeByKey(
       rows,
-      (r) => `${r.securityId}|${r.source.periodYear}|${r.source.periodQuarter}`,
+      (r) => `${holdingSecurityPutCallKey(r)}|${r.source.periodYear}|${r.source.periodQuarter}`,
       (r) => r.valueUsd ?? BigInt(0),
     );
 
+    // Keyed by (security, putCall), not securityId alone — an equity leg and
+    // an option leg on the same CUSIP are different positions and must
+    // become separate chart items, not merge into one.
     const bySecurity = new Map<string, typeof deduped>();
     for (const row of deduped) {
       if (row.source.periodYear == null || row.source.periodQuarter == null) continue;
-      const key = row.securityId!;
+      const key = holdingSecurityPutCallKey(row);
       if (!bySecurity.has(key)) bySecurity.set(key, []);
       bySecurity.get(key)!.push(row);
     }
 
     const items: SecurityHistoryItem[] = [];
-    for (const [securityId, group] of bySecurity) {
+    for (const [groupKey, group] of bySecurity) {
       group.sort((a, b) => {
         const ai = quarterIndex.get(`${a.source.periodYear}-${a.source.periodQuarter}`) ?? -1;
         const bi = quarterIndex.get(`${b.source.periodYear}-${b.source.periodQuarter}`) ?? -1;
@@ -413,11 +427,17 @@ export async function getHoldingsHistoryBySecurity(tribeId: string): Promise<Sec
       const first = group[0];
       const { zhName, enName } = getHoldingDisplayNames(first);
       items.push({
-        securityId,
+        // Composite (security, putCall) key, not the raw DB securityId — an
+        // option leg shares its CUSIP's securityId with the equity leg, and
+        // this field is used as this list's React key / selection id
+        // (HoldingsHistoryExplorer), which must stay unique per item.
+        securityId: groupKey,
         ticker: getHoldingTicker(first),
         zhName,
         enName,
         companyUrl: getHoldingCompanyPath(first),
+        securityKind: first.security?.kind,
+        putCall: first.putCall,
         isCurrentlyHeld,
         lastHeldYear: last.year,
         lastHeldQuarter: last.quarter,

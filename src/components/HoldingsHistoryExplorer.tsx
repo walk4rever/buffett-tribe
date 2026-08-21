@@ -302,7 +302,14 @@ export function HoldingsHistoryExplorer({
               onClick={() => setSelectedId(item.securityId)}
             >
               <span className="holdings-company">
-                <CompanyDisplayName zhName={item.zhName} enName={item.enName} ticker={item.ticker} compact />
+                <CompanyDisplayName
+                  zhName={item.zhName}
+                  enName={item.enName}
+                  ticker={item.ticker}
+                  securityKind={item.securityKind}
+                  putCall={item.putCall}
+                  compact
+                />
               </span>
               <span className="holdings-company-list-meta">
                 {item.isCurrentlyHeld
@@ -322,10 +329,24 @@ export function HoldingsHistoryExplorer({
             <span className="holdings-company">
               {selected.companyUrl ? (
                 <Link href={selected.companyUrl}>
-                  <CompanyDisplayName zhName={selected.zhName} enName={selected.enName} ticker={selected.ticker} compact />
+                  <CompanyDisplayName
+                    zhName={selected.zhName}
+                    enName={selected.enName}
+                    ticker={selected.ticker}
+                    securityKind={selected.securityKind}
+                    putCall={selected.putCall}
+                    compact
+                  />
                 </Link>
               ) : (
-                <CompanyDisplayName zhName={selected.zhName} enName={selected.enName} ticker={selected.ticker} compact />
+                <CompanyDisplayName
+                  zhName={selected.zhName}
+                  enName={selected.enName}
+                  ticker={selected.ticker}
+                  securityKind={selected.securityKind}
+                  putCall={selected.putCall}
+                  compact
+                />
               )}
             </span>
             <div className="holdings-metric-toggle">

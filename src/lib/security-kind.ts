@@ -23,3 +23,18 @@ export function isNonCompanySecurityKind(kind: string | null | undefined): boole
   if (!kind) return false;
   return kind in SECURITY_KIND_BADGE_LABELS;
 }
+
+// Holding.putCall — separate from Security.kind. A 13F option position
+// reuses its underlying stock's CUSIP, so the security itself is still
+// "equity"; putCall flags that THIS PARTICULAR holding row is an option
+// contract (shares = notional shares represented, not shares owned), not the
+// underlying's ownership type. See scripts/lib/13f-import-core.ts normalizePutCall.
+const PUT_CALL_BADGE_LABELS: Partial<Record<string, string>> = {
+  PUT: "Put期权",
+  CALL: "Call期权",
+};
+
+export function getPutCallBadgeLabel(putCall: string | null | undefined): string | null {
+  if (!putCall) return null;
+  return PUT_CALL_BADGE_LABELS[putCall] ?? null;
+}

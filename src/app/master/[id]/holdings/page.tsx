@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CompanyDisplayName } from "@/components/CompanyDisplayName";
+import { HoldingsDetailTable, type HoldingsDetailRow } from "@/components/HoldingsDetailTable";
 import { HoldingsHistoryExplorer } from "@/components/HoldingsHistoryExplorer";
 import { SiteNav } from "@/components/SiteNav";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
 import { getTribeMember, getTribeMemberColor } from "@/lib/tribe";
 import {
-  formatPriceFromValueAndShares,
-  formatShares,
   formatValueUsd,
   getAvailableQuarters,
   getHoldingCompanyPath,
@@ -15,6 +13,7 @@ import {
   getHoldingsByQuarter,
   getHoldingsHistoryBySecurity,
   getHoldingTicker,
+  holdingSecurityPutCallKey,
   quarterMidDate,
 } from "@/lib/master-data";
 
@@ -23,12 +22,6 @@ export const dynamic = "force-dynamic";
 interface Props {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ year?: string; quarter?: string; view?: string }>;
-}
-
-function formatSignedPct(diffPct: number | null) {
-  if (diffPct == null || !Number.isFinite(diffPct)) return "—";
-  const sign = diffPct > 0 ? "+" : "";
-  return `${sign}${diffPct.toFixed(1)}%`;
 }
 
 export default async function HoldingsPage({ params, searchParams }: Props) {
@@ -106,7 +99,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
   const prevHoldings = prevQuarter
     ? await getHoldingsByQuarter(id, prevQuarter.year, prevQuarter.quarter)
     : [];
-  const holdingKey = (h: { securityId: string | null }) => h.securityId!;
+  const holdingKey = holdingSecurityPutCallKey;
   const prevBySecurityId = new Map(prevHoldings.map((h) => [holdingKey(h), h] as const));
   const currentKeySet = new Set(holdings.map((h) => holdingKey(h)));
   const soldOutRows = prevHoldings.filter((h) => !currentKeySet.has(holdingKey(h)));
@@ -115,6 +108,40 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
     (sum, h) => sum + (h.valueUsd ? Number(h.valueUsd) : 0),
     0,
   );
+
+  const toDetailRow = (
+    h: (typeof holdings)[number],
+    activity: HoldingsDetailRow["activity"],
+    shareDeltaPct: number | null,
+  ): HoldingsDetailRow => {
+    const { zhName, enName } = getHoldingDisplayNames(h);
+    return {
+      id: activity === "SoldOut" ? `exit-${h.id}` : h.id,
+      zhName,
+      enName,
+      ticker: getHoldingTicker(h),
+      companyPath: getHoldingCompanyPath(h),
+      securityKind: h.security?.kind,
+      putCall: h.putCall,
+      percentOfPortfolio: h.percentOfPortfolio,
+      shares: h.shares,
+      valueUsd: h.valueUsd,
+      activity,
+      shareDeltaPct,
+    };
+  };
+  const currentDetailRows = holdings.map((h) => {
+    const prev = prevBySecurityId.get(holdingKey(h));
+    const shareDeltaPct = computeShareDeltaPct(prev?.shares, h.shares);
+    const activity = computeHoldingActivity(Boolean(prevQuarter), Boolean(prev), shareDeltaPct);
+    return toDetailRow(h, activity, shareDeltaPct);
+  });
+  const soldOutDetailRows = soldOutRows.map((h) => toDetailRow(h, "SoldOut", null));
+  // Real equity holdings and option legs (see scripts/lib/13f-import-core.ts —
+  // a 13F option position reuses its underlying stock's CUSIP) render as two
+  // separate sections rather than one interleaved-by-size table.
+  const equityDetailRows = [...currentDetailRows, ...soldOutDetailRows].filter((r) => r.putCall === "NONE");
+  const optionDetailRows = [...currentDetailRows, ...soldOutDetailRows].filter((r) => r.putCall !== "NONE");
 
   return (
     <div className="holdings-page">
@@ -197,141 +224,14 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
             </div>
 
             {/* Holdings table */}
-            <div className="holdings-table-wrap holdings-table-wrap--fit">
-              <table className="holdings-table holdings-table--fit">
-            <thead>
-              <tr>
-                <th className="holdings-th holdings-th--rank">#</th>
-                <th className="holdings-th">股票<br/><span className="holdings-th-en">Stock</span></th>
-                <th className="holdings-th holdings-th--num">仓位<br/><span className="holdings-th-en">% of Portfolio</span></th>
-                <th className="holdings-th">近期动作<br/><span className="holdings-th-en">Recent Activity</span></th>
-                <th className="holdings-th holdings-th--num">持股<br/><span className="holdings-th-en">Shares</span></th>
-                <th className="holdings-th holdings-th--num">申报价<br/><span className="holdings-th-en">Reported Price*</span></th>
-                <th className="holdings-th holdings-th--num">市值（亿）<br/><span className="holdings-th-en">Value</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {holdings.map((h, i) => {
-                const prev = prevBySecurityId.get(holdingKey(h));
-                const shareDeltaPct = computeShareDeltaPct(prev?.shares, h.shares);
-                const activity = computeHoldingActivity(Boolean(prevQuarter), Boolean(prev), shareDeltaPct);
-                const rowClass =
-                  activity === "New"
-                    ? "holdings-row holdings-row--new"
-                    : activity === "Added"
-                      ? "holdings-row holdings-row--added"
-                      : activity === "Reduced"
-                        ? "holdings-row holdings-row--reduced"
-                        : "holdings-row";
+            <HoldingsDetailTable rows={equityDetailRows} accentColor={getTribeMemberColor(member)} />
 
-                const reportedPrice = formatPriceFromValueAndShares(h.valueUsd, h.shares);
-                const { zhName, enName } = getHoldingDisplayNames(h);
-
-                return (
-                  <tr key={h.id} className={rowClass}>
-                    <td className="holdings-td holdings-td--rank">{i + 1}</td>
-                    <td className="holdings-td holdings-td--name">
-                      <span className="holdings-company">
-                        {getHoldingCompanyPath(h) ? (
-                          <Link href={getHoldingCompanyPath(h)!}>
-                            <CompanyDisplayName
-                              zhName={zhName}
-                              enName={enName}
-                              ticker={getHoldingTicker(h)}
-                              securityKind={h.security?.kind}
-                              compact
-                            />
-                          </Link>
-                        ) : (
-                          <CompanyDisplayName
-                            zhName={zhName}
-                            enName={enName}
-                            ticker={getHoldingTicker(h)}
-                            securityKind={h.security?.kind}
-                            compact
-                          />
-                        )}
-                      </span>
-                    </td>
-                    <td className="holdings-td holdings-td--num">
-                      <div className="holdings-pct-wrap">
-                        <span className="holdings-pct">
-                          {h.percentOfPortfolio != null
-                            ? `${h.percentOfPortfolio.toFixed(2)}%`
-                            : "—"}
-                        </span>
-                        <div
-                          className="holdings-bar"
-                          style={{
-                            width: `${Math.min(h.percentOfPortfolio ?? 0, 100)}%`,
-                            background: getTribeMemberColor(member),
-                          }}
-                        />
-                      </div>
-                    </td>
-                    <td className="holdings-td holdings-td--act">
-                      {activity === "New" ? (
-                        <span className="holdings-activity-new">New</span>
-                      ) : activity === "Added" ? (
-                        <span className="holdings-activity-delta holdings-activity-delta--up">
-                          ↑ {shareDeltaPct != null ? formatSignedPct(shareDeltaPct) : "—"}
-                        </span>
-                      ) : activity === "Reduced" ? (
-                        <span className="holdings-activity-delta holdings-activity-delta--down">
-                          ↓ {shareDeltaPct != null ? formatSignedPct(shareDeltaPct) : "—"}
-                        </span>
-                      ) : (
-                        <span className="holdings-activity-delta">—</span>
-                      )}
-                    </td>
-                    <td className="holdings-td holdings-td--num">{formatShares(h.shares)}</td>
-                    <td className="holdings-td holdings-td--num">{reportedPrice}</td>
-                    <td className="holdings-td holdings-td--num">{formatValueUsd(h.valueUsd)}</td>
-                  </tr>
-                );
-              })}
-              {soldOutRows.map((h, i) => {
-                const { zhName, enName } = getHoldingDisplayNames(h);
-                const reportedPrice = formatPriceFromValueAndShares(h.valueUsd, h.shares);
-                return (
-                  <tr key={`exit-${h.id}`} className="holdings-row holdings-row--soldout">
-                    <td className="holdings-td holdings-td--rank">{holdings.length + i + 1}</td>
-                    <td className="holdings-td holdings-td--name">
-                      <span className="holdings-company">
-                        {getHoldingCompanyPath(h) ? (
-                          <Link href={getHoldingCompanyPath(h)!}>
-                            <CompanyDisplayName
-                              zhName={zhName}
-                              enName={enName}
-                              ticker={getHoldingTicker(h)}
-                              securityKind={h.security?.kind}
-                              compact
-                            />
-                          </Link>
-                        ) : (
-                          <CompanyDisplayName
-                            zhName={zhName}
-                            enName={enName}
-                            ticker={getHoldingTicker(h)}
-                            securityKind={h.security?.kind}
-                            compact
-                          />
-                        )}
-                      </span>
-                    </td>
-                    <td className="holdings-td holdings-td--num">0.00%</td>
-                    <td className="holdings-td holdings-td--act">
-                      <span className="holdings-activity-soldout">Sold Out</span>
-                    </td>
-                    <td className="holdings-td holdings-td--num">{formatShares(h.shares)}</td>
-                    <td className="holdings-td holdings-td--num">{reportedPrice}</td>
-                    <td className="holdings-td holdings-td--num">{formatValueUsd(h.valueUsd)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-              </table>
-            </div>
+            {optionDetailRows.length > 0 ? (
+              <>
+                <h3 className="holdings-detail-section-title">期权等衍生品操作</h3>
+                <HoldingsDetailTable rows={optionDetailRows} accentColor={getTribeMemberColor(member)} />
+              </>
+            ) : null}
           </section>
         </div>
 

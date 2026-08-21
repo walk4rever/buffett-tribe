@@ -5086,6 +5086,7 @@ body.layout-no-header {
 }
 
 .holdings-summary { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--apple-secondary); margin-bottom: 1.25rem; letter-spacing: -0.224px; }
+.holdings-detail-section-title { margin: 1.5rem 0 0.75rem; font-size: 0.9375rem; font-weight: 600; color: var(--apple-near-black); }
 .holdings-summary em { font-style: normal; font-weight: 600; color: var(--apple-near-black); }
 .holdings-summary-sep { color: #d1d1d6; }
 
@@ -5170,6 +5171,7 @@ body.layout-no-header {
 
 .company-display-kind-badge {
   display: inline-block;
+  flex-shrink: 0;
   font-size: 0.6875rem;
   font-weight: 500;
   color: var(--apple-secondary);
@@ -9646,7 +9648,8 @@ body {
   font-weight: 600;
 }
 
-.person-bar-name span:last-child {
+.person-bar-name > .company-display,
+.person-bar-name > .person-bar-company-link > .company-display {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
