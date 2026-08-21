@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react";
 import PdfViewer from "@/components/PdfViewer";
 import { FilingAgentPanel } from "@/components/FilingAgentPanel";
 import { useAgentChat } from "@/hooks/useAgentChat";
+import { useAgentGate } from "@/hooks/useAgentGate";
 
 interface PdfFilingReaderProps {
   pdfUrl: string;
@@ -24,6 +25,7 @@ export function PdfFilingReader({
   periodYear,
 }: PdfFilingReaderProps) {
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const { requireAuth } = useAgentGate(() => setAiPanelOpen(true));
   // Called here (not inside FilingAgentPanel, which unmounts when aiPanelOpen is
   // false) so closing the panel doesn't unmount the conversation state with it.
   const { messages, input, setInput, streaming, sendMessage, abort } = useAgentChat({
@@ -51,7 +53,11 @@ export function PdfFilingReader({
       ) : null}
 
       {!aiPanelOpen ? (
-        <button type="button" className="master-agent-fab" onClick={() => setAiPanelOpen(true)}>
+        <button
+          type="button"
+          className="master-agent-fab"
+          onClick={() => { if (requireAuth()) setAiPanelOpen(true); }}
+        >
           <Sparkles size={15} strokeWidth={2} />
           <span>AI 解读</span>
         </button>

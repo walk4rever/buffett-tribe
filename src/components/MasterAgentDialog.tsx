@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Sparkles, X } from "lucide-react";
 import { AgentChat } from "@/components/AgentChat";
 import { useAgentChat } from "@/hooks/useAgentChat";
+import { useAgentGate } from "@/hooks/useAgentGate";
 
 interface MasterAgentDialogProps {
   masterId: string;
@@ -12,6 +13,7 @@ interface MasterAgentDialogProps {
 
 export function MasterAgentDialog({ masterId, masterName }: MasterAgentDialogProps) {
   const [open, setOpen] = useState(false);
+  const { requireAuth } = useAgentGate(() => setOpen(true));
   // Called here (not inside the conditionally-rendered modal below) so closing the
   // dialog doesn't unmount the conversation state along with it.
   const { messages, input, setInput, streaming, sendMessage, abort } = useAgentChat({
@@ -20,7 +22,7 @@ export function MasterAgentDialog({ masterId, masterName }: MasterAgentDialogPro
 
   return (
     <>
-      <button type="button" className="master-agent-fab" onClick={() => setOpen(true)}>
+      <button type="button" className="master-agent-fab" onClick={() => { if (requireAuth()) setOpen(true); }}>
         <Sparkles size={15} strokeWidth={2} />
         <span>AI 解读</span>
       </button>

@@ -1,3 +1,6 @@
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 import { AgentPageChat } from "@/components/AgentPageChat";
 import { SiteNav } from "@/components/SiteNav";
 
@@ -6,7 +9,12 @@ export const metadata = {
   description: "以价值投资大师的视角理解一家公司，买股票就是买公司。",
 };
 
-export default function AgentPage() {
+export default async function AgentPage() {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    redirect("/login?callbackUrl=%2Fagent");
+  }
+
   return (
     <div className="idea-screen">
       <SiteNav />

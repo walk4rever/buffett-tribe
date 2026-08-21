@@ -6,6 +6,7 @@ import { ALargeSmall, AlignVerticalSpaceAround, ChevronLeft, ExternalLink, Spark
 import { formatCompanyUrl, type CompanyAnnualFiling } from "@/lib/company-data";
 import { FilingAgentPanel } from "@/components/FilingAgentPanel";
 import { useAgentChat } from "@/hooks/useAgentChat";
+import { useAgentGate } from "@/hooks/useAgentGate";
 
 type FilingReaderProps = {
   company: {
@@ -127,6 +128,7 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
       periodYear: filing.periodYear ?? undefined,
     },
   });
+  const { requireAuth } = useAgentGate(() => setAiPanelOpen(true));
   const reportLabel = `${filing.periodYear ?? "—"}${filing.periodQuarter ? ` Q${filing.periodQuarter}` : ""}`;
   const reportMetaLabel = [
     reportLabel,
@@ -236,10 +238,12 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
 
   const askAboutQuote = useCallback(() => {
     if (!quoteButton) return;
+    setQuoteButton(null);
+    if (!requireAuth()) return;
     setPendingQuote({ text: quoteButton.text });
     setAiPanelOpen(true);
-    setQuoteButton(null);
     iframeRef.current?.contentWindow?.getSelection()?.removeAllRanges();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quoteButton]);
 
   const cycleFontLevel = useCallback(() => {
@@ -341,7 +345,11 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
       ) : null}
 
       {!aiPanelOpen ? (
-        <button type="button" className="master-agent-fab" onClick={() => setAiPanelOpen(true)}>
+        <button
+          type="button"
+          className="master-agent-fab"
+          onClick={() => { if (requireAuth()) setAiPanelOpen(true); }}
+        >
           <Sparkles size={15} strokeWidth={2} />
           <span>AI 解读</span>
         </button>

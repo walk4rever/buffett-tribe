@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import { Sparkles } from "lucide-react";
 import { InsightAgentPanel } from "@/components/InsightAgentPanel";
 import { useAgentChat } from "@/hooks/useAgentChat";
+import { useAgentGate } from "@/hooks/useAgentGate";
 
 interface InsightChatShellProps {
   slug: string;
@@ -54,6 +55,7 @@ export function InsightChatShell({ slug, title, children }: InsightChatShellProp
   const { messages, input, setInput, streaming, sendMessage, abort } = useAgentChat({
     context: { insightSlug: slug, insightTitle: title },
   });
+  const { requireAuth } = useAgentGate(openPanel);
 
   // While the panel is open, .site-main shouldn't also scroll — on desktop the
   // article becomes its own scroll box (see below), on mobile the panel is a
@@ -141,9 +143,10 @@ export function InsightChatShell({ slug, title, children }: InsightChatShellProp
 
   function askAboutQuote() {
     if (!quoteButton) return;
+    setQuoteButton(null);
+    if (!requireAuth()) return;
     setPendingQuote({ text: quoteButton.text });
     openPanel();
-    setQuoteButton(null);
     window.getSelection()?.removeAllRanges();
   }
 
@@ -203,7 +206,11 @@ export function InsightChatShell({ slug, title, children }: InsightChatShellProp
       ) : null}
 
       {!open ? (
-        <button type="button" className="master-agent-fab" onClick={openPanel}>
+        <button
+          type="button"
+          className="master-agent-fab"
+          onClick={() => { if (requireAuth()) openPanel(); }}
+        >
           <Sparkles size={15} strokeWidth={2} />
           <span>AI 解读</span>
         </button>

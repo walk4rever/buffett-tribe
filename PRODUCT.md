@@ -121,11 +121,14 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 | 区域 | 未登录 | 已登录 |
 |------|--------|--------|
 | `/master`、`/company`、`/insights`、公司页六个 tab | 完全可见 | 完全可见 |
-| `/agent` 页面 + 各处「AI 解读」入口（公司页、大师页、年报阅读器、洞见页，均经由 `useAgentChat`） | 页面/对话框可见，可看历史与建议问题；点击发送时提示登录，不调用 API（`useAgentChat.sendMessage` 拦截；`/api/pi` 服务端同步校验 session 作为兜底，供未来任何绕开这个 hook 的调用方防护） | 正常使用 |
+| `/agent` 页面 | 服务端 `getServerSession` 未命中直接 `redirect` 到 `/login?callbackUrl=%2Fagent`，不渲染任何内容 | 正常使用 |
+| 各处「AI 解读」入口（公司页、大师页、年报阅读器、洞见页——`CompanyAgentDialog`/`MasterAgentDialog`/`FilingReader`/`PdfFilingReader`/`InsightChatShell`，均经由共享的 `useAgentGate` hook） | 点击触发按钮（含选中原文后的"问 AI 这段"）时当场检测未登录，`router.push` 跳转 `/login?callbackUrl=<当前页面?openAgent=1>`，不打开对话框 | 正常使用 |
 | `/punch`（打孔墙）+ `/punch/[slug]`（详情页） | 服务端 `getServerSession` 未命中直接 `redirect` 到 `/login?callbackUrl=...`，不渲染任何内容 | 正常浏览 |
 | 「活动」（导航占位，功能未实现） | — | 功能实际上线时应沿用与打孔一致的登录门禁，无需另行讨论 |
 
-NextAuth（Credentials Provider，`src/lib/auth.ts`）是现有唯一认证实现，无第三方登录。`/login` 页面已支持 `callbackUrl` 回跳（`LoginForm.tsx`），服务端 `redirect` 和前端 `signIn` 复用同一套回跳逻辑。
+**登录后自动继续操作**（2026-08-21 补充，用户要求点击门禁触发点后能跳登录页、登录成功后接着做刚才想做的事）：`useAgentGate`（`src/hooks/useAgentGate.ts`）把 `callbackUrl` 的查询串里带一个 `openAgent=1` 标记，`/login` 页面（`LoginForm.tsx` 原生支持 `callbackUrl` 回跳）登录成功后 `router.push(callbackUrl)` 落回原页面；该 hook 在页面挂载时用一个 effect 检测 `status === "authenticated"` 且 URL 带这个标记，就自动调用传入的 `onReopen`（即重新打开对应的 AI 解读对话框/面板）并把标记从地址栏 `router.replace` 掉，避免刷新后重复触发。`/agent` 页面本身走服务端 redirect，`callbackUrl=/agent` 回跳落地就是页面本身，天然"继续操作"，不需要这个标记机制。`/api/pi` 仍保留服务端 session 校验作为兜底，防止任何绕开这些入口的直接调用。
+
+NextAuth（Credentials Provider，`src/lib/auth.ts`）是现有唯一认证实现，无第三方登录。
 
 **仍待设计（不在本次范围内，2026-08-21 讨论中提出）**：注册用户上传材料（如财报 PDF）的存储方式/repository 设计、对话历史是否落库及如何管理——留待后续单独排期。
 
