@@ -686,18 +686,31 @@ async function ensureSecurityProfilesBulk() {
 // current parse — a position SEC-amended away, or (before putCall was
 // tracked) a stale equity-only row left behind once an option leg on the
 // same CUSIP got its own row, would otherwise live on forever. Scoped to
-// this exact (holder, asOfDate, sourceId) so it never touches a sibling
-// accession covering the same quarter (see reconcilePercentOfPortfolio's
-// confidential-treatment-order case above).
+// this exact (holder, asOfDate, sourceId) by default so it never touches a
+// sibling accession covering the same quarter (see
+// reconcilePercentOfPortfolio's confidential-treatment-order case above) —
+// a normal filing or a "NEW HOLDINGS" amendment only adds to what's already
+// there for that period.
+//
+// A "RESTATEMENT" amendment is different: SEC defines it as replacing the
+// *entire* prior report for that period, not adding to it (see
+// dropSupersededByRestatement in import-13f-edgartools.ts, which also
+// drops the now-superseded original from the import queue itself — this
+// wide scope exists as a self-healing backstop for whatever's already in
+// the DB from before that filtering existed, e.g. H&H International/段永平
+// 2024Q4). `wideScope: true` drops the sourceId filter so it cleans up
+// stale rows left by ANY prior source for this (holder, asOfDate), not just
+// this filing's own.
 async function deleteStaleHoldings(
   holderEntityId: string,
   asOfDate: Date,
   sourceId: string,
   prepared: Array<{ securityId: string; putCall: "NONE" | "PUT" | "CALL" }>,
+  wideScope = false,
 ) {
   const keep = new Set(prepared.map((p) => `${p.securityId}::${p.putCall}`));
   const existing = await db.holding.findMany({
-    where: { holderEntityId, asOfDate, sourceId },
+    where: wideScope ? { holderEntityId, asOfDate } : { holderEntityId, asOfDate, sourceId },
     select: { id: true, securityId: true, putCall: true },
   });
   const staleIds = existing
@@ -716,6 +729,7 @@ export async function importFiling(
   reportDate: string,
   entries: InfoTableEntry[],
   timer?: ImportTimer,
+  isRestatement = false,
 ) {
   const { year, quarter, date } = parseReportDate(reportDate);
   const asOfDate = date;
@@ -818,7 +832,7 @@ export async function importFiling(
   await runTimed(
     timer,
     "delete stale holdings",
-    () => deleteStaleHoldings(filerEntityId, asOfDate, extSource.id, prepared),
+    () => deleteStaleHoldings(filerEntityId, asOfDate, extSource.id, prepared, isRestatement),
     (result) => `deleted=${result.deleted}`,
   );
   await reconcilePercentOfPortfolio(filerEntityId, asOfDate, timer);

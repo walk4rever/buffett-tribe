@@ -22,8 +22,9 @@ import {
   upsertFilerEntity,
   type InfoTableEntry,
 } from "./lib/13f-import-core";
+import { dropSupersededByRestatement } from "./lib/thirteenf-restatement";
 
-type EdgarTools13FFiling = {
+export type EdgarTools13FFiling = {
   accession: string;
   filedAt: string;
   reportDate: string;
@@ -33,6 +34,12 @@ type EdgarTools13FFiling = {
   url: string | null;
   totalHoldings: number;
   totalValue: string;
+  isAmendment: boolean;
+  // SEC's own distinction for a 13F-HR/A: "NEW HOLDINGS" (adds a position
+  // that was under confidential treatment — additive, combine with the
+  // original) vs "RESTATEMENT" (corrects/replaces the whole prior report for
+  // this period — supersedes it, not additive). See dropSupersededByRestatement.
+  amendmentType: string | null;
   holdings: Array<{
     nameOfIssuer: string;
     titleOfClass: string;
@@ -199,7 +206,7 @@ async function main() {
 
     const filingsToImport = filerTimer.timeSync(
       "filter filings",
-      () => filterFilings({ filings: payload.filings, quarterList }),
+      () => dropSupersededByRestatement(filterFilings({ filings: payload.filings, quarterList })),
       (result) => `selected=${result.length}`,
     );
     warnMissingQuarters({ requested: quarterList, filings: filingsToImport });
@@ -228,6 +235,7 @@ async function main() {
           filing.reportDate,
           entries,
           filingTimer,
+          filing.amendmentType === "RESTATEMENT",
         );
         const elapsed = ((Date.now() - started) / 1000).toFixed(1);
         console.log(`    ✓ ${imported} holdings saved for Q${quarter} ${year} (${elapsed}s)`);

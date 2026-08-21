@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import sys
 from decimal import Decimal
 from pathlib import Path
@@ -62,6 +63,31 @@ def _holding_entry(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _amendment_info(filing: Any) -> tuple[bool, str | None]:
+    """(isAmendment, amendmentType) from the filing's own primary_doc.xml cover
+    page. edgartools' parsed CoverPage model doesn't expose these fields, so
+    this reads the raw XML directly. amendmentType is SEC's own distinction
+    between an amendment that adds a previously-confidential-treatment
+    position ("NEW HOLDINGS" — additive, combine with the original) and one
+    that corrects/replaces the whole prior report ("RESTATEMENT" — the
+    original filing's positions for this period are superseded, not
+    additive). Best-effort: any failure here just means "not a restatement",
+    never blocks the filing's holdings from importing.
+    """
+    try:
+        doc = filing.attachments.get_by_sequence(1)
+        text = doc.content
+        text = text.decode() if isinstance(text, bytes) else text
+        is_amendment = re.search(r"<isAmendment>(.*?)</isAmendment>", text)
+        amendment_type = re.search(r"<amendmentType>(.*?)</amendmentType>", text)
+        return (
+            bool(is_amendment and is_amendment.group(1).strip().lower() == "true"),
+            _safe_str(amendment_type.group(1)) if amendment_type else None,
+        )
+    except Exception:
+        return (False, None)
+
+
 def _filing_to_dict(filing: Any) -> dict[str, Any]:
     obj = filing.obj()
     holdings = []
@@ -76,6 +102,7 @@ def _filing_to_dict(filing: Any) -> dict[str, Any]:
     accession = _safe_str(_get_attr(filing, "accession_number") or _get_attr(filing, "accession_no")) or ""
     report_date = _safe_str(getattr(obj, "report_period", None) or _get_attr(filing, "period_of_report"))
     filed_at = _safe_str(getattr(obj, "filing_date", None) or _get_attr(filing, "filing_date"))
+    is_amendment, amendment_type = _amendment_info(filing)
 
     return {
         "accession": accession,
@@ -87,6 +114,8 @@ def _filing_to_dict(filing: Any) -> dict[str, Any]:
         "url": _safe_str(_get_attr(filing, "url") or _get_attr(filing, "filing_url")),
         "totalHoldings": int(getattr(obj, "total_holdings", len(holdings)) or len(holdings)),
         "totalValue": _int_string(getattr(obj, "total_value", 0)),
+        "isAmendment": is_amendment,
+        "amendmentType": amendment_type,
         "holdings": holdings,
     }
 
