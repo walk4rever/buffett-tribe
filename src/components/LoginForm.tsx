@@ -73,7 +73,7 @@ export function LoginForm() {
   return (
     <div className="login-wrap">
       <Link href="/" className="login-brand">Buffett Tribe</Link>
-      <p className="login-sub">登录后可使用资料库、持仓历史与对话工作台</p>
+      <p className="login-sub">登录后可使用 AI 投研对话、打孔等更多功能</p>
 
       <div className="login-card">
         <div className="login-tabs">
