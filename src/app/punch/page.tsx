@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 import { SiteNav } from "@/components/SiteNav";
 import { getPunches } from "@/lib/punch";
 
@@ -16,6 +19,11 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default async function PunchWallPage() {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    redirect("/login?callbackUrl=%2Fpunch");
+  }
+
   const punches = await getPunches();
 
   return (

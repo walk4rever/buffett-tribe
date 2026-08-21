@@ -112,6 +112,23 @@ Agent 由 pi-gateway（Express SSE，air7，PM2）驱动，使用 `@earendil-wor
 
 AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投研定位、三工具用法、回答格式（分析 + 引用分层）。
 
+### 用户体系与访问控制（2026-08-21 确认）
+
+站点当前对外**完全免费**。此前 backlog 里的商业化条目（LemonSqueezy 订阅集成、免费 vs 会员次数限制、免费到付费转化链路验证）已从计划移除——会员分级/收费是否要做、怎么做，留待未来单独设计，不在当前范围内。
+
+现有的登录/未登录区别是纯**功能门禁**，与付费无关：
+
+| 区域 | 未登录 | 已登录 |
+|------|--------|--------|
+| `/master`、`/company`、`/insights`、公司页六个 tab | 完全可见 | 完全可见 |
+| `/agent` 页面 + 各处「AI 解读」入口（公司页、大师页、年报阅读器、洞见页，均经由 `useAgentChat`） | 页面/对话框可见，可看历史与建议问题；点击发送时提示登录，不调用 API（`useAgentChat.sendMessage` 拦截；`/api/pi` 服务端同步校验 session 作为兜底，供未来任何绕开这个 hook 的调用方防护） | 正常使用 |
+| `/punch`（打孔墙）+ `/punch/[slug]`（详情页） | 服务端 `getServerSession` 未命中直接 `redirect` 到 `/login?callbackUrl=...`，不渲染任何内容 | 正常浏览 |
+| 「活动」（导航占位，功能未实现） | — | 功能实际上线时应沿用与打孔一致的登录门禁，无需另行讨论 |
+
+NextAuth（Credentials Provider，`src/lib/auth.ts`）是现有唯一认证实现，无第三方登录。`/login` 页面已支持 `callbackUrl` 回跳（`LoginForm.tsx`），服务端 `redirect` 和前端 `signIn` 复用同一套回跳逻辑。
+
+**仍待设计（不在本次范围内，2026-08-21 讨论中提出）**：注册用户上传材料（如财报 PDF）的存储方式/repository 设计、对话历史是否落库及如何管理——留待后续单独排期。
+
 ### /idea — 对话研究室（旧版，已下线）
 
 旧版对话界面，左侧对话 + 右侧公司 Canvas 联动。2026-08-02 确认导航已无入口、全站无其他引用，页面、`IdeaWorkspace`、`/api/chat*`、`src/lib/chat.ts` 均已删除。`ChatUsage`/`ChatMessage` 表结构保留未做 migration，避免连带丢失历史数据。`src/lib/search.ts`（`searchChunks`）与其依赖的 `Chunk`/`Source` 表未受影响——它们仍在为 `/api/mcp`（对外 MCP server 的 `search` 工具）提供检索，与 /idea 无关。
@@ -1030,13 +1047,12 @@ Apple HIG 精简风格：
 - 对话质量验收：准备 30 个测试问题，验证 Agent 三工具的召回与引用质量。
 - 移动端体验打磨：阅读页、公司页在手机上的交互细节。
 
-#### 用户数据 + 增长 / 商业化
+#### 用户数据 + 增长
 
 - 补齐关键事件埋点：`chat_start`、`chat_message`、`source_click`、`annual_report_open`、`price_range_change` 等。
 - PostHog Cloud 中国可达性测试。
-- LemonSqueezy 订阅集成。
-- 订阅状态校验：免费 vs 会员的次数限制。
-- 验证完整的免费到付费转化链路。
+
+> 商业化（LemonSqueezy 订阅集成、免费 vs 会员次数限制、免费到付费转化链路）已于 2026-08-21 从计划移除，全站暂不收费；登录门禁只是功能访问区分，见本文档「用户体系与访问控制」一节。未来若要收费再另行设计排期。
 
 #### Post-MVP
 

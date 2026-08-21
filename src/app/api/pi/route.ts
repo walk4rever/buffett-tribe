@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export const maxDuration = 90;
 
@@ -6,6 +8,11 @@ const GATEWAY_URL = process.env.PI_GATEWAY_URL;
 const AGENT_SECRET = process.env.PI_AGENT_SECRET;
 
 export async function POST(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "AI 对话需要登录后使用。" }, { status: 401 });
+  }
+
   if (!GATEWAY_URL || !AGENT_SECRET) {
     return NextResponse.json({ error: "Agent not configured" }, { status: 503 });
   }

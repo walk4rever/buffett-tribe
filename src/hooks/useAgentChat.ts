@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 
 export interface ToolCall {
   id: string;
@@ -68,6 +69,7 @@ interface UseAgentChatOptions {
 // hook's state and the conversation history is lost even though the server-side
 // session (keyed by the same sessionStorage id + context) is still alive.
 export function useAgentChat({ context }: UseAgentChatOptions = {}) {
+  const { status } = useSession();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -88,6 +90,18 @@ export function useAgentChat({ context }: UseAgentChatOptions = {}) {
     if (!text.trim() || streaming) return;
 
     setInput("");
+
+    if (status === "unauthenticated") {
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", text },
+        {
+          role: "assistant",
+          text: "AI 对话需要登录后使用。[点击登录或注册](/login)",
+        },
+      ]);
+      return;
+    }
 
     const assistantIndex = messages.length + 1;
     setMessages((prev) => [

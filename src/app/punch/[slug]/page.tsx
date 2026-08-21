@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 import { SiteNav } from "@/components/SiteNav";
 import { getPunchBySlug } from "@/lib/punch";
 import { formatUsdInYi } from "@/lib/currency";
@@ -28,6 +30,12 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function PunchDetailPage({ params }: Props) {
   const { slug } = await params;
+
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    redirect(`/login?callbackUrl=${encodeURIComponent(`/punch/${slug}`)}`);
+  }
+
   const punch = await getPunchBySlug(slug);
   if (!punch) notFound();
 
