@@ -257,6 +257,7 @@ model Security {
   shareClass      String?
   titleOfClass    String?
   exchange        String?
+  kind            String   @default("unclassified") // classifySecurityKind() output — see scripts/lib/security-kind-classify.ts: 'equity' | 'etf' | 'fund_trust' | 'right_warrant' | 'convertible_bond' | 'option' | 'unclassified'
   metadata        Json?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -266,6 +267,7 @@ model Security {
 
   @@index([ticker])
   @@index([companyEntityId])
+  @@index([kind])
 }
 
 model ExtSource {

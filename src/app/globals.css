@@ -5168,6 +5168,18 @@ body.layout-no-header {
   overflow-wrap: break-word;
 }
 
+.company-display-kind-badge {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--apple-secondary);
+  background: var(--apple-light-gray);
+  padding: 0.0625rem 0.375rem;
+  border-radius: 5px;
+  margin-left: 0.375rem;
+  vertical-align: middle;
+}
+
 .company-display--compact .company-display-zh {
   font-weight: 500;
 }

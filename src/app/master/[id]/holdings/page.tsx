@@ -238,6 +238,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
                               zhName={zhName}
                               enName={enName}
                               ticker={getHoldingTicker(h)}
+                              securityKind={h.security?.kind}
                               compact
                             />
                           </Link>
@@ -246,6 +247,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
                             zhName={zhName}
                             enName={enName}
                             ticker={getHoldingTicker(h)}
+                            securityKind={h.security?.kind}
                             compact
                           />
                         )}
@@ -302,6 +304,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
                               zhName={zhName}
                               enName={enName}
                               ticker={getHoldingTicker(h)}
+                              securityKind={h.security?.kind}
                               compact
                             />
                           </Link>
@@ -310,6 +313,7 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
                             zhName={zhName}
                             enName={enName}
                             ticker={getHoldingTicker(h)}
+                            securityKind={h.security?.kind}
                             compact
                           />
                         )}

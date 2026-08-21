@@ -472,6 +472,7 @@ export default async function PersonHubPage({ params }: Props) {
                                       zhName={display.zh}
                                       enName={display.en}
                                       ticker={getHoldingTicker(h)}
+                                      securityKind={h.security?.kind}
                                       compact
                                     />
                                   </Link>
@@ -480,6 +481,7 @@ export default async function PersonHubPage({ params }: Props) {
                                     zhName={display.zh}
                                     enName={display.en}
                                     ticker={getHoldingTicker(h)}
+                                    securityKind={h.security?.kind}
                                     compact
                                   />
                                 )}
@@ -522,6 +524,7 @@ export default async function PersonHubPage({ params }: Props) {
                                       zhName={display.zh}
                                       enName={display.en}
                                       ticker={getHoldingTicker(h)}
+                                      securityKind={h.security?.kind}
                                       compact
                                     />
                                   </Link>
@@ -530,6 +533,7 @@ export default async function PersonHubPage({ params }: Props) {
                                     zhName={display.zh}
                                     enName={display.en}
                                     ticker={getHoldingTicker(h)}
+                                    securityKind={h.security?.kind}
                                     compact
                                   />
                                 )}

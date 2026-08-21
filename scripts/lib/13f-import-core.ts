@@ -9,6 +9,7 @@ import { hasChineseText, issuerKey, resolveCompanyNamesFromMaps } from "../../sr
 import { isValidTickerFormat, normalizeTicker } from "../../src/lib/ticker";
 import { translateCompanyNameToZh, upsertNameMapEntries } from "./company-name-zh";
 import { ImportTimer } from "./import-timer";
+import { classifySecurityKind } from "./security-kind-classify";
 
 export const db = new PrismaClient();
 
@@ -625,6 +626,7 @@ async function upsertSecurityEntity(entry: InfoTableEntry): Promise<SecuritySnap
       ticker: resolved.ticker,
       cusip: entry.cusip,
       titleOfClass: entry.titleOfClass,
+      kind: classifySecurityKind({ titleOfClass: entry.titleOfClass, putCall: entry.putCall }).kind,
       metadata: {
         nameZh: resolved.nameZh,
         nameEnShort: resolved.nameEnShort,

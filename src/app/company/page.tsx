@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import { formatCompanyUrl } from "@/lib/company-data";
+import { isNonCompanySecurityKind } from "@/lib/security-kind";
 import { SiteNav } from "@/components/SiteNav";
 import { CompanyDirectory, CompanyGrid, type CompanyDirectoryItem } from "@/components/CompanyDirectory";
 
@@ -36,7 +37,7 @@ const ENTITY_DIRECTORY_SELECT = {
   ticker: true,
   metadata: true,
   securitiesAsCompany: {
-    select: { ticker: true },
+    select: { ticker: true, kind: true },
     orderBy: { ticker: "asc" as const },
   },
   // Onboarding writes Financial/CompanyAnalysis/BusinessCanvas together
@@ -48,6 +49,16 @@ const ENTITY_DIRECTORY_SELECT = {
 };
 
 type EntityDirectoryRow = Awaited<ReturnType<typeof prisma.entity.findMany<{ select: typeof ENTITY_DIRECTORY_SELECT }>>>[number];
+
+// e.g. INVESCO QQQ TR shows up in 13F holdings but is an ETF/trust, not a
+// company. An entity is only excluded here if it has securities and ALL of
+// them are a non-company kind (see isNonCompanySecurityKind); an entity with
+// no Security rows (e.g. manually onboarded HK/CN companies) or a mix
+// including "equity"/"unclassified" is always kept — never hide a row on a
+// guess.
+function isNonCompanyInstrument(row: EntityDirectoryRow): boolean {
+  return row.securitiesAsCompany.length > 0 && row.securitiesAsCompany.every((s) => isNonCompanySecurityKind(s.kind));
+}
 
 function toDirectoryItem(row: EntityDirectoryRow): CompanyDirectoryItem {
   const meta = row.metadata as Record<string, unknown> | null;
@@ -81,7 +92,7 @@ async function getCompanies(): Promise<CompanyDirectoryItem[]> {
       select: ENTITY_DIRECTORY_SELECT,
       orderBy: { canonicalName: "asc" },
     });
-    return rows.map(toDirectoryItem);
+    return rows.filter((row) => !isNonCompanyInstrument(row)).map(toDirectoryItem);
   } catch {
     return [];
   }

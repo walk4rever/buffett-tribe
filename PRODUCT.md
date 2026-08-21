@@ -1094,6 +1094,7 @@ Apple HIG 精简风格：
 | `Market` | 公司所属市场 | `us`, `cn`, `hk` | 存在于 `Entity.market`，决定标识体系和数据来源 |
 | `Code` | A 股/港股数字代码（不含 Yahoo 后缀；港股补零） | `600519`, `09992` | 存在于 `Entity.code`，与 `market` 组合查询 |
 | `Accession Number` / `accno` | EDGAR 单次申报的唯一受理号 | `0001193125-26-226661` | 存在于 `ExtSource.accessionNumber`，与 `filerEntityId` 组成唯一约束 |
+| `Security.kind`（2026-08-21 新增） | 13F 申报里该证券的工具类型，非"公司/非公司"二元判断 | `equity`, `etf`, `fund_trust`, `right_warrant`, `convertible_bond`, `option`, `unclassified` | 13F 只按 §13(f) securities 披露，不只是运营公司——同一份 13F 里混有 ETF/REIT信托单位/权证/可转债/期权。`scripts/lib/security-kind-classify.ts` 按 `titleOfClass`/`putCall` 关键词分类（不读发行人名字，避免把 Northern Trust 这类真公司误判成信托）；`/company` 目录只排除"该 entity 全部 Security 都是非 equity kind"的条目（如 INVESCO QQQ TR），持仓明细表对应行加类型徽标且不再可点击进公司页；模糊值一律落 `unclassified`，不猜 |
 
 快速辨析：
 
@@ -1162,6 +1163,7 @@ Apple HIG 精简风格：
 | Fund/filer 身份 | SEC filer 元数据 + 项目映射 | `Entity(type=master)`, `ExtSource.filerEntityId` | `npm run import:13f` | 当前模型把申报 filer 直接当成 master 关联的 fund/filer 身份 |
 | 13F 申报 | SEC EDGAR 13F | `ExtSource(kind=13f)`, `Holding`, `Security`, `Entity` | `npm run import:13f`, `npm run pipeline:13f` | 核心链路已跑通 |
 | 13F 公司关联 | 13F + ticker/name 映射 | `Security.companyEntityId`, `CompanyNameMap` | `npm run backfill:security:company-links`, `npm run sync:company-name-map` | 已有修复脚本，13F 导入后按需跑 |
+| 证券类型分类（ETF/信托/权证/可转债/期权 vs 真实公司股权） | `titleOfClass`/`putCall` 关键词分类 | `Security.kind` | `import:13f`（新增行自动打标），`npm run backfill:security-kind` | 2026-08-21 新增。历史 639 条 Security 里 632 条（98.9%）分类成功；7 条 unclassified 待人工review（多是ETF发行人未在titleOfClass写"ETF"，如SPLV/EWL/BSV/VOE）。历史行无 `putCall`（导入时就被丢弃，这次才开始存），所以历史期权仓位无法回溯识别，只有之后重新 import 才会补上 |
 | 持仓变化信号 | `Holding` 历史 | 脚本/查询内派生 | `scripts/generate-portfolio-insight.ts` | portfolio insight 生成用 |
 | 大师主页画像 | 无（纯公开知识总结，不读我们数据库） | `MasterProfile`，镜像至 `GeneratedContentVersion(artifactType=master_profile)` | `npm run generate:master-profile` | 页面读 `MasterProfile`。2026-08-07 查证：11/11 有镜像（大师数量少、基本都被重跑过），但**没有任何代码读取这份镜像**——纯写入成本，见下方「LLM 生成内容版本表现状」。2026-08-14 起 `bio`/`fundOverview` 不再传入任何我们算出的持仓/13F 数据——等价于直接问 LLM"总结一下这个人和他的基金公司"，只传姓名。两者都不涉及持仓集中度/行业分布/季度调仓，那部分与 `PortfolioInsight` 重复，由后者单独承担。（中途曾改成引用真实计算的 13F 总市值当"基金规模"，后发现这个口径本身就窄于基金真实 AUM，把内部统计冒充成整体规模，已撤回） |
 | 季度持仓点评 | 持仓变化 + 大师画像 | `PortfolioInsight`，镜像至 `GeneratedContentVersion(artifactType=portfolio_insight)` | `npm run generate:portfolio-insight` | 同上，12/12 有镜像，同样没有消费方 |

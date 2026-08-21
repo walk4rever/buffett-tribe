@@ -50,6 +50,8 @@
     "backfill:share-repurchase:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-share-repurchase.ts --dry-run",
     "backfill:security:company-links": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-security-company-links.ts",
     "backfill:security:company-links:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-security-company-links.ts --dry-run",
+    "backfill:security-kind": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-security-kind.ts",
+    "backfill:security-kind:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-security-kind.ts --dry-run",
     "backfill:company-cik": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-cik.ts",
     "backfill:company-cik:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-cik.ts --dry-run",
     "backfill:tribe-member-fields": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-tribe-member-fields.ts",

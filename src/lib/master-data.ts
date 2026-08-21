@@ -3,6 +3,7 @@ import { formatUsdInYi } from "@/lib/currency";
 import { formatCompanyUrl } from "@/lib/company-data";
 import { getDocumentsForOwner } from "@/lib/documents";
 import { computeHoldingActivity, computeShareDeltaPct, type HoldingActivity } from "@/lib/holding-activity";
+import { isNonCompanySecurityKind } from "@/lib/security-kind";
 
 export type QuarterPoint = {
   year: number;
@@ -221,6 +222,10 @@ export function getHoldingTicker(h: HoldingRow): string | null {
 }
 
 export function getHoldingCompanyPath(h: HoldingRow): string | null {
+  // ETFs/trusts/warrants/etc. never get a company page (see
+  // scripts/lib/security-kind-classify.ts) — link to nothing rather than a
+  // permanently-empty stub.
+  if (isNonCompanySecurityKind(h.security?.kind)) return null;
   return formatCompanyUrl(h.security?.company ?? {});
 }
 
