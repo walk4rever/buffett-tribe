@@ -1803,6 +1803,26 @@ body.layout-no-header {
   border-radius: 10px;
   object-fit: cover;
   border: 0.5px solid var(--secondary);
+  cursor: zoom-in;
+}
+
+.agent-image-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: 2rem;
+  cursor: zoom-out;
+}
+
+.agent-image-lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 8px;
+  object-fit: contain;
 }
 
 .msg-table-wrap {

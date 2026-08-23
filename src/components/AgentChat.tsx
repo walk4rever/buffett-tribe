@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ClipboardEvent, ComponentPropsWithoutRef } from "react";
@@ -74,6 +74,7 @@ export function AgentChat({
 }: AgentChatProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   useEffect(() => {
     if (!pendingQuote) return;
@@ -138,7 +139,13 @@ export function AgentChat({
                     {msg.images && msg.images.length > 0 && (
                       <div className="msg-images">
                         {msg.images.map((img, j) => (
-                          <img key={j} src={imageSrc(img)} alt="" className="msg-image" />
+                          <img
+                            key={j}
+                            src={imageSrc(img)}
+                            alt=""
+                            className="msg-image"
+                            onClick={() => setLightboxSrc(imageSrc(img))}
+                          />
                         ))}
                       </div>
                     )}
@@ -243,6 +250,12 @@ export function AgentChat({
           </button>
         </div>
       </div>
+
+      {lightboxSrc && (
+        <div className="agent-image-lightbox" onClick={() => setLightboxSrc(null)}>
+          <img src={lightboxSrc} alt="" />
+        </div>
+      )}
     </div>
   );
 }

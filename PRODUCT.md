@@ -112,7 +112,9 @@ Agent 由 pi-gateway（Express SSE，air7，PM2）驱动，使用 `@earendil-wor
 
 AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投研定位、三工具用法、回答格式（分析 + 引用分层）。
 
-**图片输入（2026-08-23 上线）**：所有「AI 解读」对话框（含 `/agent` 本身）的输入框支持直接从剪贴板粘贴图片提问。前端用 `<canvas>` 把图片降采样到长边 ≤1280px、JPEG quality 0.82 后再转 base64（DeepSeek vision 对单张图的有效信息上限约 384 token，原图分辨率没有意义），随消息体一并发到 `/api/pi` → pi-gateway；pi-gateway 只在这一轮消息带图片时用 `AgentSession.setModel()` 切到 `deepseek-v4-flash-vision-exp`（单独一个 provider model，见 `services/pi-gateway/.pi-agent/models.json`），发完这轮再切回默认文本模型——已用真实 DeepSeek API 验证过 vision 模型在同一次请求里仍能正常触发 function calling，不会因为切模型而让五个工具失效。图片仅内联传输（base64 data URI），不落盘、不经 R2，纯本轮对话的临时输入。校验逻辑（mime 白名单、单条消息最多 4 张、单张 base64 长度上限）在 `src/lib/image-attachment.ts` 和 `services/pi-gateway/src/image-attachment.ts` 两处独立维护——两个目录是各自独立部署的服务，不共享代码。
+**图片输入（2026-08-23 上线）**：所有「AI 解读」对话框（含 `/agent` 本身）的输入框支持直接从剪贴板粘贴图片提问。前端用 `<canvas>` 把图片降采样到长边 ≤1280px、JPEG quality 0.82 后再转 base64（DeepSeek vision 对单张图的有效信息上限约 384 token，原图分辨率没有意义），随消息体一并发到 `/api/pi` → pi-gateway；pi-gateway 只在这一轮消息带图片时用 `AgentSession.setModel()` 切到 `deepseek-v4-flash-vision-exp`（单独一个 provider model，见 `services/pi-gateway/.pi-agent/models.json`），发完这轮再切回默认文本模型——已用真实 DeepSeek API 验证过 vision 模型在同一次请求里仍能正常触发 function calling，不会因为切模型而让五个工具失效。图片仅内联传输（base64 data URI），不落盘、不经 R2，纯本轮对话的临时输入。校验逻辑（mime 白名单、单条消息最多 4 张、单张 base64 长度上限）在 `src/lib/image-attachment.ts` 和 `services/pi-gateway/src/image-attachment.ts` 两处独立维护——两个目录是各自独立部署的服务，不共享代码。对话记录里已发送的图片支持点击放大（`AgentChat.tsx` 内嵌一个极简 lightbox：点击缩略图全屏展示，点击遮罩关闭，不做独立组件）。
+
+**上线时踩的坑**：`services/pi-gateway/.pi-agent/models.json` 里自定义 model 条目不显式声明 `"input": ["text", "image"]` 的话，pi-coding-agent 的 model registry 默认给 `input: ["text"]`——图片会在请求发出**之前**就被 SDK 自己换成 `(image omitted: model does not support images)` 占位文本，DeepSeek 那边完全收不到图，agent 也确实"看不到"（不是幻觉，是真收不到）。加这一个字段就好，两处 `models.json`（本地 dev 模板 + air7 生产环境副本）都要改，改完要重启 pi-gateway 让新配置生效。
 
 ### 用户体系与访问控制（2026-08-21 确认）
 
