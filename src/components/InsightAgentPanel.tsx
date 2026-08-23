@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import { AgentChat } from "@/components/AgentChat";
-import type { Message } from "@/hooks/useAgentChat";
+import type { ImageAttachment, Message } from "@/hooks/useAgentChat";
 
 interface InsightAgentPanelProps {
   insightTitle: string;
@@ -16,6 +16,9 @@ interface InsightAgentPanelProps {
   streaming: boolean;
   sendMessage: (text: string) => void;
   abort: () => void;
+  pendingImages: ImageAttachment[];
+  onAddImage: (image: ImageAttachment) => void;
+  onRemoveImage: (index: number) => void;
 }
 
 export function InsightAgentPanel({
@@ -28,6 +31,9 @@ export function InsightAgentPanel({
   streaming,
   sendMessage,
   abort,
+  pendingImages,
+  onAddImage,
+  onRemoveImage,
 }: InsightAgentPanelProps) {
   return (
     <aside className="filing-reader-ai-panel">
@@ -45,6 +51,9 @@ export function InsightAgentPanel({
           streaming={streaming}
           sendMessage={sendMessage}
           abort={abort}
+          pendingImages={pendingImages}
+          onAddImage={onAddImage}
+          onRemoveImage={onRemoveImage}
           emptyTitle={`理解这篇文章`}
           emptySubtitle="选中正文中的段落，或者直接提问"
           placeholder="针对这篇文章提问，或选中正文段落讨论… (Enter 发送，Shift+Enter 换行)"

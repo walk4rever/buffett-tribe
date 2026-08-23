@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import { AgentChat } from "@/components/AgentChat";
-import type { Message } from "@/hooks/useAgentChat";
+import type { ImageAttachment, Message } from "@/hooks/useAgentChat";
 
 interface FilingAgentPanelProps {
   companyName: string;
@@ -17,6 +17,9 @@ interface FilingAgentPanelProps {
   streaming: boolean;
   sendMessage: (text: string) => void;
   abort: () => void;
+  pendingImages: ImageAttachment[];
+  onAddImage: (image: ImageAttachment) => void;
+  onRemoveImage: (index: number) => void;
 }
 
 export function FilingAgentPanel({
@@ -30,6 +33,9 @@ export function FilingAgentPanel({
   streaming,
   sendMessage,
   abort,
+  pendingImages,
+  onAddImage,
+  onRemoveImage,
 }: FilingAgentPanelProps) {
   const yearLabel = periodYear ? `${periodYear} 年报` : "年报";
 
@@ -49,6 +55,9 @@ export function FilingAgentPanel({
           streaming={streaming}
           sendMessage={sendMessage}
           abort={abort}
+          pendingImages={pendingImages}
+          onAddImage={onAddImage}
+          onRemoveImage={onRemoveImage}
           emptyTitle={`理解${companyName}`}
           emptySubtitle="基于年报原文，看懂这家公司在说什么"
           placeholder={`针对${companyName}这份年报提问，或选中原文讨论… (Enter 发送，Shift+Enter 换行)`}

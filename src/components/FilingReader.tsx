@@ -121,13 +121,14 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
   const displayCompanyName = company.nameZh?.trim() || company.name;
   // Called here (not inside FilingAgentPanel, which unmounts when aiPanelOpen is
   // false) so closing the panel doesn't unmount the conversation state with it.
-  const { messages, input, setInput, streaming, sendMessage, abort } = useAgentChat({
-    context: {
-      companyName: displayCompanyName,
-      ticker: company.ticker ?? undefined,
-      periodYear: filing.periodYear ?? undefined,
-    },
-  });
+  const { messages, input, setInput, streaming, sendMessage, abort, pendingImages, addImage, removeImage } =
+    useAgentChat({
+      context: {
+        companyName: displayCompanyName,
+        ticker: company.ticker ?? undefined,
+        periodYear: filing.periodYear ?? undefined,
+      },
+    });
   const { requireAuth } = useAgentGate(() => setAiPanelOpen(true));
   const reportLabel = `${filing.periodYear ?? "—"}${filing.periodQuarter ? ` Q${filing.periodQuarter}` : ""}`;
   const reportMetaLabel = [
@@ -327,6 +328,9 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
             streaming={streaming}
             sendMessage={sendMessage}
             abort={abort}
+            pendingImages={pendingImages}
+            onAddImage={addImage}
+            onRemoveImage={removeImage}
           />
         ) : null}
       </div>

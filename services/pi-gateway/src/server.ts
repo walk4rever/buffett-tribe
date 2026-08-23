@@ -2,6 +2,7 @@ import express from "express";
 import { requireSecret } from "./auth.js";
 import { getSession, type SessionContext } from "./session-manager.js";
 import { streamPrompt } from "./stream.js";
+import { validateImageAttachments } from "./image-attachment.js";
 
 function buildContextPrefix(context: SessionContext | undefined): string | undefined {
   if (context?.masterName) {
@@ -24,21 +25,31 @@ function buildContextPrefix(context: SessionContext | undefined): string | undef
 
 const PORT = Number(process.env.PORT ?? 3456);
 const app = express();
-app.use(express.json());
+// Default 100kb is too small for a request carrying downscaled image attachments.
+app.use(express.json({ limit: "10mb" }));
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
 
 app.post("/chat", requireSecret, async (req, res) => {
-  const { message, userId, context } = req.body as {
+  const { message, userId, context, images: rawImages } = req.body as {
     message?: string;
     userId?: string;
     context?: SessionContext;
+    images?: unknown;
   };
 
   if (!message || typeof message !== "string" || message.trim() === "") {
     res.status(400).json({ error: "message is required" });
+    return;
+  }
+
+  let images;
+  try {
+    images = validateImageAttachments(rawImages);
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : "invalid images" });
     return;
   }
 
@@ -64,7 +75,7 @@ app.post("/chat", requireSecret, async (req, res) => {
   // repeating it every message since the session is already scoped per master/company.
   const contextPrefix = isNew ? buildContextPrefix(context) : undefined;
 
-  await streamPrompt(session, message.trim(), res, contextPrefix);
+  await streamPrompt(session, message.trim(), res, contextPrefix, images);
 });
 
 app.listen(PORT, () => {

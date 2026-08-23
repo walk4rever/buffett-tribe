@@ -6,7 +6,8 @@
       "api": "openai-completions",
       "models": [
         { "id": "deepseek-v4-flash" },
-        { "id": "deepseek-v4-pro" }
+        { "id": "deepseek-v4-pro" },
+        { "id": "deepseek-v4-flash-vision-exp" }
       ]
     }
   }

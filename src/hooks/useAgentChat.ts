@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { MAX_IMAGES_PER_MESSAGE, type ImageAttachment } from "@/lib/image-attachment";
+
+export type { ImageAttachment };
 
 export interface ToolCall {
   id: string;
@@ -15,6 +18,7 @@ export interface Message {
   text: string;
   toolCalls?: ToolCall[];
   error?: boolean;
+  images?: ImageAttachment[];
 }
 
 export const TOOL_META: Record<string, { icon: string; label: string }> = {
@@ -71,8 +75,17 @@ export function useAgentChat({ context }: UseAgentChatOptions = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [pendingImages, setPendingImages] = useState<ImageAttachment[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string>("");
+
+  function addImage(image: ImageAttachment) {
+    setPendingImages((prev) => (prev.length >= MAX_IMAGES_PER_MESSAGE ? prev : [...prev, image]));
+  }
+
+  function removeImage(index: number) {
+    setPendingImages((prev) => prev.filter((_, i) => i !== index));
+  }
 
   useEffect(() => {
     const key = "bt_agent_session_id";
@@ -85,14 +98,16 @@ export function useAgentChat({ context }: UseAgentChatOptions = {}) {
   }, []);
 
   async function sendMessage(text: string) {
-    if (!text.trim() || streaming) return;
+    const images = pendingImages;
+    if ((!text.trim() && images.length === 0) || streaming) return;
 
     setInput("");
+    setPendingImages([]);
 
     const assistantIndex = messages.length + 1;
     setMessages((prev) => [
       ...prev,
-      { role: "user", text },
+      { role: "user", text, images: images.length ? images : undefined },
       { role: "assistant", text: "", toolCalls: [] },
     ]);
     setStreaming(true);
@@ -104,7 +119,12 @@ export function useAgentChat({ context }: UseAgentChatOptions = {}) {
       const res = await fetch("/api/pi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, userId: sessionIdRef.current, context }),
+        body: JSON.stringify({
+          message: text,
+          userId: sessionIdRef.current,
+          context,
+          images: images.length ? images : undefined,
+        }),
         signal: ctrl.signal,
       });
 
@@ -207,5 +227,5 @@ export function useAgentChat({ context }: UseAgentChatOptions = {}) {
     abortRef.current?.abort();
   }
 
-  return { messages, input, setInput, streaming, sendMessage, abort };
+  return { messages, input, setInput, streaming, sendMessage, abort, pendingImages, addImage, removeImage };
 }

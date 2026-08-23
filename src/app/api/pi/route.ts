@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { validateImageAttachments } from "@/lib/image-attachment";
 
 export const maxDuration = 90;
 
@@ -22,13 +23,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "message is required" }, { status: 400 });
   }
 
+  let images;
+  try {
+    images = validateImageAttachments(body.images);
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "invalid images" }, { status: 400 });
+  }
+
   const upstream = await fetch(`${GATEWAY_URL}/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Agent-Secret": AGENT_SECRET,
     },
-    body: JSON.stringify({ message: body.message, userId: body.userId, context: body.context }),
+    body: JSON.stringify({ message: body.message, userId: body.userId, context: body.context, images }),
     signal: AbortSignal.timeout(85000),
   });
 

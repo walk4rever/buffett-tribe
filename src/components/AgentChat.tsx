@@ -3,8 +3,13 @@
 import { useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { ComponentPropsWithoutRef } from "react";
-import { TOOL_META, type Message } from "@/hooks/useAgentChat";
+import type { ClipboardEvent, ComponentPropsWithoutRef } from "react";
+import { TOOL_META, type ImageAttachment, type Message } from "@/hooks/useAgentChat";
+import { fileToImageAttachment, isSupportedImageFile } from "@/lib/downscale-image";
+
+function imageSrc(img: ImageAttachment): string {
+  return `data:${img.mimeType};base64,${img.data}`;
+}
 
 const mdComponents = {
   a: (props: ComponentPropsWithoutRef<"a">) => {
@@ -45,6 +50,10 @@ interface AgentChatProps {
   /** Set by a parent when the user selects report text and asks to discuss it — changing
    *  this object (even to an identical string) re-populates the input and focuses it. */
   pendingQuote?: { text: string } | null;
+  /** Images attached to the in-progress message (pasted from clipboard), pending send. */
+  pendingImages: ImageAttachment[];
+  onAddImage: (image: ImageAttachment) => void;
+  onRemoveImage: (index: number) => void;
 }
 
 export function AgentChat({
@@ -59,6 +68,9 @@ export function AgentChat({
   emptySubtitle = "以价值投资大师的视角，看穿公司的本质",
   placeholder = "问一家公司的护城河、财务表现或大师持仓… (Enter 发送，Shift+Enter 换行)",
   pendingQuote,
+  pendingImages,
+  onAddImage,
+  onRemoveImage,
 }: AgentChatProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -83,6 +95,24 @@ export function AgentChat({
     el.scrollTop = el.scrollHeight;
   }, [messages, streaming]);
 
+  async function handlePaste(e: ClipboardEvent<HTMLTextAreaElement>) {
+    const files = Array.from(e.clipboardData.items)
+      .filter((item) => item.kind === "file")
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => !!file && isSupportedImageFile(file));
+
+    if (files.length === 0) return;
+    e.preventDefault();
+
+    for (const file of files) {
+      try {
+        onAddImage(await fileToImageAttachment(file));
+      } catch {
+        // Skip files that fail to decode (e.g. corrupt clipboard data).
+      }
+    }
+  }
+
   return (
     <div className="agent-chat">
       {/* Messages */}
@@ -105,7 +135,14 @@ export function AgentChat({
               msg.role === "user" ? (
                 <div key={i} className="msg msg--user">
                   <div className="msg-body">
-                    <p className="msg-text">{msg.text}</p>
+                    {msg.images && msg.images.length > 0 && (
+                      <div className="msg-images">
+                        {msg.images.map((img, j) => (
+                          <img key={j} src={imageSrc(img)} alt="" className="msg-image" />
+                        ))}
+                      </div>
+                    )}
+                    {msg.text && <p className="msg-text">{msg.text}</p>}
                   </div>
                 </div>
               ) : (
@@ -151,6 +188,23 @@ export function AgentChat({
 
       {/* Input */}
       <div className="chat-input-wrap">
+        {pendingImages.length > 0 && (
+          <div className="chat-pending-images">
+            {pendingImages.map((img, i) => (
+              <div key={i} className="chat-pending-image">
+                <img src={imageSrc(img)} alt="" />
+                <button
+                  type="button"
+                  className="chat-pending-image-remove"
+                  onClick={() => onRemoveImage(i)}
+                  aria-label="移除图片"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="chat-input-bar">
           <textarea
             ref={inputRef}
@@ -160,6 +214,7 @@ export function AgentChat({
             value={input}
             disabled={streaming}
             onChange={(e) => setInput(e.target.value)}
+            onPaste={handlePaste}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
@@ -169,7 +224,7 @@ export function AgentChat({
           />
           <button
             className="chat-send-btn"
-            disabled={!streaming && !input.trim()}
+            disabled={!streaming && !input.trim() && pendingImages.length === 0}
             onClick={() => {
               if (streaming) abort();
               else sendMessage(input);

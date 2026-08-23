@@ -16,9 +16,10 @@ export function CompanyAgentDialog({ companyName, ticker }: CompanyAgentDialogPr
   const { requireAuth } = useAgentGate(() => setOpen(true));
   // Called here (not inside the conditionally-rendered modal below) so closing the
   // dialog doesn't unmount the conversation state along with it.
-  const { messages, input, setInput, streaming, sendMessage, abort } = useAgentChat({
-    context: { companyName, ticker: ticker ?? undefined },
-  });
+  const { messages, input, setInput, streaming, sendMessage, abort, pendingImages, addImage, removeImage } =
+    useAgentChat({
+      context: { companyName, ticker: ticker ?? undefined },
+    });
 
   return (
     <>
@@ -49,6 +50,9 @@ export function CompanyAgentDialog({ companyName, ticker }: CompanyAgentDialogPr
                 streaming={streaming}
                 sendMessage={sendMessage}
                 abort={abort}
+                pendingImages={pendingImages}
+                onAddImage={addImage}
+                onRemoveImage={removeImage}
                 emptyTitle={`理解${companyName}`}
                 emptySubtitle="以价值投资框架，看穿公司的本质"
                 placeholder={`问${companyName}的护城河、财务表现或持仓… (Enter 发送，Shift+Enter 换行)`}

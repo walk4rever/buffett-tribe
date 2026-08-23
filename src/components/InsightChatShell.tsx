@@ -52,9 +52,10 @@ export function InsightChatShell({ slug, title, children }: InsightChatShellProp
   const docked = open && isDesktop;
   // Called here (not inside InsightAgentPanel, which unmounts when `open` is
   // false) so closing the panel doesn't unmount the conversation state with it.
-  const { messages, input, setInput, streaming, sendMessage, abort } = useAgentChat({
-    context: { insightSlug: slug, insightTitle: title },
-  });
+  const { messages, input, setInput, streaming, sendMessage, abort, pendingImages, addImage, removeImage } =
+    useAgentChat({
+      context: { insightSlug: slug, insightTitle: title },
+    });
   const { requireAuth } = useAgentGate(openPanel);
 
   // While the panel is open, .site-main shouldn't also scroll — on desktop the
@@ -171,6 +172,9 @@ export function InsightChatShell({ slug, title, children }: InsightChatShellProp
             streaming={streaming}
             sendMessage={sendMessage}
             abort={abort}
+            pendingImages={pendingImages}
+            onAddImage={addImage}
+            onRemoveImage={removeImage}
           />
         </div>
       ) : (
@@ -187,6 +191,9 @@ export function InsightChatShell({ slug, title, children }: InsightChatShellProp
               streaming={streaming}
               sendMessage={sendMessage}
               abort={abort}
+              pendingImages={pendingImages}
+              onAddImage={addImage}
+              onRemoveImage={removeImage}
             />
           ) : null}
         </>

@@ -112,6 +112,8 @@ Agent 由 pi-gateway（Express SSE，air7，PM2）驱动，使用 `@earendil-wor
 
 AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投研定位、三工具用法、回答格式（分析 + 引用分层）。
 
+**图片输入（2026-08-23 上线）**：所有「AI 解读」对话框（含 `/agent` 本身）的输入框支持直接从剪贴板粘贴图片提问。前端用 `<canvas>` 把图片降采样到长边 ≤1280px、JPEG quality 0.82 后再转 base64（DeepSeek vision 对单张图的有效信息上限约 384 token，原图分辨率没有意义），随消息体一并发到 `/api/pi` → pi-gateway；pi-gateway 只在这一轮消息带图片时用 `AgentSession.setModel()` 切到 `deepseek-v4-flash-vision-exp`（单独一个 provider model，见 `services/pi-gateway/.pi-agent/models.json`），发完这轮再切回默认文本模型——已用真实 DeepSeek API 验证过 vision 模型在同一次请求里仍能正常触发 function calling，不会因为切模型而让五个工具失效。图片仅内联传输（base64 data URI），不落盘、不经 R2，纯本轮对话的临时输入。校验逻辑（mime 白名单、单条消息最多 4 张、单张 base64 长度上限）在 `src/lib/image-attachment.ts` 和 `services/pi-gateway/src/image-attachment.ts` 两处独立维护——两个目录是各自独立部署的服务，不共享代码。
+
 ### 用户体系与访问控制（2026-08-21 确认）
 
 站点当前对外**完全免费**。此前 backlog 里的商业化条目（LemonSqueezy 订阅集成、免费 vs 会员次数限制、免费到付费转化链路验证）已从计划移除——会员分级/收费是否要做、怎么做，留待未来单独设计，不在当前范围内。

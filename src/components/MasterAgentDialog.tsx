@@ -16,9 +16,10 @@ export function MasterAgentDialog({ masterId, masterName }: MasterAgentDialogPro
   const { requireAuth } = useAgentGate(() => setOpen(true));
   // Called here (not inside the conditionally-rendered modal below) so closing the
   // dialog doesn't unmount the conversation state along with it.
-  const { messages, input, setInput, streaming, sendMessage, abort } = useAgentChat({
-    context: { masterId, masterName },
-  });
+  const { messages, input, setInput, streaming, sendMessage, abort, pendingImages, addImage, removeImage } =
+    useAgentChat({
+      context: { masterId, masterName },
+    });
 
   return (
     <>
@@ -49,6 +50,9 @@ export function MasterAgentDialog({ masterId, masterName }: MasterAgentDialogPro
                 streaming={streaming}
                 sendMessage={sendMessage}
                 abort={abort}
+                pendingImages={pendingImages}
+                onAddImage={addImage}
+                onRemoveImage={removeImage}
                 emptyTitle={`理解${masterName}`}
                 emptySubtitle="以他的投资框架，看穿公司的本质"
                 placeholder={`问${masterName}的投资框架、持仓或某家公司… (Enter 发送，Shift+Enter 换行)`}
