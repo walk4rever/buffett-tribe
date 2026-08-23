@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { MAX_IMAGES_PER_MESSAGE, type ImageAttachment } from "@/lib/image-attachment";
+import { deriveContextKey, type AgentContext } from "@/lib/agent-context";
 
 export type { ImageAttachment };
+export type { AgentContext };
 
 export interface ToolCall {
   id: string;
@@ -19,6 +21,9 @@ export interface Message {
   toolCalls?: ToolCall[];
   error?: boolean;
   images?: ImageAttachment[];
+  /** R2 URLs for images loaded from persisted history — distinct from `images`
+   *  (base64, only present for images just attached in this live session). */
+  imageUrls?: string[];
 }
 
 export const TOOL_META: Record<string, { icon: string; label: string }> = {
@@ -55,11 +60,6 @@ function resolveToolDetail(name: string, args: Record<string, unknown> | undefin
   return str("query");
 }
 
-export type AgentContext =
-  | { masterId: string; masterName: string }
-  | { companyName: string; ticker?: string; periodYear?: number }
-  | { insightSlug: string; insightTitle: string };
-
 interface UseAgentChatOptions {
   /** Scopes the conversation to a specific investor or filing page — the server keys
    *  the session per (userId, context) and seeds a one-time context note on the first turn. */
@@ -78,6 +78,7 @@ export function useAgentChat({ context }: UseAgentChatOptions = {}) {
   const [pendingImages, setPendingImages] = useState<ImageAttachment[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string>("");
+  const contextKey = deriveContextKey(context);
 
   function addImage(image: ImageAttachment) {
     setPendingImages((prev) => (prev.length >= MAX_IMAGES_PER_MESSAGE ? prev : [...prev, image]));
@@ -97,6 +98,36 @@ export function useAgentChat({ context }: UseAgentChatOptions = {}) {
     sessionIdRef.current = id;
   }, []);
 
+  // Seeds this thread's recent history once per (contextKey). Guarded by a functional
+  // update so it never clobbers messages the user has already sent while this was in flight.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/agent-turns?contextKey=${encodeURIComponent(contextKey)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { turns?: { role: "user" | "assistant"; text: string; imageUrls?: string[] }[] } | null) => {
+        if (cancelled || !data?.turns?.length) return;
+        const history: Message[] = data.turns.map((t) => ({
+          role: t.role,
+          text: t.text,
+          imageUrls: t.imageUrls?.length ? t.imageUrls : undefined,
+        }));
+        setMessages((prev) => (prev.length === 0 ? history : prev));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [contextKey]);
+
+  function persistTurn(role: "user" | "assistant", text: string, images?: ImageAttachment[]) {
+    if (!text.trim() && !images?.length) return;
+    fetch("/api/agent-turns", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ context, role, text, images }),
+    }).catch(() => {});
+  }
+
   async function sendMessage(text: string) {
     const images = pendingImages;
     if ((!text.trim() && images.length === 0) || streaming) return;
@@ -111,9 +142,12 @@ export function useAgentChat({ context }: UseAgentChatOptions = {}) {
       { role: "assistant", text: "", toolCalls: [] },
     ]);
     setStreaming(true);
+    persistTurn("user", text, images.length ? images : undefined);
 
     const ctrl = new AbortController();
     abortRef.current = ctrl;
+    let assistantText = "";
+    let hadError = false;
 
     try {
       const res = await fetch("/api/pi", {
@@ -135,6 +169,7 @@ export function useAgentChat({ context }: UseAgentChatOptions = {}) {
             i === assistantIndex ? { ...m, text: err.error ?? "请求失败", error: true } : m,
           ),
         );
+        hadError = true;
         return;
       }
 
@@ -161,6 +196,7 @@ export function useAgentChat({ context }: UseAgentChatOptions = {}) {
 
             if (eventType === "delta") {
               const delta = typeof data.text === "string" ? data.text : "";
+              assistantText += delta;
               setMessages((prev) =>
                 prev.map((m, i) => i === assistantIndex ? { ...m, text: m.text + delta } : m),
               );
@@ -196,11 +232,14 @@ export function useAgentChat({ context }: UseAgentChatOptions = {}) {
               setMessages((prev) =>
                 prev.map((m, i) => i === assistantIndex ? { ...m, text: msg, error: true } : m),
               );
+              hadError = true;
             }
             eventType = "";
           }
         }
       }
+
+      if (!hadError) persistTurn("assistant", assistantText);
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
         setMessages((prev) =>
@@ -216,6 +255,7 @@ export function useAgentChat({ context }: UseAgentChatOptions = {}) {
             i === assistantIndex && !m.text ? { ...m, text: "已中止", error: true } : m,
           ),
         );
+        if (assistantText) persistTurn("assistant", assistantText);
       }
     } finally {
       setStreaming(false);

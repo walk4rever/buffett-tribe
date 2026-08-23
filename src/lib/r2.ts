@@ -55,6 +55,17 @@ async function sendPutObjectWithTimeout(command: PutObjectCommand) {
   }
 }
 
+/**
+ * Builds the R2 key for a file that belongs to a specific logged-in user (chat images,
+ * future uploads/exported notes) — as opposed to site-wide public content (SEC filings,
+ * insight media, master library documents), which keeps its own existing key scheme.
+ * Keeping all of one user's files under one prefix makes per-user audit/cleanup a single
+ * prefix operation instead of a site-wide search. See PRODUCT.md "R2 对象存储路径约定".
+ */
+export function buildUserObjectKey(userId: string, category: string, filename: string): string {
+  return `buffett-tribe/users/${userId}/${category}/${filename}`;
+}
+
 /** Upload a buffer to R2, returns public URL. Used by migration scripts. */
 export async function uploadToR2(key: string, body: Buffer, contentType: string): Promise<string> {
   const command = new PutObjectCommand({

@@ -136,19 +136,22 @@ export function AgentChat({
               msg.role === "user" ? (
                 <div key={i} className="msg msg--user">
                   <div className="msg-body">
-                    {msg.images && msg.images.length > 0 && (
-                      <div className="msg-images">
-                        {msg.images.map((img, j) => (
-                          <img
-                            key={j}
-                            src={imageSrc(img)}
-                            alt=""
-                            className="msg-image"
-                            onClick={() => setLightboxSrc(imageSrc(img))}
-                          />
-                        ))}
-                      </div>
-                    )}
+                    {(() => {
+                      const srcs = [...(msg.images ?? []).map(imageSrc), ...(msg.imageUrls ?? [])];
+                      return srcs.length > 0 ? (
+                        <div className="msg-images">
+                          {srcs.map((src, j) => (
+                            <img
+                              key={j}
+                              src={src}
+                              alt=""
+                              className="msg-image"
+                              onClick={() => setLightboxSrc(src)}
+                            />
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
                     {msg.text && <p className="msg-text">{msg.text}</p>}
                   </div>
                 </div>

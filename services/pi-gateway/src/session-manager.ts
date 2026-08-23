@@ -8,6 +8,7 @@ import { createSearchHoldingsTool } from "./tools/search-holdings.js";
 import { searchFilingsTool } from "./tools/search-filings.js";
 import { getInsightContentTool } from "./tools/get-insight-content.js";
 import { getCompanyAnalysisTool } from "./tools/get-company-analysis.js";
+import type { HistoryTurn } from "./history.js";
 
 const GATEWAY_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -63,19 +64,66 @@ function evictStaleSessions() {
 
 setInterval(evictStaleSessions, 5 * 60 * 1000).unref();
 
-async function makeSession(): Promise<AgentSession> {
+// SessionManager.appendMessage()'s parameter type (Message | CustomMessage | BashExecutionMessage)
+// isn't re-exported from the package's public entry point — derive it structurally instead of
+// deep-importing from a nested transitive dependency path that could shift on any reinstall.
+type SessionMessage = Parameters<SessionManager["appendMessage"]>[0];
+
+// Converts a persisted history turn into a raw session message entry. Text-only:
+// historical images are not re-fetched and re-injected as bytes here — the risk/cost
+// (re-downloading + base64 re-encoding on every cold resume, plus needing to keep the
+// session on a vision-capable model just to replay old turns) isn't worth it when the
+// assistant's own prior text reply already carries forward what mattered about the image
+// in words. An image-only turn with no text becomes a short placeholder so the model at
+// least knows something visual was shared, instead of that turn silently vanishing.
+function historyTurnToMessage(turn: HistoryTurn): SessionMessage | null {
+  const text = turn.text.trim() || (turn.hadImages ? "[用户发送了一张图片]" : "");
+  if (!text) return null;
+
+  if (turn.role === "user") {
+    return { role: "user", content: text, timestamp: Date.now() };
+  }
+
+  // AssistantMessage requires api/provider/model/usage/stopReason — these are only read
+  // for informational display (buildSessionContext's tracked "current model"), never fed
+  // back into the actual live LLM request, so plausible placeholders are safe here.
+  return {
+    role: "assistant",
+    content: [{ type: "text", text }],
+    api: "openai-completions",
+    provider: "deepseek",
+    model: "deepseek-v4-flash",
+    usage: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 0,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    },
+    stopReason: "stop",
+    timestamp: Date.now(),
+  };
+}
+
+async function makeSession(history?: HistoryTurn[]): Promise<AgentSession> {
   const searchHoldingsTool = await createSearchHoldingsTool();
+  const sessionManager = SessionManager.inMemory();
+  for (const turn of history ?? []) {
+    const message = historyTurnToMessage(turn);
+    if (message) sessionManager.appendMessage(message);
+  }
   const { session } = await createAgentSession({
     cwd: GATEWAY_DIR,         // loads AGENTS.md from gateway root
     agentDir: PI_AGENT_DIR,   // loads models.json (custom providers) from here
-    sessionManager: SessionManager.inMemory(),
+    sessionManager,
     noTools: "builtin",       // disable bash/read/write/edit for security
     customTools: [searchWisdomTool, searchHoldingsTool, searchFilingsTool, getInsightContentTool, getCompanyAnalysisTool],
   });
   return session;
 }
 
-export async function getSession(userId: string | undefined, context?: SessionContext): Promise<SessionResult> {
+export async function getSession(userId: string | undefined, context?: SessionContext, history?: HistoryTurn[]): Promise<SessionResult> {
   const key = sessionKey(userId, context);
 
   // Anonymous: always a fresh in-memory session
@@ -87,7 +135,10 @@ export async function getSession(userId: string | undefined, context?: SessionCo
     return { session: existing, isNew: false };
   }
 
-  const session = await makeSession();
+  // Cold start (new tab, TTL eviction, or gateway restart) — replay persisted
+  // history into the fresh session so the model isn't amnesiac relative to what
+  // the UI shows from ChatTurn. No-op when there's no prior history.
+  const session = await makeSession(history);
   sessions.set(key, session);
   lastUsed.set(key, Date.now());
   return { session, isNew: true };

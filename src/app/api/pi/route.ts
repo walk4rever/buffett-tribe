@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { validateImageAttachments } from "@/lib/image-attachment";
+import { agentContextSchema, deriveContextKey } from "@/lib/agent-context";
+import prisma from "@/lib/prisma";
 
 export const maxDuration = 90;
 
 const GATEWAY_URL = process.env.PI_GATEWAY_URL;
 const AGENT_SECRET = process.env.PI_AGENT_SECRET;
+const HISTORY_LIMIT = 10;
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -30,13 +33,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "invalid images" }, { status: 400 });
   }
 
+  // Cheap even though most requests hit an already-warm in-memory pi-gateway session
+  // (indexed LIMIT 10) — pi-gateway only actually uses this to seed a session it's
+  // creating fresh (cold start: new tab, TTL eviction, or a gateway restart).
+  let history: { role: string; text: string; hadImages: boolean }[] = [];
+  if (session.user?.id) {
+    const parsedContext = agentContextSchema.optional().safeParse(body.context);
+    const contextKey = deriveContextKey(parsedContext.success ? parsedContext.data : undefined);
+    const turns = await prisma.chatTurn.findMany({
+      where: { userId: session.user.id, contextKey },
+      orderBy: { createdAt: "desc" },
+      take: HISTORY_LIMIT,
+    });
+    history = turns.reverse().map((t) => ({ role: t.role, text: t.text, hadImages: t.imageUrls.length > 0 }));
+
+    // useAgentChat persists the user's turn via a fire-and-forget request that races
+    // this one — if it happened to land first, drop it so the current message doesn't
+    // get seeded into the session as "history" and then sent again as the live prompt.
+    const last = history[history.length - 1];
+    if (last?.role === "user" && last.text === body.message) history = history.slice(0, -1);
+  }
+
   const upstream = await fetch(`${GATEWAY_URL}/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Agent-Secret": AGENT_SECRET,
     },
-    body: JSON.stringify({ message: body.message, userId: body.userId, context: body.context, images }),
+    body: JSON.stringify({ message: body.message, userId: body.userId, context: body.context, images, history }),
     signal: AbortSignal.timeout(85000),
   });
 

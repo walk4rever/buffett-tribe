@@ -1201,6 +1201,14 @@ Apple HIG 精简风格：
 | 股东大会逐字稿 | 本地 markdown | `data/annual_meeting/raw_en/*.md`, `Source`, `Chunk` | `scripts/import-markdown.ts` | 覆盖多个年份 |
 | 大师 PDF | Li Lu / 段永平 / Buffett PDF | `data/documents/raw/**`, document 路由 | `scripts/upload-documents-to-r2.ts` | 已有上传脚本 |
 
+### R2 对象存储路径约定（2026-08-23 补记）
+
+站内 Cloudflare R2 桶下的对象分两类，key 规则不同，之前从未写下来过：
+
+**公共内容**（网站本身的内容，所有用户共享，不属于任何个人）：延续各自已有的 key 前缀，本次不统一、不迁移——`buffett-tribe/sec/filings/{cik}/{accession}/{kind}/{originalName}`（SEC 年报原件，`buildFilingArtifactKey()`，见上表「年报归档」）、`buffett-tribe/documents/...`（大师资料库 PDF，`scripts/upload-documents-to-r2.ts`，见上表「大师 PDF」）、`insights/{slug}/{contentHash}-{filename}`（洞见文章配图，`scripts/lib/insight-media.ts`）。最后一个历史遗留没有 `buffett-tribe/` 前缀，跟前两者不一致；不影响功能，暂不清理，只是记一笔避免以后误以为是同一套规则。
+
+**用户数据**（属于某个具体登录用户的文件——聊天贴图、以后规划的上传比对 PDF、导出投研笔记等，见 TODO.md P1「Agent 投研笔记本」）：统一收敛到 `buffett-tribe/users/{userId}/{category}/{filename}`，`src/lib/r2.ts` 新增 `buildUserObjectKey(userId, category, filename)` 生成这个路径，任何"给用户存文件"的新功能都应该调用它，不要各自手写路径。目的：同一用户的全部数据在一个前缀下，以后按用户整体审计/清理（比如账号注销）是一次前缀操作，不用满仓库找。首个消费者：Agent 会话历史里用户贴的图片（`buffett-tribe/users/{userId}/chat-images/{uuid}.{ext}`，`src/app/api/agent-turns/route.ts`，实现过程见 TODO.md P1「Agent 会话持久化」条目）——落地时验证过真实上传/下载（`fetch(url)` 200，`<img>` 标签跨域展示不受 CORS 限制，不需要像 PDF 阅读页那样走同源代理）。
+
 ### LLM 生成内容版本表现状
 
 **2026-08-07 发现问题，2026-08-08 设计并实施完成**（起因：onboard SAP 时发现 `get_company_analysis` 报"无分析"，但网页上明明有内容）：

@@ -19,6 +19,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   accounts      Account[]
   sessions      Session[]
+  chatTurns     ChatTurn[]
 }
 
 model Account {
@@ -146,6 +147,26 @@ model ChatMessage {
   rating         Int? // 1 = thumbs up, -1 = thumbs down
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+// /agent conversation history. One continuous, auto-continuing thread per
+// (userId, contextKey) — contextKey is a normalized string derived from
+// AgentContext (see src/lib/agent-context.ts), e.g. "company:AAPL", "master:duan",
+// "insight:ds31-...", "none". Deliberately separate from ChatMessage above (dead
+// table from the retired /idea page) and from CompanyAnalysis/GeneratedContentVersion
+// (turns here are raw, unreviewed conversation — never treated as authoritative content).
+model ChatTurn {
+  id         String   @id @default(cuid())
+  userId     String
+  contextKey String
+  context    Json?
+  role       String // "user" | "assistant"
+  text       String
+  imageUrls  String[] @default([])
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, contextKey, createdAt])
 }
 
 // ============================================================================

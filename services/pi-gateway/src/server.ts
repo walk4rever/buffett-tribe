@@ -3,6 +3,7 @@ import { requireSecret } from "./auth.js";
 import { getSession, type SessionContext } from "./session-manager.js";
 import { streamPrompt } from "./stream.js";
 import { validateImageAttachments } from "./image-attachment.js";
+import { validateHistory } from "./history.js";
 
 function buildContextPrefix(context: SessionContext | undefined): string | undefined {
   if (context?.masterName) {
@@ -33,11 +34,12 @@ app.get("/health", (_req, res) => {
 });
 
 app.post("/chat", requireSecret, async (req, res) => {
-  const { message, userId, context, images: rawImages } = req.body as {
+  const { message, userId, context, images: rawImages, history: rawHistory } = req.body as {
     message?: string;
     userId?: string;
     context?: SessionContext;
     images?: unknown;
+    history?: unknown;
   };
 
   if (!message || typeof message !== "string" || message.trim() === "") {
@@ -53,9 +55,17 @@ app.post("/chat", requireSecret, async (req, res) => {
     return;
   }
 
+  let history;
+  try {
+    history = validateHistory(rawHistory);
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : "invalid history" });
+    return;
+  }
+
   let session, isNew;
   try {
-    ({ session, isNew } = await getSession(userId, context));
+    ({ session, isNew } = await getSession(userId, context, history));
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: `Failed to create session: ${msg}` });
