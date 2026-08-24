@@ -1,11 +1,15 @@
 "use client";
 
 import { AgentChat } from "@/components/AgentChat";
-import { useAgentChat } from "@/hooks/useAgentChat";
+import { useAgentChat, type Message } from "@/hooks/useAgentChat";
 
-export function AgentPageChat() {
+interface AgentPageChatProps {
+  initialMessages?: Message[];
+}
+
+export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
   const { messages, input, setInput, streaming, sendMessage, abort, pendingImages, addImage, removeImage } =
-    useAgentChat();
+    useAgentChat({ initialMessages });
 
   return (
     <AgentChat

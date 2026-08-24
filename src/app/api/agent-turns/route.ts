@@ -5,6 +5,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { agentContextSchema, deriveContextKey } from "@/lib/agent-context";
+import { getRecentTurns } from "@/lib/agent-history";
 import { validateImageAttachments, type ImageAttachment } from "@/lib/image-attachment";
 import { buildUserObjectKey, uploadToR2 } from "@/lib/r2";
 
@@ -31,8 +32,6 @@ async function uploadChatImages(userId: string, images: ImageAttachment[]): Prom
   return urls;
 }
 
-const HISTORY_LIMIT = 10;
-
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -40,15 +39,11 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const contextKey = searchParams.get("contextKey") ?? "none";
+  const contextKey = searchParams.get("contextKey") ?? deriveContextKey(undefined);
 
-  const turns = await prisma.chatTurn.findMany({
-    where: { userId: session.user.id, contextKey },
-    orderBy: { createdAt: "desc" },
-    take: HISTORY_LIMIT,
-  });
+  const turns = await getRecentTurns(session.user.id, contextKey);
 
-  return NextResponse.json({ turns: turns.reverse() });
+  return NextResponse.json({ turns });
 }
 
 const postBodySchema = z.object({

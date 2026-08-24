@@ -64,6 +64,10 @@ interface UseAgentChatOptions {
   /** Scopes the conversation to a specific investor or filing page — the server keys
    *  the session per (userId, context) and seeds a one-time context note on the first turn. */
   context?: AgentContext;
+  /** Pre-fetched history from an SSR caller (e.g. the `/agent` page's Server Component).
+   *  When present, skips the client-side history fetch below entirely — including when
+   *  it's an empty array, since that already means "checked, no history". */
+  initialMessages?: Message[];
 }
 
 // Call this in whatever component owns the panel's open/closed state and stays
@@ -71,13 +75,14 @@ interface UseAgentChatOptions {
 // markup that gets conditionally rendered, or closing the panel unmounts this
 // hook's state and the conversation history is lost even though the server-side
 // session (keyed by the same sessionStorage id + context) is still alive.
-export function useAgentChat({ context }: UseAgentChatOptions = {}) {
-  const [messages, setMessages] = useState<Message[]>([]);
+export function useAgentChat({ context, initialMessages }: UseAgentChatOptions = {}) {
+  const [messages, setMessages] = useState<Message[]>(initialMessages ?? []);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [pendingImages, setPendingImages] = useState<ImageAttachment[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string>("");
+  const skipHistoryFetchRef = useRef(initialMessages !== undefined);
   const contextKey = deriveContextKey(context);
 
   function addImage(image: ImageAttachment) {
@@ -101,6 +106,7 @@ export function useAgentChat({ context }: UseAgentChatOptions = {}) {
   // Seeds this thread's recent history once per (contextKey). Guarded by a functional
   // update so it never clobbers messages the user has already sent while this was in flight.
   useEffect(() => {
+    if (skipHistoryFetchRef.current) return;
     let cancelled = false;
     fetch(`/api/agent-turns?contextKey=${encodeURIComponent(contextKey)}`)
       .then((res) => (res.ok ? res.json() : null))
