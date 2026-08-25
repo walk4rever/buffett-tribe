@@ -123,6 +123,14 @@ async function makeSession(history?: HistoryTurn[]): Promise<AgentSession> {
   return session;
 }
 
+// Looks up a session without creating one — used by /cancel, which must be a
+// no-op for a userId/context pair that never started a session (already
+// finished, already evicted, or never existed) rather than spinning one up.
+export function getExistingSession(userId: string | undefined, context?: SessionContext): AgentSession | undefined {
+  const key = sessionKey(userId, context);
+  return key ? sessions.get(key) : undefined;
+}
+
 export async function getSession(userId: string | undefined, context?: SessionContext, history?: HistoryTurn[]): Promise<SessionResult> {
   const key = sessionKey(userId, context);
 

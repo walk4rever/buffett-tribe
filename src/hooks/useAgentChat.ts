@@ -81,6 +81,7 @@ export function useAgentChat({ context, initialMessages }: UseAgentChatOptions =
   const [streaming, setStreaming] = useState(false);
   const [pendingImages, setPendingImages] = useState<ImageAttachment[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+  const pendingCancelRef = useRef<Promise<void> | null>(null);
   const sessionIdRef = useRef<string>("");
   const skipHistoryFetchRef = useRef(initialMessages !== undefined);
   const contextKey = deriveContextKey(context);
@@ -156,6 +157,15 @@ export function useAgentChat({ context, initialMessages }: UseAgentChatOptions =
     let hadError = false;
 
     try {
+      // A stop click cancels the gateway session in the background so the UI can
+      // stop instantly. Sending the next message before that cancel lands races
+      // it — the gateway still sees the old generation and rejects this one as
+      // "Session is busy" — so wait it out here rather than at click time.
+      if (pendingCancelRef.current) {
+        await pendingCancelRef.current;
+        pendingCancelRef.current = null;
+      }
+
       const res = await fetch("/api/pi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -271,6 +281,18 @@ export function useAgentChat({ context, initialMessages }: UseAgentChatOptions =
 
   function abort() {
     abortRef.current?.abort();
+    // Closing our own fetch doesn't reach the gateway on every deployment target
+    // (Vercel's Node.js serverless runtime never sees the browser disconnect at
+    // all) — tell it directly so the session isn't left locked as busy. Kept
+    // off the UI's critical path (the chat stops immediately either way), but
+    // tracked so the next send can wait for it — see sendMessage.
+    pendingCancelRef.current = fetch("/api/pi/cancel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: sessionIdRef.current, context }),
+    })
+      .then(() => undefined)
+      .catch(() => undefined);
   }
 
   return { messages, input, setInput, streaming, sendMessage, abort, pendingImages, addImage, removeImage };

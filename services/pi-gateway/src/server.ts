@@ -1,6 +1,6 @@
 import express from "express";
 import { requireSecret } from "./auth.js";
-import { getSession, type SessionContext } from "./session-manager.js";
+import { getSession, getExistingSession, type SessionContext } from "./session-manager.js";
 import { streamPrompt } from "./stream.js";
 import { validateImageAttachments } from "./image-attachment.js";
 import { validateHistory } from "./history.js";
@@ -77,7 +77,12 @@ app.post("/chat", requireSecret, async (req, res) => {
     return;
   }
 
-  req.on("close", () => {
+  // `req`'s close event tracks the request body's readable side, which Express's
+  // json() middleware already drains before this handler runs — it never fires
+  // again just because the client walks away mid-response. `res`'s close event is
+  // what actually reflects the underlying socket being torn down (client abort),
+  // so it's the one that needs to trigger cancelling the in-flight generation.
+  res.on("close", () => {
     if (session.isStreaming) session.abort();
   });
 
@@ -86,6 +91,24 @@ app.post("/chat", requireSecret, async (req, res) => {
   const contextPrefix = isNew ? buildContextPrefix(context) : undefined;
 
   await streamPrompt(session, message.trim(), res, contextPrefix, images);
+});
+
+// Explicit cancel, independent of connection-close detection: on platforms where the
+// Next.js route forwarding /chat runs as a serverless function (Vercel's Node.js
+// runtime), a client disconnect never reaches this process at all — the function just
+// keeps running the request to completion in the background regardless of `res`'s
+// close event above. The client hits this endpoint directly instead of relying on that.
+//
+// Awaits the abort rather than firing it off: abort() only resolves once the
+// generation has actually unwound and isStreaming is back to false. Responding
+// before that lets a client that immediately sends its next message reach /chat
+// while the session still looks busy, which is exactly the 409 this endpoint exists
+// to prevent.
+app.post("/cancel", requireSecret, async (req, res) => {
+  const { userId, context } = req.body as { userId?: string; context?: SessionContext };
+  const session = getExistingSession(userId, context);
+  if (session?.isStreaming) await session.abort();
+  res.json({ ok: true, streaming: session?.isStreaming ?? false });
 });
 
 app.listen(PORT, () => {

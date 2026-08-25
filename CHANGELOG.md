@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.43.18] - 2026-08-25
+
+### Fixed
+- 停止按钮点击后立刻发下一条消息偶发 `Session is busy`：`/api/pi` 靠 `req.signal`/连接断开检测取消 pi-gateway 生成，在 Vercel 的 Node.js Serverless 运行时上客户端断连根本不会传导到正在执行的函数实例，纯连接层面的 abort 不可靠。新增显式取消链路：`useAgentChat` 的 `abort()` 调用新端点 `POST /api/pi/cancel`，转发到 pi-gateway 新增的 `POST /cancel`（按 `userId`+`context` 查已存在 session 并 `await session.abort()`），`sendMessage` 在发送前等待任何进行中的 cancel，避免下一条消息跑赢 cancel 请求。pi-gateway 自身的连接检测也从 `req.on("close")`（在 body 读完时就已触发，和客户端是否断连无关）修成了 `res.on("close")`。
+
 ## [v0.38.15] - 2026-07-10
 
 ### Fixed
