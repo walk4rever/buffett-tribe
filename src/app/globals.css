@@ -1745,6 +1745,26 @@ body.layout-no-header {
   box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 
+.msg-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.msg-copy-btn:hover {
+  background: var(--secondary);
+  color: var(--foreground);
+}
+
 /* Markdown prose inside assistant bubbles */
 .msg-markdown p {
   margin: 0 0 0.6em;

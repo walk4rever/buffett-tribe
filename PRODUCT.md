@@ -116,6 +116,8 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 
 **弹窗最大化/还原 + 标题文案统一（2026-08-27 上线）**：所有「AI 解读」入口新增最大化/还原切换（header 上紧挨关闭按钮的 `Maximize2`/`Minimize2` 图标按钮），点击后原地把对话容器撑满视口，再点一次还原——居中弹窗家族（`CompanyAgentDialog`/`MasterAgentDialog`）加 `.master-agent-modal.is-maximized`，停靠侧栏家族（`FilingAgentPanel`/`InsightAgentPanel`）加 `.filing-reader-ai-panel.is-maximized`（复用了原本只在 ≤900px 生效的满屏样式，改成可由按钮主动触发）。纯 CSS class 切换，不卸载 `AgentChat`，消息、输入框草稿、streaming 状态全程不丢。刻意没做"跳转到 `/agent` 页面"这条路——`/agent` 是 `deriveContextKey(undefined)` 的无上下文通用对话页，跳过去会丢掉公司/大师/年报/洞见各自注入的 context，违背「AI 解读」本身依赖上下文的定位。同时把 4 处弹窗标题收敛成统一的 `AI 解读 · {主体}` 格式（此前四种写法并存：`解读 X`／`与 X 对话`／`解读 X Y年报`／`AI 解读 · X`）。
 
+**回复复制按钮（2026-08-27 上线）**：每条已生成完毕的 AI 回复下方新增一个常驻显示的复制图标按钮（不做 hover-only，移动端也能点到），点击复制 `msg.text` 原始 Markdown 源码（非渲染后的纯文本——粘贴到 Notion/飞书文档/GitHub 等支持 Markdown 的目的地能保留表格、加粗等格式），1.5s 内切换成 ✓ 反馈后自动还原。流式输出中的最后一条、以及出错的回复不显示该按钮。改动落在共用的 `AgentChat.tsx`（`CopyMessageButton` 组件），`/agent` 页面和全部四处「AI 解读」入口自动同步生效，不需要分别接入。
+
 **上线时踩的坑**：`services/pi-gateway/.pi-agent/models.json` 里自定义 model 条目不显式声明 `"input": ["text", "image"]` 的话，pi-coding-agent 的 model registry 默认给 `input: ["text"]`——图片会在请求发出**之前**就被 SDK 自己换成 `(image omitted: model does not support images)` 占位文本，DeepSeek 那边完全收不到图，agent 也确实"看不到"（不是幻觉，是真收不到）。加这一个字段就好，两处 `models.json`（本地 dev 模板 + air7 生产环境副本）都要改，改完要重启 pi-gateway 让新配置生效。
 
 ### 用户体系与访问控制（2026-08-21 确认）

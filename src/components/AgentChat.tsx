@@ -11,6 +11,34 @@ function imageSrc(img: ImageAttachment): string {
   return `data:${img.mimeType};base64,${img.data}`;
 }
 
+function CopyMessageButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <button
+      type="button"
+      className="msg-copy-btn"
+      title={copied ? "已复制" : "复制"}
+      onClick={async () => {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+    >
+      {copied ? (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ) : (
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+          <path d="M3.5 10.5V3.5a1 1 0 0 1 1-1h7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+        </svg>
+      )}
+    </button>
+  );
+}
+
 const mdComponents = {
   a: (props: ComponentPropsWithoutRef<"a">) => {
     const href = props.href ?? "";
@@ -141,6 +169,7 @@ export function AgentChat({
                       return srcs.length > 0 ? (
                         <div className="msg-images">
                           {srcs.map((src, j) => (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                               key={j}
                               src={src}
@@ -179,11 +208,14 @@ export function AgentChat({
                           {msg.text}
                         </p>
                       ) : (
-                        <div className={`msg-text msg-markdown${msg.error ? " agent-msg-error" : ""}`}>
-                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-                            {msg.text}
-                          </ReactMarkdown>
-                        </div>
+                        <>
+                          <div className={`msg-text msg-markdown${msg.error ? " agent-msg-error" : ""}`}>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+                              {msg.text}
+                            </ReactMarkdown>
+                          </div>
+                          {!msg.error && <CopyMessageButton text={msg.text} />}
+                        </>
                       )
                     ) : !msg.error && streaming && i === messages.length - 1 ? (
                       <p className="msg-text agent-typing">▋</p>
@@ -202,6 +234,7 @@ export function AgentChat({
           <div className="chat-pending-images">
             {pendingImages.map((img, i) => (
               <div key={i} className="chat-pending-image">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={imageSrc(img)} alt="" />
                 <button
                   type="button"
@@ -256,6 +289,7 @@ export function AgentChat({
 
       {lightboxSrc && (
         <div className="agent-image-lightbox" onClick={() => setLightboxSrc(null)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={lightboxSrc} alt="" />
         </div>
       )}
