@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, X } from "lucide-react";
+import { Maximize2, Minimize2, Sparkles, X } from "lucide-react";
 import { AgentChat } from "@/components/AgentChat";
 import { useAgentChat } from "@/hooks/useAgentChat";
 import { useAgentGate } from "@/hooks/useAgentGate";
@@ -13,6 +13,7 @@ interface MasterAgentDialogProps {
 
 export function MasterAgentDialog({ masterId, masterName }: MasterAgentDialogProps) {
   const [open, setOpen] = useState(false);
+  const [maximized, setMaximized] = useState(false);
   const { requireAuth } = useAgentGate(() => setOpen(true));
   // Called here (not inside the conditionally-rendered modal below) so closing the
   // dialog doesn't unmount the conversation state along with it.
@@ -29,18 +30,31 @@ export function MasterAgentDialog({ masterId, masterName }: MasterAgentDialogPro
       </button>
 
       {open ? (
-        <div className="master-agent-overlay" onClick={() => setOpen(false)}>
-          <div className="master-agent-modal" onClick={(e) => e.stopPropagation()}>
+        <div className={`master-agent-overlay${maximized ? " is-maximized" : ""}`} onClick={() => setOpen(false)}>
+          <div
+            className={`master-agent-modal${maximized ? " is-maximized" : ""}`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="master-agent-modal-header">
-              <span>与 {masterName} 对话</span>
-              <button
-                type="button"
-                className="master-agent-modal-close"
-                onClick={() => setOpen(false)}
-                aria-label="关闭"
-              >
-                <X size={16} strokeWidth={1.9} />
-              </button>
+              <span>AI 解读 · {masterName}</span>
+              <div className="master-agent-modal-header-actions">
+                <button
+                  type="button"
+                  className="master-agent-modal-close"
+                  onClick={() => setMaximized((v) => !v)}
+                  aria-label={maximized ? "还原" : "最大化"}
+                >
+                  {maximized ? <Minimize2 size={16} strokeWidth={1.9} /> : <Maximize2 size={16} strokeWidth={1.9} />}
+                </button>
+                <button
+                  type="button"
+                  className="master-agent-modal-close"
+                  onClick={() => setOpen(false)}
+                  aria-label="关闭"
+                >
+                  <X size={16} strokeWidth={1.9} />
+                </button>
+              </div>
             </div>
             <div className="master-agent-modal-body">
               <AgentChat

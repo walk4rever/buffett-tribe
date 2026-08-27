@@ -3721,6 +3721,12 @@ body.layout-no-header {
   flex-shrink: 0;
 }
 
+.master-agent-modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .master-agent-modal-close {
   background: none;
   border: none;
@@ -3735,6 +3741,17 @@ body.layout-no-header {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+.master-agent-overlay.is-maximized {
+  padding: 0;
+}
+
+.master-agent-modal.is-maximized {
+  max-width: none;
+  width: 100vw;
+  height: 100dvh;
+  border-radius: 0;
 }
 
 /* Redundant with the base .agent-chat .chat-input rule now that both match the
@@ -7564,6 +7581,12 @@ body.layout-no-header {
   flex-shrink: 0;
 }
 
+.filing-reader-ai-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .filing-reader-ai-panel-close {
   background: none;
   border: none;
@@ -7578,6 +7601,14 @@ body.layout-no-header {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+.filing-reader-ai-panel.is-maximized {
+  position: fixed;
+  inset: 0;
+  flex: none;
+  max-width: 100%;
+  z-index: 200;
 }
 
 .filing-reader-ai-panel-body .agent-chat .chat-input {

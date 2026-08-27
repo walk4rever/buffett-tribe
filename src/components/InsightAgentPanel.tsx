@@ -1,6 +1,7 @@
 "use client";
 
-import { X } from "lucide-react";
+import { useState } from "react";
+import { Maximize2, Minimize2, X } from "lucide-react";
 import { AgentChat } from "@/components/AgentChat";
 import type { ImageAttachment, Message } from "@/hooks/useAgentChat";
 
@@ -35,13 +36,25 @@ export function InsightAgentPanel({
   onAddImage,
   onRemoveImage,
 }: InsightAgentPanelProps) {
+  const [maximized, setMaximized] = useState(false);
+
   return (
-    <aside className="filing-reader-ai-panel">
+    <aside className={`filing-reader-ai-panel${maximized ? " is-maximized" : ""}`}>
       <div className="filing-reader-ai-panel-header">
         <span>AI 解读 · {insightTitle}</span>
-        <button type="button" className="filing-reader-ai-panel-close" onClick={onClose} aria-label="关闭">
-          <X size={16} strokeWidth={1.9} />
-        </button>
+        <div className="filing-reader-ai-panel-header-actions">
+          <button
+            type="button"
+            className="filing-reader-ai-panel-close"
+            onClick={() => setMaximized((v) => !v)}
+            aria-label={maximized ? "还原" : "最大化"}
+          >
+            {maximized ? <Minimize2 size={16} strokeWidth={1.9} /> : <Maximize2 size={16} strokeWidth={1.9} />}
+          </button>
+          <button type="button" className="filing-reader-ai-panel-close" onClick={onClose} aria-label="关闭">
+            <X size={16} strokeWidth={1.9} />
+          </button>
+        </div>
       </div>
       <div className="filing-reader-ai-panel-body">
         <AgentChat
