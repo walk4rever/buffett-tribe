@@ -13659,7 +13659,7 @@ body {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  padding-bottom: 0.65rem;
+  padding-bottom: 0.2rem;
   box-sizing: border-box;
 }
 
@@ -13931,6 +13931,7 @@ a.insight-entity-chip:hover {
 .agent-workspace-main .chat-input-wrap {
   border-top: none;
   background: transparent;
+  padding-bottom: 0.35rem;
 }
 
 /* The note editor replaces the chat in the same slot (.agent-workspace-main)
@@ -13982,7 +13983,6 @@ a.insight-entity-chip:hover {
 .agent-workspace-section-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5rem;
   padding: 0.6rem 0;
 }
