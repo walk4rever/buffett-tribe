@@ -6,21 +6,33 @@ import type { ReactNode } from "react";
 interface CollapsibleSectionProps {
   title: string;
   defaultOpen?: boolean;
+  /** "right" mirrors the header for the right-side workspace panel — chevron + title
+   *  hug the panel's outer (right) edge instead of the inner one, so it reads as a
+   *  mirror image of the left sidebar's sections rather than the same layout floating
+   *  on the wrong side. */
+  align?: "left" | "right";
   /** Rendered on the right of the header, next to the chevron — e.g. a "+ 新建" button.
    *  Clicks on it don't toggle the section (stopPropagation). */
   action?: ReactNode;
   children: ReactNode;
 }
 
-export function CollapsibleSection({ title, defaultOpen = false, action, children }: CollapsibleSectionProps) {
+export function CollapsibleSection({
+  title,
+  defaultOpen = false,
+  align = "left",
+  action,
+  children,
+}: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
+  const isRight = align === "right";
 
   return (
     <div className="agent-workspace-section">
-      <div className="agent-workspace-section-head">
+      <div className={`agent-workspace-section-head${isRight ? " agent-workspace-section-head--right" : ""}`}>
         <button
           type="button"
-          className="agent-workspace-section-toggle"
+          className={`agent-workspace-section-toggle${isRight ? " agent-workspace-section-toggle--right" : ""}`}
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
         >

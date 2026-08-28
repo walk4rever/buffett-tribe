@@ -13995,6 +13995,14 @@ a.insight-entity-chip:hover {
   padding: 0.6rem 0;
 }
 
+/* Right-side workspace panel — flex's main-start flips to the right edge under
+   row-reverse, so justify-content's default (flex-start) packs the toggle+action
+   group against the panel's outer edge instead of the inner one, mirroring how the
+   left sidebar's sections hug its own outer (left) edge. */
+.agent-workspace-section-head--right {
+  flex-direction: row-reverse;
+}
+
 .agent-workspace-section-toggle {
   display: flex;
   align-items: center;
@@ -14003,6 +14011,14 @@ a.insight-entity-chip:hover {
   background: transparent;
   cursor: pointer;
   padding: 0;
+}
+
+.agent-workspace-section-toggle--right {
+  flex-direction: row-reverse;
+}
+
+.agent-workspace-section-toggle--right .agent-workspace-section-title {
+  text-align: right;
 }
 
 .agent-workspace-section-chevron {

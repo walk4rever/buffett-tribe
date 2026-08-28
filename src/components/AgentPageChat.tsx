@@ -3,7 +3,7 @@
 import { AgentChat } from "@/components/AgentChat";
 import { WorkspaceSidebar } from "@/components/agent-workspace/WorkspaceSidebar";
 import { NoteEditor } from "@/components/agent-workspace/NoteEditor";
-import { PortfolioPanel } from "@/components/agent-workspace/PortfolioPanel";
+import { RightWorkspaceSidebar } from "@/components/agent-workspace/RightWorkspaceSidebar";
 import { useAgentChat, type Message } from "@/hooks/useAgentChat";
 import { useNotes } from "@/hooks/useNotes";
 
@@ -57,7 +57,7 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
       </div>
 
       <aside className="agent-workspace-sidebar agent-workspace-sidebar-right">
-        <PortfolioPanel />
+        <RightWorkspaceSidebar />
       </aside>
     </div>
   );
