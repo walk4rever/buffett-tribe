@@ -11,7 +11,18 @@ export function normalizeTicker(ticker: string | null | undefined): string | nul
   if (!ticker) return null;
   const raw = ticker.trim().toUpperCase();
   if (!raw) return null;
-  return TICKER_ALIASES[raw] ?? raw;
+  const aliased = TICKER_ALIASES[raw] ?? raw;
+
+  // HK codes are stored 4-digit zero-padded site-wide (e.g. Tencent is "0700.HK",
+  // never "700.HK" or "00700.HK") — reformat free-typed input to match, otherwise
+  // an otherwise-valid HK ticker silently fails to join against Entity/Security/
+  // StockPrice rows keyed on the padded form.
+  const hkMatch = aliased.match(/^0*(\d+)\.HK$/);
+  if (hkMatch) {
+    return `${hkMatch[1].padStart(4, "0")}.HK`;
+  }
+
+  return aliased;
 }
 
 // US common/preferred stock, e.g. AAPL, BRK-B, JPM-PM, AGCUU

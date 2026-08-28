@@ -13913,14 +13913,14 @@ a.insight-entity-chip:hover {
   width: 260px;
   overflow-y: auto;
   padding: 0.5rem 1.25rem 0.5rem clamp(0.75rem, 2vw, 1.5rem);
-  border-right: 0.5px solid var(--secondary);
+  border-right: 1px solid rgba(0, 0, 0, 0.14);
 }
 
 .agent-workspace-sidebar-right {
   left: auto;
   right: 0;
   border-right: none;
-  border-left: 0.5px solid var(--secondary);
+  border-left: 1px solid rgba(0, 0, 0, 0.14);
   padding: 0.5rem clamp(0.75rem, 2vw, 1.5rem) 0.5rem 1.25rem;
 }
 
