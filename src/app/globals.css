@@ -14181,13 +14181,22 @@ a.insight-entity-chip:hover {
 
 /* ── Portfolio panel (agent-workspace-sidebar-right) ── */
 
-.agent-portfolio-summary {
-  padding: 0.4rem 0 0.6rem;
-  border-bottom: 0.5px solid var(--secondary);
+.agent-portfolio-market-group {
+  padding-bottom: 0.6rem;
   margin-bottom: 0.6rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
+  border-bottom: 0.5px solid var(--secondary);
+}
+
+.agent-portfolio-market-group:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.agent-portfolio-summary {
+  padding: 0.3rem 0 0.5rem;
+  border-bottom: 0.5px solid var(--secondary);
+  margin-bottom: 0.3rem;
 }
 
 .agent-portfolio-summary-head {
@@ -14196,8 +14205,19 @@ a.insight-entity-chip:hover {
   gap: 0.4rem;
 }
 
+.agent-portfolio-market-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: var(--secondary);
+  border-radius: 4px;
+  padding: 0.08rem 0.32rem;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
 .agent-portfolio-summary-value {
-  font-size: 1.3rem;
+  font-size: 0.92rem;
   font-weight: 600;
 }
 
@@ -14213,7 +14233,7 @@ a.insight-entity-chip:hover {
 }
 
 .agent-portfolio-summary .agent-portfolio-gain {
-  font-size: 0.9rem;
+  font-size: 0.78rem;
 }
 
 .agent-portfolio-gain.is-up {
@@ -14273,17 +14293,6 @@ a.insight-entity-chip:hover {
 .agent-portfolio-ticker {
   font-weight: 600;
   font-size: 0.82rem;
-}
-
-.agent-portfolio-currency-tag {
-  font-size: 0.62rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: var(--secondary);
-  border-radius: 4px;
-  padding: 0.05rem 0.3rem;
-  letter-spacing: 0.02em;
-  flex-shrink: 0;
 }
 
 .agent-portfolio-name {
