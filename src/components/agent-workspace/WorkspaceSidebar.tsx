@@ -16,7 +16,7 @@ export function WorkspaceSidebar({ notes, activeNoteId, onOpenNote, onCreateNote
   return (
     <div className="agent-workspace-sections">
       <CollapsibleSection
-        title="投研笔记"
+        title="笔记本"
         defaultOpen
         action={
           <button type="button" className="agent-workspace-new-btn" onClick={onCreateNote} title="新建笔记">

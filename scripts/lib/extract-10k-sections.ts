@@ -317,7 +317,9 @@ function isLikelyItemHeadingTable(text: string) {
   const normalized = normalizeHeadingText(text);
   if (!normalized) return false;
   if (normalized.length > 240) return false;
-  if (!/^item\s+\d+[a-z]?\s*\./i.test(normalized)) return false;
+  // Most filers print "Item 1. Business" (period), but some (e.g. Intuit, INTU)
+  // print "ITEM 1 - BUSINESS" (hyphen/dash) instead — accept either separator.
+  if (!/^item\s+\d+[a-z]?\s*[.\-–—]/i.test(normalized)) return false;
   if (/\b(table of contents|page)\b/i.test(normalized)) return false;
 
   // TOC rows often collapse to "Item 1.Business1"; actual inline section
