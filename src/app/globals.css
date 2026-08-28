@@ -14116,8 +14116,10 @@ a.insight-entity-chip:hover {
   border: 0.5px solid var(--secondary);
   border-radius: 8px;
   padding: 0.75rem 0.9rem;
+  font-family: inherit;
   font-size: 1rem;
   line-height: 1.85;
+  letter-spacing: inherit;
   color: var(--foreground);
   background: #fff;
 }

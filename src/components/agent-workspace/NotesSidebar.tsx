@@ -2,8 +2,12 @@
 
 import type { Note } from "@/hooks/useNotes";
 
+function stripImages(line: string): string {
+  return line.replace(/!\[[^\]]*\]\([^)]*\)/g, "").trim();
+}
+
 function summarize(content: string): string {
-  const firstLine = content.split("\n").find((line) => line.trim().length > 0) ?? "";
+  const firstLine = content.split("\n").map(stripImages).find((line) => line.length > 0) ?? "";
   return firstLine.length > 40 ? `${firstLine.slice(0, 40)}…` : firstLine;
 }
 
