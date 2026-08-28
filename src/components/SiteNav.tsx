@@ -62,7 +62,7 @@ export function SiteNav() {
             className={`home-nav-link${isActive("/agent") ? " home-nav-link--active" : ""}`}
             aria-current={isActive("/agent") ? "page" : undefined}
           >
-            对话
+            投研
           </Link>
           <Link
             href="/punch"

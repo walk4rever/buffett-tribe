@@ -138,7 +138,19 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 
 NextAuth（Credentials Provider，`src/lib/auth.ts`）是现有唯一认证实现，无第三方登录。
 
-**仍待设计（不在本次范围内，2026-08-21 讨论中提出）**：注册用户上传材料（如财报 PDF）的存储方式/repository 设计、对话历史是否落库及如何管理——留待后续单独排期。
+**投研笔记 + 个人工作区侧栏（2026-08-28 上线）**：`/agent` 页面改成左中两栏——左侧「个人工作区」侧栏，右侧是对话区，笔记打开时**原地替换**对话区（不是浮窗、不是第三栏）。侧栏是手风琴结构（`WorkspaceSidebar.tsx` + `CollapsibleSection.tsx`），当前两个分区：**投研笔记**（默认展开，唯一已实现的功能）、**资料库**（默认收起，占位态"构建中——未来支持在这里上传 PDF/PPT 等资料，作为对话的临时参考"，关注公司列表/Portfolio 两个模块还没有分区占位，构想见下）。
+
+`Note` 表（`userId`/`entityId?`/`title?`/`content`/`createdAt`/`updatedAt`，`user` 级联删除，`entityId` 可选外键指向 `Entity` 但**当前没有任何写入路径会填它**——`/agent` 页面本身的 `contextKey` 永远是 `"none"`，没有 company/master context 可供自动关联，这个字段是留给以后笔记功能铺开到其余 5 处「AI 解读」入口时用的；迁移 `20260828120000_add_note`，用了 shadow DB 损坏时的手工提取 workaround，见本文档「Commands」）。两个创建入口：① 消息气泡上的「存为笔记」按钮（`AgentChat.tsx`，仅在传入 `onSaveAsNote` 时渲染——目前只有 `AgentPageChat` 传，其余 5 处对话入口不受影响），点击用该条回复原文创建一条新笔记并立即打开编辑器；② 侧栏「+ 新建」（在"投研笔记"分区头部，展开/收起分区不会触发它，`stopPropagation`），空白笔记。列表项没有删除按钮，删除只能从编辑器里的垃圾桶图标做。编辑内容**自动保存**（800ms debounce，`src/hooks/useNotes.ts`，切换/关闭笔记时先强制 flush 一次待保存的修改，避免丢字），不做手动保存按钮。编辑器**单视图**，标题栏右上角一个眼睛/铅笔图标在「编辑」（textarea）和「预览」（渲染后的 `mdComponents`）之间切换，不做两块上下堆叠；宽度/排版跟对话区共用同一套居中逻辑（`max-width:720px; margin:0 auto`），跟对话切换时视觉上感觉是同一条内容列在换内容，不是弹出一个新东西。复用聊天消息同一套 `mdComponents` 渲染器（`src/lib/markdown-components.tsx`，从 `AgentChat.tsx` 抽出）和复制按钮（`CopyMarkdownButton.tsx`，同样抽出，原 `CopyMessageButton` 改名后行为不变）。笔记**不会**出现在公司页任何地方——2026-07-17「Company Brain」教训定下的边界，未经甄别的用户内容不能混进官方 `CompanyAnalysis`。
+
+侧栏本身刻意**不参与 flex 布局**（`position: absolute`，浮在对话区自带的空白边距里——`.messages` 的 `max-width:720px` 本身在宽屏上留的边距比侧栏（260px）宽，侧栏浮在这段空白里不挤占任何东西，右边缘一条 `border-right` 细线当分界），≤1360px 断点直接隐藏（对话居中边距变得比侧栏窄会盖住文字，隐藏而不是重叠）——笔记列表在窄屏暂时不可达，只能通过"存为笔记"进入编辑器，仍是已知缺口。**笔记编辑器本身经历过一次返工**：最初做成浮在对话区右上方的悬浮卡片（先 400px 后按用户要求加宽到 560px），用户反馈"同样的问题"——覆盖式设计仍然让人觉得在跟对话抢位置——于是改成现在这版"原地替换对话区"，不再需要浮层的圆角/阴影/宽度/窄屏专属 `position:fixed` 处理，代码反而更简单。
+
+`AgentChat.tsx` 里 `.chat-input-wrap` 原本自带的 `border-top` + 不透明背景色，在 `/agent` 页这种渐变背景上会显出一条突兀的横条——加了 `.agent-workspace-main .chat-input-wrap{border-top:none;background:transparent}` 局部覆盖（只影响这个页面，其余 5 处「AI 解读」弹窗背景是纯白，那条分割线在那边是需要的，没有改动共用规则）。
+
+**移动端走查（Playwright iPhone 14 模拟）发现并修的两个 bug**：① 早期"编辑器浮窗"版本在 ≤1080px 变 `position:fixed` 全屏浮层，`z-index:40` 却低于 `SiteNav` 的 `position:sticky;z-index:100`，导致 nav 条盖住浮层自己的标题栏，切换/复制/删除/**关闭**四个按钮全部点不到——笔记一旦打开就关不掉；改成"原地替换"设计后这个浮层机制整个不需要了，问题随之消失。② 全站通用的既存 bug：窄屏下 `.agent-chat .chat-input` placeholder 文案换成两行，但 `height:42px` 是固定单行高度，第二行文字溢出到可视区域外，跟下方 `site-footer` 免责声明、悬浮小组件文字挤在一起——`≤480px` 加 `height:auto; min-height:42px` 让输入框跟着 placeholder 自然撑高，不再溢出；这条影响全站所有页面（不止 `/agent`），已在这次顺手修掉。
+
+顶部导航"对话"改名"投研"（`SiteNav.tsx`），跟已经在用的"投研笔记"命名保持一致，也比泛泛的"研究"更贴近"投资研究"这个具体定位。
+
+**仍待设计（未实现）**：侧栏其余两个分区——关注公司列表、资产组合 Portfolio（目前连分区占位都还没加）；资料库分区目前只有占位文案，真正的文件上传/文本抽取/context 注入能力都没做。完整讨论记录、两个未拍板的架构分叉（Repository 纯文本抽取 vs GBrain 语义检索、Portfolio 交易流水 vs 持仓快照建模）见 `TODO.md` P1「Agent 投研笔记本」。
 
 ### /idea — 对话研究室（旧版，已下线）
 

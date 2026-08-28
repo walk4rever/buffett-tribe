@@ -3,56 +3,43 @@
 import { useRef, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { ClipboardEvent, ComponentPropsWithoutRef } from "react";
+import type { ClipboardEvent } from "react";
 import { TOOL_META, type ImageAttachment, type Message } from "@/hooks/useAgentChat";
 import { fileToImageAttachment, isSupportedImageFile } from "@/lib/downscale-image";
+import { mdComponents } from "@/lib/markdown-components";
+import { CopyMarkdownButton } from "@/components/CopyMarkdownButton";
 
 function imageSrc(img: ImageAttachment): string {
   return `data:${img.mimeType};base64,${img.data}`;
 }
 
-function CopyMessageButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
+function SaveAsNoteButton({ onClick }: { onClick: () => void }) {
+  const [saved, setSaved] = useState(false);
 
   return (
     <button
       type="button"
       className="msg-copy-btn"
-      title={copied ? "已复制" : "复制"}
-      onClick={async () => {
-        await navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
+      title={saved ? "已存为笔记" : "存为笔记"}
+      onClick={() => {
+        onClick();
+        setSaved(true);
+        setTimeout(() => setSaved(false), 1500);
       }}
     >
-      {copied ? (
+      {saved ? (
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
           <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       ) : (
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
-          <path d="M3.5 10.5V3.5a1 1 0 0 1 1-1h7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          <path d="M4 2.5h6l2.5 2.5V13a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5V3a.5.5 0 0 1 .5-.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+          <path d="M6 8.5h4M6 10.8h4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
         </svg>
       )}
     </button>
   );
 }
-
-const mdComponents = {
-  a: (props: ComponentPropsWithoutRef<"a">) => {
-    const href = props.href ?? "";
-    const isExternal = /^https?:\/\//i.test(href);
-    return (
-      <a {...props} target={isExternal ? "_blank" : props.target} rel={isExternal ? "noopener noreferrer" : props.rel} />
-    );
-  },
-  table: (props: ComponentPropsWithoutRef<"table">) => (
-    <div className="msg-table-wrap">
-      <table {...props} />
-    </div>
-  ),
-};
 
 const SUGGESTIONS = [
   "段永平为什么长期持有泡泡玛特？",
@@ -82,6 +69,10 @@ interface AgentChatProps {
   pendingImages: ImageAttachment[];
   onAddImage: (image: ImageAttachment) => void;
   onRemoveImage: (index: number) => void;
+  /** Present only on the main /agent page — shows a "存为笔记" button on finished
+   *  assistant replies. Omitted everywhere else (CompanyAgentDialog etc.), matching
+   *  the MVP scope decided in TODO.md P1 "Agent 投研笔记本". */
+  onSaveAsNote?: (text: string) => void;
 }
 
 export function AgentChat({
@@ -99,6 +90,7 @@ export function AgentChat({
   pendingImages,
   onAddImage,
   onRemoveImage,
+  onSaveAsNote,
 }: AgentChatProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -214,7 +206,14 @@ export function AgentChat({
                               {msg.text}
                             </ReactMarkdown>
                           </div>
-                          {!msg.error && <CopyMessageButton text={msg.text} />}
+                          {!msg.error && (
+                            <div className="msg-actions">
+                              <CopyMarkdownButton text={msg.text} />
+                              {onSaveAsNote && (
+                                <SaveAsNoteButton onClick={() => onSaveAsNote(msg.text)} />
+                              )}
+                            </div>
+                          )}
                         </>
                       )
                     ) : !msg.error && streaming && i === messages.length - 1 ? (

@@ -1745,6 +1745,13 @@ body.layout-no-header {
   box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 
+.msg-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  align-self: flex-start;
+}
+
 .msg-copy-btn {
   display: inline-flex;
   align-items: center;
@@ -1757,7 +1764,6 @@ body.layout-no-header {
   color: var(--text-muted);
   border-radius: 6px;
   cursor: pointer;
-  align-self: flex-start;
 }
 
 .msg-copy-btn:hover {
@@ -13867,5 +13873,275 @@ a.insight-entity-chip:hover {
   padding-top: 0.4rem;
   padding-bottom: 0.4rem;
   line-height: 1.4;
+}
+
+@media (max-width: 480px) {
+  /* At this width the placeholder text wraps to a 2nd line that doesn't fit the
+     fixed single-line height above — `overflow: hidden` doesn't reliably clip a
+     <textarea>'s placeholder pseudo-content, so it renders past the border and
+     bleeds into whatever sits below (site footer, floating widgets). Let the box
+     grow to fit instead of fighting the overflow. */
+  .agent-chat .chat-input {
+    height: auto;
+    min-height: 42px;
+  }
+}
+
+/* ── Agent workspace: left notes sidebar + center chat + right note editor ── */
+
+/* Both side panels are positioned out of the flex flow on purpose so neither ever
+   shrinks/pushes the chat column — opening a note (or, below the 1280px breakpoint,
+   even having the sidebar visible) never reflows the conversation underneath it.
+   The sidebar floats in the empty margin the centered chat (.messages, capped at
+   720px) already leaves on wide screens, so it never overlaps message text and
+   is hidden below that margin's width. The editor is wider than that margin, so
+   instead of trying to fit inside it, it's a proper floating card (background +
+   shadow) that deliberately sits on top of the chat while a note is open — the
+   same tradeoff a slide-over panel makes in most editors: focus shifts to the
+   panel, and covering some of the (still-scrollable) chat behind it is expected. */
+.agent-workspace {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+}
+
+.agent-workspace-sidebar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 260px;
+  overflow-y: auto;
+  padding: 0.5rem 1.25rem 0.5rem clamp(0.75rem, 2vw, 1.5rem);
+  border-right: 0.5px solid var(--secondary);
+}
+
+.agent-workspace-main {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* .chat-input-wrap's own border-top + flat background reads as a hard bar against
+   this page's gradient background above it — drop both here so the input just
+   sits on the page. Scoped to this page only (not the shared .chat-input-wrap
+   rule) since the 5 "AI 解读" dialogs/panels want the divider against their own
+   flat white background. */
+.agent-workspace-main .chat-input-wrap {
+  border-top: none;
+  background: transparent;
+}
+
+/* The note editor replaces the chat in the same slot (.agent-workspace-main)
+   rather than floating over it — one view at a time, same as the edit/preview
+   toggle inside it. Sizing/centering mirrors .messages/.chat-input-bar (720px,
+   auto margins) so swapping between chat and editor doesn't jump the content
+   column around. */
+.agent-note-editor {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.agent-note-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 1rem;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.agent-workspace-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.6rem;
+  flex-shrink: 0;
+}
+
+/* ── Sidebar accordion (投研笔记 / 资料库) ── */
+
+.agent-workspace-sections {
+  display: flex;
+  flex-direction: column;
+}
+
+.agent-workspace-section {
+  border-bottom: 0.5px solid var(--secondary);
+}
+
+.agent-workspace-section:last-child {
+  border-bottom: none;
+}
+
+.agent-workspace-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 0;
+}
+
+.agent-workspace-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.agent-workspace-section-chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.agent-workspace-section-chevron.is-open {
+  transform: rotate(90deg);
+}
+
+.agent-workspace-section-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.agent-workspace-section-body {
+  padding-bottom: 0.75rem;
+}
+
+.agent-workspace-new-btn {
+  border: none;
+  background: transparent;
+  color: var(--apple-blue);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+}
+
+.agent-workspace-new-btn:hover {
+  background: var(--secondary);
+}
+
+.agent-workspace-empty {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.agent-workspace-note-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.agent-workspace-note-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  padding: 0.5rem 0.55rem;
+  cursor: pointer;
+}
+
+.agent-workspace-note-item:hover {
+  background: var(--secondary);
+}
+
+.agent-workspace-note-item.is-active {
+  background: rgba(0, 113, 227, 0.1);
+}
+
+.agent-workspace-note-title {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--foreground);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-workspace-note-snippet {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-workspace-note-date {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+/* ── Note editor (right panel) ── */
+
+.agent-note-title-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--foreground);
+  padding: 0.2rem 0;
+}
+
+.agent-note-title-input:focus {
+  outline: none;
+}
+
+.agent-note-textarea {
+  flex: 1;
+  min-height: 120px;
+  resize: none;
+  border: 0.5px solid var(--secondary);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--foreground);
+  background: #fff;
+}
+
+.agent-note-textarea:focus {
+  outline: none;
+  border-color: var(--apple-blue);
+}
+
+.agent-note-preview {
+  flex: 1;
+  min-height: 100px;
+  overflow-y: auto;
+  font-size: 0.95rem;
+  padding: 0.75rem 0.9rem;
+}
+
+/* Below this width, the chat's own centering margin ((viewport - 720px) / 2) is
+   narrower than the floating sidebar's footprint (260px + padding), so it would
+   start covering message text instead of sitting in empty space — hide it rather
+   than overlap. */
+@media (max-width: 1360px) {
+  .agent-workspace-sidebar {
+    display: none;
+  }
 }
 

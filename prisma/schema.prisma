@@ -20,6 +20,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   chatTurns     ChatTurn[]
+  notes         Note[]
 }
 
 model Account {
@@ -169,6 +170,27 @@ model ChatTurn {
   @@index([userId, contextKey, createdAt])
 }
 
+// User-authored investment notes — /agent left-sidebar "投研笔记" workspace. Deliberately
+// separate from CompanyAnalysis/GeneratedContentVersion (same reasoning as ChatTurn above):
+// user-edited content never gets treated as authoritative company data, and never renders
+// on public company pages. entityId is an optional tag for the user's own organization —
+// /agent has no page context to auto-populate it from yet (contextKey is always "none"
+// there), so it's set manually or left null; see PRODUCT.md "/agent — 投资研究 Agent".
+model Note {
+  id        String   @id @default(cuid())
+  userId    String
+  entityId  String?
+  title     String?
+  content   String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entity Entity? @relation(fields: [entityId], references: [id], onDelete: SetNull)
+
+  @@index([userId, updatedAt])
+}
+
 // ============================================================================
 // Longitudinal Narrative — multi-source intelligence layer
 // See PRODUCT.md "标的纵向叙事" section for the full design.
@@ -203,6 +225,7 @@ model Entity {
   beneficialOwnershipAsIssuer BeneficialOwnership[]
   punchesAsFiler              Punch[]                 @relation("PunchFilerEntity")
   punchesAsCompany            Punch[]                 @relation("PunchCompanyEntity")
+  notes                       Note[]
 
   @@index([type])
   @@index([ticker])
