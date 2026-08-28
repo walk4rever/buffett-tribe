@@ -52,7 +52,7 @@ description: 测试描述
   });
 
   it("normalizes legacy editorial callouts during import", () => {
-    const args = parseInsightImportArgs(["/tmp/CI003 测试文章.md"]);
+    const args = parseInsightImportArgs(["/tmp/CI003 测试文章.md", "--source", "Buffett Tribe"]);
     const data = buildInsightImportData(
       `---
 title: 测试文章
@@ -92,6 +92,8 @@ title: 测试文章
       "A,B",
       "--external-id",
       "insight-003",
+      "--source",
+      "Buffett Tribe",
     ]);
     const data = buildInsightImportData(
       `---
@@ -111,7 +113,7 @@ tags: [旧标签]
   });
 
   it("infers title from filename when frontmatter has no title", () => {
-    const args = parseInsightImportArgs(["/tmp/CI004 商业模式演进.md"]);
+    const args = parseInsightImportArgs(["/tmp/CI004 商业模式演进.md", "--source", "Buffett Tribe"]);
     const data = buildInsightImportData("正文内容", args);
 
     expect(data.title).toBe("商业模式演进");
@@ -121,8 +123,42 @@ tags: [旧标签]
   it("rejects invalid status and date", () => {
     expect(() => parseInsightImportArgs(["a.md", "--status", "live"])).toThrow("Invalid --status");
 
-    const args = parseInsightImportArgs(["a.md", "--date", "not-a-date"]);
+    const args = parseInsightImportArgs(["a.md", "--date", "not-a-date", "--source", "Buffett Tribe"]);
     expect(() => buildInsightImportData("正文内容", args)).toThrow("Invalid date");
+  });
+
+  it("rejects when source ends up empty", () => {
+    const args = parseInsightImportArgs(["/tmp/no-source.md"]);
+    expect(() => buildInsightImportData("---\ntitle: 无来源\n---\n正文", args)).toThrow("source 不能为空");
+  });
+
+  it("strips [[wiki-link]] brackets from source", () => {
+    const args = parseInsightImportArgs(["/tmp/bracketed.md"]);
+    const data = buildInsightImportData(
+      `---
+title: 测试文章
+source: "[[Acquired]]"
+---
+正文`,
+      args,
+    );
+
+    expect(data.source).toBe("Acquired");
+  });
+
+  it("defaults author to the resolved source when author is absent", () => {
+    const args = parseInsightImportArgs(["/tmp/no-author.md"]);
+    const data = buildInsightImportData(
+      `---
+title: 测试文章
+source: Buffett Tribe
+---
+正文`,
+      args,
+    );
+
+    expect(data.source).toBe("Buffett Tribe");
+    expect(data.author).toBe("Buffett Tribe");
   });
 
   it("recovers a known show name from `author:` when `source:` holds the episode URL", () => {
@@ -139,11 +175,11 @@ author: Generating Alpha
 
     expect(data.source).toBe("Generating Alpha");
     expect(data.sourceUrl).toBe("https://www.youtube.com/watch?v=abc123");
-    expect(data.author).toBeNull();
+    expect(data.author).toBe("Generating Alpha");
   });
 
   it("leaves a genuine personal byline alone when author isn't a known show name", () => {
-    const args = parseInsightImportArgs(["/tmp/blog-post.md"]);
+    const args = parseInsightImportArgs(["/tmp/blog-post.md", "--source", "Lilian Weng's Blog"]);
     const data = buildInsightImportData(
       `---
 title: 测试文章
@@ -154,7 +190,7 @@ author: lilian-weng
       args,
     );
 
-    expect(data.source).toBeNull();
+    expect(data.source).toBe("Lilian Weng's Blog");
     expect(data.sourceUrl).toBe("https://lilianweng.github.io/posts/example/");
     expect(data.author).toBe("lilian-weng");
   });

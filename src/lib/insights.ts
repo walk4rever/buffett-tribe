@@ -23,6 +23,86 @@ export function isInsightFormat(value: unknown): value is InsightFormat {
   return typeof value === "string" && (INSIGHT_FORMATS as readonly string[]).includes(value);
 }
 
+// Established Vault authoring convention for translated podcast/video pieces:
+// `source:` holds the episode URL and `author:` holds the show/publication
+// name (e.g. "Colossus", "Acquired", "20VC") — the opposite of what those field
+// names suggest. Recognize the known shows so the real name survives as
+// `source`; genuine personal bylines (an actual person's blog post, e.g.
+// author: lilian-weng) are never in this list, so they're untouched.
+const KNOWN_SHOW_NAMES = new Set([
+  "Colossus",
+  "Acquired",
+  "No Priors",
+  "20VC",
+  "Capital Allocators",
+  "My First Million",
+  "Latent Space",
+  "SemiAnalysis",
+  "Founders",
+  "TWIML AI",
+  "Generating Alpha",
+  "The a16z Show",
+]);
+
+function isHttpUrl(value: string | undefined): value is string {
+  return typeof value === "string" && /^https?:\/\//i.test(value);
+}
+
+/** Strips Obsidian/wiki-link bracket syntax ("[[Acquired]]" -> "Acquired"),
+ *  a raw-vault-note artifact that should never reach the database. */
+export function stripWikiLinkBrackets(value: string): string {
+  const match = value.trim().match(/^\[\[(.+)\]\]$/);
+  return (match ? match[1] : value).trim();
+}
+
+/**
+ * Resolves the final `source`/`author` pair for an InsightPost from explicit
+ * overrides (CLI flags / API payload) plus raw frontmatter, applying the
+ * KNOWN_SHOW_NAMES convention above and bracket-stripping to both.
+ *
+ * Throws if `source` still ends up empty — a null `source` makes a post
+ * invisible under every /insights filter pill while still *looking* filed
+ * under "Buffett Tribe" (the list/detail pages' `post.source || "Buffett
+ * Tribe"` fallback only affects display, not the filter's exact-match query
+ * on the real column) — this silently broke two published posts before it
+ * was noticed. Never guess a `source` — reject instead so the importer fixes
+ * the frontmatter or passes --source explicitly.
+ *
+ * `author` is optional and, when absent, defaults to the resolved `source`
+ * — the two are the same value for the vast majority of posts; the site no
+ * longer displays `author` separately (see PRODUCT.md), so this is mostly
+ * about keeping the column's historical meaning intact, not UI.
+ */
+export function resolveInsightSourceAndAuthor(input: {
+  explicitSource?: string;
+  explicitAuthor?: string;
+  frontmatterSource?: string;
+  frontmatterAuthor?: string;
+}): { source: string; author: string } {
+  const frontmatterSourceIsUrl = isHttpUrl(input.frontmatterSource);
+  const authorIsKnownShowName =
+    frontmatterSourceIsUrl && !!input.frontmatterAuthor && KNOWN_SHOW_NAMES.has(input.frontmatterAuthor);
+
+  const rawSource =
+    input.explicitSource ??
+    (authorIsKnownShowName
+      ? input.frontmatterAuthor!
+      : frontmatterSourceIsUrl
+        ? undefined
+        : input.frontmatterSource);
+  const source = rawSource ? stripWikiLinkBrackets(rawSource) : "";
+  if (!source) {
+    throw new Error(
+      "source 不能为空 — 请在 frontmatter 里设置 `source:`，或传 --source（也可能是 `source:` 写成了链接但 `author:` 不是已知节目名，见 KNOWN_SHOW_NAMES）。",
+    );
+  }
+
+  const rawAuthor = input.explicitAuthor ?? (authorIsKnownShowName ? undefined : input.frontmatterAuthor);
+  const author = rawAuthor ? stripWikiLinkBrackets(rawAuthor) : source;
+
+  return { source, author };
+}
+
 export function normalizeInsightSlug(value: string): string {
   return value
     .trim()

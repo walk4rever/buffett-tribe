@@ -37,7 +37,6 @@ export default async function InsightDetailPage({ params }: Props) {
             <h1>{post.title}</h1>
             <div className="insight-detail-meta">
               <span>{post.sourceUrl ? <a href={post.sourceUrl} target="_blank" rel="noopener noreferrer">{post.source || "来源"}</a> : post.source || "Buffett Tribe"}</span>
-              {post.author && post.author !== post.source ? <span>{post.author}</span> : null}
               <span>{dateLabel}</span>
             </div>
             {post.description ? <p className="insight-detail-desc">{post.description}</p> : null}
@@ -144,7 +143,6 @@ async function getInsightPost(slug: string) {
         description: true,
         source: true,
         sourceUrl: true,
-        author: true,
         publishedAt: true,
         tags: true,
         entityIds: true,

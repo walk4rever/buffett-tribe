@@ -4,6 +4,7 @@ import {
   normalizeInsightSlug,
   normalizeInsightLegacyCallouts,
   parseInsightFrontmatter,
+  resolveInsightSourceAndAuthor,
   type InsightFormat,
 } from "../../src/lib/insights";
 
@@ -75,29 +76,6 @@ export function parseInsightImportArgs(argv: string[]): InsightImportArgs {
   };
 }
 
-// Established Vault authoring convention for translated podcast/video pieces:
-// `source:` holds the episode URL and `author:` holds the show/publication
-// name (e.g. "Colossus", "Acquired", "20VC") — the opposite of what those field
-// names suggest. Left as-is, the show name silently disappears (`source`
-// becomes null, falls back to a generic "Buffett Tribe" pill on the site).
-// Recognize the known shows so the real name survives; genuine personal
-// bylines (an actual person's blog post, e.g. author: lilian-weng) are never
-// in this list, so they're untouched.
-const KNOWN_SHOW_NAMES = new Set([
-  "Colossus",
-  "Acquired",
-  "No Priors",
-  "20VC",
-  "Capital Allocators",
-  "My First Million",
-  "Latent Space",
-  "SemiAnalysis",
-  "Founders",
-  "TWIML AI",
-  "Generating Alpha",
-  "The a16z Show",
-]);
-
 export function buildInsightImportData(rawContent: string, args: InsightImportArgs): InsightImportData {
   const parsed = args.format === "markdown"
     ? parseInsightFrontmatter(rawContent)
@@ -111,18 +89,21 @@ export function buildInsightImportData(rawContent: string, args: InsightImportAr
 
   const metadataSource = parsed.metadata.source;
   const metadataSourceIsUrl = isHttpUrl(metadataSource);
-  const metadataAuthor = parsed.metadata.author;
-  const authorIsKnownShowName = metadataSourceIsUrl && !!metadataAuthor && KNOWN_SHOW_NAMES.has(metadataAuthor);
+  const { source, author } = resolveInsightSourceAndAuthor({
+    explicitSource: args.source,
+    explicitAuthor: args.author,
+    frontmatterSource: parsed.metadata.source,
+    frontmatterAuthor: parsed.metadata.author,
+  });
   const dateInput = args.date ?? parsed.metadata.date;
 
   return {
     slug,
     title,
     description: args.description ?? parsed.metadata.description ?? null,
-    source: args.source
-      ?? (authorIsKnownShowName ? metadataAuthor! : (metadataSourceIsUrl ? null : metadataSource ?? null)),
+    source,
     sourceUrl: args.sourceUrl ?? parsed.metadata.sourceUrl ?? (metadataSourceIsUrl ? metadataSource : null),
-    author: args.author ?? (authorIsKnownShowName ? null : metadataAuthor ?? null),
+    author,
     publishedAt: parseDate(dateInput),
     tags: normalizeTags(args.tags ?? parsed.metadata.tags),
     format: args.format,
