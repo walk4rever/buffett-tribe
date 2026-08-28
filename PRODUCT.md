@@ -191,7 +191,7 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 
 NextAuth（Credentials Provider，`src/lib/auth.ts`）是现有唯一认证实现，无第三方登录。
 
-**投研笔记 + 个人工作区侧栏（2026-08-28 上线）**：`/agent` 页面改成左中两栏——左侧「个人工作区」侧栏，右侧是对话区，笔记打开时**原地替换**对话区（不是浮窗、不是第三栏）。侧栏是手风琴结构（`WorkspaceSidebar.tsx` + `CollapsibleSection.tsx`），当前两个分区：**笔记本**（默认展开，唯一已实现的功能——数据模型/API/交互仍是"投研笔记"这套设计，只是 UI 标签改短了）、**资料库**（默认收起，占位态"构建中——未来支持在这里上传 PDF/PPT 等资料，作为对话的临时参考"，关注公司列表/Portfolio 两个模块还没有分区占位，构想见下）。
+**投研笔记 + 个人工作区侧栏（2026-08-28 上线）**：`/agent` 页面改成左中两栏——左侧「个人工作区」侧栏，右侧是对话区，笔记打开时**原地替换**对话区（不是浮窗、不是第三栏）。侧栏是手风琴结构（`WorkspaceSidebar.tsx` + `CollapsibleSection.tsx`），当前两个分区：**笔记本**（默认展开——数据模型/API/交互仍是"投研笔记"这套设计，只是 UI 标签改短了）、**资料库**（默认收起，占位态"构建中——未来支持在这里上传 PDF/PPT 等资料，作为对话的临时参考"，关注公司列表模块还没有分区占位，构想见下）。资产组合 Portfolio 当天晚些时候也上线了，但没有并入这个手风琴，见下一段。
 
 `Note` 表（`userId`/`entityId?`/`title?`/`content`/`createdAt`/`updatedAt`，`user` 级联删除，`entityId` 可选外键指向 `Entity` 但**当前没有任何写入路径会填它**——`/agent` 页面本身的 `contextKey` 永远是 `"none"`，没有 company/master context 可供自动关联，这个字段是留给以后笔记功能铺开到其余 5 处「AI 解读」入口时用的；迁移 `20260828120000_add_note`，用了 shadow DB 损坏时的手工提取 workaround，见本文档「Commands」）。两个创建入口：① 消息气泡上的「存为笔记」按钮（`AgentChat.tsx`，仅在传入 `onSaveAsNote` 时渲染——目前只有 `AgentPageChat` 传，其余 5 处对话入口不受影响），点击用该条回复原文创建一条新笔记并立即打开编辑器；② 侧栏「+ 新建」（在"笔记本"分区头部，展开/收起分区不会触发它，`stopPropagation`），空白笔记。列表项没有删除按钮，删除只能从编辑器里的垃圾桶图标做。编辑内容**自动保存**（800ms debounce，`src/hooks/useNotes.ts`，切换/关闭笔记时先强制 flush 一次待保存的修改，避免丢字），不做手动保存按钮。编辑器**单视图**，标题栏右上角一个眼睛/铅笔图标在「编辑」（textarea）和「预览」（渲染后的 `mdComponents`）之间切换，不做两块上下堆叠；宽度/排版跟对话区共用同一套居中逻辑（`max-width:720px; margin:0 auto`），跟对话切换时视觉上感觉是同一条内容列在换内容，不是弹出一个新东西。复用聊天消息同一套 `mdComponents` 渲染器（`src/lib/markdown-components.tsx`，从 `AgentChat.tsx` 抽出）和复制按钮（`CopyMarkdownButton.tsx`，同样抽出，原 `CopyMessageButton` 改名后行为不变）。笔记**不会**出现在公司页任何地方——2026-07-17「Company Brain」教训定下的边界，未经甄别的用户内容不能混进官方 `CompanyAnalysis`。
 
@@ -205,7 +205,9 @@ NextAuth（Credentials Provider，`src/lib/auth.ts`）是现有唯一认证实�
 
 顶部导航"对话"改名"投研"（`SiteNav.tsx`），比泛泛的"研究"更贴近"投资研究"这个具体定位（侧栏笔记分区后来又从"投研笔记"简化成"笔记本"，两处改名是各自独立的决定，不是同一次）。
 
-**仍待设计（未实现）**：侧栏其余两个分区——关注公司列表、资产组合 Portfolio（目前连分区占位都还没加）；资料库分区目前只有占位文案，真正的文件上传/文本抽取/context 注入能力都没做。完整讨论记录、两个未拍板的架构分叉（Repository 纯文本抽取 vs GBrain 语义检索、Portfolio 交易流水 vs 持仓快照建模）见 `TODO.md` P1「Agent 投研笔记本」。
+**资产组合 Portfolio 面板（2026-08-28 上线）**：与笔记本不同，Portfolio 没有并入左侧「个人工作区」手风琴，而是独立开在 `/agent` 页面**右侧**——`AgentPageChat.tsx` 新增第三个 `<aside className="agent-workspace-sidebar agent-workspace-sidebar-right">`（`PortfolioPanel.tsx`），CSS 镜像左侧侧栏的浮动定位/1360px 断点隐藏规则（`.agent-workspace-sidebar-right` 只是把 `left:0` 换成 `right:0`、边框换到左边）。持仓建模选了**当前持仓快照**而非交易流水（`TODO.md` 原先两个方案未拍板，这次直接拍板选了更轻的一种）：`PortfolioHolding` 表只存"现在持有什么"（`userId`/`ticker`/`shares`/`costBasis`，均 `Decimal(18,4)`，`user` 级联删除；迁移 `20260828140000_add_portfolio_holding`，同样用了 shadow DB workaround，见「Commands」），不记录买卖流水、不追历史。市值/现价**不做实时拉取**（动手前跟用户核实过，选择的是"只用站内已有价格库"而非"实时拉任意 ticker 报价"）——`GET /api/portfolio` 对每个持仓 ticker 查站内 `StockPrice` 表最新收盘价，命中就算市值和盈亏，未同步过价格的冷门 ticker（比如从未被 13F/onboarding 流程覆盖过的公司）市值显示"暂无价格数据"，不影响份额/成本本身的记录，也不影响其余持仓的汇总。CRUD 走 `/api/portfolio` + `/api/portfolio/[id]`，鉴权/归属校验模式抄 `Note`；`usePortfolio` hook **不做自动保存**——份额/成本改动需要点击「保存」显式提交，跟笔记内容的 debounce autosave 是刻意的不同选择（数字字段改错的代价比文本更高，不适合静默保存）。列表页顺带把公司名（`getCompanyByTicker`）一起查出来展示，纯 ticker 展示对用户不够直观。
+
+**仍待设计（未实现）**：侧栏左侧手风琴里还差一个分区——关注公司列表；资料库分区目前只有占位文案，真正的文件上传/文本抽取/context 注入能力都没做。完整讨论记录、一个仍未拍板的架构分叉（Repository 纯文本抽取 vs GBrain 语义检索）见 `TODO.md` P1「Agent 投研笔记本」。
 
 ### /idea — 对话研究室（旧版，已下线）
 

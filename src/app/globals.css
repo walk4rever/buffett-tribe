@@ -13916,6 +13916,14 @@ a.insight-entity-chip:hover {
   border-right: 0.5px solid var(--secondary);
 }
 
+.agent-workspace-sidebar-right {
+  left: auto;
+  right: 0;
+  border-right: none;
+  border-left: 0.5px solid var(--secondary);
+  padding: 0.5rem clamp(0.75rem, 2vw, 1.5rem) 0.5rem 1.25rem;
+}
+
 .agent-workspace-main {
   height: 100%;
   min-height: 0;
@@ -14153,5 +14161,189 @@ a.insight-entity-chip:hover {
   .agent-workspace-sidebar {
     display: none;
   }
+}
+
+/* ── Portfolio panel (agent-workspace-sidebar-right) ── */
+
+.agent-portfolio-summary {
+  padding: 0.4rem 0 0.9rem;
+  border-bottom: 0.5px solid var(--secondary);
+  margin-bottom: 0.6rem;
+}
+
+.agent-portfolio-summary-value {
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.agent-portfolio-summary-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+.agent-portfolio-gain {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.agent-portfolio-gain.is-up {
+  color: #34a853;
+}
+
+.agent-portfolio-gain.is-down {
+  color: #ea4335;
+}
+
+.agent-portfolio-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.agent-portfolio-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.3rem;
+  padding: 0.55rem 0;
+  border-bottom: 0.5px solid var(--secondary);
+}
+
+.agent-portfolio-row:last-child {
+  border-bottom: none;
+}
+
+.agent-portfolio-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  border: none;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.agent-portfolio-row-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.agent-portfolio-ticker {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.agent-portfolio-name {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-portfolio-row-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.agent-portfolio-row-value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.agent-portfolio-no-price {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.agent-portfolio-delete {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.2rem 0.3rem;
+}
+
+.agent-portfolio-delete:hover {
+  color: #ea4335;
+}
+
+.agent-portfolio-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.6rem 0;
+  border-bottom: 0.5px solid var(--secondary);
+  margin-bottom: 0.4rem;
+}
+
+.agent-portfolio-edit-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.agent-portfolio-input {
+  border: 0.5px solid var(--secondary);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  background: transparent;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.agent-portfolio-input:focus {
+  outline: none;
+  border-color: var(--apple-blue);
+}
+
+.agent-portfolio-error {
+  font-size: 0.78rem;
+  color: #ea4335;
+  margin: 0;
+}
+
+.agent-portfolio-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.agent-portfolio-btn {
+  border: none;
+  border-radius: 6px;
+  background: var(--apple-blue);
+  color: #fff;
+  font-size: 0.8rem;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+}
+
+.agent-portfolio-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.agent-portfolio-btn-ghost {
+  border: 0.5px solid var(--secondary);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
 }
 

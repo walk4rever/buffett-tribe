@@ -21,6 +21,7 @@ model User {
   sessions      Session[]
   chatTurns     ChatTurn[]
   notes         Note[]
+  portfolioHoldings PortfolioHolding[]
 }
 
 model Account {
@@ -187,6 +188,25 @@ model Note {
 
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   entity Entity? @relation(fields: [entityId], references: [id], onDelete: SetNull)
+
+  @@index([userId, updatedAt])
+}
+
+// User-entered brokerage-style holdings shown in the /agent page's portfolio
+// panel. costBasis is per-share, in the security's native trading currency
+// (matches StockPrice, which is not currency-normalized either). Market value
+// is computed at read time from the latest StockPrice row for the ticker —
+// no live quote fetch, so untracked tickers just show no current price.
+model PortfolioHolding {
+  id        String   @id @default(cuid())
+  userId    String
+  ticker    String
+  shares    Decimal  @db.Decimal(18, 4)
+  costBasis Decimal  @db.Decimal(18, 4)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, updatedAt])
 }
