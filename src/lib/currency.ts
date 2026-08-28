@@ -11,10 +11,18 @@ export function formatUsdInYi(value: string | number | bigint | null): string {
   return `${yi.toFixed(2)}亿`;
 }
 
-const CURRENCY_PREFIX: Record<string, string> = {
+export const CURRENCY_PREFIX: Record<string, string> = {
   CNY: "¥",
   HKD: "HK$",
 };
+
+/** USD (and any unrecognized currency) intentionally has no prefix — matches
+ *  formatMoneyInYi's existing convention below, so callers can use one symbol
+ *  table for both large "亿"-scale figures and small per-share amounts. */
+export function currencyPrefix(currency: string | null | undefined): string {
+  if (!currency) return "";
+  return CURRENCY_PREFIX[currency] ?? "";
+}
 
 /**
  * Same magnitude formatting as formatUsdInYi, plus a currency prefix for

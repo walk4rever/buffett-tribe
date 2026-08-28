@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { normalizeTicker, isValidTickerFormat } from "@/lib/ticker";
+import { normalizeTicker, isValidTickerFormat, currencyForTicker } from "@/lib/ticker";
 import { getCompanyByTicker } from "@/lib/company-data";
 import type { PortfolioHoldingDto } from "@/app/api/portfolio/route";
 
@@ -34,6 +34,7 @@ async function serializeHolding(holding: {
     id: holding.id,
     ticker: holding.ticker,
     companyName: company?.canonicalName ?? null,
+    currency: currencyForTicker(holding.ticker),
     shares: Number(holding.shares),
     costBasis: Number(holding.costBasis),
     currentPrice: latestPrice ? Number(latestPrice.close) : null,

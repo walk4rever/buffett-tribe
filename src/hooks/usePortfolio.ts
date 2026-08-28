@@ -6,6 +6,7 @@ export interface PortfolioHolding {
   id: string;
   ticker: string;
   companyName: string | null;
+  currency: "USD" | "HKD" | "CNY";
   shares: number;
   costBasis: number;
   currentPrice: number | null;

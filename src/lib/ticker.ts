@@ -39,3 +39,15 @@ const CN_TICKER = /^\d{6}\.(SS|SZ)$/;
 export function isValidTickerFormat(ticker: string): boolean {
   return US_TICKER.test(ticker) || HK_TICKER.test(ticker) || CN_TICKER.test(ticker);
 }
+
+/**
+ * Trading currency implied by a ticker's own suffix — StockPrice.close is a raw
+ * quote in whatever currency the security actually trades in (Yahoo Finance
+ * source), never converted, so a HK/CN holding's price and a US holding's price
+ * are not directly comparable/summable without knowing which is which.
+ */
+export function currencyForTicker(ticker: string): "USD" | "HKD" | "CNY" {
+  if (HK_TICKER.test(ticker)) return "HKD";
+  if (CN_TICKER.test(ticker)) return "CNY";
+  return "USD";
+}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { PortfolioHolding } from "@/hooks/usePortfolio";
+import { currencyPrefix } from "@/lib/currency";
 
 function formatMoney(value: number): string {
   return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -28,6 +29,7 @@ export function PortfolioHoldingRow({ holding, onUpdate, onDelete }: PortfolioHo
   const costTotal = holding.costBasis * holding.shares;
   const gain = marketValue != null ? marketValue - costTotal : null;
   const gainPct = gain != null && costTotal > 0 ? (gain / costTotal) * 100 : null;
+  const prefix = currencyPrefix(holding.currency);
 
   function startEdit() {
     setSharesInput(String(holding.shares));
@@ -101,18 +103,26 @@ export function PortfolioHoldingRow({ holding, onUpdate, onDelete }: PortfolioHo
       <button type="button" className="agent-portfolio-row-main" onClick={startEdit} title="点击编辑份额/成本">
         <div className="agent-portfolio-row-head">
           <span className="agent-portfolio-ticker">{holding.ticker}</span>
+          <span className="agent-portfolio-currency-tag">{holding.currency}</span>
           {holding.companyName && <span className="agent-portfolio-name">{holding.companyName}</span>}
         </div>
         <div className="agent-portfolio-row-meta">
-          {formatShares(holding.shares)} 股 · 成本 {formatMoney(holding.costBasis)}
+          {formatShares(holding.shares)} 股 · 成本 {prefix}
+          {formatMoney(holding.costBasis)} · 现价{" "}
+          {holding.currentPrice != null ? `${prefix}${formatMoney(holding.currentPrice)}` : "暂无"}
+          {holding.priceDate && <span className="agent-portfolio-row-date"> ({holding.priceDate})</span>}
         </div>
         <div className="agent-portfolio-row-value">
           {marketValue != null ? (
             <>
-              <span>{formatMoney(marketValue)}</span>
+              <span>
+                {prefix}
+                {formatMoney(marketValue)}
+              </span>
               {gain != null && gainPct != null && (
                 <span className={`agent-portfolio-gain ${gain >= 0 ? "is-up" : "is-down"}`}>
                   {gain >= 0 ? "+" : ""}
+                  {prefix}
                   {formatMoney(gain)} ({gain >= 0 ? "+" : ""}
                   {gainPct.toFixed(1)}%)
                 </span>

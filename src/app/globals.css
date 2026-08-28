@@ -14182,9 +14182,18 @@ a.insight-entity-chip:hover {
 /* ── Portfolio panel (agent-workspace-sidebar-right) ── */
 
 .agent-portfolio-summary {
-  padding: 0.4rem 0 0.9rem;
+  padding: 0.4rem 0 0.6rem;
   border-bottom: 0.5px solid var(--secondary);
   margin-bottom: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.agent-portfolio-summary-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
 }
 
 .agent-portfolio-summary-value {
@@ -14199,8 +14208,12 @@ a.insight-entity-chip:hover {
 }
 
 .agent-portfolio-gain {
-  font-size: 0.85rem;
+  font-size: 0.72rem;
   font-weight: 500;
+}
+
+.agent-portfolio-summary .agent-portfolio-gain {
+  font-size: 0.9rem;
 }
 
 .agent-portfolio-gain.is-up {
@@ -14239,9 +14252,15 @@ a.insight-entity-chip:hover {
   gap: 0.15rem;
   border: none;
   background: transparent;
-  padding: 0;
+  padding: 0.3rem 0.35rem;
+  margin: -0.3rem -0.35rem;
+  border-radius: 8px;
   text-align: left;
   cursor: pointer;
+}
+
+.agent-portfolio-row-main:hover {
+  background: var(--secondary);
 }
 
 .agent-portfolio-row-head {
@@ -14253,11 +14272,22 @@ a.insight-entity-chip:hover {
 
 .agent-portfolio-ticker {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
+}
+
+.agent-portfolio-currency-tag {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--secondary);
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
 }
 
 .agent-portfolio-name {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -14265,7 +14295,12 @@ a.insight-entity-chip:hover {
 }
 
 .agent-portfolio-row-meta {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.agent-portfolio-row-date {
+  font-size: 0.68rem;
   color: var(--text-muted);
 }
 
@@ -14273,12 +14308,12 @@ a.insight-entity-chip:hover {
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
-  font-size: 0.85rem;
-  font-weight: 500;
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .agent-portfolio-no-price {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
   font-weight: 400;
 }
