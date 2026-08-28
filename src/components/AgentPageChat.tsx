@@ -31,6 +31,7 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
       <div className="agent-workspace-main">
         {activeNote && draft ? (
           <NoteEditor
+            key={activeNote.id}
             title={draft.title}
             content={draft.content}
             onChangeTitle={(title) => updateDraft({ title })}

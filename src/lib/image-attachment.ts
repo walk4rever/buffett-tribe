@@ -6,6 +6,19 @@ export interface ImageAttachment {
 export const ALLOWED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 export const MAX_IMAGES_PER_MESSAGE = 4;
 
+const IMAGE_EXTENSION_BY_MIME_TYPE: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+};
+
+/** File extension to use for an R2 object key — falls back to "bin" for a
+ *  mime type outside ALLOWED_IMAGE_MIME_TYPES (shouldn't happen post-validation). */
+export function imageExtensionForMimeType(mimeType: string): string {
+  return IMAGE_EXTENSION_BY_MIME_TYPE[mimeType] ?? "bin";
+}
+
 // Downscaled client-side before this ever arrives, so 8M base64 chars (~6MB
 // decoded) is a generous ceiling, not the expected size.
 const MAX_IMAGE_BASE64_LENGTH = 8_000_000;

@@ -6,20 +6,13 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { agentContextSchema, deriveContextKey } from "@/lib/agent-context";
 import { getRecentTurns } from "@/lib/agent-history";
-import { validateImageAttachments, type ImageAttachment } from "@/lib/image-attachment";
+import { imageExtensionForMimeType, validateImageAttachments, type ImageAttachment } from "@/lib/image-attachment";
 import { buildUserObjectKey, uploadToR2 } from "@/lib/r2";
-
-const IMAGE_EXTENSION_BY_MIME_TYPE: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/gif": "gif",
-  "image/webp": "webp",
-};
 
 async function uploadChatImages(userId: string, images: ImageAttachment[]): Promise<string[]> {
   const urls: string[] = [];
   for (const img of images) {
-    const ext = IMAGE_EXTENSION_BY_MIME_TYPE[img.mimeType] ?? "bin";
+    const ext = imageExtensionForMimeType(img.mimeType);
     const key = buildUserObjectKey(userId, "chat-images", `${randomUUID()}.${ext}`);
     try {
       const url = await uploadToR2(key, Buffer.from(img.data, "base64"), img.mimeType);

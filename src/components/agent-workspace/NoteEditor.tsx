@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import type { ClipboardEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { mdComponents } from "@/lib/markdown-components";
 import { CopyMarkdownButton } from "@/components/CopyMarkdownButton";
+import { fileToImageAttachment, isSupportedImageFile } from "@/lib/downscale-image";
+import type { ImageAttachment } from "@/lib/image-attachment";
 
 interface NoteEditorProps {
   title: string;
@@ -39,8 +42,56 @@ function ViewModeToggle({ mode, onToggle }: { mode: ViewMode; onToggle: () => vo
   );
 }
 
+async function uploadNoteImage(attachment: ImageAttachment): Promise<string | null> {
+  const res = await fetch("/api/notes/images", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image: attachment }),
+  }).catch(() => null);
+  if (!res?.ok) return null;
+  const { url } = (await res.json()) as { url: string };
+  return url;
+}
+
 export function NoteEditor({ title, content, onChangeTitle, onChangeContent, onClose, onDelete }: NoteEditorProps) {
-  const [mode, setMode] = useState<ViewMode>("edit");
+  const [mode, setMode] = useState<ViewMode>("preview");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Pastes an image straight into R2 (same pipeline as chat: downscaled client-side,
+  // see src/lib/downscale-image.ts) and inserts a markdown image link at the cursor —
+  // notes have no separate "pending attachment" concept like chat messages, so the
+  // link goes straight into the content string that already autosaves.
+  async function handlePaste(e: ClipboardEvent<HTMLTextAreaElement>) {
+    const files = Array.from(e.clipboardData.items)
+      .filter((item) => item.kind === "file")
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => !!file && isSupportedImageFile(file));
+    if (files.length === 0) return;
+    e.preventDefault();
+
+    const el = textareaRef.current;
+    let insertPos = el?.selectionStart ?? content.length;
+    let working = content;
+
+    for (const file of files) {
+      try {
+        const attachment = await fileToImageAttachment(file);
+        const url = await uploadNoteImage(attachment);
+        if (!url) continue;
+        const insertion = `![](${url})\n`;
+        working = working.slice(0, insertPos) + insertion + working.slice(insertPos);
+        insertPos += insertion.length;
+        onChangeContent(working);
+      } catch {
+        // Skip files that fail to decode/upload.
+      }
+    }
+
+    requestAnimationFrame(() => {
+      el?.focus();
+      if (el) el.selectionStart = el.selectionEnd = insertPos;
+    });
+  }
 
   return (
     <div className="agent-note-editor">
@@ -72,10 +123,12 @@ export function NoteEditor({ title, content, onChangeTitle, onChangeContent, onC
 
         {mode === "edit" ? (
           <textarea
+            ref={textareaRef}
             className="agent-note-textarea"
             value={content}
             onChange={(e) => onChangeContent(e.target.value)}
-            placeholder="写点什么…支持 Markdown"
+            onPaste={handlePaste}
+            placeholder="写点什么…支持 Markdown，可直接粘贴图片"
             autoFocus
           />
         ) : (

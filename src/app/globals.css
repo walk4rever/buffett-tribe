@@ -14116,8 +14116,8 @@ a.insight-entity-chip:hover {
   border: 0.5px solid var(--secondary);
   border-radius: 8px;
   padding: 0.75rem 0.9rem;
-  font-size: 0.95rem;
-  line-height: 1.7;
+  font-size: 1rem;
+  line-height: 1.85;
   color: var(--foreground);
   background: #fff;
 }
@@ -14131,8 +14131,16 @@ a.insight-entity-chip:hover {
   flex: 1;
   min-height: 100px;
   overflow-y: auto;
-  font-size: 0.95rem;
+  font-size: 1rem;
+  line-height: 1.85;
   padding: 0.75rem 0.9rem;
+}
+
+.agent-note-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 0.4rem 0;
 }
 
 /* Below this width, the chat's own centering margin ((viewport - 720px) / 2) is
