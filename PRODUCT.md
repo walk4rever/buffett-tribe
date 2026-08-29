@@ -1337,7 +1337,7 @@ CompanyAnalysis {
 |---|---|---|---|---|
 | 13F 持仓 | `npm run pipeline:13f -- --quarter-list <当季>` | 季度，锚定 13F-HR 法定截止日（季末+45天：约 2/14、5/15、8/14、11/14） | ✅ `check:13f-quarter-coverage`（2026-08-15 新增） | 基本就绪；仍需解决 ④ 那个 `tee` 吞退出码的问题，以及"当前该跑哪个季度"这层判断目前是人算的，cron 化要补 |
 | 季度持仓点评 `PortfolioInsight` | `npm run generate:portfolio-insight -- --all --quarter <当季>` | 紧跟在 13F 导入之后，**不是独立周期**——本次就是因为这两步被当成两个独立环节，导致 11 位大师的 2026Q2 持仓点评漏生成了一整轮才被发现 | ❌ 待建（比对每位 filer 的 13F 季度集合 vs `PortfolioInsight` 季度集合，缺口即报） | 幂等 upsert，脚本本身就绪；应该直接串进 `pipeline:13f` 变成第 4 步，而不是继续靠人手动补跑第二条命令 |
-| 公司股价 `StockPrice` | `npm run import:company-stock-prices:yf` | 每周 | ❌ 待建（"每家公司最新价格日期是否在 7 天内"） | 已经是本站设计最好的一个——不需要传 ticker，默认批量遍历全部公司、带 checkpoint 文件可断点续跑，是其他脚本应该看齐的模板 |
+| 公司股价 `StockPrice` | `npm run import:company-stock-prices:yf`（`--market cn,hk`/`us` 拆市场，不传 `--start` 时按每支 ticker 自己的最后记录日期续跑） | 每周，锚定 air7 crontab：周六 01:00 北京时间跑 cn,hk，周日 01:00 跑 us | ❌ 待建（"每家公司最新价格日期是否在 7 天内"）——这次只把更新任务接了 cron，巡检按用户要求另开话题未做 | ✅ **2026-08-29 已真正接入 air7 cron**（`/root/cron-job-buffett-tribe`，部署脚本 `scripts/deploy-cron-job.sh`）——是全站第一条真正跑起来的定时任务，不再只是"约定"。上线时顺带发现并修复：①"固定最近 N 天"窗口会让停更超过 N 天的 ticker 永久漏缺口（当时 159/625 支已停更 >2 周，AAPL 停更 3 个月），改成 per-ticker 从自己最后记录日期续跑；② Prisma 的 `NOT: { metadata: { path, equals } }` JSON 过滤在 key 不存在时是 NULL 语义，会把所有行误判不匹配整体排除（不是只排除目标行），改成 JS 侧过滤；③ 56 支历史 13F 持仓 ticker 因收购/私有化/改名永久从 yfinance 404，已用新脚本 `mark-delisted-tickers.ts` 标记 `Entity.metadata.delisted`/`Security.metadata.delisted`（两层都要标，见该脚本注释里 Howard Hughes 重组的具体案例） |
 | 10-K/20-F/40-F 年报 | `npm run import:10k -- --ticker X --from Y --to Z` | 每年，锚定**各公司自己的**财年结束+法定截止日（不是统一日历日期，148 家公司各不相同） | ❌ 待建，也是设计上最复杂的一个（锚点因公司而异，需要先按财年结束时间算出"哪些公司到期该有新年报了"） | 未就绪——目前逐家公司手动传 ticker 触发，没有批量入口，也没有"到期提醒"逻辑；建议优先级最高，因为它是财务/估值分析链路的源头，源头不更新，下游全部悄悄过时 |
 | `CompanyAnalysis` 五个 LLM 字段（profile/business/moat/management/valuation） | `npm run generate:company-profile -- --all` 等（各脚本自带 `--all`） | 跟着上一行的年报更新走，不是独立周期；`valuation` 额外可考虑在股价大幅波动后单独触发（P/E 分子分母任一变了都可能使结论过时） | ❌ 待建（`CompanyAnalysis.updatedAt` 是否早于该公司最新一次 10-K 的 `filedAt`） | 未就绪，同上一行 |
 | 大师资料库 · 访谈（`InsightPost` 打标） | `npm run tag:insight-masters` | 定期（例如每次 `/insights` 有新文章发布后），不锚定日历日期 | 不需要额外巡检——打标本身幂等，不存在"漏更新"风险，只有"还没打"的滞后 | 就绪 |
@@ -1353,7 +1353,7 @@ CompanyAnalysis {
 2. `generate:portfolio-insight` 没有和 13F 导入绑定成一步，是本次已经实际发生过的漏跑根源。
 3. 10-K 年报没有批量入口、没有到期提醒、没有覆盖度巡检——链路最长、影响最大（下游连着 5 个 LLM 生成字段），但目前完全靠人记得逐家公司手动触发。
 4. GBrain 与 Postgres 信件表之间没有一致性巡检，两边可能已经在悄悄 drift。
-5. 全站没有任何真正的定时任务（cron/GitHub Actions schedule）——所有"节奏"目前都只是约定，不是强制执行的机制。
+5. ~~全站没有任何真正的定时任务（cron/GitHub Actions schedule）~~ 2026-08-29 已破例：`StockPrice` 周更接入了 air7 crontab（见上表），是第一条也是目前唯一一条。其余数据类型（13F、10-K、GBrain 同步等）仍然只是约定，没有强制机制。
 
 以上是本轮梳理的结论，尚未实施；后续排期见 `TODO.md`。
 
