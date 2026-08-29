@@ -14194,9 +14194,10 @@ a.insight-entity-chip:hover {
 }
 
 .agent-portfolio-summary {
-  padding: 0.3rem 0 0.5rem;
-  border-bottom: 0.5px solid var(--secondary);
-  margin-bottom: 0.3rem;
+  padding: 0.5rem 0.6rem 0.6rem;
+  background: color-mix(in srgb, var(--secondary) 45%, transparent);
+  border-radius: 8px;
+  margin-bottom: 0.4rem;
 }
 
 .agent-portfolio-summary-head {
@@ -14206,13 +14207,13 @@ a.insight-entity-chip:hover {
 }
 
 .agent-portfolio-market-tag {
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  color: var(--text-muted);
-  background: var(--secondary);
-  border-radius: 4px;
-  padding: 0.08rem 0.32rem;
-  letter-spacing: 0.03em;
+  color: var(--apple-white);
+  background: var(--apple-near-black);
+  border-radius: 8px;
+  padding: 0.2rem 0.55rem;
+  letter-spacing: 0.04em;
   flex-shrink: 0;
 }
 
@@ -14258,6 +14259,12 @@ a.insight-entity-chip:hover {
   gap: 0.3rem;
   padding: 0.55rem 0;
   border-bottom: 0.5px solid var(--secondary);
+}
+
+.agent-portfolio-row-editing {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
 }
 
 .agent-portfolio-row:last-child {
@@ -14327,20 +14334,6 @@ a.insight-entity-chip:hover {
   font-weight: 400;
 }
 
-.agent-portfolio-delete {
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 1.1rem;
-  line-height: 1;
-  padding: 0.2rem 0.3rem;
-}
-
-.agent-portfolio-delete:hover {
-  color: #ea4335;
-}
-
 .agent-portfolio-add-form {
   display: flex;
   flex-direction: column;
@@ -14354,6 +14347,17 @@ a.insight-entity-chip:hover {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+}
+
+.agent-portfolio-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.agent-portfolio-edit-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
 }
 
 .agent-portfolio-input {
@@ -14378,6 +14382,13 @@ a.insight-entity-chip:hover {
 }
 
 .agent-portfolio-edit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.agent-portfolio-edit-actions-right {
   display: flex;
   gap: 0.5rem;
 }
@@ -14405,5 +14416,22 @@ a.insight-entity-chip:hover {
   font-size: 0.8rem;
   padding: 0.35rem 0.7rem;
   cursor: pointer;
+}
+
+.agent-portfolio-btn-danger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0.3rem;
+  cursor: pointer;
+}
+
+.agent-portfolio-btn-danger:hover {
+  color: #ea4335;
+  background: color-mix(in srgb, #ea4335 10%, transparent);
 }
 

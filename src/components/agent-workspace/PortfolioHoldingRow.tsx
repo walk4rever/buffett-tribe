@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import type { PortfolioHolding } from "@/hooks/usePortfolio";
 import { currencySymbol } from "@/lib/currency";
 
@@ -66,33 +67,42 @@ export function PortfolioHoldingRow({ holding, onUpdate, onDelete }: PortfolioHo
           <span className="agent-portfolio-ticker">{holding.ticker}</span>
         </div>
         <div className="agent-portfolio-edit-fields">
-          <input
-            className="agent-portfolio-input"
-            type="number"
-            min="0"
-            step="any"
-            value={sharesInput}
-            onChange={(e) => setSharesInput(e.target.value)}
-            placeholder="份额"
-          />
-          <input
-            className="agent-portfolio-input"
-            type="number"
-            min="0"
-            step="any"
-            value={costInput}
-            onChange={(e) => setCostInput(e.target.value)}
-            placeholder="每股成本"
-          />
+          <label className="agent-portfolio-edit-field">
+            <span className="agent-portfolio-edit-label">份额</span>
+            <input
+              className="agent-portfolio-input"
+              type="number"
+              min="0"
+              step="any"
+              value={sharesInput}
+              onChange={(e) => setSharesInput(e.target.value)}
+            />
+          </label>
+          <label className="agent-portfolio-edit-field">
+            <span className="agent-portfolio-edit-label">每股成本</span>
+            <input
+              className="agent-portfolio-input"
+              type="number"
+              min="0"
+              step="any"
+              value={costInput}
+              onChange={(e) => setCostInput(e.target.value)}
+            />
+          </label>
         </div>
         {error && <p className="agent-portfolio-error">{error}</p>}
         <div className="agent-portfolio-edit-actions">
-          <button type="button" className="agent-portfolio-btn" onClick={() => void save()} disabled={saving}>
-            保存
+          <button type="button" className="agent-portfolio-btn-danger" onClick={onDelete} title="删除持仓">
+            <Trash2 size={15} strokeWidth={1.9} />
           </button>
-          <button type="button" className="agent-portfolio-btn-ghost" onClick={() => setEditing(false)}>
-            取消
-          </button>
+          <div className="agent-portfolio-edit-actions-right">
+            <button type="button" className="agent-portfolio-btn-ghost" onClick={() => setEditing(false)}>
+              取消
+            </button>
+            <button type="button" className="agent-portfolio-btn" onClick={() => void save()} disabled={saving}>
+              保存
+            </button>
+          </div>
         </div>
       </li>
     );
@@ -126,14 +136,11 @@ export function PortfolioHoldingRow({ holding, onUpdate, onDelete }: PortfolioHo
           )}
         </div>
         <div className="agent-portfolio-row-meta">
-          {formatShares(holding.shares)} 股 · 成本 {symbol}
-          {formatMoney(holding.costBasis)} · 现价{" "}
+          {formatShares(holding.shares)}股/{symbol}
+          {formatMoney(holding.costBasis)} -&gt;{" "}
           {holding.currentPrice != null ? `${symbol}${formatMoney(holding.currentPrice)}` : "暂无"}
           {holding.priceDate && <span className="agent-portfolio-row-date"> ({holding.priceDate})</span>}
         </div>
-      </button>
-      <button type="button" className="agent-portfolio-delete" onClick={onDelete} title="删除持仓">
-        ×
       </button>
     </li>
   );
