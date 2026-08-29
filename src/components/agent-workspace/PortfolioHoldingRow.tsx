@@ -105,12 +105,6 @@ export function PortfolioHoldingRow({ holding, onUpdate, onDelete }: PortfolioHo
           <span className="agent-portfolio-ticker">{holding.ticker}</span>
           {holding.companyName && <span className="agent-portfolio-name">{holding.companyName}</span>}
         </div>
-        <div className="agent-portfolio-row-meta">
-          {formatShares(holding.shares)} 股 · 成本 {symbol}
-          {formatMoney(holding.costBasis)} · 现价{" "}
-          {holding.currentPrice != null ? `${symbol}${formatMoney(holding.currentPrice)}` : "暂无"}
-          {holding.priceDate && <span className="agent-portfolio-row-date"> ({holding.priceDate})</span>}
-        </div>
         <div className="agent-portfolio-row-value">
           {marketValue != null ? (
             <>
@@ -130,6 +124,12 @@ export function PortfolioHoldingRow({ holding, onUpdate, onDelete }: PortfolioHo
           ) : (
             <span className="agent-portfolio-no-price">暂无价格数据</span>
           )}
+        </div>
+        <div className="agent-portfolio-row-meta">
+          {formatShares(holding.shares)} 股 · 成本 {symbol}
+          {formatMoney(holding.costBasis)} · 现价{" "}
+          {holding.currentPrice != null ? `${symbol}${formatMoney(holding.currentPrice)}` : "暂无"}
+          {holding.priceDate && <span className="agent-portfolio-row-date"> ({holding.priceDate})</span>}
         </div>
       </button>
       <button type="button" className="agent-portfolio-delete" onClick={onDelete} title="删除持仓">
