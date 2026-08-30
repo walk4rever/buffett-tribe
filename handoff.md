@@ -178,21 +178,18 @@ npm run onboard:pending -- --limit 50         # 建议继续按 50 一批，别�
 
 | 位置 | 6 个 bug 修复（`4bff4b33`/v0.43.36） | 本次 P0-P3 | 备注 |
 |---|---|---|---|
-| 本地 `main` 分支 | ✅ 已 commit 已 push | ❌ 仅工作区改动，未 commit | `git status` 会看到 4 个改动文件 + `handoff.md` + `package-lock.json` |
-| mini（`~/buffett-tribe`） | ❌ 缺失，仍是 v0.43.35 | ❌ 缺失 | 不是 git checkout（无 `.git`），代码靠人工同步，不会自动跟上 push |
-| air7（pi-gateway，`/agent` 生产网关） | 不适用（独立部署单元） | ❌ `search-filings.ts` 的修复未部署 | 需要单独跑 `services/pi-gateway/deploy.sh`，日常 `git push` 不会触达 |
+| 本地 `main` 分支 | ✅ 已 commit 已 push | ✅ 已 commit（`dc19e425`+`524ae382`）已打 tag `v0.43.37` 已 push | — |
+| mini（`~/buffett-tribe`） | ❌ 缺失，仍是 v0.43.35 | ❌ 缺失 | 不是 git checkout（无 `.git`），代码靠人工同步，不会自动跟上 push——**这是目前唯一还没同步的地方** |
+| air7（pi-gateway，`/agent` 生产网关） | 不适用（独立部署单元） | ✅ 已跑 `deploy.sh` 部署，已重启 PM2，已 grep 确认部署文件含改动 | — |
 
-**已经落地、不可逆的部分**（生产数据库已直接变更，不是"待办"）：BN、SU 两家 40-F 公司的 42 个 `FilingSection` 全部补上了 `textArtifactId`（此前 0/31）。这是脚本直接对生产 Supabase + R2 跑的，与下面的代码提交/部署状态无关，已经是既成事实。
+**✅ P0-P3 已全部落地（2026-08-30 会话内完成，更新于清理脚本执行后）**：
 
-**本次改动清单**（P0-P3，均未 commit，见上方各节详细说明）：
-- `services/pi-gateway/src/tools/search-filings.ts`（P0 静默截断警告 + P3 text-artifact 优先）
-- `scripts/lib/filing-section-storage.ts`（P1 停写 `section_blocks`）
-- `scripts/cleanup-section-artifacts.ts`（P1 清理脚本收窄到只删 `section_blocks`）
-- `scripts/import-10k-edgartools.ts`（P2 `sectionConcurrency` 传参）
+1. **Commit + 部署 + 打 tag，已完成**：`dc19e425`（fix: stop writing zero-consumer section_blocks artifacts, fix silent 40-F truncation）+ `524ae382`（chore: bump version to v0.43.37），已打 tag `v0.43.37` 并推送到 `main`。`services/pi-gateway/deploy.sh` 已跑，air7 上的 `pi-gateway-buffett-tribe` 已重启并核实部署的文件里含 P0/P3 改动（grep 确认过）。
+2. **`section_blocks` 清理脚本已执行**：`--dry-run` 先确认只有 `section_blocks`（13,999 个，比复盘时的 13,986 略多——多出的是 BN/SU 40-F 补跑时 mini 还在用 P1 之前的旧代码写入的），确认后正式跑，R2 + DB 共删除 13,999 个对象。执行后复查 `FilingArtifact` 按 kind 分组：`section_blocks` 已归零，`section_text`（14,357）/`primary_html`/`primary_pdf` 等其他 kind 均未受影响。
+3. **验证**：lint / typecheck（app + scripts + pi-gateway）/ 根目录 vitest 全绿；`search-filings.test.ts` 的 4 个 L3 golden case 里 3 个稳定通过，第 4 个（DIS "Aspire"）因 2026-08-30 当次 R2 到本机的实测延迟（75.5s/6MB，超过工具自身 45s×2 的重试预算）失败，确认与本次改动无关（该行 `textArtifactId` 为 `null`，P3 的改动对它是 no-op）。
 
-**还没做的三件事**（按依赖顺序）：
-1. **决定是否 commit** 上面 4 个文件——已过 lint / typecheck（app + scripts + pi-gateway）/ 根目录 vitest 全绿，`search-filings.test.ts` 的 4 个 L3 golden case 里 3 个稳定通过，第 4 个（DIS "Aspire"）因 2026-08-30 当次 R2 到本机的实测延迟（75.5s/6MB，超过工具自身 45s×2 的重试预算）失败，确认与本次改动无关（该行 `textArtifactId` 为 `null`，P3 的改动对它是 no-op）。
-2. **跑 `section_blocks` 清理脚本**（P1 代码已改好，脚本本身没跑）：`tsx scripts/cleanup-section-artifacts.ts --dry-run` 应该只报 13,986 个 `section_blocks`，确认后去掉 `--dry-run` 删掉存量 2.5GB。
-3. **同步 mini + 部署 air7**——commit 之后，mini 的 `scripts/` 需要更新到最新（含 6 个 bug 修复 + P0-P3），`services/pi-gateway/` 需要跑 `deploy.sh` 到 air7，`/agent` 才会用上 P0 的静默截断警告和 P3 的 text-artifact 优先级。
+**已经落地、不可逆的部分**（生产数据库已直接变更）：BN、SU 两家 40-F 公司的 42 个 `FilingSection` 全部补上了 `textArtifactId`（此前 0/31）；`section_blocks` 存量已从 R2/DB 彻底删除。
+
+**唯一还没做的事——同步 mini**：mini（`~/buffett-tribe`）的 `scripts/` 目录仍然落后两轮，既没有更早的 6-bug-fix 提交（`4bff4b33`/v0.43.36），也没有本次 P0-P3。**下次在 mini 上跑 `onboard:pending` 之前必须先手动同步这些文件过去**，否则会继续写入已经决定停掉的 `section_blocks`（清理脚本只是删存量，不会阻止旧代码继续产生新的）、并发仍是 1。
 
 **新发现、不在 P0-P3 范围内、建议单独立项**：`FULL_TEXT_FETCH_TIMEOUT_MS`（45秒 × 2 次重试 = 90秒预算）相对 2026-08-30 实测的 R2 延迟（6MB 文件单次 fetch 75.5 秒）偏小，`search_filings` 对没有 text artifact 的大 section 做 `primary_html` 现场重解析时有真实概率超时降级到截断预览（叠加 P0 的警告后至少不会再是静默的，但仍是能力缺口）。
