@@ -53,7 +53,7 @@ The quarterly reimport scripts (`import:13f`, `import:beneficial-ownership`) als
 ### Agent runtime chain (`/agent`)
 
 ```
-browser → buffett-tribe.com/agent (Vercel, Next.js)
+browser → vt.air7.fun/agent (Vercel, Next.js)
   → /api/pi (Next.js proxy, keeps AGENT_SECRET server-side)
     → pi-gateway (Express SSE, air7, PM2, port 3456)
       → @earendil-works/pi-coding-agent → DeepSeek API

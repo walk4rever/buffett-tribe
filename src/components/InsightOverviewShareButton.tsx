@@ -9,7 +9,7 @@ import { encode } from "uqr";
 import { BtLogoMark } from "@/components/BtLogoMark";
 import { BRAND_EN, BRAND_ZH } from "@/lib/brand";
 import { markdownToHtmlMarkdown, rehypeInsightCallouts } from "@/lib/insights";
-import { toAbsoluteSiteUrl } from "@/lib/site-url";
+import { SITE_ORIGIN, toAbsoluteSiteUrl } from "@/lib/site-url";
 
 interface InsightOverviewShareButtonProps {
   title: string;
@@ -141,7 +141,7 @@ export function InsightOverviewShareButton({
                         </span>
                         <div className="insight-share-brand-head-copy">
                           <strong className="insight-share-brand-name">{BRAND_EN}</strong>
-                          <span className="insight-share-brand-domain">https://buffett.air7.fun</span>
+                          <span className="insight-share-brand-domain">{SITE_ORIGIN}</span>
                         </div>
                       </div>
                       <p className="insight-share-brand-tagline">买股票就是买公司。{BRAND_ZH}用价值投资大师的框架帮你理解一家公司！</p>

@@ -258,3 +258,22 @@ npm run onboard:pending -- --limit 50         # 建议继续按 50 一批，别�
 ## 5. 顺带发现、未修
 
 `scripts/import-beneficial-ownership.ts` 有 6 个既有 typecheck 报错（`formData.coverPageHeader` possibly undefined，220/221/223/249/250/252 行）。`npm run typecheck:scripts` 不在 CI 门禁里，所以一直没暴露。本次未修（与改名无关）。
+
+## 追加 — 站点域名迁移到 vt.air7.fun（2026-08-30）
+
+**订正一个长期存在的文档错误**：`CLAUDE.md` 和 `PRODUCT.md` 一直写着站点跑在 `buffett-tribe.com`，实测该域名**根本不解析**。真实生产域名一直是 `buffett.air7.fun`（Vercel 直接托管，sin1 region，air7 的 nginx 里没有它的 server_name——那里的 `buffett` 命中是另一个项目 talk-with-buffett 的 TTS/ASR relay）。已改为 `vt.air7.fun`。
+
+**平台侧（用户已操作）**：Aliyun DNS 加 `vt` CNAME 指向 Vercel 签发的项目专属目标；Vercel 添加 `vt.air7.fun`；`NEXTAUTH_URL` 已更新。**`buffett.air7.fun` 被直接删除，没有设 308 重定向**——后果见下。
+
+**代码侧（5 处）**：
+- `src/lib/site-url.ts` 的 `DEFAULT_SITE_ORIGIN`——**这是唯一真正驱动线上绝对 URL 的地方**。`NEXT_PUBLIC_SITE_URL` 在 Vercel 里根本没设，一直走的是这个硬编码兜底值。
+- `InsightOverviewShareButton.tsx` 分享卡片上的域名文本，原本是硬编码字面量（没走 `SITE_ORIGIN`，最容易漏的一处），已改为引用 `SITE_ORIGIN`。
+- `scripts/send-announcement.ts` 的 `BASE_URL`。
+- `skills/buffett-tribe/SKILL.md` 的 11 处 `/api/tools` 调用地址。
+- `CLAUDE.md` / `PRODUCT.md` 的架构图。
+
+**确认过不需要改的**：没有 OAuth provider（只有 `CredentialsProvider`），无回调 URI；pi-gateway 和 `/api/pi` 都没有 origin 白名单，且 pi-gateway 是服务端调用不经浏览器；`relay.air7.fun`（`PI_GATEWAY_URL`）、R2 public URL、Supabase 都是独立端点；`next.config.ts` 无 redirects/images 白名单；数据库存量内容（`InsightPost.contentRaw`/`sourceUrl`、`Note`）里绝对域名 0 处；发件域 `air7.fun` 本身不变。
+
+**已知损失（可恢复，但需要回 Vercel 操作）**：旧域名被删而非 301/308，导致三类历史链接永久失效——① 已发出去的分享图里的二维码（`ShareCard.tsx` / `/api/share/preview` 用 `SITE_ORIGIN` 现场生成，位图一旦渲染就写死了）；② 之前群发的公告邮件里的全部链接；③ `SKILL.md` 里旧的 `/api/tools` 地址（若有外部消费方）。Aliyun 的 DNS 记录仍在，**在 Vercel 重新 Add `buffett.air7.fun` 并设为 308 → `vt.air7.fun` 即可全部恢复**。
+
+**遗留缺口（未处理）**：`metadataBase` 仍未设置（OG/twitter 图走相对解析）；全站没有 `sitemap.ts` / `robots.ts`。两者都是既有问题，不是本次迁移引入的。另：`scripts/send-announcement.ts:20` 的发件地址是 `buffet@air7.fun`（一个 t），而 `.env.local` 的 `RESEND_FROM` 是 `buffett@air7.fun`（两个 t），疑似笔误，未动。

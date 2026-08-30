@@ -14,7 +14,7 @@ description: >
 Access 60+ years of Warren Buffett's public writings and speeches via three REST endpoints.
 Always call the API with `curl` — responses are JSON.
 
-**Base URL:** `https://buffett.air7.fun/api/tools`
+**Base URL:** `https://vt.air7.fun/api/tools`
 
 ## Data coverage
 
@@ -30,7 +30,7 @@ Always call the API with `curl` — responses are JSON.
 Use this first for almost every question. It runs hybrid keyword + semantic retrieval and returns the most relevant passages.
 
 ```bash
-curl "https://buffett.air7.fun/api/tools/search?q=QUERY&yearFrom=YYYY&yearTo=YYYY&limit=N"
+curl "https://vt.air7.fun/api/tools/search?q=QUERY&yearFrom=YYYY&yearTo=YYYY&limit=N"
 ```
 
 | Param | Required | Default | Description |
@@ -50,10 +50,10 @@ Use when the user wants to read a specific letter in full, or when you need more
 
 ```bash
 # By year + type
-curl "https://buffett.air7.fun/api/tools/document?year=2008&type=shareholder&page=1"
+curl "https://vt.air7.fun/api/tools/document?year=2008&type=shareholder&page=1"
 
 # By sourceId (from search results)
-curl "https://buffett.air7.fun/api/tools/document?sourceId=ID&page=2"
+curl "https://vt.air7.fun/api/tools/document?sourceId=ID&page=2"
 ```
 
 | Param | Required | Description |
@@ -72,7 +72,7 @@ curl "https://buffett.air7.fun/api/tools/document?sourceId=ID&page=2"
 Use to explore structured relationships from the knowledge graph — what companies Berkshire held, when, and what Buffett said about them.
 
 ```bash
-curl "https://buffett.air7.fun/api/tools/graph?entity=ENTITY&yearFrom=YYYY&yearTo=YYYY&limit=12"
+curl "https://vt.air7.fun/api/tools/graph?entity=ENTITY&yearFrom=YYYY&yearTo=YYYY&limit=12"
 ```
 
 | Param | Required | Default | Description |
@@ -104,20 +104,20 @@ curl "https://buffett.air7.fun/api/tools/graph?entity=ENTITY&yearFrom=YYYY&yearT
 
 ```bash
 # What did Buffett say about economic moats?
-curl "https://buffett.air7.fun/api/tools/search?q=economic+moat+competitive+advantage"
+curl "https://vt.air7.fun/api/tools/search?q=economic+moat+competitive+advantage"
 
 # How has Buffett's view on technology companies changed over time?
-curl "https://buffett.air7.fun/api/tools/search?q=technology+companies+investment&limit=15"
+curl "https://vt.air7.fun/api/tools/search?q=technology+companies+investment&limit=15"
 
 # Read the 2008 shareholder letter (during the financial crisis)
-curl "https://buffett.air7.fun/api/tools/document?year=2008&type=shareholder"
+curl "https://vt.air7.fun/api/tools/document?year=2008&type=shareholder"
 
 # When did Berkshire hold Apple, and what did Buffett say?
-curl "https://buffett.air7.fun/api/tools/graph?entity=Apple"
+curl "https://vt.air7.fun/api/tools/graph?entity=Apple"
 
 # What did Buffett say about leverage and debt between 2000-2020?
-curl "https://buffett.air7.fun/api/tools/search?q=leverage+debt+risk&yearFrom=2000&yearTo=2020"
+curl "https://vt.air7.fun/api/tools/search?q=leverage+debt+risk&yearFrom=2000&yearTo=2020"
 
 # Find all mentions of insurance float across all years
-curl "https://buffett.air7.fun/api/tools/search?q=insurance+float&limit=20"
+curl "https://vt.air7.fun/api/tools/search?q=insurance+float&limit=20"
 ```

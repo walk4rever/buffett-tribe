@@ -823,7 +823,7 @@ Apple HIG 精简风格：
 
 ```
 用户浏览器
-  └─► buffett-tribe.com/agent（Vercel，Next.js）
+  └─► vt.air7.fun/agent（Vercel，Next.js）
         └─► /api/pi（Next.js 代理，AGENT_SECRET 留服务端）
               └─► relay.air7.fun/pi/chat（nginx → :3456）
                     └─► pi-gateway（PM2，Express SSE）

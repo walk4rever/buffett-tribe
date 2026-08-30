@@ -18,7 +18,7 @@ const prisma = new PrismaClient();
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM = "价值部落 <buffet@air7.fun>";
-const BASE_URL = "https://buffett.air7.fun";
+const BASE_URL = "https://vt.air7.fun";
 
 const R2 = "https://pub-675abd2580e643e89dde5e766edae1b7.r2.dev/buffett-tribe/email/announcement-2026-06";
 const SCREENSHOTS = {
