@@ -77,40 +77,21 @@ async function archiveSectionTextArtifact(
   });
 }
 
-async function archiveSectionBlocksArtifact(
-  db: PrismaClient,
-  context: FilingSectionArtifactContext,
-  section: string,
-  blocks: unknown[],
-) {
-  return archiveFilingArtifact(db, {
-    sourceId: context.sourceId,
-    kind: "section_blocks",
-    cik: normalizeKeyPartFallback(context.cik, context.entityId),
-    accession: normalizeKeyPartFallback(context.accession, context.sourceId),
-    originalName: `${section}.v${FILING_SECTION_EXTRACTION_VERSION}.blocks.json`,
-    contentType: "application/json; charset=utf-8",
-    body: Buffer.from(JSON.stringify(blocks), "utf8"),
-    sourceUrl: context.sourceUrl ?? null,
-    metadata: {
-      entityId: context.entityId,
-      section,
-      extractionVersion: FILING_SECTION_EXTRACTION_VERSION,
-    },
-  });
-}
-
+// section_blocks archival was retired 2026-08-30 — the reader has pointed at
+// primary_html (not per-section blocks) since 9722cc8a (2026-06-13), and
+// grepping the app + agent tool code turned up zero consumers of
+// blocksArtifactId. Each block already duplicates its section's HTML, which
+// is the bulk of what made this the single largest artifact kind by storage
+// (2.5GB / 13,986 objects at the time of retirement). blockCount is kept as
+// metadata (how many blocks the extractor found), just no longer backed by
+// an uploaded artifact.
 export async function buildStoredFilingSectionData(
   db: PrismaClient,
   context: FilingSectionArtifactContext,
   section: string,
   extracted: Pick<ExtractedSection, "content" | "rawHtml" | "outline" | "blocks">,
 ): Promise<StoredSectionData> {
-  const lightBlocks = stripBlocksHtml(extracted.blocks);
   const textArtifact = await archiveSectionTextArtifact(db, context, section, extracted.content);
-  const blocksArtifact = extracted.blocks.length
-    ? await archiveSectionBlocksArtifact(db, context, section, extracted.blocks)
-    : null;
   const preview = makeContentPreview(extracted.content);
 
   return {
@@ -123,10 +104,10 @@ export async function buildStoredFilingSectionData(
     blocksJson: Prisma.JsonNull,
     contentPreview: preview,
     contentTextLength: extracted.content.length,
-    blockCount: lightBlocks.length,
+    blockCount: extracted.blocks.length,
     extractionVersion: FILING_SECTION_EXTRACTION_VERSION,
     textArtifactId: textArtifact.id,
-    blocksArtifactId: blocksArtifact?.id ?? null,
+    blocksArtifactId: null,
     htmlArtifactId: null,
     extractedAt: new Date(),
   };

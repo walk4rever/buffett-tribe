@@ -76,6 +76,14 @@ type EdgarToolsPayload = {
   filings: EdgarToolsFiling[];
 };
 
+// upsertFilingSectionsFromHtml() takes a concurrency for its per-section R2 +
+// DB writes but defaults to 1 when the caller omits it — this call site never
+// passed one, so ~20 sections/filing ran fully serial (each artifact write is
+// a Prisma lookup + R2 PutObject + Prisma upsert, all network round trips).
+// 6 keeps well under R2/Supabase connection limits while cutting onboarding
+// wall-clock meaningfully (see handoff.md "效率问题" P2).
+const SECTION_CONCURRENCY = 6;
+
 function getArg(flag: string): string | undefined {
   const args = process.argv.slice(2);
   return args.find((_, i) => args[i - 1] === flag);
@@ -269,6 +277,7 @@ async function importEdgarToolsAnnualReports(params: {
         extSource.kind as "10k" | "20f" | "40f",
         primaryUrl,
         filingTimer,
+        SECTION_CONCURRENCY,
       ),
       (count) => `sections=${count}`,
     );

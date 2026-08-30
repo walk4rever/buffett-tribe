@@ -1,10 +1,19 @@
 /**
- * Delete section_text / section_html / section_blocks FilingArtifact rows
- * and their corresponding R2 objects. These were used by the old
- * section-by-section reader; the new iframe reader no longer needs them.
+ * Delete section_blocks FilingArtifact rows and their corresponding R2
+ * objects. filing-section-storage.ts stopped writing this kind on 2026-08-30
+ * (zero production consumers — see handoff.md "效率问题"); this clears the
+ * pre-existing backlog it left behind.
  *
- * FilingSection.textArtifactId / blocksArtifactId / htmlArtifactId have
- * onDelete: SetNull, so DB delete propagates cleanly.
+ * FilingSection.blocksArtifactId has onDelete: SetNull, so DB delete
+ * propagates cleanly.
+ *
+ * DO NOT widen the `kind` filter back to include section_text/section_html.
+ * This script originally deleted all three kinds in one pass (2026-06-13,
+ * 9722cc8a) on the theory that the new iframe reader made all of them
+ * unused — that was wrong for section_text: it's the only full-text copy for
+ * HK/CN annual reports (no primary_html to re-derive from) and for 40-F
+ * EX-99 attachment sections, and running it unnarrowed a second time would
+ * destroy both again (see handoff.md for the incident this caused).
  *
  * Usage:
  *   tsx scripts/cleanup-section-artifacts.ts [--dry-run]
@@ -43,7 +52,7 @@ async function deleteR2Batch(keys: string[]) {
 
 async function main() {
   const rows = await prisma.filingArtifact.findMany({
-    where: { kind: { in: ["section_text", "section_html", "section_blocks"] } },
+    where: { kind: "section_blocks" },
     select: { id: true, objectKey: true, kind: true },
     orderBy: { kind: "asc" },
   });

@@ -498,7 +498,7 @@ model FilingAttachment {
 model FilingArtifact {
   id           String   @id @default(cuid())
   sourceId     String
-  kind         String // Standard import writes primary_html | index_html | section_text | section_blocks. Other kinds are legacy/on-demand.
+  kind         String // Standard import writes primary_html | index_html | section_text. section_blocks retired 2026-08-30 (zero consumers, see handoff.md) — historical rows only, no longer written. Other kinds are legacy/on-demand.
   objectKey    String   @unique
   contentType  String
   sizeBytes    BigInt

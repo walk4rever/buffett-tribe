@@ -66,7 +66,8 @@
   - `--filing-concurrency 1`：控制同一 ticker 内多个 filing 的并发。
   - `--extract-timeout-ms 1800000`：限制 edgartools helper 的年度 filing 发现阶段。
   - `--no-edgartools-html`：只用 edgartools 做 filing 发现，primary HTML 改由 TS 侧从 SEC 拉取；适合绕开 edgartools `html()` 读取超时。
-- R2 standard 归档范围：保存 `primary_html`、`index_html`、`section_text`、`section_blocks`；不默认归档 `section_html`、exhibits、attachments、data files。附件只入库清单、类型、描述和 SEC 原始 URL。
+- R2 standard 归档范围：保存 `primary_html`、`index_html`、`section_text`；不默认归档 `section_html`、exhibits、attachments、data files。附件只入库清单、类型、描述和 SEC 原始 URL。`section_blocks` 曾经也写，2026-08-30 停写（全站零消费方，`primary_html` 可完整重新派生，见 `handoff.md`）。
+- 每个 filing 内部按 section 并发上传 artifact（`SECTION_CONCURRENCY` 常量，当前 6）——2026-08-30 之前一直是隐性默认值 1（`upsertFilingSectionsFromHtml()` 的并发参数没有从调用点传入），单公司 6 份 filing × ~20 章几乎全串行，是批量 onboarding 慢的主因之一。
 - 依赖：先安装 `requirements-edgartools.txt`。
 
 共享入库 core：
@@ -84,14 +85,15 @@
 
 - 文件：[compare-annual-report-fidelity.ts](/Users/rafael/R129/buffett-tribe/scripts/compare-annual-report-fidelity.ts)
 - 命令：`npm run compare:10k:fidelity -- --tickers AAPL,ZM,SNOW,VTS,TSM,ASML --out scratch/annual-report-qa/fidelity.json`
-- 作用：对比已归档 `primary_html` 与结构化 section blocks。v3 blocks artifact 会保留 block HTML，所以脚本会按结构化阅读器实际渲染路径统计图片、表格、`colspan`、`rowspan`、inline style、iXBRL facts 等差异。默认只报告 warning；加 `--strict` 后有 warning 会返回非零退出码。
-- 适用场景：检查年度报告页面的图片缺失、财务表格错位、结构化抽取丢失原 HTML 样式等问题。
+- 作用：对比已归档 `primary_html` 与结构化 section blocks，统计图片、表格、`colspan`、`rowspan`、inline style、iXBRL facts 等差异。默认只报告 warning；加 `--strict` 后有 warning 会返回非零退出码。
+- **2026-08-30 起的已知降级**：`section_blocks` artifact 已停写（见 02 号入口），脚本本身有回退（`blocksArtifact` 缺失时退回 `FilingSection.blocksJson`，现在恒为空），所以不会报错，但对 2026-08-30 之后新导入的 filing，`tableBlocks`/`imageBlocks`/`blocksWithHtml` 等"结构化"侧统计会恒为 0——不代表原文缺失，只是这份诊断对比本身的数据源没了。
+- 适用场景：检查年度报告页面的图片缺失、财务表格错位、结构化抽取丢失原 HTML 样式等问题（限 2026-08-30 之前导入的历史 filing）。
 
 结构化 sections 回填：
 
 - 文件：[extract-10k-sections.ts](/Users/rafael/R129/buffett-tribe/scripts/extract-10k-sections.ts)
 - 命令：`npm run extract:10k:sections -- --needs-current-version --limit 50`
-- 作用：从 `primary_html` 重新抽取结构化章节。当前 v3 会把 table/image 的原 HTML 保存到 versioned `section_blocks` artifact，前端按需 hydrate 后可在结构化模式保留图片、`colspan`、`rowspan` 和原 inline style。
+- 作用：从 `primary_html` 重新抽取结构化章节，写入 `FilingSection`（含 `section_text` artifact）。**2026-08-30 更正**：这里原来记录"会把 table/image 的原 HTML 保存到 versioned `section_blocks` artifact，前端按需 hydrate 后可在结构化模式保留图片/colspan/rowspan/inline style"——核实后这套"结构化模式"前端从未实际接入（`grep` 全站零消费方），`section_blocks` 已停写；`blockCount` 字段仍保留，只是纯元数据（抽取到几个 block），不再对应一份可下载 artifact。
 - 常用参数：`--ticker SNOW`、`--source-id <ExtSource.id>`、`--limit 50`、`--needs-current-version`。
 
 结构化 sections 安全回填队列：

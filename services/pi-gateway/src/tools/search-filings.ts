@@ -132,26 +132,36 @@ async function fetchWithRetry(url: string, signal: AbortSignal | undefined): Pro
 // to hold the full section text (see incident notes: section-level R2
 // artifacts were retired once the reader moved to an iframe over the
 // original filing, and `content` was separately truncated for large
-// sections). Re-derive full text on demand from the original filing HTML,
-// which is never truncated, using the same parser used at import time.
+// sections). Re-derive full text on demand, preferring whichever source is
+// cheaper and falling back to the other if it's missing or fails.
 //
-// The primary HTML can be several MB, and R2 body-read latency observed in
-// testing varies wildly (sub-second to 2+ minutes) even for the same file,
-// so one retry on timeout/network failure meaningfully improves reliability
-// over a single attempt without materially slowing the common case.
+// Priority: the section's own text artifact first (row.text_artifact_url) —
+// a plain-text file already sized to just this section, typically tens of
+// KB, no parsing needed. Only when that's absent (2026-08-30 coverage: ~54%
+// of 10-K/20-F sections have one; HK/CN/40-F sections always do, since they
+// were never written any other way) fall back to downloading the multi-MB
+// primary_html and re-running the same section parser used at import time —
+// several MB down + a full-document cheerio parse, and R2 body-read latency
+// observed in testing varies wildly (sub-second to 2+ minutes) even for the
+// same file, so one retry on timeout/network failure meaningfully improves
+// reliability over a single attempt without materially slowing the common
+// case.
 //
-// Non-SEC filing kinds (e.g. hk-annual-report, cn-annual-report) never had a
+// Non-SEC filing kinds (hk-annual-report, cn-annual-report) never had a
 // primary_html artifact to begin with — their FilingSection rows were
 // written directly from PDF-extracted text (see
 // scripts/import-hk-annual-report-from-file.ts /
-// scripts/import-cn-annual-report-from-file.ts), so there's nothing to
-// re-derive from. For those, fall back to the
-// section's own textArtifact (row.text_artifact_url) — already the complete,
-// untruncated text, just needs fetching, not HTML re-parsing.
+// scripts/import-cn-annual-report-from-file.ts), so the text-artifact path is
+// their only source, not just their preferred one.
 async function fetchFullSectionContent(
   row: Pick<SectionRow, "source_id" | "section" | "filing_kind" | "source_url" | "text_artifact_url">,
   signal: AbortSignal | undefined,
 ): Promise<string | null> {
+  if (row.text_artifact_url) {
+    const text = await fetchWithRetry(row.text_artifact_url, signal);
+    if (text) return text;
+  }
+
   const primaryHtmlUrl = await fetchPrimaryHtmlUrl(row.source_id).catch(() => null);
   if (primaryHtmlUrl) {
     const html = await fetchWithRetry(primaryHtmlUrl, signal);
@@ -160,11 +170,6 @@ async function fetchFullSectionContent(
       const content = sections[row.section]?.content;
       if (content) return content;
     }
-  }
-
-  if (row.text_artifact_url) {
-    const text = await fetchWithRetry(row.text_artifact_url, signal);
-    if (text) return text;
   }
 
   return null;
@@ -257,7 +262,20 @@ export const searchFilingsTool = defineTool({
       const label = formatSectionLabel(row.section);
       const fullContent = await fetchFullSectionContent(row, signal);
       const excerpt = extractExcerpt(fullContent ?? row.content, keyword ?? null);
-      return `**${row.company_name ?? company} · ${label} · ${row.period_year}**\n\n${excerpt}`;
+      // Both full-text sources (primary_html reparse, section text artifact)
+      // failed or don't exist, and what's left — row.content — is a
+      // preview/legacy field truncated at import time (see
+      // scripts/lib/filing-section-storage.ts's CONTENT_PREVIEW_CHARS). For a
+      // large section this preview can be under 1% of the real text (e.g. a
+      // 40-F MD&A extracted from an EX-99 attachment, which the primary_html
+      // reparse can never find and which currently has no text artifact) —
+      // silently handing that sliver to the model as if it were complete
+      // content produced confidently wrong answers with no visible signal.
+      const isFallbackPreview = fullContent == null && row.content.length < row.content_text_length;
+      const warning = isFallbackPreview
+        ? `\n\n⚠️ 完整正文暂不可用，以下仅为存档预览片段（原文共 ${row.content_text_length.toLocaleString()} 字，此处仅 ${row.content.length.toLocaleString()} 字），请勿据此得出结论。`
+        : "";
+      return `**${row.company_name ?? company} · ${label} · ${row.period_year}**${warning}\n\n${excerpt}`;
     }));
 
     const text = parts.join("\n\n---\n\n");
