@@ -6,9 +6,10 @@ import { getRecentTurns } from "@/lib/agent-history";
 import { AgentPageChat } from "@/components/AgentPageChat";
 import type { Message } from "@/hooks/useAgentChat";
 import { SiteNav } from "@/components/SiteNav";
+import { BRAND_ZH } from "@/lib/brand";
 
 export const metadata = {
-  title: "对话 — 巴菲特部落",
+  title: `对话 — ${BRAND_ZH}`,
   description: "以价值投资大师的视角理解一家公司，买股票就是买公司。",
 };
 

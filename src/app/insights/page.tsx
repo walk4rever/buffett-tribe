@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { SiteNav } from "@/components/SiteNav";
+import { BRAND_EN } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export default async function InsightsPage({ searchParams }: Props) {
             <div className="insights-empty">暂无文章</div>
           ) : (
             posts.map((post) => {
-              const sourceLabel = post.source || "Buffett Tribe";
+              const sourceLabel = post.source || BRAND_EN;
 
               return (
                 <Link

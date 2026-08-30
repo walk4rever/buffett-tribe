@@ -16,7 +16,7 @@ export interface TribeMember {
 }
 
 // One color per tribe, not per member — a per-person palette doesn't scale
-// (every new Alpha onboarding would need a fresh color pick). Buffett Tribe
+// (every new Alpha onboarding would need a fresh color pick). Core tribe
 // members all share the brand red; Alpha Tribe members all share amber.
 const CATEGORY_COLOR: Record<TribeMember["category"], string> = {
   core: "#8b0000",

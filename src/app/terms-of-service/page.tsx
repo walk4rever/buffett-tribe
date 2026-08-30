@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SiteNav } from "@/components/SiteNav";
+import { BRAND_EN, BRAND_ZH } from "@/lib/brand";
 
 export default function TermsOfService() {
   return (
@@ -14,7 +15,7 @@ export default function TermsOfService() {
         <p>通过访问本网站，您同意遵守这些使用条款。如果您不同意，请不要使用本网站。</p>
 
         <h2>使用许可</h2>
-        <p>巴菲特部落（Buffett Tribe）是一个价值投资研究平台，仅用于学习和研究用途。</p>
+        <p>{BRAND_ZH}（{BRAND_EN}）是一个价值投资研究平台，仅用于学习和研究用途。</p>
 
         <h2>用户责任</h2>
         <p>您同意：</p>

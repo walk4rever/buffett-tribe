@@ -4,11 +4,12 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { SiteNav } from "@/components/SiteNav";
 import { getPunches } from "@/lib/punch";
+import { BRAND_ZH } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "打孔 — 巴菲特部落",
+  title: `打孔 — ${BRAND_ZH}`,
   description: "大师做过的、被证明是真正 big bet 的重仓判断——精选出来，面向未来，持续验证。",
 };
 

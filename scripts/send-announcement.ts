@@ -17,7 +17,7 @@ import { Resend } from "resend";
 const prisma = new PrismaClient();
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM = "巴菲特部落 <buffet@air7.fun>";
+const FROM = "价值部落 <buffet@air7.fun>";
 const BASE_URL = "https://buffett.air7.fun";
 
 const R2 = "https://pub-675abd2580e643e89dde5e766edae1b7.r2.dev/buffett-tribe/email/announcement-2026-06";
@@ -55,7 +55,7 @@ function buildHtml(name: string | null): string {
 
   <!-- Header -->
   <div style="background:#0f172a;padding:28px 36px;">
-    <div style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">Buffett Tribe</div>
+    <div style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">Value Tribe</div>
     <div style="font-size:12px;color:#94a3b8;margin-top:4px;letter-spacing:0.5px;">知识库 + Agent 驱动的价值投资研究平台</div>
   </div>
 
@@ -64,7 +64,7 @@ function buildHtml(name: string | null): string {
 
     <p style="margin:0 0 14px;font-size:15px;color:#1d1d1f;line-height:1.7;">${greeting}</p>
     <p style="margin:0 0 14px;font-size:15px;color:#1d1d1f;line-height:1.7;">
-      过去几个月，我对这个产品做了很多调整与更新，刚刚上线了 Buffett Tribe 最重要的功能：<strong>价值投资 Agent</strong>。
+      过去几个月，我对这个产品做了很多调整与更新，刚刚上线了 Value Tribe 最重要的功能：<strong>价值投资 Agent</strong>。
     </p>
     <p style="margin:0 0 28px;font-size:15px;color:#374151;line-height:1.7;">
       买股票就是买公司。你有一个投资想法——"泡泡玛特值得买吗？"——平台把这个问题放进价值投资框架里：护城河在哪里？管理层可信吗？现在的价格有安全边际吗？大师们怎么看这类生意？
@@ -142,7 +142,7 @@ function buildHtml(name: string | null): string {
 
   <!-- Footer -->
   <div style="border-top:0.5px solid #e5e7eb;padding:20px 36px;background:#f9fafb;">
-    <p style="margin:0;font-size:12px;color:#9ca3af;">— Buffett Tribe &nbsp;|&nbsp;
+    <p style="margin:0;font-size:12px;color:#9ca3af;">— Value Tribe &nbsp;|&nbsp;
       <a href="${BASE_URL}" style="color:#9ca3af;text-decoration:none;">${BASE_URL.replace("https://", "")}</a>
     </p>
   </div>

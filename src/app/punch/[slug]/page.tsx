@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { SiteNav } from "@/components/SiteNav";
 import { getPunchBySlug } from "@/lib/punch";
 import { formatUsdInYi } from "@/lib/currency";
+import { BRAND_ZH } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -21,9 +22,9 @@ interface Props {
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
   const punch = await getPunchBySlug(slug);
-  if (!punch) return { title: "打孔 — 巴菲特部落" };
+  if (!punch) return { title: `打孔 — ${BRAND_ZH}` };
   return {
-    title: `${punch.masterName ?? ""} × ${punch.companyName ?? ""} — 打孔 — 巴菲特部落`,
+    title: `${punch.masterName ?? ""} × ${punch.companyName ?? ""} — 打孔 — ${BRAND_ZH}`,
     description: punch.headline,
   };
 }

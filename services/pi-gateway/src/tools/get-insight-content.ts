@@ -1,6 +1,7 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { pool } from "../db.js";
+import { BRAND_EN } from "../brand.js";
 
 type InsightRow = {
   title: string;
@@ -25,9 +26,9 @@ function htmlToReadableText(html: string): string {
 
 export const getInsightContentTool = defineTool({
   name: "get_insight_content",
-  label: "Get Buffett Tribe Insight Article Content",
+  label: `Get ${BRAND_EN} Insight Article Content`,
   description:
-    "Fetch the full text of a published Buffett Tribe insight article (/insights) by slug. Use this when the reader's question needs exact quotes, section detail, or specifics beyond the title already known from the session context.",
+    `Fetch the full text of a published ${BRAND_EN} insight article (/insights) by slug. Use this when the reader's question needs exact quotes, section detail, or specifics beyond the title already known from the session context.`,
   promptSnippet: "get_insight_content(slug) → full insight article text",
   parameters: Type.Object({
     slug: Type.String({ description: "Insight post slug, e.g. buffett-2025-letter-notes" }),

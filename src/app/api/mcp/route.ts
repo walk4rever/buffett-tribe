@@ -4,6 +4,7 @@ import {
   searchParams, toolSearch,
   getDocumentParams, toolGetDocument,
 } from "@/lib/mcp-tools";
+import { BRAND_EN } from "@/lib/brand";
 
 export const maxDuration = 60;
 
@@ -15,7 +16,7 @@ function createServer() {
 
   server.tool(
     "search",
-    `Search the Buffett Tribe knowledge base (1958–2025) using hybrid keyword + semantic retrieval.
+    `Search the ${BRAND_EN} knowledge base (1958–2025) using hybrid keyword + semantic retrieval.
 Use this first when answering questions about Buffett's views, decisions, or writings.
 Returns ranked passages with year, source type, and English/Chinese excerpts.
 Combine with get_document to read the full context of a passage.
@@ -29,7 +30,7 @@ Source types: shareholder (annual letters 1965–2025), partnership (early partn
 
   server.tool(
     "get_document",
-    `Retrieve the full content of a specific document from the Buffett Tribe knowledge base, paginated at 10 chunks per page.
+    `Retrieve the full content of a specific document from the ${BRAND_EN} knowledge base, paginated at 10 chunks per page.
 Identify a document by sourceId (from search results) or by year + type.
 Types: shareholder | partnership.
 Use page parameter to read through long documents. Check totalPages in the response to know when you've reached the end.

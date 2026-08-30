@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import { BtLogoMark } from "@/components/BtLogoMark";
+import { BRAND_EN } from "@/lib/brand";
 
 export function SiteNav() {
   const { data: session } = useSession();
@@ -32,7 +33,7 @@ export function SiteNav() {
       <div className="home-nav-in">
         <Link href="/" className="home-nav-logo">
           <BtLogoMark />
-          Buffett Tribe
+          {BRAND_EN}
         </Link>
         <div className="home-nav-center" aria-label="部落成员与入口">
           <Link

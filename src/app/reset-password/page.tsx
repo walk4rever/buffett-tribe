@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { SiteNav } from "@/components/SiteNav";
+import { BRAND_EN } from "@/lib/brand";
 
 function ResetPasswordForm() {
   const params = useSearchParams();
@@ -22,7 +23,7 @@ function ResetPasswordForm() {
       <div className="login-page">
         <SiteNav />
         <div className="login-wrap">
-          <Link href="/" className="login-brand">Buffett Tribe</Link>
+          <Link href="/" className="login-brand">{BRAND_EN}</Link>
           <p className="login-sub">密码重置链接无效或缺失</p>
           <div className="login-card">
             <p className="login-error">链接无效，请返回登录页重新发起重置。</p>
@@ -58,7 +59,7 @@ function ResetPasswordForm() {
       <div className="login-page">
         <SiteNav />
         <div className="login-wrap">
-          <Link href="/" className="login-brand">Buffett Tribe</Link>
+          <Link href="/" className="login-brand">{BRAND_EN}</Link>
           <p className="login-sub">密码已更新</p>
           <div className="login-card">
             <p style={{ textAlign: "center", color: "var(--graphite-accent)" }}>密码重置成功，正在跳转登录…</p>
@@ -72,7 +73,7 @@ function ResetPasswordForm() {
     <div className="login-page">
       <SiteNav />
       <div className="login-wrap">
-        <Link href="/" className="login-brand">Buffett Tribe</Link>
+        <Link href="/" className="login-brand">{BRAND_EN}</Link>
         <p className="login-sub">设置你的新密码后即可继续使用资料库与工作台</p>
         <div className="login-card">
           <div className="login-tabs">

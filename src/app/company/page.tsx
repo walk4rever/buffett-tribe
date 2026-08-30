@@ -4,6 +4,7 @@ import { formatCompanyUrl } from "@/lib/company-data";
 import { isNonCompanySecurityKind } from "@/lib/security-kind";
 import { SiteNav } from "@/components/SiteNav";
 import { CompanyDirectory, CompanyGrid, type CompanyDirectoryItem } from "@/components/CompanyDirectory";
+import { BRAND_EN, BRAND_ZH } from "@/lib/brand";
 
 // Company directory changes in slow batches (manual onboarding runs), not
 // per-request — ISR caches the ~1.5-2s query result instead of re-running
@@ -12,8 +13,8 @@ import { CompanyDirectory, CompanyGrid, type CompanyDirectoryItem } from "@/comp
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "公司库 | Buffett Tribe",
-  description: "巴菲特部落覆盖的全部公司，支持搜索与过滤。",
+  title: `公司库 | ${BRAND_EN}`,
+  description: `${BRAND_ZH}覆盖的全部公司，支持搜索与过滤。`,
 };
 
 function uniqueTickers(values: Array<string | null | undefined>): string[] {

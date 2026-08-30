@@ -9,6 +9,7 @@ import { formatUsdInYi } from "@/lib/currency";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
 import { getTribeMember, getTribeMemberColor } from "@/lib/tribe";
 import { getMasterProfile } from "@/lib/master-profile";
+import { BRAND_ZH } from "@/lib/brand";
 import {
   getHoldingsByQuarter,
   getLatestHoldingChangeSet,
@@ -285,7 +286,7 @@ export default async function PersonHubPage({ params }: Props) {
                     <span>SEC 13F</span>
                   </div>
                   <p className="person-alpha-disclaimer">
-                    数据历史较短，投资风格与研究覆盖因人而异，与巴菲特部落的经典价值投资框架可能存在方法论差异，仅供参考。
+                    数据历史较短，投资风格与研究覆盖因人而异，与{BRAND_ZH}的经典价值投资框架可能存在方法论差异，仅供参考。
                   </p>
                 </>
               ) : null}

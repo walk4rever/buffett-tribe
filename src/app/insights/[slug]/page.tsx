@@ -7,6 +7,7 @@ import { InsightReader } from "@/components/InsightReader";
 import { InsightOverviewShareButton } from "@/components/InsightOverviewShareButton";
 import { InsightChatShell } from "@/components/InsightChatShell";
 import { extractInsightOverviewShareContent, isInsightFormat } from "@/lib/insights";
+import { BRAND_EN } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ export default async function InsightDetailPage({ params }: Props) {
           <header className="insight-detail-head">
             <h1>{post.title}</h1>
             <div className="insight-detail-meta">
-              <span>{post.sourceUrl ? <a href={post.sourceUrl} target="_blank" rel="noopener noreferrer">{post.source || "来源"}</a> : post.source || "Buffett Tribe"}</span>
+              <span>{post.sourceUrl ? <a href={post.sourceUrl} target="_blank" rel="noopener noreferrer">{post.source || "来源"}</a> : post.source || BRAND_EN}</span>
               <span>{dateLabel}</span>
             </div>
             {post.description ? <p className="insight-detail-desc">{post.description}</p> : null}

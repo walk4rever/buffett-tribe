@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-巴菲特部落 (Buffett Tribe) — a knowledge-base + agent-driven value-investing research platform. Core loop: pick a company, understand it through value-investing frameworks (moat, management, valuation), see what the "masters" (tracked investors) actually hold and have said. Three data layers drive the `/agent` chat: what masters *said* (GBrain semantic search over letters/transcripts), what masters *hold* (13F data in Postgres), what companies *disclosed* (10-K/20-F filing sections).
+价值部落 (Value Tribe) — a knowledge-base + agent-driven value-investing research platform. Core loop: pick a company, understand it through value-investing frameworks (moat, management, valuation), see what the "masters" (tracked investors) actually hold and have said. Three data layers drive the `/agent` chat: what masters *said* (GBrain semantic search over letters/transcripts), what masters *hold* (13F data in Postgres), what companies *disclosed* (10-K/20-F filing sections).
 
 **最高准则**：`PRODUCT.md` 的「核心准则」一节（买股票就是买公司 / 理解公司的三个层次：事实·框架·变化 / AI 是手段不是目的 / 界面是手段的手段）——任何产品或架构决策与它冲突时以它为准，动手前先读。README.md 有对外的简版。
 

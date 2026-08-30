@@ -6,6 +6,12 @@
 
 ## P0 — 下一步就做（用户点名，2026-07-17）
 
+- [ ] **⑩ 回填缺失的 `section_text` artifact：645 份 filing / 4,780 个 section / 110 家公司**（2026-08-30 发现，详细复盘见 `handoff.md` 第二次会话追加）：早期那版「三种 kind 全删」的 `cleanup-section-artifacts.ts` 删掉了 `section_text` artifact，而 `FilingSection.textArtifact` 外键是 `onDelete: SetNull`，链接随之全部变 NULL；上次只回填了 BN/SU 两家。后果是 `search_filings` 对这 110 家公司**平均只能看到 27.4% 的正文**（`FilingSection.content` 只是导入时截断的预览），走 `primary_html` 现场重解析的兜底路径又常因大文件超时。P3 加的降级警告保证了它不会静默撒谎，但能力缺口是真的。
+  - **判据**：`textArtifactId is null AND length(content) < contentTextLength`。按 `extractionVersion` 分：v2 全部 10,857 个 section text artifact 数为 0（那一代没这机制），v3 的 16,181 个里缺 1,839 个。8/29–8/30 两批重导的 10,082 个则 100% 完整——**当前写入路径是对的，这是历史存量问题**。
+  - **受影响最多**：BABA(85/8)、LUV(70/7)、TM(69/6)、JOYY(67/6)、TSM(65/6)、NETTF(65/6)、RH(65/7)、GOTU(65/6)、AAL(63/6)、LBTYK(63/12)、TSLA(62/10)。
+  - **做法**：按 filing 逐个重跑 `npm run import:10k -- --ticker X --from Y --to Y`（DIS 2020 已用此法验证：21 个 section 全部补齐，`search-filings` 测试耗时从 101s 降到 9.25s）。**应在 mini 上跑**（CLAUDE.md 的既定分工），注意 mini 到 R2 延迟约为 air7 的 4 倍，645 份 filing 是个长活，建议分批 + 失败隔离。
+  - **相关未决**：`FULL_TEXT_FETCH_TIMEOUT_MS`（45s × 2）相对实测 R2 延迟偏小，回填做完后这条兜底路径的压力会大幅下降，可再评估是否仍需调整。
+
 - [ ] **① 年报阅读页重新设计 — 仅剩"一键切换中文"未做**（2026-07-21，v0.39.12 已发布左侧目录/附件删除 + 字体行距控件 + AI 解读分栏，结论见 `PRODUCT.md`「年报阅读」「v0.39.12 变更」）：
   - **2) 一键切换中文**（保留年报原样式结构，只译文字）——两个方案未拍板，讨论中倾向认为该做小样本效果对比再定：
     - 方案 A：iframe 加载后遍历文本节点原地替换，CSS/表格/排版原样不动，最贴合"保留原样式"的字面要求；风险是 SEC inline XBRL HTML 极度碎片化（Ferrari 那份文件顶层就有 4814 个 div，一句话常被拆成多个 `<span>`），逐节点翻译缺上下文，译文质量堪忧，金额/代码等不该翻译的内容也需要小心跳过。

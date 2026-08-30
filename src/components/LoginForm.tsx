@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { BRAND_EN } from "@/lib/brand";
 
 export function LoginForm() {
   const router = useRouter();
@@ -72,7 +73,7 @@ export function LoginForm() {
 
   return (
     <div className="login-wrap">
-      <Link href="/" className="login-brand">Buffett Tribe</Link>
+      <Link href="/" className="login-brand">{BRAND_EN}</Link>
       <p className="login-sub">登录后可使用 AI 投研对话、打孔等更多功能</p>
 
       <div className="login-card">

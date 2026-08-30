@@ -193,3 +193,68 @@ npm run onboard:pending -- --limit 50         # 建议继续按 50 一批，别�
 **唯一还没做的事——同步 mini**：mini（`~/buffett-tribe`）的 `scripts/` 目录仍然落后两轮，既没有更早的 6-bug-fix 提交（`4bff4b33`/v0.43.36），也没有本次 P0-P3。**下次在 mini 上跑 `onboard:pending` 之前必须先手动同步这些文件过去**，否则会继续写入已经决定停掉的 `section_blocks`（清理脚本只是删存量，不会阻止旧代码继续产生新的）、并发仍是 1。
 
 **新发现、不在 P0-P3 范围内、建议单独立项**：`FULL_TEXT_FETCH_TIMEOUT_MS`（45秒 × 2 次重试 = 90秒预算）相对 2026-08-30 实测的 R2 延迟（6MB 文件单次 fetch 75.5 秒）偏小，`search_filings` 对没有 text artifact 的大 section 做 `primary_html` 现场重解析时有真实概率超时降级到截断预览（叠加 P0 的警告后至少不会再是静默的，但仍是能力缺口）。
+
+---
+
+# Handoff 追加 — 品牌改名 Value Tribe + DIS 测试根因订正（2026-08-30 第二次会话）
+
+## 1. 品牌改名：巴菲特部落 · Buffett Tribe → 价值部落 · Value Tribe
+
+起因是讨论「给美国市场用户做一条主力支线」。结论是**不 fork、不开长期 branch**——数据层（13F / 10-K / filing sections / 股价）本来就是英文源数据，`Chunk` 表更是早已 `contentEn`（必填 100%）+ `contentZh`（95% 覆盖）的英文优先双语结构，检索三条路径全查 `contentEn`。英文版真正的增量成本只在表现层和生成内容，fork 会把 105 个脚本和 schema 复制一份、每个管线 bug 要修两遍。完整方案（locale 载体、schema locale 维度、分期）见下方第 3 节。
+
+改名本身作为方案的 P0 单独发布（域名暂不处理，用户明确押后）。
+
+- **新增单一真源**：`src/lib/brand.ts`（`BRAND_ZH` / `BRAND_EN` / `BRAND_FULL`）+ `services/pi-gateway/src/brand.ts`（pi-gateway 是独立 deployable，无法跨包 import，两份需手动同步，文件注释里写明了）。
+- **改动面**：Next.js 应用 24 个文件、pi-gateway 2 个 tool 的 label/description + `AGENTS.md`、`scripts/send-announcement.ts`、README/PRODUCT/CLAUDE.md。
+- **刻意未改的内部标识符**（改了会破坏线上数据或部署）：R2 key 前缀 `buffett-tribe/users/...`、PM2 进程名与远端目录 `pi-gateway-buffett-tribe`、`package.json` 的 `name`、`/api/mcp` 的 MCP server `name`、以及全部域名（含分享卡片上的 `https://buffett.air7.fun`）。
+- **刻意未改写的历史记录**：`PRODUCT.md` 的 2026-08-28 变更日志条目、`TODO.md:189` 的 v0.43.5 条目——它们记述过去发生的事，其中还引用了 `InsightPost.source` 当时的真实数据值，改写历史日志是错的。
+- **生产数据迁移（已执行，不可逆）**：`InsightPost` 的 `source` 6 行、`author` 6 行、`contentRaw` 英文 6 行 + 中文 1 行，全部由旧品牌改为新品牌。做这个是因为 `/insights` 把 `source` 直接当标签渲染、且 `master-data.ts` 的徽章映射是拿它当键查的，不迁移会出现「站点已改名但这 6 篇仍显示旧名」。迁移完成后 `master-data.ts` 里过渡用的旧键别名已删除。
+
+## 2. 订正：DIS "Aspire" 测试失败的真实根因不是 R2 延迟
+
+上一节记录把它归因为「R2 到本机延迟 75.5s 超过 45s×2 预算」。**这个结论不完整**。真实根因是 **`section_text` artifact 缺失**：
+
+- DIS 2020 的 `item_1_business` 全文 83,675 字，`FilingSection.content` 只存了 3,000 字预览，而 `textArtifactId` 为 `null`。`FilingSection.textArtifact` 的外键是 `onDelete: SetNull`，所以 **artifact 一被删，链接就自动变 NULL**——这正是早期那版「三种 kind 全删」的 `cleanup-section-artifacts.ts` 造成的，上次只回填了 BN/SU，没回填其他公司。
+- 走 `primary_html` 现场重解析这条兜底路径时，DIS 2020 的 primary_html 有 6.1MB，确实会撞上延迟预算——但那只是**第二重失败**，不是根因。
+- **修复**：`npm run import:10k -- --ticker DIS --from 2020 --to 2020` 重导一次，21 个 section 全部补上 text artifact。测试通过，且耗时从 **101s 降到 9.25s**（走上 text artifact 快速路径，不再重解析 6MB HTML）。
+
+上次记录里「P3 的改动对它是 no-op」的说法也需要订正：P3 加的降级警告**正常工作**——工具如实输出了「⚠️ 完整正文暂不可用……原文共 83,675 字，此处仅 3,000 字，请勿据此得出结论」。P3 把一个静默的错误变成了一个可见的错误，这正是它该做的；测试失败是**被 P3 暴露出来的真实数据缺陷**，不是 P3 的回归。
+
+## 3. 新发现的真实缺口：4,780 个 section 正在提供降级内容
+
+顺着上面的根因全库普查（判据：`textArtifactId is null AND length(content) < contentTextLength`，即「没有全文 artifact，且存的确实是被截断的预览」）：
+
+| 指标 | 数量 |
+|---|---|
+| 降级的 FilingSection | **4,780** |
+| 涉及公司 | **110** |
+| 需重导的 filing | **645** |
+| 平均可用正文比例 | **27.4%** |
+
+按 `extractionVersion` 看分布更清楚：v2 共 10,857 个 section，**text artifact 数为 0**（那一代根本没有这个机制）；v3 共 16,181 个，14,342 个有、1,839 个缺。8/29–8/30 两批重新导入的（8,965 + 1,117）则 100% 完整——说明**当前写入路径是对的，这是历史存量问题**。
+
+受影响最多的公司：BABA(85 section/8 filing)、LUV(70/7)、TM(69/6)、JOYY(67/6)、TSM(65/6)、NETTF(65/6)、RH(65/7)、GOTU(65/6)、AAL(63/6)、LBTYK(63/12)、TSLA(62/10)。
+
+**影响**：`/agent` 的 `search_filings` 对这 110 家公司回答年报类问题时，平均只能看到 27% 的正文。P3 的警告保证了它不会静默撒谎，但能力缺口是真的。
+
+**建议**：立项做一次 645 filing 的 `import:10k` 回填。这是个大活（每个 section 一次 R2 写入），按 CLAUDE.md 的既定分工应在 **mini** 上跑，且注意 mini 到 R2 的延迟是 air7 的约 4 倍。已作为 P0 记入 `TODO.md`。
+
+## 4. 美国市场支线的完整方案（已与用户对齐，尚未开工）
+
+已定的两个前提：**整站统一改名 Value Tribe**（一个品牌两个 locale，顺带规避在美国用 Buffett 名字做商业产品的商标/姓名权风险）；**英文内容从源数据独立生成**（不从中文翻译——中文本身就是从英文源数据生成的，再翻回去是二次损耗）。
+
+三条架构决策：
+
+1. **locale 载体 = `[locale]` 路由段 + middleware 重写**，不是 header 注入——locale 若来自 `headers()` 会让每个页面退化为动态渲染，丢掉现有静态/ISR 能力。路径策略保守优先：中文留在根路径**一个 URL 都不改**，英文走 `/en/*`。
+2. **生成内容用 locale-keyed 行**（`@@unique([entityId, locale])`），**故意不沿用** `Chunk` 的 `contentEn`/`contentZh` 配对列——那里两语种是翻译派生、1:1、永远 2 种；这里是各自独立生成、需独立重生成、语种数开放，配对列会让 5 字段 × N 语种列数爆炸。
+3. **`onboard-company.ts` 不按 locale 分叉**，照抄既有的 market 纪律，locale 只是 `steps` 的参数。
+
+分期（每期独立可发布）：P0 改名（**本次已发布**）→ P1 locale 骨架（只启用 zh，站点行为不变）→ P2 文案抽取（1,112 行 / 98 文件入字典）→ P3 schema + 管线（migration + 8 个 `generate-*.ts` 加 `--locale`）→ P4 批量生成 + agent locale 化 → P5 法务页/邮件/hreflang。
+
+**开工前必须先处理的风险**：英文 token 密度约为中文的 1.5–2 倍，按中文输出调好的 `max_tokens` 跑英文时会静默截断；而本仓库已知**没有截断检测+重试机制**（见记忆「LLM截断检测缺口」）。P4 是 244 家 × 5 步 = 1,220 次调用，**建议把截断检测提到 P3 之前做**，否则会烧钱产垃圾。
+
+另外「Value Tribe」是个相当通用的名字，动手处理域名前需确认 `valuetribe.com` 可得 + USPTO 无冲突。
+
+## 5. 顺带发现、未修
+
+`scripts/import-beneficial-ownership.ts` 有 6 个既有 typecheck 报错（`formData.coverPageHeader` possibly undefined，220/221/223/249/250/252 行）。`npm run typecheck:scripts` 不在 CI 门禁里，所以一直没暴露。本次未修（与改名无关）。

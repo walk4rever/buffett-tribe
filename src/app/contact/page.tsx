@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SiteNav } from "@/components/SiteNav";
+import { BRAND_EN, BRAND_ZH } from "@/lib/brand";
 
 export default function Contact() {
   return (
@@ -24,7 +25,7 @@ export default function Contact() {
           </p>
 
           <h2>项目介绍</h2>
-          <p>巴菲特部落（Buffett Tribe）是一个价值投资研究平台，目标是让价值投资者能够更好地学习沃伦·巴菲特等大师的投资理念。</p>
+          <p>{BRAND_ZH}（{BRAND_EN}）是一个价值投资研究平台，目标是让价值投资者能够更好地学习沃伦·巴菲特等大师的投资理念。</p>
 
           <p>我们相信：通过理解历史背景，能更好地理解投资大师的决策过程。</p>
 

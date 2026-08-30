@@ -62,8 +62,8 @@ export function stripWikiLinkBrackets(value: string): string {
  *
  * Throws if `source` still ends up empty — a null `source` makes a post
  * invisible under every /insights filter pill while still *looking* filed
- * under "Buffett Tribe" (the list/detail pages' `post.source || "Buffett
- * Tribe"` fallback only affects display, not the filter's exact-match query
+ * under the house brand (the list/detail pages' `post.source || BRAND_EN`
+ * fallback only affects display, not the filter's exact-match query
  * on the real column) — this silently broke two published posts before it
  * was noticed. Never guess a `source` — reject instead so the importer fixes
  * the frontmatter or passes --source explicitly.
@@ -183,7 +183,9 @@ const LEGACY_INSIGHT_CALLOUT_MAPPINGS = [
     title: "时空复盘",
   },
   {
-    match: /^(?:\*\*)?\s*(?:巴菲特部落视角|巴菲特视角)(?:[（(][^)）\n]*[）)])?\s*(?:\*\*)?$/iu,
+    // 价值部落视角 is the post-rename heading; the two 巴菲特* forms stay so
+    // articles written under the old brand keep parsing.
+    match: /^(?:\*\*)?\s*(?:价值部落视角|巴菲特部落视角|巴菲特视角)(?:[（(][^)）\n]*[）)])?\s*(?:\*\*)?$/iu,
     type: "Value",
     title: "价值视角",
   },

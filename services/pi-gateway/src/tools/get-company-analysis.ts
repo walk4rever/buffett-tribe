@@ -1,6 +1,7 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { pool } from "../db.js";
+import { BRAND_EN } from "../brand.js";
 
 // The 5 fields on CompanyAnalysis written by scripts/generate-*.ts during
 // onboarding (see scripts/onboard-company.ts) — the same content rendered on
@@ -65,9 +66,9 @@ async function queryArtifacts(entityId: string, types: readonly string[]): Promi
 
 export const getCompanyAnalysisTool = defineTool({
   name: "get_company_analysis",
-  label: "Get Buffett Tribe Company Analysis",
+  label: `Get ${BRAND_EN} Company Analysis`,
   description:
-    "Fetch Buffett Tribe's own generated analysis for a company — the same synthesized content shown on the company page tabs: profile (company basics), business (business model & canvas), moat (competitive advantage), management (capital allocation, alignment), valuation (scenarios, multiples). Prefer this over search_filings when the question is about a conclusion or assessment (moat strength, valuation scenarios, management capital allocation) — it's already synthesized from filings and financials. Use search_filings instead when the question needs exact filing quotes or raw text.",
+    `Fetch ${BRAND_EN}'s own generated analysis for a company — the same synthesized content shown on the company page tabs: profile (company basics), business (business model & canvas), moat (competitive advantage), management (capital allocation, alignment), valuation (scenarios, multiples). Prefer this over search_filings when the question is about a conclusion or assessment (moat strength, valuation scenarios, management capital allocation) — it's already synthesized from filings and financials. Use search_filings instead when the question needs exact filing quotes or raw text.`,
   promptSnippet: "get_company_analysis(company, artifactType?) → generated profile/business/moat/management/valuation analysis",
   parameters: Type.Object({
     company: Type.String({

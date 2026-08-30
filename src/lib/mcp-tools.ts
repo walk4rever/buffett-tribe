@@ -1,11 +1,12 @@
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { searchChunks } from "@/lib/search";
+import { BRAND_EN } from "@/lib/brand";
 
 // ── search ────────────────────────────────────────────────────────────────────
 
 export const searchParams = z.object({
-  query: z.string().describe("Question or topic to search for in the Buffett Tribe knowledge base"),
+  query: z.string().describe(`Question or topic to search for in the ${BRAND_EN} knowledge base`),
   yearFrom: z.number().int().optional().describe("Earliest year (inclusive)"),
   yearTo: z.number().int().optional().describe("Latest year (inclusive)"),
   limit: z.number().int().min(1).max(20).optional().default(7).describe("Max chunks to return"),

@@ -4,6 +4,7 @@ import { formatCompanyUrl } from "@/lib/company-data";
 import { getDocumentsForOwner } from "@/lib/documents";
 import { computeHoldingActivity, computeShareDeltaPct, type HoldingActivity } from "@/lib/holding-activity";
 import { isNonCompanySecurityKind } from "@/lib/security-kind";
+import { BRAND_EN } from "@/lib/brand";
 
 export type QuarterPoint = {
   year: number;
@@ -556,7 +557,7 @@ const INSIGHT_SOURCE_BADGE: Record<string, string> = {
   Acquired: "文章",
   Founders: "文章",
   SemiAnalysis: "文章",
-  "Buffett Tribe": "文章",
+  [BRAND_EN]: "文章",
   "Ribbit Capital": "信件",
 };
 

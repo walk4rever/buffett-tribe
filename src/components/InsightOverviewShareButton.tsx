@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { encode } from "uqr";
 import { BtLogoMark } from "@/components/BtLogoMark";
+import { BRAND_EN, BRAND_ZH } from "@/lib/brand";
 import { markdownToHtmlMarkdown, rehypeInsightCallouts } from "@/lib/insights";
 import { toAbsoluteSiteUrl } from "@/lib/site-url";
 
@@ -139,11 +140,11 @@ export function InsightOverviewShareButton({
                           <BtLogoMark />
                         </span>
                         <div className="insight-share-brand-head-copy">
-                          <strong className="insight-share-brand-name">Buffett Tribe</strong>
+                          <strong className="insight-share-brand-name">{BRAND_EN}</strong>
                           <span className="insight-share-brand-domain">https://buffett.air7.fun</span>
                         </div>
                       </div>
-                      <p className="insight-share-brand-tagline">买股票就是买公司。巴菲特部落用价值投资大师的框架帮你理解一家公司！</p>
+                      <p className="insight-share-brand-tagline">买股票就是买公司。{BRAND_ZH}用价值投资大师的框架帮你理解一家公司！</p>
                     </div>
                   </div>
 

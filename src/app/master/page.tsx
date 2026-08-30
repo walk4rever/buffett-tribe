@@ -3,6 +3,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { getTribeMemberColor, getTribeMembers, type TribeMember } from "@/lib/tribe";
 import { getAvailableQuarters, getLatestPortfolioValueUsd } from "@/lib/master-data";
 import { formatUsdInYi } from "@/lib/currency";
+import { BRAND_ZH } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,7 @@ export default async function MasterIndexPage() {
       {/* Members */}
       <section className="home-members">
         <div className="home-members-in">
-          <p className="home-members-hd">巴菲特部落</p>
+          <p className="home-members-hd">{BRAND_ZH}</p>
           <div className="home-member-list">
             {coreMembers.map((m) => {
               const state = stateMap.get(m.id)!;
