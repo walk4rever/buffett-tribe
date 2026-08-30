@@ -174,6 +174,31 @@ def checkpoint_signature(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+# The checkpoint exists so a crashed mid-batch run can resume without
+# redownloading tickers it already finished (minutes-to-hours later, same
+# invocation). It is NOT a "prices are up to date" cache: --start is resolved
+# per-ticker from the current max StockPrice date (see resolveStartDates in
+# import-company-stock-prices-yf.ts), so once a ticker is marked complete its
+# own --start never advances on its own — the weekly cron would recompute the
+# identical signature every Sunday and skip forever, freezing prices at
+# whatever date the checkpoint first captured. Treating entries older than a
+# day as stale forces a fresh yfinance check every distinct calendar day
+# (cheap no-op when there's genuinely nothing new) while still preserving the
+# same-day resume behavior the checkpoint is actually for.
+CHECKPOINT_MAX_AGE = timedelta(hours=20)
+
+
+def is_checkpoint_fresh(ticker_state: dict[str, Any]) -> bool:
+    updated_at = ticker_state.get("updated_at")
+    if not updated_at:
+        return False
+    try:
+        updated = datetime.fromisoformat(updated_at)
+    except ValueError:
+        return False
+    return datetime.now(timezone.utc) - updated < CHECKPOINT_MAX_AGE
+
+
 def load_checkpoint(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
@@ -204,7 +229,12 @@ def main() -> int:
 
     for ticker in tickers:
         ticker_state = checkpoint.get(ticker, {})
-        if ticker_state.get("status") == "complete" and ticker_state.get("signature") == signature and not args.fresh:
+        if (
+            ticker_state.get("status") == "complete"
+            and ticker_state.get("signature") == signature
+            and is_checkpoint_fresh(ticker_state)
+            and not args.fresh
+        ):
             print(f"Skipping {ticker}; already completed in checkpoint.", flush=True)
             summary.append({"ticker": ticker, "status": "skipped"})
             continue

@@ -31,6 +31,7 @@
     "data:10k": "npm run pipeline:10k --",
     "onboard:company": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/onboard-company.ts",
     "onboard:alpha-investor": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/onboard-alpha-investor.ts",
+    "onboard:pending": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/onboard-pending-companies.ts",
     "update:company": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/update-company.ts",
     "compare:10k:fidelity": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/compare-annual-report-fidelity.ts",
     "extract:10k:sections": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/extract-10k-sections.ts",

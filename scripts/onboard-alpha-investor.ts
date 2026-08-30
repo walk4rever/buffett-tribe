@@ -45,6 +45,7 @@ import {
   registerTribeMember,
   type AlphaInvestorInput,
 } from "./lib/alpha-investor-registration";
+import { onboardTickersWithFailureIsolation } from "./lib/onboard-batch-runner";
 
 type StepId =
   | "register_tribe_member"
@@ -358,12 +359,19 @@ async function main() {
               .filter((c) => !checkpoint.onboardedTickers.includes(c.ticker))
               .slice(0, onboardLimit ?? missing.length);
             console.log(`\n  --onboard-holdings set: onboarding ${toOnboard.length} ticker(s) via onboard:company`);
-            for (const c of toOnboard) {
-              console.log(`\n  Onboarding ${c.ticker}...`);
-              await runNpmScript("onboard:company", ["--ticker", c.ticker]);
-              checkpoint.onboardedTickers.push(c.ticker);
-              await saveCheckpoint(checkpoint);
-            }
+            const result = await onboardTickersWithFailureIsolation(
+              toOnboard.map((c) => c.ticker),
+              async (ticker) => {
+                checkpoint.onboardedTickers.push(ticker);
+                await saveCheckpoint(checkpoint);
+              },
+            );
+            console.log(
+              `\n  onboard-holdings: ${result.succeeded.length}/${toOnboard.length} succeeded` +
+                (result.failed.length
+                  ? `, failed: ${result.failed.map((f) => `${f.ticker} (${f.error})`).join("; ")}`
+                  : ""),
+            );
           } else {
             console.log("\n  pass --onboard-holdings to run `onboard:company` for each of these automatically");
           }

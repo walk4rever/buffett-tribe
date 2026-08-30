@@ -111,12 +111,28 @@ def extract(args: argparse.Namespace) -> dict[str, Any]:
     filings = company.get_filings(form=ANNUAL_FORMS)
     print(f"[edgartools-helper] {ticker}: scan filings", file=sys.stderr, flush=True)
 
-    selected = []
+    # company.get_filings() returns newest-filed-first. A 10-K/A amendment
+    # shares its original's report_date but usually only restates part of
+    # the filing (e.g. Part III proxy delegation) — selecting both makes the
+    # amendment look like a zero-section import failure downstream. Group by
+    # report_date and prefer the non-amendment form; if a period genuinely
+    # has only amendment(s) on file, keep the most recently filed one (first
+    # seen, given the newest-first iteration order).
+    by_report_date: dict[str, Any] = {}
     for filing in filings:
         report_date = _date_to_str(_safe_get(filing, "report_date") or _safe_get(filing, "period_of_report"))
         report_year = _year(report_date)
         if report_year is None or report_year < args.from_year or report_year > args.to_year:
             continue
+        form = str(_safe_get(filing, "form") or "")
+        existing = by_report_date.get(report_date)
+        if existing is None:
+            by_report_date[report_date] = filing
+        elif str(_safe_get(existing, "form") or "").endswith("/A") and not form.endswith("/A"):
+            by_report_date[report_date] = filing
+
+    selected = []
+    for report_date, filing in sorted(by_report_date.items(), reverse=True):
         accession = str(_safe_get(filing, "accession_number") or _safe_get(filing, "accession_no") or "")
         print(
             f"[edgartools-helper] {ticker}: selected {report_date} {accession}",

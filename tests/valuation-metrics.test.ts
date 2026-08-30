@@ -61,6 +61,16 @@ describe("computeScenarios", () => {
     expect(results[0].impliedAnnualReturnPct).toBeNull();
   });
 
+  it("nulls out results for non-positive EPS instead of returning a negative implied price", () => {
+    const results = computeScenarios({
+      ...base,
+      latestEps: -0.39,
+      scenarios: [{ name: "基准", growthPct: 20, exitPe: 25, rationale: "" }],
+    });
+    expect(results[0].impliedPrice).toBeNull();
+    expect(results[0].impliedAnnualReturnPct).toBeNull();
+  });
+
   it("nulls out results for non-finite assumptions", () => {
     const results = computeScenarios({
       ...base,

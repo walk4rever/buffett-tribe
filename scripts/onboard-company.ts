@@ -87,7 +87,7 @@ type Step = {
   run: () => Promise<void>;
   // stepStartedAt lets a step's verify distinguish "this run actually wrote
   // something" from "the entity already had this artifact from a prior run" —
-  // see wasCompanyAnalysisFieldUpdatedSince, needed because generate:*.ts
+  // see verifyCompanyAnalysisField. Only matters with --force: generate:*.ts
   // scripts catch their own errors and exit 0, so a plain existence check on
   // a --force rerun would report success even when the LLM call timed out
   // and nothing new was written.
@@ -156,24 +156,39 @@ async function findEntityId(ticker: string): Promise<string | null> {
 
 type CompanyAnalysisField = "profile" | "business" | "moat" | "management" | "valuation";
 
-// Only passes if CompanyAnalysis was actually written during this step's own
-// run — a plain existence check would report "done" on a --force rerun
-// whose LLM call actually timed out, as long as an older value from a
-// previous run was still sitting there. All 5 fields share one row-level
-// updatedAt (see TODO.md 「数据架构：停止 GeneratedContentVersion 镜像」), so
-// this also checks the target field is actually non-null — updatedAt alone
+// Without --force: a non-null field is success, regardless of when it was
+// written — resuming without a checkpoint (e.g. after moving to a new
+// machine) re-attempts every step, and a step whose generate:*.ts script
+// correctly skips ("already has X, use --force to overwrite") is not a
+// failure. With --force: a plain existence check would report "done" on a
+// rerun whose LLM call actually timed out, as long as an older value from a
+// previous run was still sitting there — so the field must have been
+// written during *this* step. All 5 fields share one row-level updatedAt
+// (see TODO.md 「数据架构：停止 GeneratedContentVersion 镜像」), so the
+// non-null check on the target field also matters here — updatedAt alone
 // can't distinguish "this step wrote its field" from "some other field on
 // the same row got touched at the same instant."
-async function wasCompanyAnalysisFieldUpdatedSince(
+async function verifyCompanyAnalysisField(
   entityId: string,
   field: CompanyAnalysisField,
-  sinceMs: number,
+  stepStartedAt: number,
+  force: boolean,
 ): Promise<boolean> {
   const row = await prisma.companyAnalysis.findUnique({
     where: { entityId },
     select: { profile: true, business: true, moat: true, management: true, valuation: true, updatedAt: true },
   });
-  return row != null && row[field] != null && row.updatedAt.getTime() >= sinceMs;
+  if (row == null || row[field] == null) return false;
+  // Without --force, the generate:* script's own "already has X, use
+  // --force to overwrite" skip is a legitimate success — a pre-existing
+  // value counts regardless of when it was written (this matters when
+  // resuming without a checkpoint, e.g. after moving to a new machine: every
+  // step re-runs, and steps that already succeeded earlier must not be
+  // reported as failed just because nothing was written *this* run). With
+  // --force, generate:* scripts catch their own errors and exit 0, so only
+  // a write that actually happened during this step proves the LLM call
+  // succeeded — see the comment on Step.verify above.
+  return !force || row.updatedAt.getTime() >= stepStartedAt;
 }
 
 function parseMarket(value: string | undefined): Market {
@@ -356,35 +371,35 @@ async function main() {
       label: "生成公司概览（company_profile）",
       skip: skipGeneration,
       run: () => runNpmScript("generate:company-profile", buildGenerateArgs(ticker, force)),
-      verify: (entityId, stepStartedAt) => wasCompanyAnalysisFieldUpdatedSince(entityId, "profile", stepStartedAt),
+      verify: (entityId, stepStartedAt) => verifyCompanyAnalysisField(entityId, "profile", stepStartedAt, force),
     },
     {
       id: "generate_business_model",
       label: "生成业务概览与商业画布（business_overview）",
       skip: skipGeneration,
       run: () => runNpmScript("generate:business-model", buildGenerateArgs(ticker, force)),
-      verify: (entityId, stepStartedAt) => wasCompanyAnalysisFieldUpdatedSince(entityId, "business", stepStartedAt),
+      verify: (entityId, stepStartedAt) => verifyCompanyAnalysisField(entityId, "business", stepStartedAt, force),
     },
     {
       id: "generate_value_analysis",
       label: "生成价值分析（value_analysis）",
       skip: skipGeneration,
       run: () => runNpmScript("generate:value-analysis", buildGenerateArgs(ticker, force)),
-      verify: (entityId, stepStartedAt) => wasCompanyAnalysisFieldUpdatedSince(entityId, "moat", stepStartedAt),
+      verify: (entityId, stepStartedAt) => verifyCompanyAnalysisField(entityId, "moat", stepStartedAt, force),
     },
     {
       id: "generate_management_analysis",
       label: "生成管理分析（management_analysis）",
       skip: skipGeneration,
       run: () => runNpmScript("generate:management-analysis", buildGenerateArgs(ticker, force)),
-      verify: (entityId, stepStartedAt) => wasCompanyAnalysisFieldUpdatedSince(entityId, "management", stepStartedAt),
+      verify: (entityId, stepStartedAt) => verifyCompanyAnalysisField(entityId, "management", stepStartedAt, force),
     },
     {
       id: "generate_valuation_analysis",
       label: "生成估值分析（valuation_analysis）",
       skip: skipGeneration,
       run: () => runNpmScript("generate:valuation-analysis", buildGenerateArgs(ticker, force)),
-      verify: (entityId, stepStartedAt) => wasCompanyAnalysisFieldUpdatedSince(entityId, "valuation", stepStartedAt),
+      verify: (entityId, stepStartedAt) => verifyCompanyAnalysisField(entityId, "valuation", stepStartedAt, force),
     },
   ];
 

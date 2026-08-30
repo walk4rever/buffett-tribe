@@ -62,6 +62,7 @@ Output shape:
 Rules:
 - Scenario growth assumptions must be anchored to the provided revenue/net income CAGR and quality trends; exit PE anchored to the historical PE range. State the anchor in rationale.
 - 保守 scenario should be genuinely conservative (growth below historical CAGR, exit PE near historical low-to-median).
+- If PE is marked N/A (no positive-EPS fiscal year — normal for loss-making growth/spinoff/turnaround companies), do NOT invent a PE figure anywhere. position.narrative and quality.narrative must instead interpret valuation using whichever of P/OCF, P/FCF, and revenue CAGR are available. Scenario exitPe must still be a plausible illustrative multiple (schema requires a number), but its rationale must say the implied-return math is not meaningful without positive EPS and that the multiple is illustrative only.
 - No investment advice wording: never use 买入/卖出/目标价/建议. Express ranges and assumptions.
 - Every narrative must end with a Chinese full stop.
 - Output ONLY valid JSON.`;
@@ -122,10 +123,15 @@ function buildMetricsText(m: ValuationMetrics) {
       ? `- Price / FCF per share: ${m.priceToFcf} (FCF = OCF - CapEx)`
       : `- Price / OCF per share: ${m.priceToOcf} (OCF used as FCF proxy, no CapEx data)`;
 
-  return `Computed valuation metrics (as of ${m.asOfDate}, price $${m.latestPrice}):
-- Current PE (FY${m.latestFiscalYear} diluted EPS): ${m.pe.current}
+  const peLines =
+    m.pe.current != null
+      ? `- Current PE (FY${m.latestFiscalYear} diluted EPS): ${m.pe.current}
 - Historical PE range over ${m.pe.sampleDays} weekly samples: min ${m.pe.min} / median ${m.pe.median} / max ${m.pe.max}
-- Current PE percentile within history: ${m.pe.percentile}% (lower = cheaper vs own history)
+- Current PE percentile within history: ${m.pe.percentile}% (lower = cheaper vs own history)`
+      : `- PE: N/A (no fiscal year with positive diluted EPS in available financials — do not interpret or invent a PE figure)`;
+
+  return `Computed valuation metrics (as of ${m.asOfDate}, price $${m.latestPrice}):
+${peLines}
 ${cashFlowLine}
 - Revenue CAGR (${m.fundamentals[0]?.year}-${m.latestFiscalYear}): ${m.revenueCagrPct}%
 - Net income CAGR: ${m.netIncomeCagrPct}%
@@ -173,8 +179,19 @@ async function main() {
     }
 
     const metrics = await computeValuationMetrics({ entityId: company.id, ticker: company.ticker });
-    if (!metrics || metrics.pe.current == null) {
-      console.log("  SKIP: insufficient data (need FY financials with EPS + stock prices)");
+    // pe.current is null for any company with no positive-EPS fiscal year
+    // (loss-making growth/spinoff/turnaround names are a normal subject on a
+    // value-investing platform, not an edge case) — priceToOcf/priceToFcf/
+    // revenueCagrPct are computed independent of EPS sign, so gate on having
+    // at least one usable valuation signal rather than requiring PE alone.
+    const hasUsableMetric =
+      metrics != null &&
+      (metrics.pe.current != null ||
+        metrics.priceToOcf != null ||
+        metrics.priceToFcf != null ||
+        metrics.revenueCagrPct != null);
+    if (!hasUsableMetric) {
+      console.log("  SKIP: insufficient data (need FY financials + stock prices)");
       continue;
     }
 

@@ -21,6 +21,13 @@
 - Checkpoint：按 ticker 存到 `.cache/onboard-company/<TICKER>.json`，记录每步验证通过的完成时间；重跑默认跳过已完成步骤，某一步验证失败会在该步停止，修好后重跑同一条命令即可从断点续跑。
 - 2026-07-17 端到端验证：`--ticker ODFL --from 2024 --to 2024 --skip-price --skip-generation` 从零创建 Entity，10 条 `Financial` + 22 个 `FilingSection` 写入，R2 归档确认，checkpoint 断点续跑验证通过（生产库真实数据，非测试库）。
 
+批量清理"待完善"库存（DB 里 Financial 行数为 0 的公司桩，即 `/company` 页面分组里的待完善项）：
+
+- 文件：[onboard-pending-companies.ts](/Users/rafael/R129/buffett-tribe/scripts/onboard-pending-companies.ts)
+- 命令：`npm run onboard:pending -- --dry-run`（只列清单）/ `npm run onboard:pending -- --limit N`（跑前 N 个，按 `createdAt` 升序）
+- 作用：全库扫描待完善公司（与 `/company` 页面同一判定：`Financial` 行数为 0），逐个调用 `onboard:company`。单个 ticker 失败会被捕获并记入汇总，不中断整批——同一容错逻辑封装在 [lib/onboard-batch-runner.ts](/Users/rafael/R129/buffett-tribe/scripts/lib/onboard-batch-runner.ts)，`onboard-alpha-investor.ts --onboard-holdings` 的循环也复用它。
+- 非断点续跑：每次运行都重新查询当前待完善列表，失败的 ticker 因为没有 `Financial` 行会自然出现在下一次的清单里。
+
 ## 01. 13F 导入主入口
 
 - 文件：[pipeline-13f.ts](/Users/rafael/R129/buffett-tribe/scripts/pipeline-13f.ts)
@@ -297,7 +304,7 @@ python3 -m venv .venv
 
 说明：
 
-- 脚本会默认写入 checkpoint，成功的 ticker 下次会自动跳过。
+- 脚本会默认写入 checkpoint，成功的 ticker 在 20 小时内重跑会自动跳过（用于同批次崩溃后重跑不必重下已完成的 ticker）——checkpoint 超过 20 小时视为过期，即使参数签名相同也会重新检查。这个过期窗口是必需的：`import-company-stock-prices-yf.ts` 的 `--start` 是从当前 `StockPrice` 最大日期反推的，一旦某个 ticker 被跳过，它自己的最大日期就不会前进，下一次（哪怕是一周后的定时任务）算出的签名会完全相同——没有过期窗口的话，一个 ticker 一旦被跳过一次就会永久冻结在那个日期，每周的 cron 都会误判"已是最新"而继续跳过（2026-08-30 在美股周更 cron 上实测发现，已修复）。
 - 如需忽略 checkpoint 重新跑一遍，追加 `--fresh`。
 - 如需遇到单个 ticker 失败就立刻停止，追加 `--fail-fast`。
 

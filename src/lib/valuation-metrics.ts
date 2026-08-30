@@ -227,6 +227,9 @@ export async function computeValuationMetrics(params: {
 /**
  * Scenario math: implied price after N years = EPS * (1+g)^N * exitPE.
  * Annualized return vs current price. Dividends excluded (noted in UI).
+ * Nulls out for non-positive EPS — the formula's sign only makes sense off a
+ * positive earnings base (a negative EPS would compound into a negative
+ * "implied price", which is nonsensical for a stock).
  */
 export function computeScenarios(params: {
   latestEps: number | null;
@@ -237,6 +240,7 @@ export function computeScenarios(params: {
   return params.scenarios.map((s) => {
     if (
       params.latestEps == null ||
+      params.latestEps <= 0 ||
       params.latestPrice == null ||
       params.latestPrice <= 0 ||
       !Number.isFinite(s.growthPct) ||

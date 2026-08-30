@@ -36,8 +36,8 @@ if [[ "$SKIP_INSTALL" == false ]]; then
   echo "→ Generating Prisma client ..."
   ssh "$REMOTE" "cd ${REMOTE_DIR} && npx prisma generate"
 
-  echo "→ Ensuring python venv + yfinance ..."
-  ssh "$REMOTE" "cd ${REMOTE_DIR} && ( [ -x .venv/bin/python ] || python3 -m venv .venv ) && .venv/bin/pip install -q yfinance"
+  echo "→ Ensuring python venv + yfinance + edgartools ..."
+  ssh "$REMOTE" "cd ${REMOTE_DIR} && ( [ -x .venv/bin/python ] || python3 -m venv .venv ) && .venv/bin/pip install -q yfinance -r requirements-edgartools.txt"
 fi
 
 echo "→ Making cron wrapper scripts executable ..."
