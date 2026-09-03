@@ -70,63 +70,70 @@ export function PortfolioPanel() {
       defaultOpen
       align="right"
       action={
-        <button type="button" className="agent-workspace-new-btn" onClick={() => setAdding(true)} title="添加持仓">
-          + 添加
+        <button
+          type="button"
+          className="agent-workspace-new-btn"
+          onClick={() => setAdding((prev) => !prev)}
+          title={adding ? "取消" : "添加持仓"}
+        >
+          {adding ? "取消" : "+ 添加"}
         </button>
       }
     >
       <div className="agent-portfolio">
         {adding && <PortfolioAddForm onAdd={addHolding} onDone={() => setAdding(false)} />}
 
-        {loading ? (
-          <p className="agent-workspace-empty">加载中…</p>
-        ) : holdings.length === 0 && !adding ? (
-          <p className="agent-workspace-empty">
-            还没有持仓，点击&ldquo;+ 添加&rdquo;录入你的股票、份额和成本。
+      {loading ? (
+        <p className="agent-workspace-empty">加载中…</p>
+      ) : holdings.length === 0 && !adding ? (
+        <div className="agent-workspace-empty-card">
+          <p className="agent-workspace-empty-text">
+            还没有录入持仓，点击上方「+ 添加持仓」录入你的标的、份额与成本。
           </p>
-        ) : (
-          marketGroups.map((group) => {
-            const symbol = currencySymbol(group.currency);
-            const hasPriced = group.pricedValue > 0 || group.pricedCost > 0;
-            const gain = group.pricedValue - group.pricedCost;
-            const gainPct = group.pricedCost > 0 ? (gain / group.pricedCost) * 100 : null;
-            return (
-              <div key={group.currency} className="agent-portfolio-market-group">
-                <div className="agent-portfolio-summary">
-                  <div className="agent-portfolio-summary-head">
-                    <span className="agent-portfolio-market-tag">{group.marketLabel}</span>
-                    <span className="agent-portfolio-summary-value">
-                      {hasPriced ? `${symbol}${formatMoney(group.pricedValue)}` : "—"}
-                    </span>
-                  </div>
-                  {hasPriced && gainPct != null && (
-                    <div className={`agent-portfolio-gain ${gain >= 0 ? "is-up" : "is-down"}`}>
-                      {gain >= 0 ? "+" : ""}
-                      {symbol}
-                      {formatMoney(gain)} ({gain >= 0 ? "+" : ""}
-                      {gainPct.toFixed(1)}%)
-                    </div>
-                  )}
-                  <div className="agent-portfolio-summary-sub">
-                    总成本 {symbol}
-                    {formatMoney(group.totalCost)}
-                    {group.unpricedCount > 0 && ` · ${group.unpricedCount} 个持仓暂无价格数据`}
-                  </div>
+        </div>
+      ) : (
+        marketGroups.map((group) => {
+          const symbol = currencySymbol(group.currency);
+          const hasPriced = group.pricedValue > 0 || group.pricedCost > 0;
+          const gain = group.pricedValue - group.pricedCost;
+          const gainPct = group.pricedCost > 0 ? (gain / group.pricedCost) * 100 : null;
+          return (
+            <div key={group.currency} className="agent-portfolio-market-group">
+              <div className="agent-portfolio-summary">
+                <div className="agent-portfolio-summary-head">
+                  <span className="agent-portfolio-market-tag">{group.marketLabel}</span>
+                  <span className="agent-portfolio-summary-value">
+                    {hasPriced ? `${symbol}${formatMoney(group.pricedValue)}` : "—"}
+                  </span>
                 </div>
-                <ul className="agent-portfolio-list">
-                  {group.holdings.map((h) => (
-                    <PortfolioHoldingRow
-                      key={h.id}
-                      holding={h}
-                      onUpdate={(patch) => updateHolding(h.id, patch)}
-                      onDelete={() => void deleteHolding(h.id)}
-                    />
-                  ))}
-                </ul>
+                {hasPriced && gainPct != null && (
+                  <div className={`agent-portfolio-gain ${gain >= 0 ? "is-up" : "is-down"}`}>
+                    {gain >= 0 ? "+" : ""}
+                    {symbol}
+                    {formatMoney(gain)} ({gain >= 0 ? "+" : ""}
+                    {gainPct.toFixed(1)}%)
+                  </div>
+                )}
+                <div className="agent-portfolio-summary-sub">
+                  总成本 {symbol}
+                  {formatMoney(group.totalCost)}
+                  {group.unpricedCount > 0 && ` · ${group.unpricedCount} 个持仓暂无价格数据`}
+                </div>
               </div>
-            );
-          })
-        )}
+              <ul className="agent-portfolio-list">
+                {group.holdings.map((h) => (
+                  <PortfolioHoldingRow
+                    key={h.id}
+                    holding={h}
+                    onUpdate={(patch) => updateHolding(h.id, patch)}
+                    onDelete={() => void deleteHolding(h.id)}
+                  />
+                ))}
+              </ul>
+            </div>
+          );
+        })
+      )}
       </div>
     </CollapsibleSection>
   );

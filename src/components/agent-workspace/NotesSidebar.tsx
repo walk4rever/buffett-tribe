@@ -1,5 +1,6 @@
 "use client";
 
+import { FileText } from "lucide-react";
 import type { Note } from "@/hooks/useNotes";
 
 function stripImages(line: string): string {
@@ -25,7 +26,12 @@ interface NotesSidebarProps {
 export function NotesSidebar({ notes, activeNoteId, onOpenNote }: NotesSidebarProps) {
   if (notes.length === 0) {
     return (
-      <p className="agent-workspace-empty">还没有笔记，点击&ldquo;+ 新建&rdquo;开始，或在对话回复下方点&ldquo;存为笔记&rdquo;。</p>
+      <div className="agent-workspace-empty-card">
+        <FileText size={24} className="agent-workspace-empty-icon" />
+        <p className="agent-workspace-empty-text">
+          暂无投研笔记。可点击上方「+ 新建」或在 AI 对话回复底部点击「存为笔记」随时沉淀。
+        </p>
+      </div>
     );
   }
 
@@ -35,15 +41,24 @@ export function NotesSidebar({ notes, activeNoteId, onOpenNote }: NotesSidebarPr
         <li key={note.id}>
           <button
             type="button"
-            className={`agent-workspace-note-item${note.id === activeNoteId ? " is-active" : ""}`}
+            className={`agent-workspace-note-item ${note.id === activeNoteId ? "is-active" : ""}`}
             onClick={() => onOpenNote(note.id)}
           >
-            <span className="agent-workspace-note-title">{note.title?.trim() || "无标题笔记"}</span>
-            <span className="agent-workspace-note-snippet">{summarize(note.content) || "空笔记"}</span>
-            <span className="agent-workspace-note-date">{formatUpdatedAt(note.updatedAt)}</span>
+            <div className="agent-workspace-note-head">
+              <span className="agent-workspace-note-title">
+                {note.title?.trim() || "无标题笔记"}
+              </span>
+              <span className="agent-workspace-note-date">
+                {formatUpdatedAt(note.updatedAt)}
+              </span>
+            </div>
+            <span className="agent-workspace-note-snippet">
+              {summarize(note.content) || "暂无内容"}
+            </span>
           </button>
         </li>
       ))}
     </ul>
   );
 }
+

@@ -12,14 +12,24 @@ interface WorkspaceSidebarProps {
   onCreateNote: () => void;
 }
 
-export function WorkspaceSidebar({ notes, activeNoteId, onOpenNote, onCreateNote }: WorkspaceSidebarProps) {
+export function WorkspaceSidebar({
+  notes,
+  activeNoteId,
+  onOpenNote,
+  onCreateNote,
+}: WorkspaceSidebarProps) {
   return (
     <div className="agent-workspace-sections">
       <CollapsibleSection
         title="笔记本"
         defaultOpen
         action={
-          <button type="button" className="agent-workspace-new-btn" onClick={onCreateNote} title="新建笔记">
+          <button
+            type="button"
+            className="agent-workspace-new-btn"
+            onClick={onCreateNote}
+            title="新建笔记"
+          >
             + 新建
           </button>
         }

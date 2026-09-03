@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import type { ClipboardEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Eye, Edit3, Trash2, X, Check } from "lucide-react";
 import { mdComponents } from "@/lib/markdown-components";
 import { CopyMarkdownButton } from "@/components/CopyMarkdownButton";
 import { fileToImageAttachment, isSupportedImageFile } from "@/lib/downscale-image";
@@ -20,28 +21,6 @@ interface NoteEditorProps {
 
 type ViewMode = "edit" | "preview";
 
-function ViewModeToggle({ mode, onToggle }: { mode: ViewMode; onToggle: () => void }) {
-  return (
-    <button
-      type="button"
-      className="msg-copy-btn"
-      title={mode === "edit" ? "切换到预览" : "切换到编辑"}
-      onClick={onToggle}
-    >
-      {mode === "edit" ? (
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <path d="M1 8s2.5-4.5 7-4.5S15 8 15 8s-2.5 4.5-7 4.5S1 8 1 8Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-          <circle cx="8" cy="8" r="1.8" stroke="currentColor" strokeWidth="1.2"/>
-        </svg>
-      ) : (
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <path d="M2 13.5 2.6 11l7.9-7.9a1.4 1.4 0 0 1 2 0l.4.4a1.4 1.4 0 0 1 0 2L5 13.4 2 13.5Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-        </svg>
-      )}
-    </button>
-  );
-}
-
 async function uploadNoteImage(attachment: ImageAttachment): Promise<string | null> {
   const res = await fetch("/api/notes/images", {
     method: "POST",
@@ -57,10 +36,6 @@ export function NoteEditor({ title, content, onChangeTitle, onChangeContent, onC
   const [mode, setMode] = useState<ViewMode>("preview");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Pastes an image straight into R2 (same pipeline as chat: downscaled client-side,
-  // see src/lib/downscale-image.ts) and inserts a markdown image link at the cursor —
-  // notes have no separate "pending attachment" concept like chat messages, so the
-  // link goes straight into the content string that already autosaves.
   async function handlePaste(e: ClipboardEvent<HTMLTextAreaElement>) {
     const files = Array.from(e.clipboardData.items)
       .filter((item) => item.kind === "file")
@@ -83,7 +58,7 @@ export function NoteEditor({ title, content, onChangeTitle, onChangeContent, onC
         insertPos += insertion.length;
         onChangeContent(working);
       } catch {
-        // Skip files that fail to decode/upload.
+        // Skip files that fail to decode/upload
       }
     }
 
@@ -96,49 +71,100 @@ export function NoteEditor({ title, content, onChangeTitle, onChangeContent, onC
   return (
     <div className="agent-note-editor">
       <div className="agent-note-inner">
-        <div className="agent-workspace-panel-head">
-          <input
-            className="agent-note-title-input"
-            value={title}
-            onChange={(e) => onChangeTitle(e.target.value)}
-            placeholder="无标题笔记"
-          />
-          <div className="msg-actions">
-            <ViewModeToggle mode={mode} onToggle={() => setMode((m) => (m === "edit" ? "preview" : "edit"))} />
+        {/* Row 1: Note Action Bar */}
+        <div className="agent-note-top-bar">
+          <div className="agent-note-top-left">
+            <span className="agent-note-autosave-tag" title="更改自动保存至数据库">
+              <Check size={11} />
+              <span>已自动保存</span>
+            </span>
+          </div>
+
+          <div className="agent-note-actions">
+            {/* View Mode Segmented Control */}
+            <div className="agent-note-mode-toggle">
+              <button
+                type="button"
+                className={`agent-note-mode-btn ${mode === "edit" ? "is-active" : ""}`}
+                onClick={() => setMode("edit")}
+                title="编辑模式"
+              >
+                <Edit3 size={13} />
+                <span>编辑</span>
+              </button>
+              <button
+                type="button"
+                className={`agent-note-mode-btn ${mode === "preview" ? "is-active" : ""}`}
+                onClick={() => setMode("preview")}
+                title="预览模式"
+              >
+                <Eye size={13} />
+                <span>预览</span>
+              </button>
+            </div>
+
             <CopyMarkdownButton text={content} />
-            <button type="button" className="msg-copy-btn" title="删除" onClick={() => {
-              if (confirm("删除这条笔记？")) onDelete();
-            }}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M3.5 4.5h9M6.5 4.5V3a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1.5M6 7.5v4M10 7.5v4M4.5 4.5l.6 8a1 1 0 0 0 1 .9h3.8a1 1 0 0 0 1-.9l.6-8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+
+            <button
+              type="button"
+              className="msg-copy-btn agent-note-delete-btn"
+              title="删除笔记"
+              onClick={() => {
+                if (confirm("确定删除这条笔记？")) onDelete();
+              }}
+            >
+              <Trash2 size={13} />
             </button>
-            <button type="button" className="msg-copy-btn" title="关闭" onClick={onClose}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-              </svg>
+
+            <button
+              type="button"
+              className="msg-copy-btn agent-note-close-btn"
+              title="关闭笔记"
+              onClick={onClose}
+            >
+              <X size={14} />
             </button>
           </div>
         </div>
 
-        {mode === "edit" ? (
-          <textarea
-            ref={textareaRef}
-            className="agent-note-textarea"
-            value={content}
-            onChange={(e) => onChangeContent(e.target.value)}
-            onPaste={handlePaste}
-            placeholder="写点什么…支持 Markdown，可直接粘贴图片"
-            autoFocus
+        {/* Row 2: Full-width Title Input */}
+        <div className="agent-note-title-row">
+          <input
+            className="agent-note-title-input"
+            value={title}
+            onChange={(e) => onChangeTitle(e.target.value)}
+            placeholder="无标题投资笔记…"
           />
-        ) : (
-          <div className="agent-note-preview msg-markdown">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-              {content || "*空*"}
-            </ReactMarkdown>
-          </div>
-        )}
+        </div>
+
+        {/* Note Body */}
+        <div className="agent-note-body">
+          {mode === "edit" ? (
+            <textarea
+              ref={textareaRef}
+              className="agent-note-textarea"
+              value={content}
+              onChange={(e) => onChangeContent(e.target.value)}
+              onPaste={handlePaste}
+              placeholder="记录你的投资逻辑、商业模式分析或大师观点引用…\n支持 Markdown，可直接粘贴图片或截图"
+              autoFocus
+            />
+          ) : (
+            <div className="agent-note-preview msg-markdown">
+              {content.trim() ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+                  {content}
+                </ReactMarkdown>
+              ) : (
+                <div className="agent-note-empty-preview">
+                  <p>笔记暂无内容，切换到编辑模式输入你的投研笔记。</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
