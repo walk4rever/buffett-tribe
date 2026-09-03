@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { validateImageAttachments } from "@/lib/image-attachment";
 import { agentContextSchema, deriveContextKey } from "@/lib/agent-context";
 import prisma from "@/lib/prisma";
+import { currentPeriod, ensureFreeGrant, getBalance, recordSpend, withinHourlyLimit } from "@/lib/credits";
 
 export const maxDuration = 90;
 
@@ -15,6 +16,16 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) {
     return NextResponse.json({ error: "AI 对话需要登录后使用。" }, { status: 401 });
+  }
+
+  if (!(await withinHourlyLimit(session.user.id))) {
+    return NextResponse.json({ error: "请求过于频繁，请稍后再试。" }, { status: 429 });
+  }
+
+  const period = currentPeriod();
+  await ensureFreeGrant(session.user.id, period);
+  if ((await getBalance(session.user.id, period)) <= 0) {
+    return NextResponse.json({ error: "本月额度已用完，下月重置。" }, { status: 429 });
   }
 
   if (!GATEWAY_URL || !AGENT_SECRET) {
@@ -84,6 +95,8 @@ export async function POST(req: Request) {
     const message = typeof parsed?.error === "string" ? parsed.error : raw || `Gateway error ${upstream.status}`;
     return NextResponse.json({ error: message }, { status: upstream.status });
   }
+
+  await recordSpend(session.user.id, undefined, period);
 
   return new Response(upstream.body, {
     headers: {

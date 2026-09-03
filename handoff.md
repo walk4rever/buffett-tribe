@@ -277,3 +277,19 @@ npm run onboard:pending -- --limit 50         # 建议继续按 50 一批，别�
 **已知损失（可恢复，但需要回 Vercel 操作）**：旧域名被删而非 301/308，导致三类历史链接永久失效——① 已发出去的分享图里的二维码（`ShareCard.tsx` / `/api/share/preview` 用 `SITE_ORIGIN` 现场生成，位图一旦渲染就写死了）；② 之前群发的公告邮件里的全部链接；③ `SKILL.md` 里旧的 `/api/tools` 地址（若有外部消费方）。Aliyun 的 DNS 记录仍在，**在 Vercel 重新 Add `buffett.air7.fun` 并设为 308 → `vt.air7.fun` 即可全部恢复**。
 
 **遗留缺口（未处理）**：`metadataBase` 仍未设置（OG/twitter 图走相对解析）；全站没有 `sitemap.ts` / `robots.ts`。两者都是既有问题，不是本次迁移引入的。另：`scripts/send-announcement.ts:20` 的发件地址是 `buffet@air7.fun`（一个 t），而 `.env.local` 的 `RESEND_FROM` 是 `buffett@air7.fun`（两个 t），疑似笔误，未动。
+
+**用户拍板（2026-08-30）：不设 308 重定向。** 已发布分享图里的二维码、之前群发公告邮件里的链接维持失效状态，不再挽回。Aliyun 的 DNS 记录理论上仍可用于恢复，但这是明确决定，后续会话不要再提醒或重提此项。
+
+## 追加 — 删除 `skills/buffett-tribe` 对外 REST skill（2026-08-30）
+
+用户拍板：这个 skill（供外部 Claude 用户通过 `curl` 调用 `/api/tools/search`、`/api/tools/document` 查询巴菲特信件语料）"还没想清楚"，整个删除，不保留降级版本。
+
+**排查过程中发现的真实 bug**（促成了这次删除，而不只是改名同步）：`skills/buffett-tribe/SKILL.md` 文档着完整的第三个工具 `graph`（`/api/tools/graph`，带参数表、响应格式、workflow 建议、两条 curl 示例），但 `bd88b065`（"retire Neo4j graph layer"）早就把这套图谱层和对应路由删掉了，`skills/` 目录的文档没有同步删——任何照着这份文档调 `graph` 端点的外部使用者会拿到 404。这个 skill 从未注册到本机 `~/.claude/skills`（不是内部在用），传播渠道只有这个仓库本身被 clone/引用。
+
+**删除范围**：
+- `skills/buffett-tribe/SKILL.md`（连带空出的 `skills/buffett-tribe/` 目录；`skills/` 目录本身保留——底下还有一个跟这次无关的 `supabase-postgres-best-practices` symlink）
+- `src/app/api/tools/search/route.ts`、`src/app/api/tools/document/route.ts`——这两个 REST 路由是专门为这个 skill 存在的，站内没有任何页面引用它们（`grep` 确认过）
+
+**确认过不能删的**：`src/lib/mcp-tools.ts` 的 `toolSearch`/`toolGetDocument` 两个函数**必须保留**——`/api/mcp/route.ts`（对外 MCP 协议 server 的 `search`/`get_document` 工具）复用的是同一份实现，这是另一套独立且在 PRODUCT.md 里文档化的对外集成，跟被删的 REST skill 是两回事，不能连带删。已用 `grep` 确认 `mcp-tools.ts` 现在只被 `/api/mcp/route.ts` 一处引用。
+
+**内容范围判断**：清理前顺手核实过，这个 skill 的知识库范围本身没有过时——`Source` 表只有 `shareholder`（61 篇，1965–2025）和 `partnership`（33 篇，1958–1970），全是巴菲特本人的信，"Warren Buffett knowledge base" 这个定位描述是准确的，不是因为改名或范围过窄才删，纯粹是产品形态"还没想清楚"。

@@ -179,7 +179,7 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 
 ### 用户体系与访问控制（2026-08-21 确认）
 
-站点当前对外**完全免费**。此前 backlog 里的商业化条目（LemonSqueezy 订阅集成、免费 vs 会员次数限制、免费到付费转化链路验证）已从计划移除——会员分级/收费是否要做、怎么做，留待未来单独设计，不在当前范围内。
+站点内容对外**完全免费**，但登录用户的 `/agent` + AI 解读用量受配额限制（2026-09-03 实现，见下方「用户配额与 /admin 后台」小节）；此前 backlog 里的商业化条目（LemonSqueezy 订阅集成等）当时被移除是因为方向未定，**付费本身仍未排期**（配额只是用量限制，不是收费）。
 
 现有的登录/未登录区别是纯**功能门禁**，与付费无关：
 
@@ -218,6 +218,38 @@ NextAuth（Credentials Provider，`src/lib/auth.ts`）是现有唯一认证实�
 **同日追加，Portfolio 改成按市场分组展示（2026-08-29）**：用户看完货币归一化那版后连续给了几轮排版反馈——汇总数字字号还是偏大（1.3rem→1.05rem→再降到 0.92rem）、CNY/HKD 前面有符号但 USD 没有不统一（干脆全部统一显示符号 `$`/`¥`/`HK$`，原本加在数字后面的 `USD`/`CNY`/`HKD` 文字标签因此变得多余，删掉；ticker 和公司名之间那个货币小标签同理删掉；成本和现价也都补上符号）、最后提出结构性的一条——**汇总不应该是"三个货币的小计都堆在最上面，下面接一个不分市场的长列表"，而应该是"US 汇总 + 紧跟着的美股明细，然后 CN 汇总 + A股明细，再 HK 汇总 + 港股明细"**，三段之间用分割线隔开，每段汇总数字前面加 `US`/`CN`/`HK` 小标签。`PortfolioPanel.tsx` 的 `summarizeByCurrency()` 改名 `groupByMarket()`，按固定顺序 `["USD","CNY","HKD"]`（不是持仓的插入顺序——不然新加一笔 HK 股票会让"US"板块跳到中间去）分组，每组自带汇总头 + 自己的 `<ul>` 持仓列表，`.agent-portfolio-market-group` 之间的分界线在两个层级各有一条：市场大类之间（`.agent-portfolio-market-group` 的 `border-bottom`）、汇总头和它自己的明细列表之间（`.agent-portfolio-summary` 的 `border-bottom`，最初做分组时漏加了，用户追问后补上）。`currencyPrefix()`/`CURRENCY_PREFIX`（USD 无符号的站内旧惯例）在 `src/lib/currency.ts` 里被整个换成新的 `currencySymbol()`（USD 固定映射到 `$`）——旧的那个只有 Portfolio 一处调用者，直接原地替换掉，没有留并行的两套。**验证**：`tsc`/`lint`/`build` 全绿；Playwright 用临时账号故意按 HK→CN→US 的乱序添加持仓，确认展示顺序仍固定成 US→CN→HK（不受添加顺序影响），截图确认分割线、字号、货币符号均符合预期，测试账号已清理。
 
 **仍待设计（未实现）**：关注公司列表目前只有右侧手风琴里的占位文案（同资料库），真正的关注/取关交互、列表展示、跳转研究页都没做；资料库分区同样只有占位文案，真正的文件上传/文本抽取/context 注入能力都没做。Portfolio 汇总不做跨币种换算是当前的刻意设计，不是缺口——没有汇率源之前不打算加。完整讨论记录、一个仍未拍板的架构分叉（Repository 纯文本抽取 vs GBrain 语义检索）见 `TODO.md` P1「Agent 投研笔记本」。
+
+### 用户配额与 /admin 后台（2026-09-03 设计定案并实现）
+
+**实现状态**：配额闭环、`role`、`/dashboard`、`/admin` 骨架 + `/admin/users`（本节下方描述的范围）已于 2026-09-03 当天实现并用 Playwright 临时账号验证通过（`tsc`/`lint`/`build`/`npm test` 全绿）。`/admin` 的管道可观测性内容（onboarding 状态、L4 完整性检查展示、LLM 分步重生成触发）不在本次范围，仍是构想，见 `TODO.md` P0 ⑪。
+
+**同日追加，导航 + 控制台账号管理**：上线后用户发现 `/admin/users` 里除自己外全员余额显示 0——这是设计好的懒惰发放（谁用谁领，同 ai-dive），但用户要求改成上线时批量预发放，于是跑了一个一次性脚本给当时已存在的全部用户直接插入本月 1000 额度的 `grant_free` 记录（复用 `ensureFreeGrant` 的幂等保证，不会和未来新用户/新月份的懒惰发放冲突）。同时把顶部导航 `SiteNav.tsx` 右上角从"邮箱 + 下拉菜单（含控制台/退出登录两个选项）"简化成跟未登录态"登录"对称的纯链接——未登录显示"登录"，已登录直接显示"控制台"，点击直达 `/dashboard`，不再有下拉；连带清理了变成孤儿代码的 `.user-menu*` 系列 CSS（下拉菜单相关，非新增，属于本次改动产生的孤儿）。退出登录入口原本挂在这个下拉菜单里，现搬到 `/dashboard` 页头。用户确认 `useSession()` 的响应式更新符合预期（登录成功后导航不需要整页刷新就能从"登录"变成"控制台"，已用临时账号验证）。**顺带补齐控制台账号管理**：用户提出 dashboard 内容太空，要求加昵称改名/改密码——两者都实现了（`POST /api/auth/profile`、`POST /api/auth/change-password`，后者要求验证当前密码，`bcrypt` 复用 `auth.ts`/`reset-password` 已有的哈希方式）；"我的订单"明确排除，因为付费/订单系统本期未做，没有真实数据可展示（用户确认"订单"就是指真实付费订单，不是配额流水）。三处改动均用临时账号 Playwright 验证：改名/改密码写入生效、用新密码能重新登录、退出登录后导航正确变回"登录"；测试账号已清理。
+
+设计过程：先研究了姊妹项目 `~/R129/ai-dive`（同一开发者的另一站点，已上线 `/admin` 后台 + `role` 权限 + 配额/信用点 + 支付宝/epay 收单）作为参考实现，逐项判断哪些可以照搬、哪些是 ai-dive 自身的缺陷不能照搬、哪些内容对不上 buffett-tribe 的实际需求要重新设计。完整讨论记录见会话 `session_01QycNfrFgxaGAgDkjL2Ptcg`。
+
+**配额（本期要做）**：
+- 计量范围是 `/agent` 主对话 **加上**四处「AI 解读」入口（`FilingAgentPanel`/`CompanyAgentDialog`/`MasterAgentDialog`/`InsightAgentPanel`）——两者本来就走同一个后端收口点 `POST /api/pi`（`src/app/api/pi/route.ts`，靠 `contextKey` 区分场景），计量逻辑只需要加在这一处，不用散落到各个面板组件里。
+- 费率**统一**，不区分 `/agent` 和四种解读面板（尽管 `search_wisdom` 实际调用 embedding API 有真实成本、纯对话没有——已知这个简化会让计量和真实成本不完全对应，用户明确要求先按同一费率做，不做差异化定价）。
+- 月度免费额度：**1000/月**，直接照抄 ai-dive 的 `FREE_MONTHLY_CREDITS` 数值（ai-dive 自己代码注释承认这个数字是"deliberately generous until real per-turn cost data is in"的拍脑袋值，buffett-tribe 目前也没有更准的数据，先用同一个数字起步，不做独立测算）。
+- 除月度总额度外，另加一层小时级滥用限速（独立于月度余额，防止短时间内刷爆，对应 ai-dive 的 `HOURLY_SPEND_LIMIT` 机制）。
+- 额度用尽是**硬阻断**（`/api/pi` 前置检查余额，为 0 直接拒绝，不放行后补记账）——不是"先用后付费/超额计费"。文案不能暗示"升级/购买更多额度"（因为当前没有付费产品可卖，写"立即升级"这类文案是误导），应类似"本月额度已用完，下月重置"。
+- 数据模型：新增 Prisma model（暂定名 `CreditLedger`），append-only（只 insert 不 update，余额 = `SUM(delta)`），照抄 ai-dive `ai_pulse_credit_ledger` 的设计——包括预留 `period IS NULL`（永不过期）的行给未来的付费充值用，即使付费本期不做，表结构也不用等付费上线时再改一次。幂等发放不能用 Prisma `@@unique([userId, reason, period])`（那是全表唯一约束，`spend_agent` 这种一个月内会插很多行的 reason 会被第一条之后的所有扣费全部拒写，直接打断计费）——ai-dive 实际是**部分唯一索引** `CREATE UNIQUE INDEX ... ON (user_id, reason, period) WHERE reason IN ('grant_free','grant_plan')`，只约束"发放"类 reason，`spend_agent` 不受约束。Prisma schema DSL 不支持声明部分索引，要照搬本文档「Commands」里已有的 shadow DB 手工提取 workaround，在迁移里手写这条 `CREATE UNIQUE INDEX ... WHERE ...`。顺带留意 ai-dive 已经把 `grant_plan`（未来付费套餐发放）也纳入这个部分索引——buffett-tribe 即使本期不做付费，新建索引时也应该把这个 reason 值一并纳入，避免以后加付费功能时还要再改一次索引。
+- 起步策略：功能上线那一刻，所有已登录用户（不分新老）统一从当前自然月开始拿 1000 额度，不追溯、不区别对待。
+- **admin 不豁免配额**：`role === 'admin'` 的账号和普通用户走同一套限额检查，不特殊放行（ai-dive 自己 `/api/agent/route.ts` 里也是如此——`withinHourlyLimit`/`getBalance` 检查不看 role）。原因不是"图省事"，是刻意选择：管理员（当前就是站长本人）需要额度不够用时，走的应该是 `/admin` 后台里未来要做的「手动调整用户额度」功能（往 `CreditLedger` insert 一条正 `delta`、reason 用区别于自动发放的独立值如 `grant_admin_adjust`，不落进上面那条部分唯一索引的 `WHERE reason IN (...)` 范围内，因为这是一次性人工操作、不需要按 period 去重幂等），而不是在计量逻辑里开一个"role 特权"的后门分支——这样将来"给某个用户额外发放额度"这个操作，管理员自己用和支持普通用户用是同一条路径，不用维护两套。
+
+**`role` 与 `/admin` 后台（本期要做）**：
+- `User` 新增 `role` 字段（二值 `'user' | 'admin'`，对应 ai-dive `CHECK (role IN ('user','admin'))`），不做细粒度 RBAC——buffett-tribe 是单人运营项目（`CLAUDE.md` 释出流程明确写"no PR flow for solo iteration"），提前做多角色权限属于过度设计。
+- 第一个管理员账号手工指定：`2451269@qq.com` → 直接改库 `role = 'admin'`（没有 UI 之前只能这样，不需要额外的引导机制）。
+- 鉴权模式抄 ai-dive：一个路由组 `(admin)/layout.tsx` 统一做 session+role 校验、包一层共享 Shell（导航+页头），子页面不用各自重复鉴权/布局代码；`/api/admin/*` 复用同一个鉴权函数，不能像 ai-dive 那样在 layout 和 API 各写一份等价但独立的判断逻辑（那是它的真实缺陷，不是可以照抄的设计）。
+- **另一个 ai-dive 缺陷要在这里避免**：ai-dive 的 `role` 只在 NextAuth JWT 签发时写入（`session: { strategy: 'jwt' }`），之后就不再刷新，撤销/授予管理员权限要等这个人的 session 过期（默认 30 天）才生效——buffett-tribe 的 role/配额校验要在每次访问 `/admin` 或消费配额时查库，不能信任 JWT 里的旧值。
+- 页面内容跟 ai-dive 的形状不一样：ai-dive 的 `/admin` 是内容 CRUD（文章/出品/订阅者），buffett-tribe 的 `/admin` 应该是**数据管道的可观测性 + 触发器**——Entity/Filer onboarding 进度（哪些公司还是"待完善"stub、卡在哪一步）、L4 数据完整性检查结果（`check:financial:integrity` 等，含「数据资产清单」里记录的历史遗留缺口如 P0 ⑩ 的 `section_text` 缺失）、`CompanyAnalysis`/`MasterProfile`/`PortfolioInsight` 按步骤单独重跑生成的入口，以及配额上线后的用量统计面板——**含手动给某个用户（含 admin 自己）调整/追加额度的操作**（见上方"admin 不豁免配额"，这是 admin 需要更多额度时唯一的合法路径，不是配额检查里的特权分支）。首页参照 ai-dive 的 `StatLink`/`TrendTile`——用可点击跳转的统计卡片呈现"现在需要处理什么"，不是一个纯导航菜单。
+
+**`/dashboard` 用户控制台（本期要做，此前完全没有这个页面）**：
+- 现状：`PortfolioHolding`/`Note` 这两个用户自有数据模型已经存在，但只在 `/agent` 页面内部的个人工作区侧栏（`PortfolioPanel.tsx`/`NotesSidebar.tsx`）里露出，站内没有任何独立的"我的账号"页面。
+- 内容对齐 ai-dive `/dashboard` 的骨架：配额卡（当月 `CreditLedger` 余额）、账号信息卡（邮箱等）、`role === 'admin'` 时显示跳转 `/admin` 的入口——**暂不做**账单/订单卡（本期没有付费功能，展示一个空的账单卡片会误导用户以为有付费产品）。
+- 明确**不**在这个新页面里重建持仓/笔记的列表或编辑 UI——那套体验已经在 `/agent` workspace 侧栏里，`/dashboard` 顶多放一个跳转链接，不重复造轮子。
+
+**付费（本期不做，留待未来单独排期）**：`付费产品这个项目暂时还没有上，未来再定义`（用户原话）。设计上仍要求 `CreditLedger` 的结构对未来付费充值免改表（见上）；等真正排期时，付款渠道计划照抄 ai-dive 的支付宝 + epay 聚合网关那套 provider 抽象（`getProviderByName(...).verifyCallback()`、`markOrderPaid` 返回 `paid`/`already_paid`/`error` 三态保证 webhook 幂等），美国支线是否需要第二个渠道（如 Stripe）留待那时再定。
 
 ### /idea — 对话研究室（旧版，已下线）
 
@@ -1143,7 +1175,7 @@ Apple HIG 精简风格：
 - 补齐关键事件埋点：`chat_start`、`chat_message`、`source_click`、`annual_report_open`、`price_range_change` 等。
 - PostHog Cloud 中国可达性测试。
 
-> 商业化（LemonSqueezy 订阅集成、免费 vs 会员次数限制、免费到付费转化链路）已于 2026-08-21 从计划移除，全站暂不收费；登录门禁只是功能访问区分，见本文档「用户体系与访问控制」一节。未来若要收费再另行设计排期。
+> 商业化（LemonSqueezy 订阅集成等）已于 2026-08-21 从计划移除，付费本身仍未排期；但 2026-09-03 已定案引入用户配额（免费额度用尽硬阻断，不涉及付费），设计见本文档「用户配额与 /admin 后台」一节，实施状态见 `TODO.md` P0。
 
 #### Post-MVP
 

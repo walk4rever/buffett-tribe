@@ -2,31 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
-import { useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import { BtLogoMark } from "@/components/BtLogoMark";
 import { BRAND_EN } from "@/lib/brand";
 
 export function SiteNav() {
   const { data: session } = useSession();
   const pathname = usePathname();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   function isActive(href: string) {
     return pathname === href || pathname?.startsWith(`${href}/`);
   }
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (!userMenuRef.current) return;
-      if (!userMenuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   return (
     <nav className="home-nav">
@@ -78,24 +64,7 @@ export function SiteNav() {
         </div>
         <div className="home-nav-right">
           {session ? (
-            <div className="user-menu" ref={userMenuRef}>
-              <button
-                type="button"
-                className="user-menu-trigger home-nav-link"
-                onClick={() => setMenuOpen((v) => !v)}
-                aria-expanded={menuOpen}
-                aria-haspopup="menu"
-              >
-                {session.user?.email || session.user?.name || "已登录"}
-              </button>
-              {menuOpen ? (
-                <div className="user-menu-dropdown" role="menu">
-                  <button onClick={() => signOut()} className="user-menu-item user-menu-logout" role="menuitem">
-                    退出登录
-                  </button>
-                </div>
-              ) : null}
-            </div>
+            <Link href="/dashboard" className="home-nav-login">控制台</Link>
           ) : (
             <Link href="/login" className="home-nav-login">登录</Link>
           )}

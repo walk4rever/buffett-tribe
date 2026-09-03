@@ -15,6 +15,7 @@ model User {
   emailVerified DateTime?
   image         String?
   password      String?
+  role          String    @default("user") // "user" | "admin"
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   accounts      Account[]
@@ -22,6 +23,7 @@ model User {
   chatTurns     ChatTurn[]
   notes         Note[]
   portfolioHoldings PortfolioHolding[]
+  creditLedgers CreditLedger[]
 }
 
 model Account {
@@ -209,6 +211,20 @@ model PortfolioHolding {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, updatedAt])
+}
+
+model CreditLedger {
+  id        String   @id @default(cuid())
+  userId    String
+  delta     Int
+  reason    String // "grant_free" | "grant_plan"(未用，预留) | "spend_agent" | "grant_admin_adjust"
+  period    String? // "YYYY-MM"（UTC）；null = 永不过期（人工调额/未来付费充值）
+  refId     String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, period, createdAt])
 }
 
 // ============================================================================
