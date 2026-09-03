@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Pencil, Check, X } from "lucide-react";
 
 export function AccountNameForm({ initialName }: { initialName: string }) {
   const router = useRouter();
@@ -38,9 +39,15 @@ export function AccountNameForm({ initialName }: { initialName: string }) {
   if (!editing) {
     return (
       <div className="dashboard-field-row">
-        <span>{name || "未设置"}</span>
-        <button type="button" className="dashboard-inline-btn" onClick={() => setEditing(true)}>
-          编辑
+        <span className="dashboard-account-val">{name || "未设置昵称"}</span>
+        <button
+          type="button"
+          className="dashboard-inline-action-btn"
+          onClick={() => setEditing(true)}
+          title="修改昵称"
+        >
+          <Pencil size={12} />
+          <span>修改</span>
         </button>
       </div>
     );
@@ -53,21 +60,31 @@ export function AccountNameForm({ initialName }: { initialName: string }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         maxLength={60}
-        className="dashboard-input"
+        placeholder="输入您的昵称"
+        autoFocus
+        className="dashboard-input dashboard-input-inline"
       />
-      <button type="submit" disabled={submitting} className="dashboard-inline-btn">
-        保存
+      <button
+        type="submit"
+        disabled={submitting}
+        className="dashboard-btn-primary dashboard-btn-xs"
+        title="保存"
+      >
+        <Check size={12} />
+        <span>{submitting ? "保存中" : "保存"}</span>
       </button>
       <button
         type="button"
-        className="dashboard-inline-btn dashboard-inline-btn-muted"
+        className="dashboard-btn-ghost dashboard-btn-xs"
         onClick={() => {
           setEditing(false);
           setName(initialName);
           setError(null);
         }}
+        title="取消"
       >
-        取消
+        <X size={12} />
+        <span>取消</span>
       </button>
       {error && <span className="dashboard-field-error">{error}</span>}
     </form>

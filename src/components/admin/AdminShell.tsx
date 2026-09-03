@@ -4,10 +4,25 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import {
+  LayoutDashboard,
+  Users,
+  ArrowLeft,
+  LogOut,
+  User,
+} from "lucide-react";
+import { BtLogoMark } from "@/components/BtLogoMark";
+import { BRAND_EN } from "@/lib/brand";
 
-const NAV_ITEMS: ReadonlyArray<{ href: string; label: string }> = [
-  { href: "/admin", label: "总览" },
-  { href: "/admin/users", label: "用户" },
+interface NavItem {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+}
+
+const NAV_ITEMS: ReadonlyArray<NavItem> = [
+  { href: "/admin", label: "数据总览", icon: LayoutDashboard },
+  { href: "/admin/users", label: "用户与额度", icon: Users },
 ];
 
 function isActive(pathname: string | null, href: string) {
@@ -21,33 +36,58 @@ export function AdminShell({ children }: { children: ReactNode }) {
   return (
     <div className="admin-shell">
       <header className="admin-shell-header">
-        <div>
-          <p className="admin-shell-kicker">Admin</p>
-          <h1>管理后台</h1>
-        </div>
-        <div className="admin-shell-actions">
-          <Link href="/dashboard" className="admin-shell-btn">
-            控制台
-          </Link>
-          <button onClick={() => signOut()} className="admin-shell-btn">
-            退出登录
-          </button>
+        <div className="admin-shell-header-in">
+          <div className="admin-shell-brand-wrap">
+            <Link href="/" className="admin-shell-brand">
+              <BtLogoMark />
+              <span className="admin-shell-brand-text">{BRAND_EN}</span>
+            </Link>
+            <span className="admin-shell-badge">管理后台</span>
+            <span className="admin-shell-divider">/</span>
+            <Link href="/" className="admin-shell-back-link">
+              <ArrowLeft size={13} />
+              <span>返回主站</span>
+            </Link>
+          </div>
+
+          <div className="admin-shell-actions">
+            <Link href="/dashboard" className="admin-shell-btn">
+              <User size={14} />
+              <span>个人控制台</span>
+            </Link>
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="admin-shell-btn admin-shell-btn--ghost"
+              title="退出登录"
+            >
+              <LogOut size={14} />
+              <span>退出</span>
+            </button>
+          </div>
         </div>
       </header>
 
       <div className="admin-shell-body">
-        <nav className="admin-shell-nav">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`admin-shell-nav-item${isActive(pathname, item.href) ? " admin-shell-nav-item--active" : ""}`}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="admin-shell-content">{children}</div>
+        <aside className="admin-shell-sidebar">
+          <nav className="admin-shell-nav" aria-label="管理导航">
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`admin-shell-nav-item${active ? " admin-shell-nav-item--active" : ""}`}
+                >
+                  <Icon size={16} />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </aside>
+
+        <main className="admin-shell-content">{children}</main>
       </div>
     </div>
   );
