@@ -6,6 +6,7 @@ import {
   type RecipientUserOption,
   type AnnouncementHistoryItem,
 } from "@/components/admin/AdminAnnouncementsManager";
+import { isDeliverableEmail } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export default async function AdminAnnouncementsPage() {
   ]);
 
   const validUsers: RecipientUserOption[] = users
-    .filter((u): u is typeof u & { email: string } => Boolean(u.email && u.email.trim()))
+    .filter((u): u is typeof u & { email: string } => isDeliverableEmail(u.email))
     .map((u) => ({
       id: u.id,
       email: u.email,

@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { buildFullEmailHtml } from "@/lib/email-template";
 import { Resend } from "resend";
 
-import { getEmailSender, getEmailReplyTo } from "@/lib/brand";
+import { getEmailSender, getEmailReplyTo, isDeliverableEmail } from "@/lib/brand";
 
 const BATCH_SIZE = 100;
 
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
     });
 
     const validRecipients = users.filter(
-      (u) => Boolean(u.email && u.email.trim() && u.email.includes("@"))
+      (u) => isDeliverableEmail(u.email)
     );
 
     if (validRecipients.length === 0) {
@@ -138,14 +138,27 @@ export async function POST(req: Request) {
         const batchRes = await resend.batch.send(chunk);
 
         if (batchRes.error) {
-          console.error(
-            `[admin/announcements/send] batch ${i / BATCH_SIZE + 1} error:`,
-            batchRes.error
+          console.warn(
+            `[admin/announcements/send] batch ${Math.floor(i / BATCH_SIZE) + 1} rejected by Resend (${batchRes.error.message}), falling back to individual sends...`
           );
-          errors.push(
-            `批次 ${Math.floor(i / BATCH_SIZE) + 1} 失败: ${batchRes.error.message}`
-          );
-          failedCount += chunk.length;
+          // Fallback to sending individually to isolate invalid email and deliver to valid ones
+          for (const item of chunk) {
+            try {
+              const singleRes = await resend.emails.send(item);
+              if (singleRes.error) {
+                console.error(`[admin/announcements/send] single send error for ${item.to}:`, singleRes.error);
+                errors.push(`${item.to} 发送失败: ${singleRes.error.message}`);
+                failedCount++;
+              } else {
+                successCount++;
+              }
+            } catch (singleErr: unknown) {
+              const msg = singleErr instanceof Error ? singleErr.message : String(singleErr);
+              errors.push(`${item.to} 异常: ${msg}`);
+              failedCount++;
+            }
+            await new Promise((r) => setTimeout(r, 100));
+          }
         } else if (batchRes.data?.data) {
           const sentNum = batchRes.data.data.length;
           successCount += sentNum;
@@ -159,10 +172,23 @@ export async function POST(req: Request) {
           successCount += chunk.length;
         }
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error("[admin/announcements/send] batch exception:", err);
-        errors.push(`批次发送异常: ${msg}`);
-        failedCount += chunk.length;
+        console.warn("[admin/announcements/send] batch exception, falling back to individual sends:", err);
+        for (const item of chunk) {
+          try {
+            const singleRes = await resend.emails.send(item);
+            if (singleRes.error) {
+              errors.push(`${item.to} 失败: ${singleRes.error.message}`);
+              failedCount++;
+            } else {
+              successCount++;
+            }
+          } catch (singleErr: unknown) {
+            const msg = singleErr instanceof Error ? singleErr.message : String(singleErr);
+            errors.push(`${item.to} 异常: ${msg}`);
+            failedCount++;
+          }
+          await new Promise((r) => setTimeout(r, 100));
+        }
       }
 
       // Small throttle between batches

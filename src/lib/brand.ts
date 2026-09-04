@@ -40,3 +40,32 @@ export function getEmailReplyTo(): string {
   }
   return `${BRAND_ZH} <vt@air7.fun>`;
 }
+
+const BLOCKED_TEST_DOMAINS = new Set([
+  "example.com",
+  "example.org",
+  "example.net",
+  "test.com",
+  "test.org",
+  "sample.com",
+  "localhost",
+  "invalid",
+]);
+
+/**
+ * Filter out non-deliverable / RFC 2606 test domain emails (e.g. @example.com)
+ * that cause Resend batch API to reject the entire payload.
+ */
+export function isDeliverableEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const trimmed = email.trim().toLowerCase();
+  const atIdx = trimmed.lastIndexOf("@");
+  if (atIdx <= 0 || atIdx >= trimmed.length - 1) return false;
+  const domain = trimmed.slice(atIdx + 1);
+  if (!domain.includes(".") && domain !== "localhost") return false;
+  if (BLOCKED_TEST_DOMAINS.has(domain)) return false;
+  for (const blocked of BLOCKED_TEST_DOMAINS) {
+    if (domain.endsWith(`.${blocked}`)) return false;
+  }
+  return true;
+}
