@@ -144,7 +144,7 @@ export function InsightOverviewShareButton({
                           <span className="insight-share-brand-domain">{SITE_ORIGIN}</span>
                         </div>
                       </div>
-                      <p className="insight-share-brand-tagline">买股票就是买公司。{BRAND_ZH}用价值投资大师的框架帮你理解一家公司！</p>
+                      <p className="insight-share-brand-tagline">买股票就是买公司。{BRAND_ZH}用投资大师的框架帮你理解一家公司！</p>
                     </div>
                   </div>
 

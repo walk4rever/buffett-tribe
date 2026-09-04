@@ -25,7 +25,7 @@ export default function RootLayout({
             </main>
             <footer className="site-footer">
               <p className="site-footer-text">
-                买股票就是买公司。{BRAND_ZH}用价值投资大师的框架帮你理解一家公司，不构成任何投资建议。
+                买股票就是买公司。{BRAND_ZH}用投资大师的框架帮你理解一家公司，不构成任何投资建议。
               </p>
             </footer>
             </div>
