@@ -657,18 +657,22 @@ date: "2026-06-09"
   });
 
   describe("buildInsightHighlightShareText", () => {
-    it("builds correct highlight copy text with Value Tribe promotion, quote, and article link", () => {
+    it("builds correct highlight copy text with quote first, citation, link, and brand promotion", () => {
       const text = buildInsightHighlightShareText({
         title: "巴菲特致股东信精选",
         slug: "berkshire-shareholder-letter",
         quoteText: "对于一家拥有持久竞争优势的公司，时间是它的朋友；而对于平庸的公司，时间则是它的敌人。",
       });
 
-      expect(text).toContain("【Value Tribe · 价值部落】");
-      expect(text).toContain("买股票就是买公司。用投资大师的框架深度理解一家公司。");
-      expect(text).toContain("“对于一家拥有持久竞争优势的公司，时间是它的朋友；而对于平庸的公司，时间则是它的敌人。”");
-      expect(text).toContain("—— 摘自《巴菲特致股东信精选》");
-      expect(text).toContain("🔗 原文链接：https://vt.air7.fun/insights/berkshire-shareholder-letter");
+      expect(text).toBe([
+        "“对于一家拥有持久竞争优势的公司，时间是它的朋友；而对于平庸的公司，时间则是它的敌人。”",
+        "",
+        "—— 摘自《巴菲特致股东信精选》",
+        "",
+        "🔗 原文链接：https://vt.air7.fun/insights/berkshire-shareholder-letter",
+        "",
+        "【Value Tribe · 价值部落】买股票就是买公司。用投资大师的框架深度理解一家公司。",
+      ].join("\n"));
     });
 
     it("includes distinct source attribution when source is present and not the brand name", () => {

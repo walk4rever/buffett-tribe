@@ -281,9 +281,9 @@ export interface InsightHighlightShareParams {
 
 /**
  * Builds a styled, copy-ready text template for insight highlights:
- * 1. Promotional header for Value Tribe
- * 2. Quoted paragraph content
- * 3. Title citation and article original link
+ * 1. Quoted paragraph content
+ * 2. Title citation and article original link
+ * 3. Brand slogan footer: Value Tribe
  */
 export function buildInsightHighlightShareText({
   title,
@@ -310,13 +310,13 @@ export function buildInsightHighlightShareText({
     .join("\n");
 
   return [
-    `【${BRAND_EN} · ${BRAND_ZH}】`,
-    `买股票就是买公司。用投资大师的框架深度理解一家公司。`,
-    ``,
     `“${formattedQuote}”`,
     ``,
     citation,
+    ``,
     `🔗 原文链接：${url}`,
+    ``,
+    `【${BRAND_EN} · ${BRAND_ZH}】买股票就是买公司。用投资大师的框架深度理解一家公司。`,
   ].join("\n");
 }
 

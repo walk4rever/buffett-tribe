@@ -72,8 +72,8 @@ export default async function MasterIndexPage() {
                         {m.initials.slice(0, 2)}
                       </span>
                       <div className="home-member-info">
-                        <div className="home-member-name">{m.nameZh}</div>
-                        <div className="home-member-firm">{m.firm}</div>
+                        <div className="home-member-name" title={m.nameZh}>{m.nameZh}</div>
+                        <div className="home-member-firm" title={m.firm}>{m.firm}</div>
                       </div>
                       {state.aum && <span className="home-member-aum">{state.aum}</span>}
                     </div>
@@ -125,8 +125,8 @@ export default async function MasterIndexPage() {
                             {m.initials.slice(0, 2)}
                           </span>
                           <div className="home-member-info">
-                            <div className="home-member-name">{m.nameZh}</div>
-                            <div className="home-member-firm">{m.firm}</div>
+                            <div className="home-member-name" title={m.nameZh}>{m.nameZh}</div>
+                            <div className="home-member-firm" title={m.firm}>{m.firm}</div>
                           </div>
                           {state?.aum && <span className="home-member-aum">{state.aum}</span>}
                         </div>

@@ -96,7 +96,7 @@ export function InsightChatShell({ slug, title, source, children }: InsightChatS
   // Selected text lives in the main document (not an iframe, unlike the
   // filing reader), so a plain document-level listener is enough. Scoped to
   // articleRef so selecting text inside the chat panel itself doesn't also
-  // pop the "问 AI 这段" / "高光分享" toolbar.
+  // pop the "AI解读" / "高光分享" toolbar.
   useEffect(() => {
     function handleSelectionChange() {
       const selection = window.getSelection();
@@ -255,7 +255,7 @@ export function InsightChatShell({ slug, title, source, children }: InsightChatS
             title="使用 AI 解读所选段落"
           >
             <Sparkles size={13} strokeWidth={2} />
-            <span>问 AI 这段</span>
+            <span>AI解读</span>
           </button>
 
           <span className="insight-selection-divider" aria-hidden="true" />
