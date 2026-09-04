@@ -882,7 +882,7 @@ Apple HIG 精简风格：
 ### 路由结构
 
 ```
-/                   首页（信号流 + 大师入口 + Hero Search → /agent）
+/                   首页（信号流 + 热门公司追踪 + Hero Search + 核心大师卡片 + 最新深度洞见网格）
 /agent              投资研究 Agent（主入口，三工具 SSE 流）
 /master/[id]        大师主页（资料库卡片 + 持仓）
 /master/[id]/library  资料阅读（左侧年份/文章列表，右侧正文）
@@ -967,8 +967,14 @@ Apple HIG 精简风格：
 ### v0.42.9 变更（2026-08-15）
 
 - **修复 `--quarter-list` 模式下 edgartools 13F 提取器的崩溃**：`edgartools_13f_extract.py` 此前对扫描窗口内每一份 filing 都无条件调用 `filing.obj()`（完整解析 SGML/XML info table）来读取 `report_period`，季度过滤反而放在 TS 侧、等全部解析完之后才做——为了要一个季度，实际上把 filer 的全部历史 filing 都解析了一遍。Terry Smith（Fundsmith）、Chris Hohn（TCI Fund Management）各有一份 2018/2020 年的老 filing，edgartools 当前版本解析不动其 SGML，直接把整个 CIK 的导入进程崩溃退出。根因是解析顺序反了：`filing.report_date` 其实是 filing 列表自带的免费字段，不需要 `.obj()` 就能读到。修复为两层：① `import-13f-edgartools.ts` 把目标季度换算成 report-date（新增 `quarterEndDate()`，`scripts/lib/13f-import-core.ts`）传给 Python，脚本先用免费的 `report_date` 筛出目标季度再调用 `.obj()`，避免解析任何不需要的历史 filing；② 单份 `.obj()` 调用包 try/except，解析失败 warn 并跳过而不是让整批崩溃。修复后 terry-smith/chris-hohn 的 2026Q2 提取从崩溃变为 ~3 秒（只解析 1 份而不是上百份）。
-- **2026Q2 13F 全量导入 + `PortfolioInsight` 补齐**：12 位 tracked filer 里 11 位已导入 2026Q2 持仓（含前述修复解锁的 terry-smith/chris-hohn），Bill Ackman（Pershing Square）截至发布时 SEC 上仍无 2026Q2 filing，非 bug；随后为这 11 位补跑 `generate:portfolio-insight`（此前遗漏——持仓导入不会自动触发这一步，两者是分开的手动环节）。
-- **`/master/[id]` 移除"重大持仓披露"（`BeneficialOwnership` / 13D-13G）表格**：仅去掉展示层（`src/app/master/[id]/page.tsx` 的 `#ownership` section 及其数据获取），原因是这块的产品逻辑和数据处理都还不成熟，不适合展示给用户。`BeneficialOwnership` 数据表、`import:beneficial-ownership` 导入脚本、`getBeneficialOwnershipFilings()` 均保留不动——是独立数据管线，等展示逻辑想清楚后可以随时重新接回。
+### v0.44.7 变更（2026-09-04）
+
+- **首页视觉与信息架构重构**：
+  - **顶部信号与热门公司看板（深色区）**：在 3 张大师仓位动态信号卡片下方新增横贯通栏的「热门公司」追踪栏，聚合贵州茅台、腾讯控股、苹果、泡泡玛特、阿里巴巴、英伟达、Alphabet 等高频关注标的胶囊，并提供「全部公司库 →」入口直达 `/company`。
+  - **Hero 核心探索区重归聚焦（浅灰区）**：移除原 Hero 内挤占的热门标签，还原大字标语「买股票就是买公司」与「用大师的框架，看懂一家公司」，居中交互搜索框与 4 个大师经典问答胶囊引导，点击任意非操作区直接切入 `/agent`。
+  - **投资大师专区（暗黑沉浸通栏，方案 B）**：新增深邃石墨黑通栏（`#0b1120`），突出展示沃伦·巴菲特、李录、段永平 3 位核心大师卡片，含 AUM 管理规模徽标、2026 Q2 最新 13F 更新标识、资料库与持仓明细双快捷入口，以及右上角「探索全部 11 位投资人 →」链接。
+  - **深度洞见专区（浅灰画布 + 纯白研报卡片）**：新增最新 6 篇已发布深度洞见研报网格，展示来源、发布日期、标题与摘要两行截断保护、主题标签，右上角提供「浏览全部洞见 →」链接。
+  - **全站 Footer 文案收敛**：去除多余字样，统一为"买股票就是买公司。价值部落用投资大师的框架帮你理解一家公司，不构成任何投资建议。"。
 
 ### v0.42.8 变更（2026-08-14）
 
