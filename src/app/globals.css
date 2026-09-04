@@ -2867,21 +2867,22 @@ body.layout-no-header {
 
 .chat-input {
   flex: 1;
-  border: 0.5px solid var(--secondary);
-  border-radius: 10px;
+  border: none;
+  border-radius: 0;
   padding: 0.7rem 1rem;
   font-size: 0.95rem;
-  background: #ffffff;
+  background: transparent;
   color: var(--foreground);
   outline: none;
   font-family: var(--font-sans);
-  transition: border-color 0.15s, box-shadow 0.15s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: none;
 }
 
-.chat-input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(0,113,227,0.18);
+.chat-input:focus,
+.chat-input:focus-visible {
+  outline: none;
+  border: none;
+  box-shadow: none;
 }
 
 .chat-send-btn {
@@ -14147,6 +14148,7 @@ a.insight-entity-chip:hover {
   max-height: 160px;
   border: none;
   outline: none;
+  box-shadow: none;
   background: transparent;
   font-family: var(--font-sans);
   font-size: 0.92rem;
@@ -14155,6 +14157,13 @@ a.insight-entity-chip:hover {
   padding: 0.45rem 0;
   resize: none;
   box-sizing: border-box;
+}
+
+.chat-input:focus,
+.chat-input:focus-visible {
+  outline: none;
+  border: none;
+  box-shadow: none;
 }
 
 .chat-send-btn {
@@ -15112,12 +15121,17 @@ a.insight-entity-chip:hover {
 .dashboard-page {
   min-height: 100vh;
   background: var(--apple-light-gray);
+  width: 100%;
+  overflow-x: clip;
+  box-sizing: border-box;
 }
 
 .dashboard-shell {
   max-width: 1040px;
   margin: 0 auto;
   padding: 2.5rem 1.5rem 6rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* User Hero Banner */
@@ -15132,12 +15146,15 @@ a.insight-entity-chip:hover {
   flex-wrap: wrap;
   gap: 1.25rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dashboard-hero-profile {
   display: flex;
   align-items: center;
   gap: 1.25rem;
+  min-width: 0;
 }
 
 .dashboard-avatar {
@@ -15154,12 +15171,14 @@ a.insight-entity-chip:hover {
   flex-shrink: 0;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
   user-select: none;
+  box-sizing: border-box;
 }
 
 .dashboard-hero-meta {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+  min-width: 0;
 }
 
 .dashboard-hero-name-row {
@@ -15167,6 +15186,7 @@ a.insight-entity-chip:hover {
   align-items: center;
   gap: 0.65rem;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .dashboard-hero-title {
@@ -15175,6 +15195,7 @@ a.insight-entity-chip:hover {
   color: var(--apple-near-black);
   margin: 0;
   letter-spacing: -0.015em;
+  word-break: break-word;
 }
 
 .dashboard-hero-sub {
@@ -15184,6 +15205,8 @@ a.insight-entity-chip:hover {
   font-size: 0.85rem;
   color: rgba(0, 0, 0, 0.48);
   margin: 0;
+  flex-wrap: wrap;
+  word-break: break-all;
 }
 
 .dashboard-hero-dot {
@@ -15194,6 +15217,7 @@ a.insight-entity-chip:hover {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  box-sizing: border-box;
 }
 
 .dashboard-badge {
@@ -15236,6 +15260,7 @@ a.insight-entity-chip:hover {
   text-decoration: none;
   cursor: pointer;
   transition: all 0.15s ease;
+  box-sizing: border-box;
 }
 
 .dashboard-head-btn--admin {
@@ -15263,10 +15288,12 @@ a.insight-entity-chip:hover {
 /* Bento Grid */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1.35fr 1fr;
+  grid-template-columns: 1.35fr minmax(0, 1fr);
   gap: 1.5rem;
   margin-top: 1.5rem;
   align-items: start;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dashboard-grid-main,
@@ -15274,6 +15301,10 @@ a.insight-entity-chip:hover {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dashboard-card {
@@ -15282,6 +15313,10 @@ a.insight-entity-chip:hover {
   border: 1px solid rgba(0, 0, 0, 0.06);
   padding: 1.6rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
 }
 
 .dashboard-card-header {
@@ -15289,12 +15324,15 @@ a.insight-entity-chip:hover {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1.25rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .dashboard-card-title-wrap {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .dashboard-card-icon {
@@ -15405,6 +15443,8 @@ a.insight-entity-chip:hover {
   flex-wrap: wrap;
   gap: 0.75rem;
   padding-top: 0.25rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dashboard-quota-note {
@@ -15432,6 +15472,8 @@ a.insight-entity-chip:hover {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dashboard-workspace-item {
@@ -15445,6 +15487,10 @@ a.insight-entity-chip:hover {
   color: inherit;
   transition: all 0.15s ease;
   background: rgba(0, 0, 0, 0.012);
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
 }
 
 .dashboard-workspace-item:hover {
@@ -15461,6 +15507,7 @@ a.insight-entity-chip:hover {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .dashboard-workspace-icon--blue {
@@ -15488,6 +15535,7 @@ a.insight-entity-chip:hover {
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.2rem;
+  flex-wrap: wrap;
 }
 
 .dashboard-workspace-title {
@@ -15503,12 +15551,14 @@ a.insight-entity-chip:hover {
   border-radius: 6px;
   color: rgba(0, 0, 0, 0.6);
   font-weight: 500;
+  flex-shrink: 0;
 }
 
 .dashboard-workspace-desc {
   font-size: 0.78rem;
   color: rgba(0, 0, 0, 0.48);
   margin: 0;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -15530,6 +15580,8 @@ a.insight-entity-chip:hover {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dashboard-account-row {
@@ -15538,6 +15590,9 @@ a.insight-entity-chip:hover {
   gap: 0.35rem;
   padding-bottom: 0.85rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .dashboard-account-row:last-child {
@@ -15558,12 +15613,16 @@ a.insight-entity-chip:hover {
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .dashboard-account-val {
   font-size: 0.88rem;
   font-weight: 500;
   color: var(--apple-near-black);
+  word-break: break-all;
 }
 
 .dashboard-tag-verified {
@@ -15585,21 +15644,35 @@ a.insight-entity-chip:hover {
   padding: 0.2rem 0.45rem;
   border-radius: 4px;
   color: rgba(0, 0, 0, 0.6);
+  word-break: break-all;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Password Form & Common Elements */
+.dashboard-password-section {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
 .dashboard-password-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
   padding: 0.3rem 0;
+  gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dashboard-password-info {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .dashboard-password-title {
@@ -15611,6 +15684,7 @@ a.insight-entity-chip:hover {
 .dashboard-password-desc {
   font-size: 0.78rem;
   color: rgba(0, 0, 0, 0.45);
+  line-height: 1.35;
 }
 
 .dashboard-password-form {
@@ -15620,12 +15694,16 @@ a.insight-entity-chip:hover {
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid rgba(0, 0, 0, 0.05);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dashboard-input-field {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dashboard-label {
@@ -15642,6 +15720,8 @@ a.insight-entity-chip:hover {
   color: var(--apple-near-black);
   background: #ffffff;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .dashboard-input:focus {
@@ -15654,12 +15734,17 @@ a.insight-entity-chip:hover {
   width: 180px;
   padding: 0.35rem 0.6rem;
   font-size: 0.84rem;
+  box-sizing: border-box;
 }
 
 .dashboard-field-row {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .dashboard-inline-form {
@@ -15667,6 +15752,8 @@ a.insight-entity-chip:hover {
   align-items: center;
   gap: 0.4rem;
   flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dashboard-form-actions {
@@ -15674,6 +15761,9 @@ a.insight-entity-chip:hover {
   align-items: center;
   gap: 0.6rem;
   margin-top: 0.5rem;
+  flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dashboard-btn-primary {
@@ -15686,6 +15776,7 @@ a.insight-entity-chip:hover {
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s ease;
+  box-sizing: border-box;
 }
 
 .dashboard-btn-primary:hover {
@@ -15705,6 +15796,7 @@ a.insight-entity-chip:hover {
   padding: 0.5rem 0.85rem;
   font-size: 0.85rem;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .dashboard-btn-xs {
@@ -15714,6 +15806,7 @@ a.insight-entity-chip:hover {
   align-items: center;
   gap: 0.25rem;
   border-radius: 6px;
+  box-sizing: border-box;
 }
 
 .dashboard-inline-action-btn {
@@ -15728,6 +15821,9 @@ a.insight-entity-chip:hover {
   font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.15s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .dashboard-inline-action-btn:hover {
@@ -17063,7 +17159,7 @@ a.insight-entity-chip:hover {
 
 @media (max-width: 860px) {
   .dashboard-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .admin-activity-grid {
     grid-template-columns: 1fr;
@@ -17077,11 +17173,17 @@ a.insight-entity-chip:hover {
   .dashboard-hero {
     flex-direction: column;
     align-items: flex-start;
-    padding: 1.25rem;
+    padding: 1.35rem 1.15rem;
+    gap: 1rem;
+  }
+  .dashboard-hero-profile {
+    width: 100%;
   }
   .dashboard-hero-actions {
     width: 100%;
     justify-content: flex-end;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
   }
 
   .admin-shell-body {
@@ -17100,6 +17202,124 @@ a.insight-entity-chip:hover {
   }
   .admin-shell-nav-item {
     white-space: nowrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-shell {
+    padding: 1.15rem 0.85rem 3.5rem;
+  }
+
+  .dashboard-hero {
+    padding: 1.15rem 0.95rem;
+    border-radius: 14px;
+    gap: 0.85rem;
+  }
+
+  .dashboard-hero-profile {
+    gap: 0.85rem;
+    width: 100%;
+  }
+
+  .dashboard-avatar {
+    width: 44px;
+    height: 44px;
+    font-size: 1.15rem;
+  }
+
+  .dashboard-hero-title {
+    font-size: 1.15rem;
+  }
+
+  .dashboard-hero-name-row {
+    gap: 0.45rem;
+  }
+
+  .dashboard-hero-sub {
+    font-size: 0.76rem;
+  }
+
+  .dashboard-grid {
+    gap: 0.85rem;
+    margin-top: 0.85rem;
+  }
+
+  .dashboard-grid-main,
+  .dashboard-grid-side {
+    gap: 0.85rem;
+  }
+
+  .dashboard-card {
+    padding: 1.15rem 0.95rem;
+    border-radius: 14px;
+  }
+
+  .dashboard-card-header {
+    margin-bottom: 0.95rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .dashboard-quota-number {
+    font-size: 1.85rem;
+  }
+
+  .dashboard-quota-balance-row {
+    margin-bottom: 0.65rem;
+  }
+
+  .dashboard-quota-footer {
+    gap: 0.5rem;
+  }
+
+  .dashboard-workspace-item {
+    padding: 0.8rem 0.85rem;
+    gap: 0.75rem;
+    border-radius: 12px;
+  }
+
+  .dashboard-workspace-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
+
+  .dashboard-workspace-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .dashboard-workspace-title {
+    font-size: 0.88rem;
+  }
+
+  .dashboard-workspace-desc {
+    white-space: normal;
+    line-height: 1.35;
+    font-size: 0.75rem;
+  }
+
+  .dashboard-input-inline {
+    flex: 1 1 120px;
+    width: auto;
+    min-width: 0;
+  }
+
+  .dashboard-password-row {
+    align-items: flex-start;
+  }
+
+  .dashboard-password-title {
+    font-size: 0.84rem;
+  }
+
+  .dashboard-password-desc {
+    font-size: 0.74rem;
+  }
+
+  .dashboard-inline-action-btn {
+    padding: 0.22rem 0.5rem;
+    font-size: 0.72rem;
   }
 }
 
