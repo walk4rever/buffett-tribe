@@ -243,6 +243,7 @@ NextAuth（Credentials Provider，`src/lib/auth.ts`）是现有唯一认证实�
 - 鉴权模式抄 ai-dive：一个路由组 `(admin)/layout.tsx` 统一做 session+role 校验、包一层共享 Shell（导航+页头），子页面不用各自重复鉴权/布局代码；`/api/admin/*` 复用同一个鉴权函数，不能像 ai-dive 那样在 layout 和 API 各写一份等价但独立的判断逻辑（那是它的真实缺陷，不是可以照抄的设计）。
 - **另一个 ai-dive 缺陷要在这里避免**：ai-dive 的 `role` 只在 NextAuth JWT 签发时写入（`session: { strategy: 'jwt' }`），之后就不再刷新，撤销/授予管理员权限要等这个人的 session 过期（默认 30 天）才生效——buffett-tribe 的 role/配额校验要在每次访问 `/admin` 或消费配额时查库，不能信任 JWT 里的旧值。
 - 页面内容跟 ai-dive 的形状不一样：ai-dive 的 `/admin` 是内容 CRUD（文章/出品/订阅者），buffett-tribe 的 `/admin` 应该是**数据管道的可观测性 + 触发器**——Entity/Filer onboarding 进度（哪些公司还是"待完善"stub、卡在哪一步）、L4 数据完整性检查结果（`check:financial:integrity` 等，含「数据资产清单」里记录的历史遗留缺口如 P0 ⑩ 的 `section_text` 缺失）、`CompanyAnalysis`/`MasterProfile`/`PortfolioInsight` 按步骤单独重跑生成的入口，以及配额上线后的用量统计面板——**含手动给某个用户（含 admin 自己）调整/追加额度的操作**（见上方"admin 不豁免配额"，这是 admin 需要更多额度时唯一的合法路径，不是配额检查里的特权分支）。首页参照 ai-dive 的 `StatLink`/`TrendTile`——用可点击跳转的统计卡片呈现"现在需要处理什么"，不是一个纯导航菜单。
+- **产品发布与邮件广播（2026-09-04 实现，`/admin/announcements`）**：管理员专属产品功能发布与邮件广播系统。支持 Markdown 编辑与实时邮件渲染预览；支持从系统剪贴板粘贴（`Cmd+V`）或拖拽图片自动上传至 Cloudflare R2（`buffett-tribe/announcements/*`）并内联为图片语法；提供专用微信沟通组件快捷按钮插入二维码与文案；支持本地与数据库两级自动保存至「草稿箱」；支持单人测试邮件验证与基于 Resend 的全员/指定用户分批批量推送；邮件发件人与回复地址严格统一定义为 `价值部落 <vt@air7.fun>`；邮件 HTML 模板全面剥离 `react-dom/server`，改用 `micromark` + `cheerio` 高效内联样式生成。
 
 **`/dashboard` 用户控制台（本期要做，此前完全没有这个页面）**：
 - 现状：`PortfolioHolding`/`Note` 这两个用户自有数据模型已经存在，但只在 `/agent` 页面内部的个人工作区侧栏（`PortfolioPanel.tsx`/`NotesSidebar.tsx`）里露出，站内没有任何独立的"我的账号"页面。
