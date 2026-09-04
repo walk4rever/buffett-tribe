@@ -983,6 +983,10 @@ Apple HIG 精简风格：
   - **深度洞见专区（浅灰画布 + 纯白研报卡片）**：新增最新 6 篇已发布深度洞见研报网格，展示来源、发布日期、标题与摘要两行截断保护、主题标签，右上角提供「浏览全部洞见 →」链接。
   - **全站 Footer 文案收敛**：去除多余字样，统一为"买股票就是买公司。价值部落用投资大师的框架帮你理解一家公司，不构成任何投资建议。"。
 
+### v0.44.10 变更（2026-09-04）
+
+- **洞见正文增加划词「高光分享」浮动工具条**：在 `/insights/[slug]` 详情阅读器中，用户选择文章段落时，原本单一的「问 AI 这段」按钮升级为胶囊型浮动工具栏，并新增「高光分享」功能。点击一键将选中文本复制到剪贴板，文本采用统一的分享排版模版（首部 Value Tribe · 价值部落品牌与理念背书、中部引用段落、尾部文章标题与原文生产链接）；带有即时反馈（按钮切换为「已复制 ✓」及底部浮动轻提示），同时优化了移动端边界自适应排版防溢出逻辑。新增对应单元测试与纯函数 helper `buildInsightHighlightShareText`（`src/lib/insights.ts`）。
+
 ### v0.42.8 变更（2026-08-14）
 
 - **Bill Ackman 资料库新增一份原始文档（Pershing Square, Inc. 2026 Q2 致股东信）**：作为一次性例外写入 `Document` 表（`ownerId=bill-ackman`），不改变 `Filer.isMasterPersona=false`——Alpha 投资人默认仍无 wisdom 资料内容，仅个别投资人可按需补充单篇原始材料。为此照搬 buffett/duan/lilu 既有的"每个 owner 一份阅读路由文件夹"模式，新增 `/documents/bill-ackman/[slug]` 和 `/api/documents/bill-ackman/[slug]`，并放宽 `DocumentOwnerId` 类型联合与 `getLibraryItems()`（`src/lib/master-data.ts`）的 owner 白名单。评估过是否借此机会把 4 个 owner 路由收成一份动态路由 + `Document` 表加 `slug` 字段，从第一性原理判断为过早抽象（目前只出现过一次，真正的"持续、零代码"扩展场景已有 `InsightPost` + `tag-insight-masters.ts` 承担），故按既有风格复制而非重构；等这类需求再出现 2–3 次后再收敛。

@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Share2, Check } from "lucide-react";
 import { InsightAgentPanel } from "@/components/InsightAgentPanel";
 import { useAgentChat } from "@/hooks/useAgentChat";
 import { useAgentGate } from "@/hooks/useAgentGate";
+import { buildInsightHighlightShareText } from "@/lib/insights";
 
 interface InsightChatShellProps {
   slug: string;
   title: string;
+  source?: string | null;
   children: ReactNode;
 }
 
@@ -41,12 +43,16 @@ function getScroller(): HTMLElement | null {
   return document.querySelector(".site-main");
 }
 
-export function InsightChatShell({ slug, title, children }: InsightChatShellProps) {
+export function InsightChatShell({ slug, title, source, children }: InsightChatShellProps) {
   const articleRef = useRef<HTMLDivElement | null>(null);
-  const quoteButtonRef = useRef<HTMLButtonElement | null>(null);
+  const toolbarRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
   const [quoteButton, setQuoteButton] = useState<QuoteButtonState | null>(null);
   const [pendingQuote, setPendingQuote] = useState<{ text: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingScrollRef = useRef<number | null>(null);
   const isDesktop = useIsDesktop();
   const docked = open && isDesktop;
@@ -90,35 +96,43 @@ export function InsightChatShell({ slug, title, children }: InsightChatShellProp
   // Selected text lives in the main document (not an iframe, unlike the
   // filing reader), so a plain document-level listener is enough. Scoped to
   // articleRef so selecting text inside the chat panel itself doesn't also
-  // pop the "问 AI 这段" button.
+  // pop the "问 AI 这段" / "高光分享" toolbar.
   useEffect(() => {
     function handleSelectionChange() {
       const selection = window.getSelection();
       if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
         setQuoteButton(null);
+        setCopied(false);
         return;
       }
       const range = selection.getRangeAt(0);
       if (!articleRef.current?.contains(range.commonAncestorContainer)) {
         setQuoteButton(null);
+        setCopied(false);
         return;
       }
       const text = selection.toString().trim();
       if (!text) {
         setQuoteButton(null);
+        setCopied(false);
         return;
       }
       const rect = range.getBoundingClientRect();
       if (rect.width === 0 && rect.height === 0) {
         setQuoteButton(null);
+        setCopied(false);
         return;
       }
-      setQuoteButton({ text, top: rect.top - 40, left: rect.left + rect.width / 2 });
+      const isNearTop = rect.top < 52;
+      const top = isNearTop ? rect.bottom + 10 : rect.top - 44;
+      const left = Math.max(110, Math.min(window.innerWidth - 110, rect.left + rect.width / 2));
+      setQuoteButton({ text, top, left });
     }
 
     function handlePointerDown(e: PointerEvent) {
-      if (quoteButtonRef.current && !quoteButtonRef.current.contains(e.target as Node)) {
+      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
         setQuoteButton(null);
+        setCopied(false);
       }
     }
 
@@ -127,6 +141,8 @@ export function InsightChatShell({ slug, title, children }: InsightChatShellProp
     return () => {
       document.removeEventListener("selectionchange", handleSelectionChange);
       document.removeEventListener("pointerdown", handlePointerDown);
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     };
   }, []);
 
@@ -144,11 +160,37 @@ export function InsightChatShell({ slug, title, children }: InsightChatShellProp
 
   function askAboutQuote() {
     if (!quoteButton) return;
+    const text = quoteButton.text;
     setQuoteButton(null);
+    setCopied(false);
     if (!requireAuth()) return;
-    setPendingQuote({ text: quoteButton.text });
+    setPendingQuote({ text });
     openPanel();
     window.getSelection()?.removeAllRanges();
+  }
+
+  async function handleShareQuote() {
+    if (!quoteButton?.text) return;
+    const shareText = buildInsightHighlightShareText({
+      title,
+      slug,
+      quoteText: quoteButton.text,
+      source,
+    });
+
+    const success = await copyToClipboard(shareText);
+    if (success) {
+      setCopied(true);
+      setToastMessage("已复制高光分享文案");
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      copyTimeoutRef.current = setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+      toastTimeoutRef.current = setTimeout(() => {
+        setToastMessage(null);
+      }, 2400);
+    }
   }
 
   const articleNode = (
@@ -200,16 +242,50 @@ export function InsightChatShell({ slug, title, children }: InsightChatShellProp
       )}
 
       {quoteButton ? (
-        <button
-          ref={quoteButtonRef}
-          type="button"
-          className="filing-reader-quote-btn"
+        <div
+          ref={toolbarRef}
+          className="insight-selection-toolbar"
           style={{ top: quoteButton.top, left: quoteButton.left }}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={askAboutQuote}
         >
-          问 AI 这段 →
-        </button>
+          <button
+            type="button"
+            className="insight-selection-btn insight-selection-btn--ai"
+            onClick={askAboutQuote}
+            title="使用 AI 解读所选段落"
+          >
+            <Sparkles size={13} strokeWidth={2} />
+            <span>问 AI 这段</span>
+          </button>
+
+          <span className="insight-selection-divider" aria-hidden="true" />
+
+          <button
+            type="button"
+            className={`insight-selection-btn insight-selection-btn--share${copied ? " insight-selection-btn--copied" : ""}`}
+            onClick={handleShareQuote}
+            title="复制高光分享文案"
+          >
+            {copied ? (
+              <>
+                <Check size={13} strokeWidth={2.4} />
+                <span>已复制</span>
+              </>
+            ) : (
+              <>
+                <Share2 size={13} strokeWidth={2} />
+                <span>高光分享</span>
+              </>
+            )}
+          </button>
+        </div>
+      ) : null}
+
+      {toastMessage ? (
+        <div className="insight-selection-toast" role="status" aria-live="polite">
+          <Check size={14} strokeWidth={2.4} className="insight-selection-toast-icon" />
+          <span>{toastMessage}</span>
+        </div>
       ) : null}
 
       {!open ? (
@@ -224,4 +300,32 @@ export function InsightChatShell({ slug, title, children }: InsightChatShellProp
       ) : null}
     </>
   );
+}
+
+async function copyToClipboard(text: string): Promise<boolean> {
+  if (typeof navigator !== "undefined" && navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // fallback to execCommand below
+    }
+  }
+  try {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
+    textArea.setAttribute("readonly", "");
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand("copy");
+    textArea.remove();
+    return successful;
+  } catch (err) {
+    console.error("[insight-share] clipboard copy failed", err);
+    return false;
+  }
 }

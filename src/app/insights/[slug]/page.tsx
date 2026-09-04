@@ -33,7 +33,7 @@ export default async function InsightDetailPage({ params }: Props) {
     <div className="home-v2 insight-detail-page">
       <SiteNav />
       <main className="insight-detail-shell">
-        <InsightChatShell slug={post.slug} title={post.title}>
+        <InsightChatShell slug={post.slug} title={post.title} source={post.source}>
           <header className="insight-detail-head">
             <h1>{post.title}</h1>
             <div className="insight-detail-meta">

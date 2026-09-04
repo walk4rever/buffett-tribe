@@ -1,5 +1,7 @@
 import { CALLOUT_TAG_PATTERN, calloutBaseType, calloutInlineStyle, getCalloutConfig } from "./callout-types";
 import { matchEmbedPlatform, type EmbedPlatformConfig } from "./embed-platforms";
+import { BRAND_EN, BRAND_ZH } from "./brand";
+import { toAbsoluteSiteUrl } from "./site-url";
 
 export const INSIGHT_FORMATS = ["markdown", "html"] as const;
 export type InsightFormat = (typeof INSIGHT_FORMATS)[number];
@@ -267,6 +269,55 @@ export function extractInsightOverviewShareContent(raw: string, fallbackDescript
     title: "背景概览",
     markdown: fallback,
   };
+}
+
+export interface InsightHighlightShareParams {
+  title: string;
+  slug: string;
+  quoteText: string;
+  source?: string | null;
+  siteOrigin?: string;
+}
+
+/**
+ * Builds a styled, copy-ready text template for insight highlights:
+ * 1. Promotional header for Value Tribe
+ * 2. Quoted paragraph content
+ * 3. Title citation and article original link
+ */
+export function buildInsightHighlightShareText({
+  title,
+  slug,
+  quoteText,
+  source,
+  siteOrigin,
+}: InsightHighlightShareParams): string {
+  const url = siteOrigin
+    ? `${siteOrigin.replace(/\/+$/, "")}/insights/${encodeURIComponent(slug)}`
+    : toAbsoluteSiteUrl(`/insights/${encodeURIComponent(slug)}`);
+
+  const trimmedTitle = title.trim();
+  const safeTitle = trimmedTitle.startsWith("《") && trimmedTitle.endsWith("》") ? trimmedTitle : `《${trimmedTitle}》`;
+  const cleanSource = source?.trim();
+  const hasDistinctSource = cleanSource && cleanSource !== BRAND_EN && cleanSource !== BRAND_ZH;
+  const sourceCiting = hasDistinctSource ? ` · ${cleanSource}` : "";
+  const citation = `—— 摘自${safeTitle}${sourceCiting}`;
+
+  const formattedQuote = quoteText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line, index, arr) => line.length > 0 || (index > 0 && arr[index - 1].length > 0))
+    .join("\n");
+
+  return [
+    `【${BRAND_EN} · ${BRAND_ZH}】`,
+    `买股票就是买公司。用投资大师的框架深度理解一家公司。`,
+    ``,
+    `“${formattedQuote}”`,
+    ``,
+    citation,
+    `🔗 原文链接：${url}`,
+  ].join("\n");
 }
 
 function resolveLegacyInsightCalloutMapping(value: string): { type: string; title: string } | null {

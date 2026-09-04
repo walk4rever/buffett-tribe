@@ -12046,6 +12046,126 @@ body {
   }
 }
 
+/* ── Insight paragraph selection floating toolbar & toast ── */
+
+.insight-selection-toolbar {
+  position: fixed;
+  z-index: 200;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px;
+  border-radius: 999px;
+  background: #191b1f;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28), 0 3px 8px rgba(0, 0, 0, 0.18);
+  user-select: none;
+  animation: insightToolbarPop 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.insight-selection-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0.36rem 0.72rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #f1f2f4;
+  font-size: 0.78rem;
+  font-weight: 550;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+
+.insight-selection-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.insight-selection-btn:active {
+  transform: scale(0.96);
+}
+
+.insight-selection-btn--ai {
+  color: #93c5fd;
+}
+
+.insight-selection-btn--ai:hover {
+  background: rgba(59, 130, 246, 0.22);
+  color: #bfdbfe;
+}
+
+.insight-selection-btn--copied {
+  color: #34d399;
+}
+
+.insight-selection-btn--copied:hover {
+  background: rgba(52, 211, 153, 0.2);
+  color: #6ee7b7;
+}
+
+.insight-selection-divider {
+  width: 1px;
+  height: 13px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 0 1px;
+}
+
+.insight-selection-toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 250;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: rgba(24, 25, 28, 0.95);
+  backdrop-filter: blur(8px);
+  color: #f4f4f5;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.4;
+  pointer-events: none;
+  animation: insightToastSlideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.insight-selection-toast-icon {
+  color: #34d399;
+  flex-shrink: 0;
+}
+
+@keyframes insightToolbarPop {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+@keyframes insightToastSlideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
 /* ── Company Canvas ── */
 
 /* ── Canvas shell (tab layout) ──────────────────────────── */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extractInsightOverviewShareContent,
+  buildInsightHighlightShareText,
   normalizeInsightSlug,
   parseInsightFrontmatter,
   markdownToHtmlMarkdown,
@@ -653,5 +654,66 @@ date: "2026-06-09"
     rehypeInsightEmbeds()(mockTree);
     expect(mockTree.children[0].tagName).toBe("p");
     expect(mockTree.children[0].children).toHaveLength(2);
+  });
+
+  describe("buildInsightHighlightShareText", () => {
+    it("builds correct highlight copy text with Value Tribe promotion, quote, and article link", () => {
+      const text = buildInsightHighlightShareText({
+        title: "巴菲特致股东信精选",
+        slug: "berkshire-shareholder-letter",
+        quoteText: "对于一家拥有持久竞争优势的公司，时间是它的朋友；而对于平庸的公司，时间则是它的敌人。",
+      });
+
+      expect(text).toContain("【Value Tribe · 价值部落】");
+      expect(text).toContain("买股票就是买公司。用投资大师的框架深度理解一家公司。");
+      expect(text).toContain("“对于一家拥有持久竞争优势的公司，时间是它的朋友；而对于平庸的公司，时间则是它的敌人。”");
+      expect(text).toContain("—— 摘自《巴菲特致股东信精选》");
+      expect(text).toContain("🔗 原文链接：https://vt.air7.fun/insights/berkshire-shareholder-letter");
+    });
+
+    it("includes distinct source attribution when source is present and not the brand name", () => {
+      const text = buildInsightHighlightShareText({
+        title: "微软的云与AI护城河",
+        slug: "microsoft-cloud-ai",
+        quoteText: "商业模式的核心在于高转换成本与持续的网络效应。",
+        source: "Acquired",
+      });
+
+      expect(text).toContain("—— 摘自《微软的云与AI护城河》 · Acquired");
+    });
+
+    it("does not duplicate brand name if source matches brand", () => {
+      const text = buildInsightHighlightShareText({
+        title: "商业模式与资本配置",
+        slug: "business-capital-allocation",
+        quoteText: "自由现金流是一切估值的锚点。",
+        source: "Value Tribe",
+      });
+
+      expect(text).toContain("—— 摘自《商业模式与资本配置》");
+      expect(text).not.toContain("· Value Tribe");
+    });
+
+    it("does not double-wrap title with brackets if title already has them", () => {
+      const text = buildInsightHighlightShareText({
+        title: "《穷查理宝典精要》",
+        slug: "poor-charlie-almanack",
+        quoteText: "反过来想，总是反过来想。",
+      });
+
+      expect(text).toContain("—— 摘自《穷查理宝典精要》");
+      expect(text).not.toContain("《《");
+    });
+
+    it("supports custom siteOrigin if specified", () => {
+      const text = buildInsightHighlightShareText({
+        title: "测试文章",
+        slug: "test-slug",
+        quoteText: "测试段落",
+        siteOrigin: "https://custom.domain.com",
+      });
+
+      expect(text).toContain("🔗 原文链接：https://custom.domain.com/insights/test-slug");
+    });
   });
 });
