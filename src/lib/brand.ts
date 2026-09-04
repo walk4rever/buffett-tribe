@@ -16,3 +16,27 @@
 export const BRAND_ZH = "价值部落";
 export const BRAND_EN = "Value Tribe";
 export const BRAND_FULL = `${BRAND_ZH} · ${BRAND_EN}`;
+
+/**
+ * Default sender address for transactional & announcement emails.
+ * Always resolves to `价值部落 <vt@air7.fun>` unless overridden with a non-legacy address.
+ */
+export function getEmailSender(): string {
+  const fromEnv = process.env.RESEND_FROM?.trim();
+  if (fromEnv && !fromEnv.toLowerCase().includes("buffet")) {
+    return fromEnv.includes("<") ? fromEnv : `${BRAND_ZH} <${fromEnv}>`;
+  }
+  return `${BRAND_ZH} <vt@air7.fun>`;
+}
+
+/**
+ * Default reply-to address for emails.
+ * Defaults to `价值部落 <vt@air7.fun>` unless overridden via RESEND_REPLY_TO.
+ */
+export function getEmailReplyTo(): string {
+  const replyEnv = process.env.RESEND_REPLY_TO?.trim();
+  if (replyEnv && !replyEnv.toLowerCase().includes("buffet")) {
+    return replyEnv.includes("<") ? replyEnv : `${BRAND_ZH} <${replyEnv}>`;
+  }
+  return `${BRAND_ZH} <vt@air7.fun>`;
+}

@@ -204,8 +204,9 @@ type Edgar13GDoc = {
 // blocks filed with reportingPersonNoCIK=Y.
 function parse13D(xml: Edgar13DDoc, filerCik: string, filerName: string): ParsedOwnership | null {
   const formData = xml?.edgarSubmission?.formData;
-  const issuer = formData?.coverPageHeader?.issuerInfo;
-  if (!formData || !issuer) return null;
+  const header = formData?.coverPageHeader;
+  const issuer = header?.issuerInfo;
+  if (!formData || !header || !issuer) return null;
 
   const persons = asArray(formData.reportingPersons?.reportingPersonInfo);
   const paddedCik = padCik(filerCik);
@@ -217,10 +218,10 @@ function parse13D(xml: Edgar13DDoc, filerCik: string, filerName: string): Parsed
   return {
     issuerCik: normalizeCik(String(issuer.issuerCIK ?? "")),
     issuerName: String(issuer.issuerName ?? ""),
-    securitiesClassTitle: formData.coverPageHeader.securitiesClassTitle
-      ? String(formData.coverPageHeader.securitiesClassTitle)
+    securitiesClassTitle: header.securitiesClassTitle
+      ? String(header.securitiesClassTitle)
       : null,
-    eventDate: toDate(formData.coverPageHeader.dateOfEvent),
+    eventDate: toDate(header.dateOfEvent),
     sharesOwned: toBigIntFromDecimal(match.aggregateAmountOwned),
     percentOfClass: toFloat(match.percentOfClass),
     soleVotingPower: toBigIntFromDecimal(match.soleVotingPower),
@@ -233,8 +234,9 @@ function parse13D(xml: Edgar13DDoc, filerCik: string, filerName: string): Parsed
 
 function parse13G(xml: Edgar13GDoc, filerName: string): ParsedOwnership | null {
   const formData = xml?.edgarSubmission?.formData;
-  const issuer = formData?.coverPageHeader?.issuerInfo;
-  if (!formData || !issuer) return null;
+  const header = formData?.coverPageHeader;
+  const issuer = header?.issuerInfo;
+  if (!formData || !header || !issuer) return null;
 
   // 13G's reporting-person blocks don't expose a CIK field the way 13D's do — match by name.
   const persons = asArray(formData.coverPageHeaderReportingPersonDetails);
@@ -246,10 +248,10 @@ function parse13G(xml: Edgar13GDoc, filerName: string): ParsedOwnership | null {
   return {
     issuerCik: normalizeCik(String(issuer.issuerCik ?? "")),
     issuerName: String(issuer.issuerName ?? ""),
-    securitiesClassTitle: formData.coverPageHeader.securitiesClassTitle
-      ? String(formData.coverPageHeader.securitiesClassTitle)
+    securitiesClassTitle: header.securitiesClassTitle
+      ? String(header.securitiesClassTitle)
       : null,
-    eventDate: toDate(formData.coverPageHeader.eventDateRequiresFilingThisStatement),
+    eventDate: toDate(header.eventDateRequiresFilingThisStatement),
     sharesOwned: toBigIntFromDecimal(match.reportingPersonBeneficiallyOwnedAggregateNumberOfShares),
     percentOfClass: toFloat(match.classPercent),
     soleVotingPower: toBigIntFromDecimal(powers.soleVotingPower),

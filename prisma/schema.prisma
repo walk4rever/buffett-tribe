@@ -695,3 +695,26 @@ model Document {
 
   @@index([ownerId])
 }
+
+// ============================================================================
+// EmailAnnouncement — admin release notes and product announcements
+// ============================================================================
+
+model EmailAnnouncement {
+  id              String    @id @default(cuid())
+  subject         String
+  preheader       String?
+  contentMarkdown String    @db.Text
+  recipientMode   String    // "all" | "selected" | "test"
+  recipientsCount Int       @default(0)
+  successCount    Int       @default(0)
+  failedCount     Int       @default(0)
+  status          String    @default("draft") // "draft" | "sending" | "sent" | "failed"
+  errorSummary    String?   @db.Text
+  createdById     String?
+  sentAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([createdAt(sort: Desc)])
+}

@@ -7,6 +7,7 @@ import { signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   Users,
+  Megaphone,
   ArrowLeft,
   LogOut,
   User,
@@ -23,6 +24,7 @@ interface NavItem {
 const NAV_ITEMS: ReadonlyArray<NavItem> = [
   { href: "/admin", label: "数据总览", icon: LayoutDashboard },
   { href: "/admin/users", label: "用户与额度", icon: Users },
+  { href: "/admin/announcements", label: "发布与邮件", icon: Megaphone },
 ];
 
 function isActive(pathname: string | null, href: string) {

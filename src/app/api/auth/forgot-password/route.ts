@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import crypto from "crypto";
 import prisma from "@/lib/prisma";
-import { BRAND_EN } from "@/lib/brand";
+import { BRAND_EN, getEmailSender } from "@/lib/brand";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = process.env.RESEND_FROM ?? "onboarding@resend.dev";
 const BASE_URL = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 const TOKEN_TTL_HOURS = 2;
 
@@ -36,7 +35,7 @@ export async function POST(req: Request) {
   const resetUrl = `${BASE_URL}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
 
   await resend.emails.send({
-    from: FROM,
+    from: getEmailSender(),
     to: email,
     subject: `重置你的 ${BRAND_EN} 账户密码`,
     html: `
