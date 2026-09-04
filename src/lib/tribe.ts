@@ -55,10 +55,8 @@ function toTribeMember(row: FilerRow): TribeMember {
     initials: row.initials ?? "??",
     materialLabel: row.materialLabel,
     materialSub: row.materialSub,
-    materialHref: category === "core"
-      ? `/master/${row.tribeId}/library?category=document`
-      : `/master/${row.tribeId}#library`,
-    holdingsHref: `/master/${row.tribeId}/holdings`,
+    materialHref: `/master/${row.tribeId}#library`,
+    holdingsHref: `/master/${row.tribeId}#holdings`,
   };
 }
 
