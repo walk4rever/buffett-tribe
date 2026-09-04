@@ -4,7 +4,7 @@ import { formatCompanyUrl } from "@/lib/company-data";
 import { SiteNav } from "@/components/SiteNav";
 import { HeroSearch } from "@/components/HeroSearch";
 import { getLatestHomeSignalCards } from "@/lib/home-signals";
-import { getCoreTribeMembers, getTribeMemberColor } from "@/lib/tribe";
+import { getCoreTribeMembers, getAlphaTribeMembers, getTribeMemberColor } from "@/lib/tribe";
 import { getAvailableQuarters, getLatestPortfolioValueUsd } from "@/lib/master-data";
 import { formatUsdInYi } from "@/lib/currency";
 import { BRAND_EN } from "@/lib/brand";
@@ -46,6 +46,23 @@ async function getCoreMasters() {
   }
 }
 
+async function getAlphaMasters() {
+  try {
+    const members = await getAlphaTribeMembers();
+    return members
+      .map((m) => ({
+        ...m,
+        color: getTribeMemberColor(m),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (err) {
+    if (process.env.DEBUG_DB_FALLBACK === "1") {
+      console.warn("[home:alpha] DB query failed:", err);
+    }
+    return [];
+  }
+}
+
 async function getLatestInsights() {
   try {
     return await prisma.insightPost.findMany({
@@ -76,11 +93,14 @@ function formatInsightDate(date: Date | null | undefined): string {
 }
 
 export default async function Home() {
-  const [signals, masters, insights] = await Promise.all([
+  const [signals, masters, alphaMembers, insights] = await Promise.all([
     getLatestHomeSignalCards(),
     getCoreMasters(),
+    getAlphaMasters(),
     getLatestInsights(),
   ]);
+
+  const totalMembersCount = masters.length + alphaMembers.length;
 
   return (
     <div className="home-v2">
@@ -151,7 +171,7 @@ export default async function Home() {
                 </p>
               </div>
               <Link href="/master" className="home-section-more">
-                探索全部 11 位投资人 <span aria-hidden="true">→</span>
+                探索全部 {totalMembersCount || 11} 位投资人 <span aria-hidden="true">→</span>
               </Link>
             </div>
 
@@ -169,11 +189,12 @@ export default async function Home() {
                       <div className="home-master-info">
                         <div className="home-master-name-row">
                           <span className="home-master-name">{m.nameZh}</span>
-                          <span className="home-master-name-en">{m.name}</span>
+                          {m.aum && <span className="home-master-aum">{m.aum}</span>}
                         </div>
-                        <div className="home-master-firm">{m.firm}</div>
+                        <div className="home-master-firm" title={`${m.name} · ${m.firm}`}>
+                          {m.name} · {m.firm}
+                        </div>
                       </div>
-                      {m.aum && <span className="home-master-aum">{m.aum}</span>}
                     </div>
                   </Link>
 
@@ -205,6 +226,27 @@ export default async function Home() {
                 </div>
               ))}
             </div>
+
+            {/* Alpha Tribe Quick Bar */}
+            {alphaMembers.length > 0 && (
+              <div className="home-masters-alpha">
+                <div className="home-masters-alpha-head">
+                  <span className="home-masters-alpha-dot" />
+                  <span className="home-masters-alpha-label">Alpha 部落</span>
+                </div>
+                <div className="home-masters-alpha-chips">
+                  {alphaMembers.map((m) => (
+                    <Link
+                      key={m.id}
+                      href={`/master/${m.id}`}
+                      className="home-masters-alpha-chip"
+                    >
+                      {m.nameZh}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
       )}

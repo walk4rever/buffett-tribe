@@ -2,7 +2,7 @@
 
 # 价值部落 · Value Tribe — 产品设计文档
 
-> 最后更新：2026-07-17（v0.38.15）
+> 最后更新：2026-09-04（v0.44.8）
 
 ---
 
@@ -967,6 +967,13 @@ Apple HIG 精简风格：
 ### v0.42.9 变更（2026-08-15）
 
 - **修复 `--quarter-list` 模式下 edgartools 13F 提取器的崩溃**：`edgartools_13f_extract.py` 此前对扫描窗口内每一份 filing 都无条件调用 `filing.obj()`（完整解析 SGML/XML info table）来读取 `report_period`，季度过滤反而放在 TS 侧、等全部解析完之后才做——为了要一个季度，实际上把 filer 的全部历史 filing 都解析了一遍。Terry Smith（Fundsmith）、Chris Hohn（TCI Fund Management）各有一份 2018/2020 年的老 filing，edgartools 当前版本解析不动其 SGML，直接把整个 CIK 的导入进程崩溃退出。根因是解析顺序反了：`filing.report_date` 其实是 filing 列表自带的免费字段，不需要 `.obj()` 就能读到。修复为两层：① `import-13f-edgartools.ts` 把目标季度换算成 report-date（新增 `quarterEndDate()`，`scripts/lib/13f-import-core.ts`）传给 Python，脚本先用免费的 `report_date` 筛出目标季度再调用 `.obj()`，避免解析任何不需要的历史 filing；② 单份 `.obj()` 调用包 try/except，解析失败 warn 并跳过而不是让整批崩溃。修复后 terry-smith/chris-hohn 的 2026Q2 提取从崩溃变为 ~3 秒（只解析 1 份而不是上百份）。
+### v0.44.8 变更（2026-09-04）
+
+- **首页投资大师专区对齐与 Alpha 部落单行快捷胶囊**：
+  - **核心大师卡片高度与基准线对齐**：统一卡片头部为 46px 固定高度、姓名左对齐 + AUM 徽标右对齐（无论英文字母长度与基金名长短均绝对单行防换行）、季度变动条与底部「资料库 / 持仓明细」双操作链接自动贴底对齐，彻底解决三卡高度不一问题。
+  - **新增 Alpha 部落投资者单行胶囊栏**：在 3 张核心大师卡片下方新增 `.home-masters-alpha` 单行快捷导航栏，展示琥珀金微光状态点与「Alpha 部落」标识，横向汇聚 9 位 Alpha 投资人纯人名胶囊（Alex Sacerdote、Bill Ackman、Chris Hohn 等），点击直达个人主页。
+  - **自适应与移动端渐变柔化体验**：单行胶囊支持全端纯单行横排，在移动端（320px~430px）启用原生触控平滑滑动（`-webkit-overflow-scrolling: touch`），右侧边缘集成 `-webkit-mask-image` 柔和渐变遮罩，经 11 种视口分辨率自动化真机测试零横向溢出破版。
+
 ### v0.44.7 变更（2026-09-04）
 
 - **首页视觉与信息架构重构**：

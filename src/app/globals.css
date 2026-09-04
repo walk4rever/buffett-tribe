@@ -17153,6 +17153,85 @@ a.insight-entity-chip:hover {
   color: #94a3b8;
 }
 
+/* Alpha Tribe Quick-Access Bar inside Core Masters Section (Single-line) */
+.home-masters-alpha {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  overflow: hidden;
+}
+
+.home-masters-alpha-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.home-masters-alpha-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+  flex-shrink: 0;
+}
+
+.home-masters-alpha-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.home-masters-alpha-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.2rem 1.25rem 0.2rem 0.1rem;
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+}
+
+.home-masters-alpha-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.home-masters-alpha-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.75rem;
+  border-radius: 980px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.18s cubic-bezier(.22,1,.36,1);
+}
+
+.home-masters-alpha-chip:hover {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
 /* 2. Latest Insights Section: Soft graphite canvas with crisp white cards */
 .home-insights-section {
   background: transparent;
@@ -17248,7 +17327,9 @@ a.insight-entity-chip:hover {
   padding: 1.5rem 1.4rem;
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
+  justify-content: space-between;
+  height: 100%;
+  box-sizing: border-box;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
   transition: transform 240ms cubic-bezier(.22,1,.36,1), border-color 240ms ease, box-shadow 240ms ease;
 }
@@ -17263,12 +17344,15 @@ a.insight-entity-chip:hover {
   text-decoration: none;
   color: inherit;
   display: block;
+  min-width: 0;
+  width: 100%;
 }
 
 .home-master-top {
   display: flex;
   align-items: center;
   gap: 0.85rem;
+  min-height: 46px;
 }
 
 .home-master-avatar {
@@ -17288,38 +17372,28 @@ a.insight-entity-chip:hover {
 .home-master-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.25rem;
 }
 
 .home-master-name-row {
   display: flex;
-  align-items: baseline;
-  gap: 0.45rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
 }
 
 .home-master-name {
-  font-size: 1.1rem;
+  font-size: 1.12rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--graphite-text);
-  line-height: 1.25;
-}
-
-.home-master-name-en {
-  font-size: 0.75rem;
-  color: var(--graphite-text-secondary);
-  font-weight: 400;
+  line-height: 1.2;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.home-master-firm {
-  font-size: 0.775rem;
-  color: var(--graphite-text-secondary);
-  margin-top: 0.25rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex-shrink: 0;
 }
 
 .home-master-aum {
@@ -17329,10 +17403,21 @@ a.insight-entity-chip:hover {
   background: var(--graphite-surface-soft);
   border: 1px solid var(--graphite-border);
   border-radius: 6px;
-  padding: 0.22rem 0.55rem;
+  padding: 0.2rem 0.55rem;
   white-space: nowrap;
   flex-shrink: 0;
   letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.home-master-firm {
+  font-size: 0.75rem;
+  color: var(--graphite-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  line-height: 1.25;
 }
 
 .home-master-quarter-bar {
@@ -17343,6 +17428,10 @@ a.insight-entity-chip:hover {
   border-radius: 8px;
   background: rgba(16, 185, 129, 0.08);
   border: 1px solid rgba(16, 185, 129, 0.2);
+  margin-top: 1.15rem;
+  margin-bottom: 0.85rem;
+  min-height: 30px;
+  box-sizing: border-box;
 }
 
 .home-master-quarter-dot {
@@ -17364,6 +17453,7 @@ a.insight-entity-chip:hover {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.65rem;
+  margin-top: auto;
 }
 
 .home-master-link {
@@ -17371,6 +17461,8 @@ a.insight-entity-chip:hover {
   align-items: center;
   gap: 0.55rem;
   padding: 0.6rem 0.75rem;
+  min-height: 52px;
+  box-sizing: border-box;
   border-radius: 10px;
   background: var(--graphite-surface-soft);
   border: 1px solid var(--graphite-border);
