@@ -332,10 +332,19 @@ npm run import:company-stock-prices:yf -- --market cn,hk
 - 命令：`npm run mark:delisted-tickers -- --tickers TWTR,XLNX --reason "..."`（先 `npm run mark:delisted-tickers:dry` 预览）
 - 作用：在 `Entity.metadata` 上写 `delisted: true` + `delistedReason` + `delistedMarkedAt`，之后 `import-company-stock-prices-yf.ts` 会永久跳过这些 ticker。2026-08-29 首次跑美股周度更新时，611 支里有 56 支返回 yfinance 404（如 `TWTR` 被马斯克私有化、`XLNX`/`MXIM` 被 AMD/ADI 收购、`SPLK` 被思科收购、`MASI` 2026-06-10 被 Danaher 收购退市等），已用这个脚本标记，避免每周都产生同一批"假失败"。
 
-周度 cron（air7）：
+找出"还能返回数据、但已经不再前进"的 ticker：
+
+- 文件：[check-stale-tickers.ts](/Users/rafael/R129/buffett-tribe/scripts/check-stale-tickers.ts)
+- 命令：`npm run check:stale-tickers`（`--days N` 改阈值，默认 21；`--json`；`--strict` 有未标记候选时 exit 1）
+- 作用：报告 `StockPrice` 序列停止前进、落后本市场最新日期超过阈值的 ticker。跟上面那批 404 是**不同的故障形态**——被收购/私有化后 yfinance 往往仍然应答，只是尾部永远冻结在某一天，于是周度 cron 每次都报 `complete`，没有任何信号说它已经死了。落后天数对标**本市场自己的最新日期**而不是今天，否则周更节奏本身就会让所有 ticker 都显得"落后几天"。
+- **只报告，不自动标记**：一次瞬时的 yfinance 抽风和真退市长得一模一样——`QLYS` 在 2026-09-06 那次运行里报 `possibly delisted; no price data found`，四天后正常交易（173 根 bar，最新 9/10）。确认之后再手工跑 `mark:delisted-tickers`。
+- 2026-09-11 首次运行报出 4 个未标记候选，逐个用 yfinance 六个月窗口核实确实停更后已标记：`CWAN`(止于 7/2)、`OLPX`(7/13)、`CPRX`(7/21)、`EA`(8/10)，另加当时还在阈值内但已核实停更的 `LBRDK`(8/21)；`BK-PK` 早已在 2026-08-29 那批里标过。
+
+周度 cron（mini）：
 
 - 部署：[deploy-cron-job.sh](/Users/rafael/R129/buffett-tribe/scripts/deploy-cron-job.sh) 把仓库 rsync 到 `air7:/root/cron-job-buffett-tribe`（多个定时任务共用的目录，不止股价这一个），装依赖、生成 Prisma client、准备 `yfinance` 的 venv（air7 是 Ubuntu 22.04，`python3-venv` 需要额外 `apt install python3.10-venv`，系统自带的 python3 没带 `ensurepip`）。
-- 触发：[scripts/cron/update-stock-prices.sh](/Users/rafael/R129/buffett-tribe/scripts/cron/update-stock-prices.sh)`<market-list>`（不传 `--start`，用上面的 per-ticker 续跑逻辑），crontab 里注册两条（北京时间，air7 系统时区已是 `Asia/Shanghai`）：周六凌晨跑 `cn,hk`，周日凌晨跑 `us`。
+- 触发：[scripts/cron/update-stock-prices.sh](/Users/rafael/R129/buffett-tribe/scripts/cron/update-stock-prices.sh)`<market-list>`（不传 `--start`，用上面的 per-ticker 续跑逻辑），crontab 里注册两条（北京时间，mini 系统时区是 `Asia/Shanghai`）：**周六 12:00 跑 `cn,hk`，周日 01:00 跑 `us`**。
+- **`cn,hk` 为什么是中午而不是凌晨（2026-09-11 修）**：原本是周六 01:00，即周五亚洲收盘后仅约 10 小时，Yahoo 那时还没结算完当日日线，返回的最后一根 bar `close` 是 NaN，被 `normalizeYahooChartResponse` 跳过——于是**每周都稳定丢掉周五那个交易日**。日志里其实一直有证据（同一 ticker `Replacing ... (8 rows)` 对 `checkpoint saved (9 rows ... -> 09-04)`，14 支亚洲标的无一例外），但没人逐行比对过；美股因为跑在周日 01:00（距周五 20:00 UTC 收盘 21 小时）从来没踩到，`Replacing`/`checkpoint` 行数始终相等。改到周六 12:00 后结算余量约 21 小时，与美股现有余量相当。`RESUME_OVERLAP_DAYS = 3` 意味着这个洞下一周会自动补上，所以历史里没有永久缺口（核查过 6 月以来全部亚洲标的，工作日缺口只有 6/19 端午和 7/1 香港回归日两个真实休市日）。同批给 `normalizeYahooChartResponse` 加了跳过行的 `WARNING` 日志，下次再发生不会再是静默的。
 - `.env.local`（仅 `DATABASE_URL`/`DIRECT_URL` 两行，不是本地完整的 `.env.local`）需要手动放到 `air7:/root/cron-job-buffett-tribe/.env.local`（`chmod 600`），rsync 不会同步它。
 
 ## 14. A股/港股财务数据导入入口

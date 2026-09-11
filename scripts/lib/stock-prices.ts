@@ -181,15 +181,28 @@ export function normalizeYahooChartResponse(
   const len = timestamps.length;
 
   const byDate = new Map<string, StockPriceRecord>();
+  // Yahoo hands back a bar for a session it hasn't finalized yet with a NaN close.
+  // Skipping it is right — a row with no close is useless — but doing it silently
+  // let the cn/hk weekly cron lose every Friday for weeks: it ran at 01:00 Beijing
+  // on Saturday, ~10h after the Asian close and before Yahoo had settled the daily
+  // bar, so every Asian ticker wrote one session less than it fetched and nobody
+  // noticed. Name what was dropped so the next occurrence is visible in the log.
+  const skipped: string[] = [];
   for (let i = 0; i < len; i++) {
-    const close = closes[i];
-    if (close == null || !Number.isFinite(close)) continue;
-
     const rawDate = new Date(timestamps[i] * 1000);
     const date = new Date(
       Date.UTC(rawDate.getUTCFullYear(), rawDate.getUTCMonth(), rawDate.getUTCDate())
     );
-    if (Number.isNaN(date.getTime())) continue;
+    if (Number.isNaN(date.getTime())) {
+      skipped.push(`#${i} (bad timestamp ${timestamps[i]})`);
+      continue;
+    }
+
+    const close = closes[i];
+    if (close == null || !Number.isFinite(close)) {
+      skipped.push(`${formatDateKey(date)} (no close)`);
+      continue;
+    }
 
     const key = formatDateKey(date);
     byDate.set(key, {
@@ -202,6 +215,12 @@ export function normalizeYahooChartResponse(
       volume: volumes[i] != null && Number.isFinite(volumes[i] as number) ? BigInt(Math.round(volumes[i] as number)) : null,
       adjustedClose: adjclose[i] != null && Number.isFinite(adjclose[i] as number) ? (adjclose[i] as number) : null,
     });
+  }
+
+  if (skipped.length > 0) {
+    console.warn(
+      `  WARNING: ${ticker}: dropped ${skipped.length}/${len} bar(s) from the Yahoo response: ${skipped.join(", ")}`
+    );
   }
 
   return [...byDate.values()].sort((a, b) => a.date.getTime() - b.date.getTime());
