@@ -216,6 +216,11 @@ export function AgentChat({
                               {msg.text}
                             </ReactMarkdown>
                           </div>
+                          {msg.incomplete && (
+                            <div className="agent-msg-incomplete">
+                              回答未完整结束，可以直接说&ldquo;继续&rdquo;接着上面的内容往下答。
+                            </div>
+                          )}
                           {!msg.error && (
                             <div className="msg-actions">
                               <CopyMarkdownButton text={msg.text} />
@@ -226,9 +231,18 @@ export function AgentChat({
                           )}
                         </>
                       )
-                    ) : !msg.error && streaming && i === messages.length - 1 ? (
+                    ) : !msg.error && streaming && i === messages.length - 1 && !msg.thinking ? (
                       <p className="msg-text agent-typing">▋</p>
                     ) : null}
+
+                    {msg.thinking && (
+                      <div className="agent-thinking">
+                        <span className="agent-tool-spinner" />
+                        <span className="agent-thinking-label">
+                          {msg.thinking === "synthesizing" ? "正在分析查询结果…" : "正在思考…"}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ),

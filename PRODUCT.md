@@ -158,7 +158,7 @@ Canvas 的数据来自结构化事实层（财务数据，来自 EDGAR / 市场�
 
 ### /agent — 投资研究 Agent
 
-全站核心对话入口。SSE 流式输出，实时显示工具调用指示器（工具名 · 参数摘要 · 返回条数）。
+全站核心对话入口。SSE 流式输出，实时显示工具调用指示器（工具名 · 参数摘要 · 返回条数），以及模型推理期间的等待指示（见下方「推理等待反馈」）。
 
 Agent 由 pi-gateway（Express SSE，air7，PM2）驱动，使用 `@earendil-works/pi-coding-agent` 框架，LLM 为 DeepSeek。
 
@@ -168,6 +168,14 @@ Agent 由 pi-gateway（Express SSE，air7，PM2）驱动，使用 `@earendil-wor
 - **`search_filings`** 查询公司年报：FilingSection 结构化抽取，section alias 映射，keyword excerpt
 
 AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投研定位、三工具用法、回答格式（分析 + 引用分层）。
+
+**长回答稳定性：85 秒硬超时 + 静默截断（2026-09-11 修复）**：用户反馈"问题稍微复杂、查询比较多时，回答返回一半就停了，再问一句『继续』它才接着说"。根因不在模型，在 `/api/pi` 从 `/agent` 首次集成（`a946fe72`）起就写死的 `maxDuration = 90` / `AbortSignal.timeout(85000)`——Vercel 代理在 85 秒掐断到 pi-gateway 的 upstream fetch。用用户原问题（"从电力角度分析哪家公司值得投资"）直连网关实测三次：**81s / 82s / 90s**，40 次工具调用分 5 轮，85 秒这条线正好穿过分布中间，等于**一半概率被砍**，且查询越多越必砍。放大成"静默"截断的是客户端：`useAgentChat.ts` 的 SSE 解析器只认 `delta`/`tool_start`/`tool_end`/`error`，**从来没有处理过 `done`**，流被掐断后 reader 正常关闭、`hadError` 仍是 false，于是把半截答案当成完整回答写进了 `ChatTurn`——用户看到的是"不完整但没报错"，而说"继续"能接上是因为 pi-gateway 内存里的 session 和工具结果都还在。
+
+三处修复：① `maxDuration` 90→300、abort 85s→290s（`.vercel/project.json` 是 team 账号即 Pro，300s 在额度内）；② 客户端处理 `done` 并跟踪是否收到终止事件，没收到就把该条标记 `incomplete`，UI 显示"回答未完整结束，可以直接说『继续』"，**仍然持久化**（半截内容是真实的，留着才能续接）——这条覆盖所有断流原因，不只是超时；③ pi-gateway 在 `turn_end` 抓 `stopReason`，`done` 载荷带 `truncated` 字段，顺带覆盖了 `max_tokens` 耗尽（provider 报 `finish_reason: "length"`）这条独立的静默截断路径——agent loop 对它是不报错的，正文直接停。
+
+**推理等待反馈（2026-09-11 上线）**：同一次实测暴露的第二个问题——最后一批工具返回到正文开始输出之间有 **30 秒完全静默**（模型在推理，一个字节都不发），界面上工具条目的转圈已经停了、正文还没来，看起来就是卡死。没有用前端定时器猜"是不是卡住了"，而是让网关说出它在干什么：agent loop 每次发起 provider 请求前都会触发 `turn_start`，这正是静默窗口的起点，在那里发 `event: phase`（`{phase: "thinking" | "synthesizing"}`，已跑过工具就是后者），客户端收到第一个 `delta` 或 `tool_start` 就立刻清掉——有东西在动时绝不重复提示。UI 是转圈（复用工具条目同一个 `.agent-tool-spinner`）+ 一行呼吸式明暗渐变的灰字（「正在思考…」/「正在分析查询结果…」），30 秒静默里一行不动的字读起来仍像死机，必须有东西在呼吸。状态挂在 `Message.thinking` 上而不是新加 prop——`messages` 已经穿过全部 6 个面板/对话框（`AgentChat.tsx` 是共享渲染层，`InsightChatShell` 是唯一自己调 hook 再往下传的），挂在消息上等于零改动全覆盖。
+
+同时给网关加了 15 秒一次的 SSE 注释心跳（`: ping`），补上那段静默窗口里链路上没有任何字节的空当，防止中间层把连接当 idle 回收；客户端解析器只读 `event:`/`data:` 前缀，注释行天然被忽略，旧客户端也不会因此出错。
 
 **图片输入（2026-08-23 上线）**：所有「AI 解读」对话框（含 `/agent` 本身）的输入框支持直接从剪贴板粘贴图片提问。前端用 `<canvas>` 把图片降采样到长边 ≤1280px、JPEG quality 0.82 后再转 base64（DeepSeek vision 对单张图的有效信息上限约 384 token，原图分辨率没有意义），随消息体一并发到 `/api/pi` → pi-gateway；pi-gateway 只在这一轮消息带图片时用 `AgentSession.setModel()` 切到 `deepseek-v4-flash-vision-exp`（单独一个 provider model，见 `services/pi-gateway/.pi-agent/models.json`），发完这轮再切回默认文本模型——已用真实 DeepSeek API 验证过 vision 模型在同一次请求里仍能正常触发 function calling，不会因为切模型而让五个工具失效。图片仅内联传输（base64 data URI），不落盘、不经 R2，纯本轮对话的临时输入。校验逻辑（mime 白名单、单条消息最多 4 张、单张 base64 长度上限）在 `src/lib/image-attachment.ts` 和 `services/pi-gateway/src/image-attachment.ts` 两处独立维护——两个目录是各自独立部署的服务，不共享代码。对话记录里已发送的图片支持点击放大（`AgentChat.tsx` 内嵌一个极简 lightbox：点击缩略图全屏展示，点击遮罩关闭，不做独立组件）。
 

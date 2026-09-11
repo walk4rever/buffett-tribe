@@ -6,7 +6,12 @@ import { agentContextSchema, deriveContextKey } from "@/lib/agent-context";
 import prisma from "@/lib/prisma";
 import { currentPeriod, ensureFreeGrant, getBalance, recordSpend, withinHourlyLimit } from "@/lib/credits";
 
-export const maxDuration = 90;
+// A multi-tool question ("从电力角度分析哪家公司值得投资" — 5 tool rounds, 22 calls)
+// measured 81s against the gateway directly, so the previous 90s/85s pair left ~4s of
+// headroom and severed the stream mid-answer on anything slower. Vercel's Pro ceiling
+// is 300s; the abort below sits just under it so a genuine overrun still unwinds here
+// instead of the platform killing the function.
+export const maxDuration = 300;
 
 const GATEWAY_URL = process.env.PI_GATEWAY_URL;
 const AGENT_SECRET = process.env.PI_AGENT_SECRET;
@@ -76,7 +81,7 @@ export async function POST(req: Request) {
       "X-Agent-Secret": AGENT_SECRET,
     },
     body: JSON.stringify({ message: body.message, userId: body.userId, context: body.context, images, history }),
-    signal: AbortSignal.any([req.signal, AbortSignal.timeout(85000)]),
+    signal: AbortSignal.any([req.signal, AbortSignal.timeout(290_000)]),
   });
 
   if (!upstream.ok) {

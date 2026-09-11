@@ -15,11 +15,23 @@ export interface ToolCall {
   done: boolean;
 }
 
+/** "thinking" = the opening reasoning pass; "synthesizing" = reasoning over tool
+ *  results that already came back. */
+export type ThinkingPhase = "thinking" | "synthesizing";
+
 export interface Message {
   role: "user" | "assistant";
   text: string;
   toolCalls?: ToolCall[];
   error?: boolean;
+  /** The stream ended without a terminal `done` event (proxy timeout, dropped
+   *  connection), or `done` reported the model was cut off by max_tokens. The text
+   *  present is real but unfinished — distinct from `error`, where there is no answer. */
+  incomplete?: boolean;
+  /** Set while the model is working with nothing to show yet. Carried on the message
+   *  rather than passed as a prop so it reaches every renderer through `messages`,
+   *  which already threads through all six panels/dialogs. */
+  thinking?: ThinkingPhase;
   images?: ImageAttachment[];
   /** R2 URLs for images loaded from persisted history — distinct from `images`
    *  (base64, only present for images just attached in this live session). */
@@ -155,6 +167,11 @@ export function useAgentChat({ context, initialMessages }: UseAgentChatOptions =
     abortRef.current = ctrl;
     let assistantText = "";
     let hadError = false;
+    // A severed stream (proxy timeout, network drop) closes the reader with no
+    // terminal event, which is indistinguishable from a clean finish unless we
+    // track it — that gap is what made a cut-off answer look like a complete one.
+    let sawTerminal = false;
+    let truncated = false;
 
     try {
       // A stop click cancels the gateway session in the background so the UI can
@@ -214,7 +231,14 @@ export function useAgentChat({ context, initialMessages }: UseAgentChatOptions =
               const delta = typeof data.text === "string" ? data.text : "";
               assistantText += delta;
               setMessages((prev) =>
-                prev.map((m, i) => i === assistantIndex ? { ...m, text: m.text + delta } : m),
+                prev.map((m, i) =>
+                  i === assistantIndex ? { ...m, text: m.text + delta, thinking: undefined } : m,
+                ),
+              );
+            } else if (eventType === "phase") {
+              const phase = data.phase === "synthesizing" ? "synthesizing" : "thinking";
+              setMessages((prev) =>
+                prev.map((m, i) => (i === assistantIndex ? { ...m, thinking: phase } : m)),
               );
             } else if (eventType === "tool_start") {
               const id = typeof data.id === "string" ? data.id : String(Date.now());
@@ -224,7 +248,9 @@ export function useAgentChat({ context, initialMessages }: UseAgentChatOptions =
               const toolCall: ToolCall = { id, name, detail, done: false };
               setMessages((prev) =>
                 prev.map((m, i) =>
-                  i === assistantIndex ? { ...m, toolCalls: [...(m.toolCalls ?? []), toolCall] } : m,
+                  i === assistantIndex
+                    ? { ...m, toolCalls: [...(m.toolCalls ?? []), toolCall], thinking: undefined }
+                    : m,
                 ),
               );
             } else if (eventType === "tool_end") {
@@ -243,19 +269,32 @@ export function useAgentChat({ context, initialMessages }: UseAgentChatOptions =
                     : m,
                 ),
               );
+            } else if (eventType === "done") {
+              sawTerminal = true;
+              truncated = data.truncated === true;
             } else if (eventType === "error") {
               const msg = typeof data.message === "string" ? data.message : "未知错误";
               setMessages((prev) =>
                 prev.map((m, i) => i === assistantIndex ? { ...m, text: msg, error: true } : m),
               );
               hadError = true;
+              sawTerminal = true;
             }
             eventType = "";
           }
         }
       }
 
-      if (!hadError) persistTurn("assistant", assistantText);
+      if (!hadError) {
+        if (!sawTerminal || truncated) {
+          setMessages((prev) =>
+            prev.map((m, i) => (i === assistantIndex ? { ...m, incomplete: true } : m)),
+          );
+        }
+        // Persisted either way: the partial answer is real work the user can read,
+        // and keeping it in ChatTurn is what lets a follow-up pick up where it stopped.
+        persistTurn("assistant", assistantText);
+      }
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
         setMessages((prev) =>
@@ -274,6 +313,9 @@ export function useAgentChat({ context, initialMessages }: UseAgentChatOptions =
         if (assistantText) persistTurn("assistant", assistantText);
       }
     } finally {
+      setMessages((prev) =>
+        prev.map((m, i) => (i === assistantIndex ? { ...m, thinking: undefined } : m)),
+      );
       setStreaming(false);
       abortRef.current = null;
     }

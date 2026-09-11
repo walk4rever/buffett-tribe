@@ -14102,6 +14102,36 @@ a.insight-entity-chip:hover {
   color: #ff3b30;
 }
 
+.agent-thinking {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--apple-secondary);
+}
+
+/* The model can go ~30s without emitting a byte between a tool batch and the
+   answer — a static label reads as frozen, so the label breathes alongside the
+   same spinner the tool chips use. */
+.agent-thinking-label {
+  animation: agent-thinking-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes agent-thinking-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+.agent-msg-incomplete {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--apple-secondary);
+}
+
 @keyframes agent-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
