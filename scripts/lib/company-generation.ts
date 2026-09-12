@@ -20,6 +20,13 @@ const FILING_EVIDENCE_SECTION_KEYS = [
   "cn_annual_report_2",
   "cn_annual_report_3",
   "cn_annual_report_4",
+  "cn_mda",
+  "cn_mda_moat",
+  "cn_mda_business",
+  "cn_mda_review",
+  "cn_mda_outlook",
+  "cn_company_profile",
+  "cn_governance",
   "us_prospectus_1",
   "us_prospectus_2",
   "us_prospectus_3",
@@ -278,10 +285,19 @@ export async function fetchLatestFilingEvidence(entityId: string): Promise<Filin
     reportDate: filing.ts?.toISOString() ?? null,
     accession: typeof meta.accession === "string" ? meta.accession : null,
     form: typeof meta.form === "string" ? meta.form : filing.kind.toUpperCase(),
-    sections: filing.sections.map((section) => ({
-      section: section.section,
-      content: truncateText(section.content, 2400),
-    })),
+    sections: (() => {
+      const hasCnSemantic = filing.sections.some(
+        (s) => s.section.startsWith("cn_mda") || s.section.startsWith("cn_company") || s.section.startsWith("cn_gov")
+      );
+      const targetSections = hasCnSemantic
+        ? filing.sections.filter((s) => !s.section.startsWith("cn_annual_report_"))
+        : filing.sections;
+
+      return targetSections.map((section) => ({
+        section: section.section,
+        content: truncateText(section.content, section.section.startsWith("cn_") ? 4000 : 2400),
+      }));
+    })(),
     attachments: filing.attachments.slice(0, 12).map((attachment) => ({
       sequence: attachment.sequence,
       documentType: attachment.documentType,

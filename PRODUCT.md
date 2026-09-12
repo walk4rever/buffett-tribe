@@ -747,6 +747,14 @@ NextAuth（Credentials Provider，`src/lib/auth.ts`）是现有唯一认证实�
 
 **本地阅读页（2026-07-27 追加）**：年度报告 tab 卡片过去对港股恒为空，因为 `getCompanyReferenceFilings`/`getCompanyAnnualFiling` 的 `kind` 过滤硬编码只认 `10k`/`20f`/`40f`——加上 `hk-annual-report` 后卡片直接复用既有 SEC 卡片 UI 出现，无需新写。点进去的阅读页原本只会渲染 `FilingReader`（依赖 `primary_html`），港股年报是纯文本没有这个 artifact；按用户要求复用大师资料库已有的通用 `PdfViewer` 组件（`src/components/PdfViewer.tsx`，纯 `url` prop，不绑定任何数据模型），`annual-report/[year]/page.tsx` 按 `filing.kind === "hk-annual-report"` 分支到它。PDF 原件不再依赖披露易原站（已知限速 ~85KB/s），下载后连同文本一起归档到 R2（`archiveFilingArtifact()`，`kind: "primary_pdf"`，复用 SEC 附件同一套归档/去重逻辑）。年份范围从"最近 2 份"改为 `--from-year`（默认 2020），复用 `onboard-company.ts` 已有的 `--from` 参数贯通，不新增用户可见 flag；泡泡玛特回填至 6 份（2020-2025）。**踩到一个 CORS 坑**：`PdfViewer` 若直接拿 `FilingArtifact.publicUrl`（R2 公开域名）当 `url`，pdfjs 内部的跨域 `fetch` 会被 CORS 拦截（R2 公开桶不带 `Access-Control-Allow-Origin`）——大师资料库的 PDF 从未暴露这个问题，因为它们从不直接把 R2 URL 给客户端，而是走 `/api/documents/*/[slug]` 同源代理（`getR2Stream()` 服务端转发）。照同一模式新增 `/api/filing-pdf/[...key]/route.ts`（用 `FilingArtifact.objectKey`，`@unique`，catch-all 路径还原后查库转发），阅读页改传代理路径而非 `publicUrl`。
 
+**2026-09-12 更新：A 股年报语义精准提取（三层降级架构）**：
+原先 A 股年报 PDF 仅通过机械四等分（`cn_annual_report_1..4`）存储，且下游 `company-generation.ts` 对每个 Section 做 1800 字符截断，导致 90%+ 的管理层讨论与分析（MD&A）及核心竞争力披露在 Prompt 组装时被丢失，AI 生成主要依赖模型预训练记忆。现重构为依托中国证监会法定年报规范的**三层降级语义提取管线**：
+1. **Tier 1 (PDF Outline 书签树)**：通过 PyMuPDF 的 `doc.get_toc()` 读取原生 PDF 章节（实测潍柴动力、泸州老窖、贵州茅台、长江电力、中国神华均命中，直接拿到物理起止页）。
+2. **Tier 2 (前 12 页目录文本正则)**：对未内嵌书签树的 PDF（五粮液、宁德时代、招商银行），扫描前 12 页目录行与点线页码定位。
+3. **Tier 3 (正文标题滑动扫描与锚点校准)**：逐页扫描 `第[一二三四五六七八九十\d]+[节章]\s*管理层讨论与分析`，并防目录行误判。
+- **提取产物**：精确入库 `cn_mda`（MD&A 全文，1.7万~13万字）、`cn_company_profile`（第二节）、`cn_governance`（第四节），以及 MD&A 子切片 `cn_mda_moat`（核心竞争力分析）、`cn_mda_business`（主营业务与行业格局）、`cn_mda_review`（经营分析回顾）、`cn_mda_outlook`（未来展望）。
+- **向下兼容与智能优选**：保留 `cn_annual_report_1..4` 供全文检索与回归测试；`fetchLatestFilingEvidence()` 在检测到语义章节时自动剔除机械分块，单 Section 截断上限放宽至 4000 字符，喂给 LLM 的 Prompt 扩充至 2.3 万字真实商业事实。全库 8 家 A 股公司已完成语义回填与端到端回归验证。
+
 ### 跨市场扩展的三条结构约束
 
 > 2026-07-26 复盘法拉利（RACE）onboarding 后补充。RACE 的核心教训是**管线把"抽取"当成确定性操作，而它实际是概率性的**（完整复盘见 TODO.md P0 ③）。这三条约束是把该教训前置到跨市场扩展上，避免在新市场重演。

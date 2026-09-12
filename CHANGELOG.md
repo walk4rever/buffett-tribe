@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.44.16] - 2026-09-12
+
+### Added
+- A 股年报三层降级语义精准提取架构：在 `fetch-cn-annual-report.py` 中废除机械 4 等分切块，实现 Tier 1 (PDF 原生书签树) → Tier 2 (前 12 页目录文本解析) → Tier 3 (正文标题滑动扫描) 的法定章节定位算法，精确提取 `cn_mda`（管理层讨论与分析全文）、`cn_company_profile`（第二节指标）、`cn_governance`（第四节治理）及 `cn_mda_moat`/`cn_mda_business`/`cn_mda_review`/`cn_mda_outlook` 子切片。
+- LLM 上下文证据智能优选与截断优化：`company-generation.ts` 接入新版语义 Section，自动过滤粗糙分块，并将单 Section 截断上限放宽至 4000 字符，消除年报实质信息被截断遗漏的痛点。
+- 全库 A 股公司年报语义章节全面回填：覆盖潍柴动力、贵州茅台、宁德时代、五粮液、泸州老窖、中国神华、长江电力、招商银行 8 家标的，并完成 5 维 AI 分析基于真实 MD&A 事实的事实重构。
+
 ## [v0.44.15] - 2026-09-12
 
 ### Added

@@ -1,9 +1,17 @@
 import { readFileSync } from "node:fs";
+import { Prisma } from "@prisma/client";
 import db from "../src/lib/prisma";
 import { buildStoredTextOnlyFilingSectionData } from "./lib/filing-section-storage";
 import { archiveFilingArtifact } from "./lib/filing-archive";
 
-type ReportRecord = { periodYear: number; url: string; pdfPath: string; chunks: string[] };
+type ReportRecord = {
+  periodYear: number;
+  url: string;
+  pdfPath: string;
+  chunks?: string[];
+  sections?: Record<string, string>;
+  metadata?: Record<string, unknown>;
+};
 
 function getArg(flag: string): string | undefined {
   const args = process.argv.slice(2);
@@ -45,7 +53,13 @@ async function main() {
     // form: "Annual Report" so the company page's reference card shows a
     // real label instead of falling back to the raw kind string
     // ("CN-ANNUAL-REPORT") — see src/app/company/[id]/page.tsx's card head.
-    const metadata = { ticker, market, code, form: "Annual Report" };
+    const metadata = {
+      ticker,
+      market,
+      code,
+      form: "Annual Report",
+      ...(report.metadata ? { extraction: report.metadata } : {}),
+    };
     const extSource = await db.extSource.upsert({
       where: { ExtSource_filer_accession_unique: { filerEntityId: entity.id, accessionNumber } },
       create: {
@@ -54,9 +68,9 @@ async function main() {
         accessionNumber,
         periodYear: report.periodYear,
         url: report.url,
-        metadata,
+        metadata: metadata as Prisma.InputJsonValue,
       },
-      update: { url: report.url, metadata },
+      update: { url: report.url, metadata: metadata as Prisma.InputJsonValue },
     });
 
     // Archive the original PDF to R2 so the reading page has its own fast
@@ -75,24 +89,48 @@ async function main() {
       metadata: { entityId: entity.id, periodYear: report.periodYear },
     });
 
-    for (const [index, content] of report.chunks.entries()) {
-      if (!content.trim()) continue;
-      const section = `cn_annual_report_${index + 1}`;
-      const data = await buildStoredTextOnlyFilingSectionData(
-        db,
-        { entityId: entity.id, sourceId: extSource.id, cik: entity.cik, accession: accessionNumber },
-        section,
-        content,
-        null,
-      );
-      await db.filingSection.upsert({
-        where: { sourceId_section: { sourceId: extSource.id, section } },
-        create: data,
-        update: data,
-      });
-      totalSections++;
+    let yearSections = 0;
+    if (report.sections) {
+      for (const [section, content] of Object.entries(report.sections)) {
+        if (!content.trim()) continue;
+        const data = await buildStoredTextOnlyFilingSectionData(
+          db,
+          { entityId: entity.id, sourceId: extSource.id, cik: entity.cik, accession: accessionNumber },
+          section,
+          content,
+          null,
+        );
+        await db.filingSection.upsert({
+          where: { sourceId_section: { sourceId: extSource.id, section } },
+          create: data,
+          update: data,
+        });
+        totalSections++;
+        yearSections++;
+      }
     }
-    console.log(`FY${report.periodYear}: wrote ${report.chunks.length} sections`);
+
+    if (report.chunks) {
+      for (const [index, content] of report.chunks.entries()) {
+        if (!content.trim()) continue;
+        const section = `cn_annual_report_${index + 1}`;
+        const data = await buildStoredTextOnlyFilingSectionData(
+          db,
+          { entityId: entity.id, sourceId: extSource.id, cik: entity.cik, accession: accessionNumber },
+          section,
+          content,
+          null,
+        );
+        await db.filingSection.upsert({
+          where: { sourceId_section: { sourceId: extSource.id, section } },
+          create: data,
+          update: data,
+        });
+        totalSections++;
+        yearSections++;
+      }
+    }
+    console.log(`FY${report.periodYear}: wrote ${yearSections} sections (semantic: ${Object.keys(report.sections ?? {}).length}, chunks: ${report.chunks?.length ?? 0})`);
   }
 
   console.log(`Wrote ${totalSections} FilingSection rows for entity ${entity.id}`);
