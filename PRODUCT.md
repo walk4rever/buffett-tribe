@@ -761,7 +761,7 @@ RACE 是在 SEC inline XBRL 这种**已经标准化**的格式上花了数天、
 
 **3. `onboard-company.ts` 不要按市场 fork。**
 
-该脚本真正值钱的是市场无关的骨架——checkpoint、每步查库 verify、断点续跑。跨市场差异只体现在 **steps 列表**：美股是现有七步（10-K 导入 → 股价 → 5 个 LLM 生成），A 股/港股 Phase 1 只有"Entity 种子 → 股价"两步。按 market 选择 steps 列表，而不是复制出 `onboard-cn-company.ts`。
+该脚本真正值钱的是市场无关的骨架——checkpoint、每步查库 verify、断点续跑。跨市场差异只体现在 **steps 列表**：美股是现有八步（10-K 导入 → 股价 → 5 个 LLM 生成 → 名称映射同步），A 股/港股是十步（`seed_entity` → 股价 → 财务/年报 → 5 个 LLM 生成 → 名称映射同步）。按 market 选择 steps 列表，末尾统一由 `sync:company-name-map --ticker XXX` 闭环同步到 `CompanyNameMap`，而不是复制出 `onboard-cn-company.ts`。
 
 ### 技术方案（实际实现，非原计划伪代码）
 

@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.44.15] - 2026-09-12
+
+### Added
+- 公司 Onboarding 流程闭环：`onboard:company` 自动编入 `sync_name_map` 步骤（美股第 8 步，A股/港股第 10 步），在各维度生成完成后自动同步公司代码与中英文名称至 `CompanyNameMap`，完成 Checkpoint 状态闭环。
+- `sync:company-name-map` 支持 `--ticker <TICKER>` 参数：单公司快速同步由全库遍历耗时降至 1~2 秒，并修复中文实体在 `issuerKey` 为空字符串时的脏覆盖 bug，同时持久化 `nameEnShort` 英文短名。
+- 新增 A 股上市公司：潍柴动力（`000338.SZ`，代码 `cn-000338`），涵盖 2020~2025 年报原文、三大财务报表、股价历史与 5 维 AI 深度分析。
+
 ## [v0.44.4] - 2026-09-03
 
 ### Changed

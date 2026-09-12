@@ -20,6 +20,7 @@
  *   5. generate:value-analysis
  *   6. generate:management-analysis
  *   7. generate:valuation-analysis
+ *   8. sync:company-name-map   -> CompanyNameMap (ticker & issuer key sync)
  * (3-7 skippable with --skip-generation)
  *
  * CN/HK steps (--market cn|hk): seed_entity (canonicalName/nameZh/
@@ -37,7 +38,7 @@
  * retrieval mechanics per market, see scripts/fetch-hk-annual-report.py and
  * scripts/fetch-cn-annual-report.py; both search+download+pypdf text
  * extraction+R2 PDF archive; --from applies here too, same "2020" default
- * as the US path) -> the same 5 generate_* steps as US.
+ * as the US path) -> the same 5 generate_* steps as US -> sync:company-name-map.
  * No 10-K import (no XBRL/SEC equivalent — PRODUCT.md's "跨市场扩展的三条
  * 结构约束" explicitly decided not to generalize the US extraction pipeline
  * to CN/HK). The generate_* steps used to be US-only because
@@ -72,7 +73,8 @@ type StepId =
   | "generate_business_model"
   | "generate_value_analysis"
   | "generate_management_analysis"
-  | "generate_valuation_analysis";
+  | "generate_valuation_analysis"
+  | "sync_name_map";
 
 type Checkpoint = {
   ticker: string;
@@ -403,6 +405,18 @@ async function main() {
     },
   ];
 
+  const syncNameMapStep: Step = {
+    id: "sync_name_map",
+    label: "同步公司名称映射（CompanyNameMap）",
+    run: () => runNpmScript("sync:company-name-map", ["--ticker", ticker]),
+    verify: async () => {
+      const row = await prisma.companyNameMap.findFirst({
+        where: { ticker },
+      });
+      return row != null;
+    },
+  };
+
   const steps: Step[] =
     market === "us"
       ? [
@@ -432,6 +446,7 @@ async function main() {
           },
           importPriceStep,
           ...generateSteps,
+          syncNameMapStep,
         ]
       : (() => {
           const code = resolveCnHkCode(ticker, market);
@@ -446,7 +461,7 @@ async function main() {
             market === "hk"
               ? [importAnnualReportStep, importFinancialsStep]
               : [importFinancialsStep, importAnnualReportStep];
-          return [seedEntityStep, importPriceStep, ...marketSteps, ...generateSteps];
+          return [seedEntityStep, importPriceStep, ...marketSteps, ...generateSteps, syncNameMapStep];
         })();
 
   console.log(`\nOnboarding ${ticker} [market: ${market}]${market === "us" ? ` (${fromYear} -> ${toYear})` : ""}`);

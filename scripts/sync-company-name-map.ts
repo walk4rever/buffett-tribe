@@ -15,9 +15,27 @@ import { normalizeTicker } from "../src/lib/ticker";
 const db = new PrismaClient();
 const dryRun = process.argv.includes("--dry-run");
 
+function getArg(flag: string): string | undefined {
+  const args = process.argv.slice(2);
+  const index = args.indexOf(flag);
+  return index !== -1 ? args[index + 1] : undefined;
+}
+
 async function main() {
+  const tickerArg = getArg("--ticker")?.trim();
+
   const companies = await db.entity.findMany({
-    where: { type: "company" },
+    where: {
+      type: "company",
+      ...(tickerArg
+        ? {
+            OR: [
+              { ticker: { equals: tickerArg, mode: "insensitive" } },
+              { ticker: { equals: normalizeTicker(tickerArg) ?? tickerArg, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    },
     select: { ticker: true, canonicalName: true, metadata: true, type: true, cik: true },
   });
   companies.sort((a, b) => {
@@ -30,34 +48,46 @@ async function main() {
       const meta = (c.metadata as Record<string, unknown> | null) ?? {};
       const metaNameZh = typeof meta.nameZh === "string" ? meta.nameZh : null;
       const nameZh = hasChineseText(metaNameZh) ? metaNameZh : null;
+      const nameEnShort = typeof meta.nameEnShort === "string" ? meta.nameEnShort : null;
       const ticker = normalizeTicker(c.ticker);
       if (!ticker) return null;
       return {
         keyType: "ticker",
         key: ticker,
         nameZh,
+        nameEnShort,
         ticker,
         source: "entity.company",
       };
     })
-    .filter((r): r is { keyType: string; key: string; nameZh: string; ticker: string; source: string } => Boolean(r?.nameZh));
+    .filter((r): r is { keyType: string; key: string; nameZh: string; nameEnShort: string | null; ticker: string; source: string } => Boolean(r?.nameZh));
 
-  const issuerRows = companies.map((c) => {
-    const meta = (c.metadata as Record<string, unknown> | null) ?? {};
-    const metaNameZh = typeof meta.nameZh === "string" ? meta.nameZh : null;
-    const nameZh = hasChineseText(metaNameZh) ? metaNameZh : null;
-    const ticker = normalizeTicker(c.ticker);
-    return {
-      keyType: "issuer",
-      key: issuerKey(c.canonicalName),
-      nameZh,
-      ticker,
-      source: "entity.company",
-    };
-  });
+  const issuerRows = companies
+    .map((c) => {
+      const meta = (c.metadata as Record<string, unknown> | null) ?? {};
+      const metaNameZh = typeof meta.nameZh === "string" ? meta.nameZh : null;
+      const nameZh = hasChineseText(metaNameZh) ? metaNameZh : null;
+      const nameEnShort = typeof meta.nameEnShort === "string" ? meta.nameEnShort : null;
+      const ticker = normalizeTicker(c.ticker);
+      let key = issuerKey(c.canonicalName);
+      if (!key && nameEnShort) {
+        key = issuerKey(nameEnShort);
+      }
+      if (!key) return null;
+      return {
+        keyType: "issuer",
+        key,
+        nameZh,
+        nameEnShort,
+        ticker,
+        source: "entity.company",
+      };
+    })
+    .filter((r): r is { keyType: string; key: string; nameZh: string | null; nameEnShort: string | null; ticker: string | null; source: string } => Boolean(r?.key));
 
   console.log(JSON.stringify({
     mode: dryRun ? "dry-run" : "live",
+    tickerArg: tickerArg ?? null,
     tickerRows: tickerRows.length,
     issuerRows: issuerRows.length,
     total: tickerRows.length + issuerRows.length,
@@ -66,12 +96,20 @@ async function main() {
   }, null, 2));
 
   if (!dryRun) {
+    if (!tickerArg) {
+      // Clean up legacy empty issuerKey entries
+      await db.companyNameMap.deleteMany({
+        where: { keyType: "issuer", key: "" },
+      });
+    }
+
     for (const row of tickerRows) {
       await db.companyNameMap.upsert({
         where: { keyType_key: { keyType: row.keyType, key: row.key } },
         create: row,
         update: {
           nameZh: row.nameZh,
+          nameEnShort: row.nameEnShort,
           ticker: row.ticker,
           source: row.source,
         },
@@ -83,6 +121,7 @@ async function main() {
         create: row,
         update: {
           nameZh: row.nameZh,
+          nameEnShort: row.nameEnShort,
           ticker: row.ticker,
           source: row.source,
         },

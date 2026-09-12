@@ -6,10 +6,11 @@
 
 - 文件：[onboard-company.ts](/Users/rafael/R129/buffett-tribe/scripts/onboard-company.ts)
 - 命令：`npm run onboard:company -- --ticker XXXX`
-- 作用：给一个不在任何大师 13F 持仓里的全新美股 ticker 建立完整公司页，按顺序编排 7 步（每步跑完都查库验证真正写入了数据，不只看子进程退出码——`generate:*` 系列脚本会内部捕获单公司错误后仍退出 0）：
+- 作用：给一个不在任何大师 13F 持仓里的全新美股 ticker 建立完整公司页，按顺序编排 8 步（每步跑完都查库验证真正写入了数据，不只看子进程退出码——`generate:*` 系列脚本会内部捕获单公司错误后仍退出 0）：
   1. `import:10k`（Entity + Financial + FilingSection + R2 归档）
   2. `import:stock-prices:yf --import-db`（StockPrice，可用 `--skip-price` 跳过）
   3-7. `generate:company-profile` / `generate:business-model` / `generate:value-analysis` / `generate:management-analysis` / `generate:valuation-analysis`（可用 `--skip-generation` 整体跳过）
+  8. `sync:company-name-map --ticker XXXX`（同步更新 CompanyNameMap 代码与名称映射）
 - 常用参数：
   - `--ticker XXXX --from 2020 --to 2026`：ticker 和年份范围（默认 2020 到当前年）。
   - `--price-start 2020-01-01`：股价起始日期（默认 `fetch-stock-prices-yf.py` 自身的近 2 年）。
@@ -17,7 +18,7 @@
   - `--skip-price` / `--skip-generation`：只跑核心数据导入，跳过股价或全部 LLM 生成。
   - `--fresh`：忽略 checkpoint 从头开始。
   - `--dry-run`：只打印将要执行的步骤列表。
-  - `--market cn|hk`：切换到 A股/港股 onboarding，9 步（`seed_entity` → `import:stock-prices:yf` → [cn: `import:cn-hk-financials` → `import:cn-annual-report` | hk: `import:hk-annual-report` → `import:cn-hk-financials`，顺序按市场不同，见下] → 5 个 LLM 生成步骤，见 14 号入口）。**`seed_entity` 不再需要手工种子表**（2026-08-06 起）：canonicalName/nameZh/nameEnShort/exchange/行业原文经 [fetch-cn-hk-company-profile-ak.py](/Users/rafael/R129/buffett-tribe/scripts/fetch-cn-hk-company-profile-ak.py) 用 akshare 自动查询，sector 由 [cn-hk-sector-classify.ts](/Users/rafael/R129/buffett-tribe/scripts/lib/cn-hk-sector-classify.ts) 用 LLM 分类。[cn-hk-company-seeds.ts](/Users/rafael/R129/buffett-tribe/scripts/lib/cn-hk-company-seeds.ts) 只作为坏数据兜底的手工覆盖表（ticker 在表里就用手填值，否则自动查），不是必需路径。currency：CN 硬编码 CNY（监管硬性要求），HK 从年报正文提取（正则频率统计 + LLM 兜底，[cn-hk-currency-resolve.ts](/Users/rafael/R129/buffett-tribe/scripts/lib/cn-hk-currency-resolve.ts)）——因此 HK 分支把"导入年报"排到"导入财务"前面（CN 不需要，顺序不变）。详见 `TODO.md` P0 ④。
+  - `--market cn|hk`：切换到 A股/港股 onboarding，10 步（`seed_entity` → `import:stock-prices:yf` → [cn: `import:cn-hk-financials` → `import:cn-annual-report` | hk: `import:hk-annual-report` → `import:cn-hk-financials`，顺序按市场不同，见下] → 5 个 LLM 生成步骤 → `sync:company-name-map`）。**`seed_entity` 不再需要手工种子表**（2026-08-06 起）：canonicalName/nameZh/nameEnShort/exchange/行业原文经 [fetch-cn-hk-company-profile-ak.py](/Users/rafael/R129/buffett-tribe/scripts/fetch-cn-hk-company-profile-ak.py) 用 akshare 自动查询，sector 由 [cn-hk-sector-classify.ts](/Users/rafael/R129/buffett-tribe/scripts/lib/cn-hk-sector-classify.ts) 用 LLM 分类。[cn-hk-company-seeds.ts](/Users/rafael/R129/buffett-tribe/scripts/lib/cn-hk-company-seeds.ts) 只作为坏数据兜底的手工覆盖表（ticker 在表里就用手填值，否则自动查），不是必需路径。currency：CN 硬编码 CNY（监管硬性要求），HK 从年报正文提取（正则频率统计 + LLM 兜底，[cn-hk-currency-resolve.ts](/Users/rafael/R129/buffett-tribe/scripts/lib/cn-hk-currency-resolve.ts)）——因此 HK 分支把"导入年报"排到"导入财务"前面（CN 不需要，顺序不变）。详见 `TODO.md` P0 ④。
 - Checkpoint：按 ticker 存到 `.cache/onboard-company/<TICKER>.json`，记录每步验证通过的完成时间；重跑默认跳过已完成步骤，某一步验证失败会在该步停止，修好后重跑同一条命令即可从断点续跑。
 - 2026-07-17 端到端验证：`--ticker ODFL --from 2024 --to 2024 --skip-price --skip-generation` 从零创建 Entity，10 条 `Financial` + 22 个 `FilingSection` 写入，R2 归档确认，checkpoint 断点续跑验证通过（生产库真实数据，非测试库）。
 
@@ -277,7 +278,7 @@ npm run generate:portfolio-insight -- --master buffett
 
 - 文件：[sync-company-name-map.ts](/Users/rafael/R129/buffett-tribe/scripts/sync-company-name-map.ts)
 - 命令：`npm run sync:company-name-map`
-- 作用：同步 `CompanyNameMap`。
+- 作用：同步 `CompanyNameMap`，将全量 Entity 实体同步为 ticker 和 issuer 维度的代码与名称映射字典。支持 `--ticker XXXX` 参数进行单公司快速更新（耗时 ~1-2 秒，onboard 流程末尾自动调用）。
 
 ## 13. 价格历史导入入口
 
