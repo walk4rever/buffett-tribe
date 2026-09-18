@@ -7149,6 +7149,31 @@ body.layout-no-header {
   white-space: nowrap;
 }
 
+.company-reference-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.company-reference-badge--active {
+  background: #eff6ff;
+  color: #0071e3;
+  border: 1px solid rgba(0, 113, 227, 0.2);
+}
+
+.company-reference-card-date {
+  display: block;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-top: 0.2rem;
+}
+
 .filing-reader-backcrumb {
   display: inline-flex;
   align-items: center;

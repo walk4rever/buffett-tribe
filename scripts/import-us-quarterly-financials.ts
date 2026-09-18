@@ -11,12 +11,17 @@
 
 import { PrismaClient } from "@prisma/client";
 import { getCompanyFacts, LINE_ITEMS } from "./lib/annual-report-import-core";
+import { archiveFilingArtifact, fetchFilingIndexFiles, fetchSecText } from "./lib/filing-archive";
 
 const db = new PrismaClient();
 
 function getArg(flag: string): string | undefined {
   const args = process.argv.slice(2);
   return args.find((_, i) => args[i - 1] === flag);
+}
+
+function hasFlag(flag: string): boolean {
+  return process.argv.slice(2).includes(flag);
 }
 
 type QuarterFiling = {
@@ -27,7 +32,12 @@ type QuarterFiling = {
   filedAt: string;
 };
 
-export async function importUsQuarterlyFinancialsForEntity(entityId: string, cik: string, ticker: string) {
+export async function importUsQuarterlyFinancialsForEntity(
+  entityId: string,
+  cik: string,
+  ticker: string,
+  options?: { archiveHtml?: boolean; archiveFromYear?: number },
+) {
   const paddedCik = cik.padStart(10, "0");
   const facts = await getCompanyFacts(paddedCik);
   const gaap = facts.facts?.["us-gaap"] ?? {};
@@ -117,6 +127,43 @@ export async function importUsQuarterlyFinancialsForEntity(entityId: string, cik
         filedAt: filing.filedAt ? new Date(filing.filedAt) : null,
       },
     });
+
+    if (options?.archiveHtml && (!options.archiveFromYear || filing.fy >= options.archiveFromYear)) {
+      try {
+        const existingArtifact = await db.filingArtifact.findFirst({
+          where: { sourceId: extSource.id, kind: "primary_html" },
+          select: { id: true },
+        });
+        if (!existingArtifact) {
+          const { files } = await fetchFilingIndexFiles(paddedCik, filing.accn);
+          const primaryDoc = files.find(
+            (f) =>
+              f.documentType === "10-Q" ||
+              (f.sequence === "1" && (f.documentName.endsWith(".htm") || f.documentName.endsWith(".html"))),
+          );
+          if (primaryDoc) {
+            const html = await fetchSecText(primaryDoc.url);
+            await archiveFilingArtifact(db, {
+              sourceId: extSource.id,
+              kind: "primary_html",
+              cik: paddedCik,
+              accession: filing.accn,
+              originalName: primaryDoc.documentName,
+              contentType: "text/html",
+              body: Buffer.from(html, "utf-8"),
+              sourceUrl: primaryDoc.url,
+            });
+            await db.extSource.update({
+              where: { id: extSource.id },
+              data: { url: primaryDoc.url },
+            });
+            console.log(`    archived 10-Q HTML for ${ticker} ${filing.fy} ${filing.fp} (${primaryDoc.documentName})`);
+          }
+        }
+      } catch (archiveErr) {
+        console.warn(`    warning: failed to archive 10-Q HTML for ${ticker} ${filing.fy} ${filing.fp}:`, archiveErr);
+      }
+    }
 
     for (const item of LINE_ITEMS) {
       let candidateVal: number | null = null;
@@ -231,6 +278,11 @@ async function main() {
     process.exit(1);
   }
 
+  const archiveHtml = hasFlag("--archive-html");
+  const archiveFromArg = getArg("--archive-from");
+  const archiveFromYear = archiveFromArg ? Number.parseInt(archiveFromArg, 10) : undefined;
+  const options = { archiveHtml, archiveFromYear };
+
   if (tickerArg) {
     const entity = await db.entity.findFirst({
       where: { ticker: tickerArg, type: "company" },
@@ -240,7 +292,7 @@ async function main() {
       console.error(`Entity not found or missing CIK for ticker ${tickerArg}`);
       process.exit(1);
     }
-    await importUsQuarterlyFinancialsForEntity(entity.id, entity.cik, entity.ticker ?? tickerArg);
+    await importUsQuarterlyFinancialsForEntity(entity.id, entity.cik, entity.ticker ?? tickerArg, options);
   } else if (allArg) {
     const entities = await db.entity.findMany({
       where: { type: "company", cik: { not: null } },
@@ -250,7 +302,7 @@ async function main() {
     for (const [idx, e] of entities.entries()) {
       console.log(`[${idx + 1}/${entities.length}] Processing ${e.ticker ?? e.id} (CIK ${e.cik})...`);
       try {
-        await importUsQuarterlyFinancialsForEntity(e.id, e.cik!, e.ticker ?? "UNKNOWN");
+        await importUsQuarterlyFinancialsForEntity(e.id, e.cik!, e.ticker ?? "UNKNOWN", options);
       } catch (err) {
         console.error(`  Failed for ${e.ticker ?? e.id}:`, err);
       }

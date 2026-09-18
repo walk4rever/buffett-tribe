@@ -808,8 +808,12 @@ RACE 是在 SEC inline XBRL 这种**已经标准化**的格式上花了数天、
 | **港股 (HK)** | 中期报告/季度业绩/年报 | 披露易 `prefix.do` 获取 stockId 毫秒级查询公告 | 披露易 PDF 本地缓存并归档 R2，`kind: "hk-interim-report"`，PdfViewer 阅读 | `indicator="报告期"`，解析 H1/中报与季度数据写入 `Financial` |
 
 #### 3. 实施四阶段路线图
-- **Phase 1（当前）**：三大市场季度财务数据入库 + `src/lib/ttm-metrics.ts` 引擎 + 看板「年度/单季」切换。
-- **Phase 2**：美股 10-Q 与 A/港季报中报原文归档 + 参考资料列表与在线阅读器全打通。
+- **Phase 1**：✅ 三大市场季度财务数据入库 + `src/lib/ttm-metrics.ts` 引擎 + 看板「年度/单季」切换（2026-09-18 完成）。
+- **Phase 2**：✅ 美股 10-Q 与 A/港季报中报原文归档 + 参考资料列表与在线阅读器全打通（2026-09-18 完成）：
+  - 美股：`import-us-quarterly-financials.ts` 扩展 `--archive-html` 与 `--archive-from`，从 SEC EDGAR 抓取 Primary HTML 归档到 R2（`kind: "primary_html"`），关联 10-Q。
+  - A 股：`scripts/fetch-cn-interim-report.py` + `scripts/import-cn-interim-report-from-file.ts`，基于巨潮资讯公告抓取半年度报告与一/三季报 PDF，归档到 R2（`kind: "primary_pdf"`），`FilingSection` 建立切片文本索引。
+  - 港股：`scripts/fetch-hk-interim-report.py` + `scripts/import-hk-interim-report-from-file.ts`，基于披露易抓取中期報告与季度最新業務狀況 PDF，归档到 R2（`kind: "primary_pdf"`），`FilingSection` 建立切片文本索引。
+  - 参考资料与阅读器：`getCompanyReferenceFilings` 扩展覆盖全部周期财报；公司页「参考资料」列表渲染在线阅读徽标（HTML / PDF）；新增通用阅读器路由 `/company/[id]/filing/[filingId]`，自动分流 HTML（`FilingReader`）与 PDF（`PdfFilingReader`），全功能支持「AI 解读」面板。
 - **Phase 3**：`scripts/generate-quarterly-flash.ts` + `CompanyAnalysis.quarterlyFlash` 前端速评卡片上线。
 - **Phase 4**：`scripts/update-company.ts` 跨市场增量检测管线泛化 + 财报季 cron 自动调度。
 

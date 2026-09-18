@@ -690,7 +690,21 @@ function dedupeReferenceFilings(rows: CompanyReferenceFiling[]): CompanyReferenc
   return merged;
 }
 
-export async function getCompanyReferenceFilings(entityId: string, limit = 12): Promise<CompanyReferenceFiling[]> {
+export const COMPANY_REFERENCE_FILING_KINDS = [
+  "10k",
+  "20f",
+  "40f",
+  "10q",
+  "hk-annual-report",
+  "hk-interim-report",
+  "hk-quarterly-report",
+  "cn-annual-report",
+  "cn-interim-report",
+  "cn-quarterly-report",
+  "us-prospectus",
+];
+
+export async function getCompanyReferenceFilings(entityId: string, limit = 24): Promise<CompanyReferenceFiling[]> {
   try {
     // Fetch more than `limit` because we deduplicate below — the same filing
     // (same accessionNumber) can have multiple rows with different `kind`
@@ -699,7 +713,7 @@ export async function getCompanyReferenceFilings(entityId: string, limit = 12): 
       db.extSource.findMany({
         where: {
           filerEntityId: entityId,
-          kind: { in: ["10k", "20f", "40f", "hk-annual-report", "cn-annual-report", "us-prospectus"] },
+          kind: { in: COMPANY_REFERENCE_FILING_KINDS },
         },
         orderBy: [{ periodYear: "desc" }, { periodQuarter: "desc" }, { ts: "desc" }],
         take: limit * 4,
@@ -741,6 +755,24 @@ export async function getCompanyReferenceFilings(entityId: string, limit = 12): 
   } catch (err) {
     logDbFallback("getCompanyReferenceFilings", err);
     return [];
+  }
+}
+
+export async function getCompanyFilingById(entityId: string, filingId: string) {
+  try {
+    return await retryOnce(async () => {
+      const filing = await db.extSource.findFirst({
+        where: {
+          filerEntityId: entityId,
+          id: filingId,
+        },
+        select: COMPANY_ANNUAL_FILING_SELECT,
+      });
+      return (filing as CompanyAnnualFiling | null) ?? null;
+    });
+  } catch (err) {
+    logDbFallback("getCompanyFilingById", err);
+    return null;
   }
 }
 

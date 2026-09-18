@@ -460,7 +460,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     getRecentHolders(company.id, 30),
     getCompanySecurities(company.id),
     getCompanyAnalysis(company.id),
-    getCompanyReferenceFilings(company.id, 12),
+    getCompanyReferenceFilings(company.id, 24),
     getTribeMembers(),
     computeCompanyTtmMetrics({ entityId: company.id, ticker: company.ticker }),
     getCompanyQuarterlyFinancials(company.id, 8),
@@ -997,27 +997,67 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                   const meta = normalizeMeta(filing.metadata);
                   const form = typeof meta.form === "string" && meta.form.trim() ? meta.form.trim() : filing.kind.toUpperCase();
                   const periodLabel = filing.periodYear
-                    ? `${filing.periodYear}${filing.periodQuarter ? ` Q${filing.periodQuarter}` : ""}`
+                    ? `${filing.periodYear}${filing.periodQuarter ? (filing.periodQuarter === 2 && filing.kind.includes("interim") ? " H1" : ` Q${filing.periodQuarter}`) : ""}`
                     : "—";
+
+                  const hasReadableArtifact = filing.artifacts.some(
+                    (a) => a.kind === "primary_html" || a.kind === "primary_pdf"
+                  );
+                  const readerBadge = filing.artifacts.some((a) => a.kind === "primary_html")
+                    ? "在线阅读 (HTML)"
+                    : filing.artifacts.some((a) => a.kind === "primary_pdf")
+                      ? "在线阅读 (PDF)"
+                      : filing.url
+                        ? "查看原文 ↗"
+                        : null;
+
+                  const filingDate = filing.filedAt ? filing.filedAt.toISOString().slice(0, 10) : null;
+
                   const cardHead = (
                     <div className="company-reference-card-head">
                       <div>
                         <h3>
                           {periodLabel} · {form}
                         </h3>
+                        {filingDate ? (
+                          <span className="company-reference-card-date">{filingDate}</span>
+                        ) : null}
                       </div>
+                      {readerBadge ? (
+                        <span className={`company-reference-badge ${hasReadableArtifact ? "company-reference-badge--active" : ""}`}>
+                          {readerBadge}
+                        </span>
+                      ) : null}
                     </div>
                   );
 
-                  return filing.periodYear ? (
-                    <Link
-                      key={filing.id}
-                      className="company-reference-card company-reference-card--clickable"
-                      href={`${formatCompanyUrl(company) ?? "/company"}/annual-report/${filing.periodYear}`}
-                    >
-                      {cardHead}
-                    </Link>
-                  ) : (
+                  if (hasReadableArtifact) {
+                    return (
+                      <Link
+                        key={filing.id}
+                        className="company-reference-card company-reference-card--clickable"
+                        href={`${formatCompanyUrl(company) ?? "/company"}/filing/${filing.id}`}
+                      >
+                        {cardHead}
+                      </Link>
+                    );
+                  }
+
+                  if (filing.url) {
+                    return (
+                      <a
+                        key={filing.id}
+                        className="company-reference-card company-reference-card--clickable"
+                        href={filing.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {cardHead}
+                      </a>
+                    );
+                  }
+
+                  return (
                     <article key={filing.id} className="company-reference-card">
                       {cardHead}
                     </article>

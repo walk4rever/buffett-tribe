@@ -74,7 +74,7 @@
 支持美股（SEC EDGAR）、港股（HKEXnews）、A 股（巨潮资讯网）三个市场，同一套页面结构。
 
 数据来自两层：
-1. **Fact 层**：财务数据（美股 EDGAR XBRL / 港股 A 股 akshare 三大报表，支持「年度 (FY) / 单季 (Quarterly)」无缝切换，顶部核心卡片支持滑动 4 季 TTM 动态追踪：PE-TTM、PS-TTM、ROE-TTM、FCF-TTM）、价格（Yahoo Finance 每周追踪）
+1. **Fact 层**：财务数据（美股 EDGAR XBRL / 港股 A 股 akshare 三大报表，支持「年度 (FY) / 单季 (Quarterly)」无缝切换，顶部核心卡片支持滑动 4 季 TTM 动态追踪：PE-TTM、PS-TTM、ROE-TTM、FCF-TTM）、价格（Yahoo Finance 每周追踪）、参考资料（三大市场年报、10-Q、中报、季报原文归档至 R2，支持 HTML/PDF 双引擎通用阅读器与「AI 解读」浮窗交互）
 2. **生成层**：LLM 生成的公司概览、业务概览、商业画布、价值分析、管理分析、估值分析
 
 ### /master — 大师 / 投资人

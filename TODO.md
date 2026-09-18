@@ -149,7 +149,11 @@
     - [x] 美股 10-Q 数据抽取改造：编写 `import-us-quarterly-financials.ts`，从 SEC Facts 抽取 10-Q 季度数据并入库 `Financial`（现金流 YTD 差额还原单季）。
     - [x] TTM 计算引擎与估值指标：新建 `src/lib/ttm-metrics.ts`，实现流量科目（营收、净利润、经营现金流、CapEx）滚动 4 季（或 2 个半年度）求和，存量科目（总资产、净资产）取最新单季值，计算 PE-TTM、PS-TTM、ROE-TTM、FCF-TTM 等动态指标。
     - [x] 前端看板切换：新建 `CompanyFinancialDashboard.tsx`，支持「年度 (FY) / 单季 (Quarterly)」维度切换及最新 TTM 动态追踪指标卡片展示。
-  - **Phase 2：原文归档与阅读器接入**：美股 10-Q HTML、A 股巨潮季报/中报 PDF、港股披露易中报 PDF 归档到 R2，参考资料 tab 接入卡片，FilingReader / PdfViewer 适配阅读。
+  - **Phase 2（已完成）：原文归档与阅读器接入**：
+    - [x] 美股 10-Q 原文 HTML 抓取并归档到 R2（`kind: "primary_html"`），通过 `import-us-quarterly-financials.ts --archive-html` 执行。
+    - [x] A 股巨潮季报/中报 PDF 抓取并归档到 R2（`kind: "primary_pdf"`），编写 `fetch-cn-interim-report.py` 与 `import-cn-interim-report-from-file.ts`，提取切片存入 `FilingSection`。
+    - [x] 港股披露易中报/季度业务状况 PDF 抓取并归档到 R2（`kind: "primary_pdf"`），编写 `fetch-hk-interim-report.py` 与 `import-hk-interim-report-from-file.ts`，提取切片存入 `FilingSection`。
+    - [x] 公司页参考资料列表与通用阅读器打通：`getCompanyReferenceFilings` 涵盖所有周期财报；公司页卡片展示在线阅读徽标（HTML/PDF）；新增通用阅读器页面 `/company/[id]/filing/[filingId]`，自适应分流 `FilingReader` 与 `PdfFilingReader` 并打通「AI 解读」浮窗面板。
   - **Phase 3：业绩速评（quarterlyFlash）**：扩展 `CompanyAnalysis.quarterlyFlash`，编写轻量生成脚本 `generate-quarterly-flash.ts` 与前端卡片组件。
   - **Phase 4：自动探测更新管线与调度**：跨市场增量探测（SEC submissions 探测、巨潮预约披露日程探测、披露易公告探测），打通定期财报 cron 调度。
 
