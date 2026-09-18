@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- 港股年报三层降级语义精准提取架构：在 `fetch-hk-annual-report.py` 中实现 Tier 1 (PDF Outline 原生书签树) → Tier 2 (前 15 页目录文本正则与双语智能解析) → Tier 3 (正文标题滑动扫描) 的章节定位算法，精确提取 `hk_mda`（管理层讨论与分析全文）、`hk_company_profile`（公司资料/财务摘要）、`hk_governance`（企业管治报告）、`hk_chairman_statement`（主席报告/董事长致辞）及 `hk_mda_moat`/`hk_mda_business`/`hk_mda_review`/`hk_mda_outlook` 子切片。针对金融与保险等特殊行业章节命名（如“經營業績和財務狀況之討論與分析”）及中文数字编号前缀（如“二、 主要業務經營分析”）完成深度适配。
+- 港股年报入库与生成链路全面升级：`import-hk-annual-report-from-file.ts` 支持写入语义 sections 与提取元数据，同时保留 4 个 fallback chunks；`company-generation.ts` 接入港股语义 sections，自动过滤粗分块并放宽单节截断至 4000 字符，消除港股 AI 分析因上下文截断造成的幻觉问题。
+- 港股存量公司全面回填与 AI 5 维重构：全库 7 家港股上市公司（腾讯控股 `0700.HK`、小米集团 `1810.HK`、中国财险 `2328.HK`、智谱 `2513.HK`、美团 `3690.HK`、农夫山泉 `9633.HK`、泡泡玛特 `9992.HK`）全部完成 FY2025 年报精准语义提取入库（100% 命中原生大纲书签树），并基于高质量 MD&A 语料完成公司概况、商业模式画布、价值驱动与护城河、管理层治理与估值分析全 5 维 AI 分析的重新生成及映射同步。
+- 港股分析批量重跑脚本：新增 `scripts/regenerate-hk-analyses.ts`（`npm run regenerate:hk-analyses`），支持单公司或全量港股一键重构 5 维分析及 CompanyNameMap 同步。
+
 ## [v0.44.16] - 2026-09-12
 
 ### Added

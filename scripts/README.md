@@ -371,16 +371,18 @@ npm run import:cn-hk-financials -- --code 09992 --market hk --currency CNY --imp
 - `--currency` 必须手工核对真实年报后填写，不能从 `--market` 推断——泡泡玛特虽在港交所上市，报表货币是人民币而非港币，这是本入口设计时踩过的一个真实坑，不是理论风险。
 - 只按单公司调用（无跨 ticker 批处理/断点续跑），因为它总是被 `onboard-company.ts --market hk` 的 `import_financials` 步骤调用，断点续跑在 `onboard-company.ts` 那一层已经有了。
 
-## 14b. 港股年报原文导入入口
+## 14b. 港股年报原文导入与语义抽取入口
 
 - 文件：[fetch-hk-annual-report.py](/Users/rafael/R129/buffett-tribe/scripts/fetch-hk-annual-report.py)
 - 命令：`npm run import:hk-annual-report`
-- 作用：从披露易（HKEXnews）搜索并下载年报 PDF，`pypdf` 提取文本后切成 4 段存入 `FilingSection`（`ExtSource.kind = "hk-annual-report"`），供 `fetchLatestFilingEvidence()` 读取——这是 CN/HK 公司能跑通业务/价值/管理分析 LLM tab 的前提（`hasUsableFilingEvidence()` 之前一直因为没有年报原文而拒绝生成）。
+- 作用：从披露易（HKEXnews）搜索并下载年报 PDF（支持本地 PDF 缓存避免重复下载限速），采用三层降级算法（Tier 1 原生大纲书签树 → Tier 2 前 15 页目录正则与智能双语年份过滤 → Tier 3 前 60 页正文滑动扫描）精准提取法定语义章节（`hk_mda`、`hk_company_profile`、`hk_governance`、`hk_chairman_statement` 及 MD&A 子切片 `hk_mda_business`、`hk_mda_review`、`hk_mda_outlook`、`hk_mda_moat`），同时保留 4 个等分 fallback chunks（`hk_annual_report_1..4`）存入 `FilingSection`（`ExtSource.kind = "hk-annual-report"`）。
+- 批量 AI 5 维重构命令：`npm run regenerate:hk-analyses`（文件：[regenerate-hk-analyses.ts](/Users/rafael/R129/buffett-tribe/scripts/regenerate-hk-analyses.ts)），支持全量或 `--ticker <T1>,<T2>` 针对港股批量重跑 profile / business / moat / management / valuation 及 CompanyNameMap 同步。
 
 常用示例：
 
 ```bash
-npm run import:hk-annual-report -- --code 09992 --market hk --years 2 --import-db
+npm run import:hk-annual-report -- --code 09992 --market hk --ticker 9992.HK --from-year 2025 --import-db
+npm run regenerate:hk-analyses -- --ticker 9992.HK
 ```
 
 本地准备：
@@ -391,10 +393,8 @@ npm run import:hk-annual-report -- --code 09992 --market hk --years 2 --import-d
 
 说明：
 
-- 披露易的搜索是 JSF 应用，不是 REST API——直接 `requests.get()` 加查询参数会静默返回空结果，不报错也不提示。真正可用的做法：先访问搜索页拿 `javax.faces.ViewState`，POST 回去建立 session，再调 `titleSearchServlet.do`；且该接口在不指定股票代码时限制搜索跨度最多一个月，超了同样静默返回空——脚本按月回溯扫描，不是一次性查询。
-- 该站点没有公开的"按股票代码搜索"参数（`stockId=-1` 表示不过滤，按 `STOCK_CODE` 本地过滤更可靠），且下载大文件较慢（实测约 85KB/s，一份 8MB 年报约 100 秒），脚本已按此设置了较长的超时，不是 bug。
-- 只做港股（`--market hk`），A 股走巨潮资讯网（cninfo），机制不同，尚未实现。
-- 切成 4 段是刻意不做 SEC Item 式精细边界识别——港股年报没有那种固定编号章节惯例，`fetchLatestFilingEvidence()` 真正需要的只是"有真实原文可引用"，不需要精确切边界。
+- 披露易搜索先调用 `/search/prefix.do` 解析内部 `stockId`，再调 `titleSearchServlet.do` 建立会话并获取年报元数据；下载大文件较慢（实测约 50~85KB/s），脚本支持本地 PDF 缓存与长超时。
+- 采用 PyMuPDF（fitz）处理港股 CID 字体，避免 pypdf 解析繁体中文时的乱码问题；全库 7 家存量港股已 100% 命中 Tier 1 原生书签树。
 
 ## 15. 当前推荐顺序
 

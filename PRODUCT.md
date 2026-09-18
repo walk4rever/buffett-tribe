@@ -755,6 +755,24 @@ NextAuth（Credentials Provider，`src/lib/auth.ts`）是现有唯一认证实�
 - **提取产物**：精确入库 `cn_mda`（MD&A 全文，1.7万~13万字）、`cn_company_profile`（第二节）、`cn_governance`（第四节），以及 MD&A 子切片 `cn_mda_moat`（核心竞争力分析）、`cn_mda_business`（主营业务与行业格局）、`cn_mda_review`（经营分析回顾）、`cn_mda_outlook`（未来展望）。
 - **向下兼容与智能优选**：保留 `cn_annual_report_1..4` 供全文检索与回归测试；`fetchLatestFilingEvidence()` 在检测到语义章节时自动剔除机械分块，单 Section 截断上限放宽至 4000 字符，喂给 LLM 的 Prompt 扩充至 2.3 万字真实商业事实。全库 8 家 A 股公司已完成语义回填与端到端回归验证。
 
+**2026-09-18 更新：港股年报语义精准提取（三层降级架构迁移）**：
+继 A 股成功落地三层降级语义提取后，将该能力对等扩展至港股市场。由于港交所《上市规则》主板附录 D2 规定各上市公司均须披露管理层讨论与分析、企业管治报告及财务摘要，且港股多包含主席报告/致辞，管线针对港股繁/简/英三语及编排特点进行专项适配：
+1. **Tier 1 (PDF Outline 书签树)**：通过 PyMuPDF `doc.get_toc()` 读取原生章节（实测泡泡玛特 09992 直接命中 18 个法定章节，精准捕获第 11-38 页 MD&A 全文共 70,966 字符）。
+2. **Tier 2 (前 15 页目录文本正则扫描与智能年份过滤)**：兼容 `7 管理層討論及分析`、`10\nManagement Discussion and Analysis\n管理層討論與分析` 等多行双语排版，并防御 `2025 Environmental` 误判为页码。
+3. **Tier 3 (正文标题滑动扫描与锚点校准)**：在缺失书签与目录的极端情况下逐页扫描前 60 页。
+- **提取产物**：精确入库 `hk_mda`（MD&A 全文）、`hk_company_profile`（公司资料/财务概要）、`hk_governance`（企业管治报告）、`hk_chairman_statement`（主席报告/董事长致辞，港股独有高价值源语料），以及 MD&A 子切片 `hk_mda_moat`（核心竞争优势）、`hk_mda_business`（业务回顾/分部表现，如泡泡玛特实测 2.8 万字）、`hk_mda_review`（财务回顾/经营业绩，实测 3.3 万字）、`hk_mda_outlook`（未来展望/战略）。
+- **向下兼容与智能优选**：保留 `hk_annual_report_1..4` 供全文检索（`search_filings`）与回测；`company-generation.ts` 的 `fetchLatestFilingEvidence()` 统一支持 CN/HK 语义章节优先，单 Section 截断放宽至 4000 字符。
+- **存量港股全面回填与 AI 分析重构（2026-09-18）**：
+  全库全部 7 家港股上市公司均已完成 FY2025 年报精准语义提取与 5 维深度分析重跑：
+  - 腾讯控股（`0700.HK`）：MD&A 14,055 字符，4 个语义章节，`pdf_outline`
+  - 小米集团（`1810.HK`）：MD&A 12,310 字符，4 个语义章节，`pdf_outline`
+  - 中国财险（`2328.HK`）：MD&A 16,280 字符，7 个语义章节（含经营业绩回顾/主要业务分析/展望），`pdf_outline`
+  - 智谱（`2513.HK`）：MD&A 10,119 字符，7 个语义章节，`pdf_outline`
+  - 美团（`3690.HK`）：MD&A 18,379 字符，4 个语义章节，`pdf_outline`
+  - 农夫山泉（`9633.HK`）：MD&A 65,746 字符，7 个语义章节，`pdf_outline`
+  - 泡泡玛特（`9992.HK`）：MD&A 70,966 字符，7 个语义章节，`pdf_outline`
+  全部 7 家公司 5 维 AI 分析（`profile` / `business` / `moat` / `management` / `valuation`）及 `CompanyNameMap` 映射全部 100% 成功入库并同步完成。新增 `npm run regenerate:hk-analyses` 批处理支持。
+
 ### 跨市场扩展的三条结构约束
 
 > 2026-07-26 复盘法拉利（RACE）onboarding 后补充。RACE 的核心教训是**管线把"抽取"当成确定性操作，而它实际是概率性的**（完整复盘见 TODO.md P0 ③）。这三条约束是把该教训前置到跨市场扩展上，避免在新市场重演。

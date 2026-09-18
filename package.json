@@ -87,6 +87,7 @@
     "generate:management-analysis:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-management-analysis.ts --dry-run",
     "generate:valuation-analysis": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-valuation-analysis.ts",
     "generate:valuation-analysis:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-valuation-analysis.ts --dry-run",
+    "regenerate:hk-analyses": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/regenerate-hk-analyses.ts",
     "generate:home-signals": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-home-signals.ts",
     "generate:home-signals:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-home-signals.ts --dry-run",
     "check:db-size": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/check-db-size.ts",

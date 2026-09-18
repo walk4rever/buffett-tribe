@@ -16,6 +16,14 @@ const FILING_EVIDENCE_SECTION_KEYS = [
   "hk_annual_report_2",
   "hk_annual_report_3",
   "hk_annual_report_4",
+  "hk_mda",
+  "hk_mda_moat",
+  "hk_mda_business",
+  "hk_mda_review",
+  "hk_mda_outlook",
+  "hk_company_profile",
+  "hk_governance",
+  "hk_chairman_statement",
   "cn_annual_report_1",
   "cn_annual_report_2",
   "cn_annual_report_3",
@@ -286,16 +294,28 @@ export async function fetchLatestFilingEvidence(entityId: string): Promise<Filin
     accession: typeof meta.accession === "string" ? meta.accession : null,
     form: typeof meta.form === "string" ? meta.form : filing.kind.toUpperCase(),
     sections: (() => {
-      const hasCnSemantic = filing.sections.some(
-        (s) => s.section.startsWith("cn_mda") || s.section.startsWith("cn_company") || s.section.startsWith("cn_gov")
+      const hasSemantic = filing.sections.some(
+        (s) =>
+          s.section.startsWith("cn_mda") ||
+          s.section.startsWith("cn_company") ||
+          s.section.startsWith("cn_gov") ||
+          s.section.startsWith("hk_mda") ||
+          s.section.startsWith("hk_company") ||
+          s.section.startsWith("hk_gov") ||
+          s.section.startsWith("hk_chairman"),
       );
-      const targetSections = hasCnSemantic
-        ? filing.sections.filter((s) => !s.section.startsWith("cn_annual_report_"))
+      const targetSections = hasSemantic
+        ? filing.sections.filter(
+            (s) => !s.section.startsWith("cn_annual_report_") && !s.section.startsWith("hk_annual_report_"),
+          )
         : filing.sections;
 
       return targetSections.map((section) => ({
         section: section.section,
-        content: truncateText(section.content, section.section.startsWith("cn_") ? 4000 : 2400),
+        content: truncateText(
+          section.content,
+          section.section.startsWith("cn_") || section.section.startsWith("hk_") ? 4000 : 2400,
+        ),
       }));
     })(),
     attachments: filing.attachments.slice(0, 12).map((attachment) => ({
