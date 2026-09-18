@@ -173,6 +173,10 @@ const FALLBACK_BRIEF: Record<string, { bio: string; fundOverview: string }> = {
     bio: "Alex Sacerdote，2006年创立 Whale Rock Capital Management，2006-2022年管理其多空股票策略，2020年疫情期间精准布局远程办公和数字基础设施标的，2022年宣布关闭 Whale Rock，返还投资者资本。",
     fundOverview: "Whale Rock Capital Management 专注科技成长投资，以深度基本面研究和长期持有优质成长企业著称，投资于具备可持续竞争优势和强大单位经济模型的企业，换手率低于多数成长型基金。",
   },
+  "jorge-paulo-lemann": {
+    bio: "豪尔赫·保罗·雷曼（Jorge Paulo Lemann），1939年出生于巴西里约热内卢，毕业于哈佛大学经济系。早年创办投资银行 Banco Garantia，后与长期合伙人 Marcel Telles、Beto Sicupira 共同创立 3G Capital。倡导零基预算（ZBB）与精英激励，曾主导百威英博（AB InBev）、汉堡王等全球知名品牌的整合，并多次与巴菲特的伯克希尔·哈撒韦联合并购（包括亨氏与卡夫），被巴菲特誉为极具商业才华与执行力的长期合伙人。",
+    fundOverview: "3G Capital Partners LP 是由雷曼等合伙人创立的全球知名投资机构，以深耕大消费与科技领域、推行严格的运营效率与零基预算、长期重仓持有并深度赋能企业而著称。",
+  },
 };
 
 // Used only when a master has neither a generated MasterProfile nor a

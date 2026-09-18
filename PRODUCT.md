@@ -2,7 +2,7 @@
 
 # 价值部落 · Value Tribe — 产品设计文档
 
-> 最后更新：2026-09-04（v0.44.8）
+> 最后更新：2026-09-18（v0.44.20）
 
 ---
 
@@ -1029,6 +1029,14 @@ Apple HIG 精简风格：
 ### v0.42.9 变更（2026-08-15）
 
 - **修复 `--quarter-list` 模式下 edgartools 13F 提取器的崩溃**：`edgartools_13f_extract.py` 此前对扫描窗口内每一份 filing 都无条件调用 `filing.obj()`（完整解析 SGML/XML info table）来读取 `report_period`，季度过滤反而放在 TS 侧、等全部解析完之后才做——为了要一个季度，实际上把 filer 的全部历史 filing 都解析了一遍。Terry Smith（Fundsmith）、Chris Hohn（TCI Fund Management）各有一份 2018/2020 年的老 filing，edgartools 当前版本解析不动其 SGML，直接把整个 CIK 的导入进程崩溃退出。根因是解析顺序反了：`filing.report_date` 其实是 filing 列表自带的免费字段，不需要 `.obj()` 就能读到。修复为两层：① `import-13f-edgartools.ts` 把目标季度换算成 report-date（新增 `quarterEndDate()`，`scripts/lib/13f-import-core.ts`）传给 Python，脚本先用免费的 `report_date` 筛出目标季度再调用 `.obj()`，避免解析任何不需要的历史 filing；② 单份 `.obj()` 调用包 try/except，解析失败 warn 并跳过而不是让整批崩溃。修复后 terry-smith/chris-hohn 的 2026Q2 提取从崩溃变为 ~3 秒（只解析 1 份而不是上百份）。
+### v0.44.20 变更（2026-09-18）
+
+- **新增 Alpha 投资者：豪尔赫·保罗·雷曼（Jorge Paulo Lemann / 3G Capital Partners LP，CIK 0001421669）**：
+  - **入库与基础信息**：写入 `Filer` 表策展字段（`tribeId: "jorge-paulo-lemann"`, `isMasterPersona: false`, 缩写 `JL`），全站 13 位投资人（3 位核心大师 + 10 位 Alpha 投资人）自动无缝识别呈现；
+  - **13F 历史持仓连续回溯**：完整导入 2020Q1 至 2026Q2 连续 26 个季度的 13F-HR 申报数据（共 313 条持仓记录），涵盖最新季度的 18 只重仓标的；
+  - **人物投资档案与持仓洞察**：生成并存储 `MasterProfile`（生平与基金概述）与 2026Q2 `PortfolioInsight`，并在 `src/app/master/[id]/page.tsx` 中配置策展级 `FALLBACK_BRIEF` 兜底；
+  - **全站完整性与共识信号**：运行 `check:13f-quarter-coverage` 核验 13/13 tracked filers 连续无缺（100% 通过）；重跑 `generate:home-signals` 成功将雷曼的持仓动向无缝纳入跨大师持仓共识/分歧分析池。
+
 ### v0.44.8 变更（2026-09-04）
 
 - **首页投资大师专区对齐与 Alpha 部落单行快捷胶囊**：

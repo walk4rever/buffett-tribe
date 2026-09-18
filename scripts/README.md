@@ -41,8 +41,8 @@
 - 命令：`npm run import:13f`
 - 命令：`npm run import:13f:range`
 - 作用：用 `edgartools` 获取 13F-HR filing 与 holdings，按季度区间导入原始持仓。
-- 支持 filer：不是硬编码列表——`getTrackedFilers()`（`scripts/lib/13f-import-core.ts`）从 `Filer` 表动态读取，新 onboard 的投资人下次 `import:13f --all` 自动纳入，无需改代码。核心三位 `buffett`/`lilu`/`duan` + Alpha 若干（截至 2026-08-13：`gavin-baker`/`alex-sacerdote`/`leopold-aschenbrenner`/`christopher-begg`/`terry-smith`/`mohnish-pabrai`/`chris-hohn`/`micky-malka`/`bill-ackman`）。
-- 不传 `--quarter-list`/`--from`/`--to` 时默认只拉最近 4 个季度（`--quarters` 默认值）——onboard 新投资人若要对齐既有惯例，必须显式传 `--from 2020Q1 --to <最新季度>`，否则会静默漏掉早期历史。13F 导入没有定时任务、全靠手动触发，某个投资人某一季被漏掉不会有任何提示——用 `npm run check:13f-quarter-coverage`（见 18 号入口）核对每位 filer 从 2020Q1（或其自身首份 13F 更晚的话，以那份为准）到 EDGAR 最新 filing 是否连续无缺，2026-08-15 首次跑就抓出了 alex-sacerdote 和 leopold-aschenbrenner 各自的静默空档，已修复。
+- 支持 filer：不是硬编码列表——`getTrackedFilers()`（`scripts/lib/13f-import-core.ts`）从 `Filer` 表动态读取，新 onboard 的投资人下次 `import:13f --all` 自动纳入，无需改代码。核心三位 `buffett`/`lilu`/`duan` + Alpha 若干（`gavin-baker`/`alex-sacerdote`/`leopold-aschenbrenner`/`christopher-begg`/`terry-smith`/`mohnish-pabrai`/`chris-hohn`/`micky-malka`/`bill-ackman`/`jorge-paulo-lemann`，共 13 位投资人）。
+- 不传 `--quarter-list`/`--from`/`--to` 时默认只拉最近 4 个季度（`--quarters` 默认值）——onboard 新投资人若要对齐既有惯例，必须显式传 `--from 2020Q1 --to <最新季度>`，否则会静默漏掉早期历史。13F 导入没有定时任务、全靠手动触发，某个投资人某一季被漏掉不会有任何提示——用 `npm run check:13f-quarter-coverage`（见 18 号入口）核对每位 filer 从 2020Q1（或其自身首份 13F 更晚的话，以那份为准）到 EDGAR 最新 filing 是否连续无缺。
 - 示例：`npm run import:13f -- --filer gavin-baker --quarter-list 2026Q1,2025Q4`。
 
 共享入库 core：
@@ -411,7 +411,7 @@ npm run regenerate:hk-analyses -- --ticker 9992.HK
 
 - 文件：[check-13f-quarter-coverage.ts](/Users/rafael/R129/buffett-tribe/scripts/check-13f-quarter-coverage.ts)
 - 命令：`npm run check:13f-quarter-coverage`（`-- --json`、`-- --strict`）
-- 作用：拿 SEC EDGAR 的真实 13F-HR report date 列表（[edgartools_13f_report_dates.py](/Users/rafael/R129/buffett-tribe/scripts/edgartools_13f_report_dates.py) 只读 `filing.report_date`，不调用 `.obj()`，快且不会崩）当基准，核对每位 tracked filer 从 2020Q1（或其自身首份 13F 更晚的话，以那份为准）到 EDGAR 最新 filing 之间，`ExtSource` 里是否每季都有。13F 导入没有定时任务、全靠手动触发，某一季被漏掉不会有任何提示；2026-08-15 首次跑就抓出 alex-sacerdote（缺 2026Q1）和 leopold-aschenbrenner（缺 2024Q4、2025Q1）两个静默空档，已修复，复跑后 12/12 全绿。
+- 作用：拿 SEC EDGAR 的真实 13F-HR report date 列表（[edgartools_13f_report_dates.py](/Users/rafael/R129/buffett-tribe/scripts/edgartools_13f_report_dates.py) 只读 `filing.report_date`，不调用 `.obj()`，快且不会崩）当基准，核对每位 tracked filer 从 2020Q1（或其自身首份 13F 更晚的话，以那份为准）到 EDGAR 最新 filing 之间，`ExtSource` 里是否每季都有。13F 导入没有定时任务、全靠手动触发，某一季被漏掉不会有任何提示；经多次巡检修复后，13/13 tracked filers 全绿无缺漏。
 
 ## 16. 非主入口
 
