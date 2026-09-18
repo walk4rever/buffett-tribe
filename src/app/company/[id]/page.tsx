@@ -29,6 +29,8 @@ import {
 import { StockPriceChartLazy } from "@/components/StockPriceChartLazy";
 import { buildCompanyFinancialDashboard } from "@/lib/company-financial-dashboard";
 import { formatShares } from "@/lib/master-data";
+import { CompanyFinancialDashboardComponent } from "@/components/CompanyFinancialDashboard";
+import { computeCompanyTtmMetrics, getCompanyQuarterlyFinancials } from "@/lib/ttm-metrics";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +39,6 @@ interface Props {
   searchParams: Promise<{ tab?: string }>;
 }
 
-type YearItems = { year: number; periodEnd: Date; items: Record<string, string> };
 type MoatDimension = {
   key: string;
   zhLabel: string;
@@ -83,16 +84,6 @@ function num(items: Record<string, string>, key: string) {
   if (!raw) return null;
   const n = Number(raw);
   return Number.isFinite(n) ? n : null;
-}
-
-function getFiscalDate(financials: YearItems[], year: number) {
-  const row = financials.find((f) => f.year === year);
-  return row?.periodEnd ?? null;
-}
-
-function formatFiscalDate(date: Date | null) {
-  if (!date) return "—";
-  return date.toISOString().slice(0, 10);
 }
 
 function normalizeMeta(metadata: unknown): Record<string, string | number | boolean | null> {
@@ -453,7 +444,17 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   const company = await getCompanyByIdentifier(trimmedId);
   if (!company) notFound();
 
-  const [financials, financialsCurrency, holders, securities, analysis, referenceFilings, tribeMembers] = await Promise.all([
+  const [
+    financials,
+    financialsCurrency,
+    holders,
+    securities,
+    analysis,
+    referenceFilings,
+    tribeMembers,
+    ttmMetrics,
+    quarterlyFinancials,
+  ] = await Promise.all([
     getCompanyFinancials(company.id, 5),
     getFinancialsCurrency(company.id),
     getRecentHolders(company.id, 30),
@@ -461,6 +462,8 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     getCompanyAnalysis(company.id),
     getCompanyReferenceFilings(company.id, 12),
     getTribeMembers(),
+    computeCompanyTtmMetrics({ entityId: company.id, ticker: company.ticker }),
+    getCompanyQuarterlyFinancials(company.id, 8),
   ]);
   const tribeMemberById = new Map(tribeMembers.map((m) => [m.id, m] as const));
 
@@ -512,7 +515,6 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   const enNameShort =
     (typeof meta.nameEnShort === "string" && meta.nameEnShort.trim()) ? meta.nameEnShort.trim() : company.canonicalName;
   const latestYear = dashboard.latestYear;
-  const displayYears = dashboard.displayYears;
   const identityFact = company.cik
     ? { label: "CIK", subLabel: "CIK", value: company.cik }
     : company.market && company.code
@@ -678,74 +680,18 @@ export default async function CompanyPage({ params, searchParams }: Props) {
           </section>
 
           <section className="company-section" data-tab-panel="financial">
-            <div className="company-kpi-grid">
-              {dashboard.cards.map((card) => (
-                <article className="company-kpi-card" key={card.key}>
-                  <p>{card.label}</p>
-                  <strong>{card.value}</strong>
-                  <span>{card.hint}</span>
-                </article>
-              ))}
-            </div>
-            <div className="company-financial-trend-head">
-              <h3>5 年趋势证据</h3>
-              <span>{displayYears.length ? `${displayYears[displayYears.length - 1]}–${displayYears[0]}` : ""}</span>
-            </div>
-            {displayYears.length ? (
-              <div className="company-table-wrap">
-                <table className="company-table">
-                  <thead>
-                    <tr>
-                      <th>
-                        <span className="company-table-label">指标</span>
-                        <span className="company-table-sub">Metric</span>
-                      </th>
-                      {displayYears.map((year) => (
-                        <th key={year}>
-                          <span className="company-table-label">FY {year}</span>
-                          <span className="company-table-sub">{formatFiscalDate(getFiscalDate(financials, year))}</span>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dashboard.rows.map((line) => (
-                      <tr key={line.key}>
-                        <td>
-                          <span className="company-table-label">{line.zhLabel}</span>
-                          <span className="company-table-sub">{line.enLabel}</span>
-                        </td>
-                        {displayYears.map((year) => (
-                          <td key={`${line.key}-${year}`}>{line.values[year] ?? "—"}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="company-empty">
-                {company.cik
+            <CompanyFinancialDashboardComponent
+              dashboard={dashboard}
+              financials={financials}
+              quarterlyFinancials={quarterlyFinancials}
+              ttmMetrics={ttmMetrics}
+              currency={financialsCurrency}
+              emptyMessage={
+                company.cik
                   ? "暂无 10-K 年报结构化数据。可先运行 `import:10k` 脚本。"
-                  : "暂无结构化财务数据，A 股/港股财务数据接入规划中。"}
-              </p>
-            )}
-            {dashboard.longTermTrends.length ? (
-              <div className="company-long-term-block" aria-label="长期趋势摘要">
-                <div className="company-financial-trend-head">
-                  <h3>长期复合增长</h3>
-                </div>
-                <div className="company-long-term-trends">
-                  {dashboard.longTermTrends.map((trend) => (
-                    <article key={trend.key}>
-                      <span>{trend.label}</span>
-                      <strong>{trend.value}</strong>
-                      <small>{trend.hint}</small>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            ) : null}
+                  : "暂无结构化财务数据，A 股/港股财务数据接入规划中。"
+              }
+            />
           </section>
 
           <section className="company-section" data-tab-panel="value">

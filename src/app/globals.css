@@ -6782,6 +6782,72 @@ body.layout-no-header {
   color: var(--company-text-secondary);
 }
 
+.company-ttm-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.75rem;
+  padding: 0.45rem 0.75rem;
+  background: rgba(0, 113, 227, 0.05);
+  border: 1px solid rgba(0, 113, 227, 0.15);
+  border-radius: 8px;
+  font-size: 0.75rem;
+}
+
+.company-ttm-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.45rem;
+  background: var(--apple-blue, #0071e3);
+  color: #fff;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+}
+
+.company-ttm-desc {
+  color: var(--company-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.company-financial-trend-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.company-view-toggle {
+  display: inline-flex;
+  padding: 2px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 7px;
+  gap: 2px;
+}
+
+.company-view-toggle-btn {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--company-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.company-view-toggle-btn:hover {
+  color: var(--company-text);
+}
+
+.company-view-toggle-btn--active {
+  background: #fff;
+  color: var(--company-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+}
+
 .company-split {
   display: grid;
   grid-template-columns: 1fr 1fr;

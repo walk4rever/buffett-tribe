@@ -146,12 +146,32 @@ def to_scalar(value: object) -> float | None:
     return f if pd.notna(f) else None
 
 
-def fetch_hk_records(code: str) -> list[dict[str, object]]:
+FLOW_LINE_ITEMS = {
+    "Revenue",
+    "GrossProfit",
+    "OperatingIncome",
+    "NetIncome",
+    "EPSBasic",
+    "EPSDiluted",
+    "OperatingCashFlow",
+    "CapEx",
+    "ShareRepurchaseAmt",
+}
+
+BALANCE_LINE_ITEMS = {
+    "TotalAssets",
+    "TotalLiabilities",
+    "ShareholdersEquity",
+}
+
+
+def fetch_hk_records(code: str, from_year: int = 2020) -> list[dict[str, object]]:
     records: list[dict[str, object]] = []
-    seen: set[tuple[str, str]] = set()  # (period_end, line_item) — first hit wins, matches DB upsert intent
+    # (period_end, date_type_code) -> { line_item: value }
+    raw_hk: dict[tuple[str, str], dict[str, float]] = {}
 
     for statement in HK_STATEMENTS:
-        df = ak.stock_financial_hk_report_em(stock=code, symbol=statement, indicator="年度")
+        df = ak.stock_financial_hk_report_em(stock=code, symbol=statement, indicator="报告期")
         for _, row in df.iterrows():
             item_name = str(row.get("STD_ITEM_NAME", "")).strip()
             line_item = HK_ITEM_NAME_MAP.get(item_name)
@@ -161,14 +181,123 @@ def fetch_hk_records(code: str) -> list[dict[str, object]]:
             if pd.isna(report_date):
                 continue
             period_end = pd.Timestamp(report_date).strftime("%Y-%m-%d")
-            key = (period_end, line_item)
-            if key in seen:
+            year = int(period_end[:4])
+            if year < from_year:
                 continue
+            date_type_code = str(row.get("DATE_TYPE_CODE", "")).strip()
             amount = to_scalar(row.get("AMOUNT"))
             if amount is None:
                 continue
-            seen.add(key)
-            records.append({"periodEnd": period_end, "lineItem": line_item, "value": amount})
+            bucket = raw_hk.setdefault((period_end, date_type_code), {})
+            if line_item not in bucket:
+                bucket[line_item] = amount
+
+    # Group available periods by year
+    by_year_periods: dict[int, dict[str, tuple[str, dict[str, float]]]] = {}
+    for (period_end, dtc), items in raw_hk.items():
+        year = int(period_end[:4])
+        by_year_periods.setdefault(year, {})[dtc] = (period_end, items)
+
+    seen_keys: set[tuple[str, str, str]] = set()
+
+    def add_rec(period_end: str, period_type: str, line_item: str, val: float | None) -> None:
+        if val is None:
+            return
+        key = (period_end, period_type, line_item)
+        if key in seen_keys:
+            return
+        seen_keys.add(key)
+        records.append({
+            "periodEnd": period_end,
+            "periodType": period_type,
+            "lineItem": line_item,
+            "value": val,
+        })
+
+    for year in sorted(by_year_periods.keys()):
+        periods = by_year_periods[year]
+        # dtc mappings: 001=Annual(FY), 002=Interim(H1/Q2), 003=Q1, 004=Q3
+        has_q1 = "003" in periods
+
+        # 1. FY full year records (from 001)
+        if "001" in periods:
+            fy_date, fy_items = periods["001"]
+            for item, val in fy_items.items():
+                add_rec(fy_date, "FY", item, val)
+
+        if has_q1:
+            # Quarterly reporter (e.g. Tencent, Meituan)
+            # Balance sheet (point-in-time snapshot)
+            for dtc, ptype in [("003", "Q1"), ("002", "Q2"), ("004", "Q3"), ("001", "Q4")]:
+                if dtc in periods:
+                    p_date, p_items = periods[dtc]
+                    for item in BALANCE_LINE_ITEMS:
+                        if item in p_items:
+                            add_rec(p_date, ptype, item, p_items[item])
+
+            # Flow items: cumulative subtraction
+            # Q1
+            if "003" in periods:
+                q1_date, q1_items = periods["003"]
+                for item in FLOW_LINE_ITEMS:
+                    if item in q1_items:
+                        add_rec(q1_date, "Q1", item, q1_items[item])
+
+            # Q2 = H1(002) - Q1(003)
+            if "002" in periods:
+                h1_date, h1_items = periods["002"]
+                q1_items = periods.get("003", (None, {}))[1]
+                for item in FLOW_LINE_ITEMS:
+                    if item in h1_items:
+                        cum_h1 = h1_items[item]
+                        cum_q1 = q1_items.get(item)
+                        val = cum_h1 - cum_q1 if cum_q1 is not None else cum_h1
+                        add_rec(h1_date, "Q2", item, val)
+
+            # Q3 = 9M(004) - H1(002)
+            if "004" in periods:
+                q3_date, q3_items = periods["004"]
+                h1_items = periods.get("002", (None, {}))[1]
+                for item in FLOW_LINE_ITEMS:
+                    if item in q3_items:
+                        cum_q3 = q3_items[item]
+                        cum_h1 = h1_items.get(item)
+                        val = cum_q3 - cum_h1 if cum_h1 is not None else cum_q3
+                        add_rec(q3_date, "Q3", item, val)
+
+            # Q4 = FY(001) - 9M(004)
+            if "001" in periods and "004" in periods:
+                fy_date, fy_items = periods["001"]
+                q3_items = periods["004"][1]
+                for item in FLOW_LINE_ITEMS:
+                    if item in fy_items:
+                        cum_fy = fy_items[item]
+                        cum_q3 = q3_items.get(item)
+                        if cum_q3 is not None:
+                            add_rec(fy_date, "Q4", item, cum_fy - cum_q3)
+        else:
+            # Semi-annual reporter (e.g. Pop Mart, Nongfu Spring)
+            if "002" in periods:
+                h1_date, h1_items = periods["002"]
+                # Balance sheet at 06-30
+                for item in BALANCE_LINE_ITEMS:
+                    if item in h1_items:
+                        add_rec(h1_date, "H1", item, h1_items[item])
+                # Flow items (first 6 months)
+                for item in FLOW_LINE_ITEMS:
+                    if item in h1_items:
+                        add_rec(h1_date, "H1", item, h1_items[item])
+
+            # H2 = FY(001) - H1(002)
+            if "001" in periods and "002" in periods:
+                fy_date, fy_items = periods["001"]
+                h1_items = periods["002"][1]
+                for item in FLOW_LINE_ITEMS:
+                    if item in fy_items:
+                        cum_fy = fy_items[item]
+                        cum_h1 = h1_items.get(item)
+                        if cum_h1 is not None:
+                            add_rec(fy_date, "H2", item, cum_fy - cum_h1)
 
     return records
 
@@ -178,7 +307,8 @@ def check_completeness(records: list[dict[str, object]], code: str) -> None:
     EVERY fiscal year), warn on partial gaps."""
     by_year: dict[str, set[str]] = {}
     for r in records:
-        by_year.setdefault(str(r["periodEnd"])[:4], set()).add(str(r["lineItem"]))
+        if r.get("periodType") == "FY":
+            by_year.setdefault(str(r["periodEnd"])[:4], set()).add(str(r["lineItem"]))
 
     missing_every_year = [
         item
@@ -202,38 +332,107 @@ def check_completeness(records: list[dict[str, object]], code: str) -> None:
 
 def fetch_cn_records(code: str, from_year: int) -> list[dict[str, object]]:
     records: list[dict[str, object]] = []
-    seen: set[tuple[str, str]] = set()  # (period_end, line_item) — first hit wins, matches DB upsert intent
+    # "YYYY-MM-DD" -> { line_item: value }
+    raw_by_date: dict[str, dict[str, float]] = {}
     stock = f"sh{code}" if code.startswith("6") else f"sz{code}"
 
     for statement in CN_STATEMENTS:
         df = ak.stock_financial_report_sina(stock=stock, symbol=statement)
-        annual = df[df["报告日"].astype(str).str.endswith("1231")]
-        for _, row in annual.iterrows():
-            period_year = int(str(row["报告日"])[:4])
-            if period_year < from_year:
+        for _, row in df.iterrows():
+            raw_date = str(row.get("报告日", "")).strip()
+            if len(raw_date) != 8:
                 continue
-            period_end = f"{period_year}-12-31"
+            year = int(raw_date[:4])
+            if year < from_year:
+                continue
+            month_day = raw_date[4:]
+            if month_day not in ("0331", "0630", "0930", "1231"):
+                continue
+            period_end = f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:]}"
+            bucket = raw_by_date.setdefault(period_end, {})
 
             for column, line_item in CN_COLUMN_MAP.items():
-                if column not in row.index:
-                    continue
-                key = (period_end, line_item)
-                if key in seen:
-                    continue
-                amount = to_scalar(row[column])
-                if amount is None:
-                    continue
-                seen.add(key)
-                records.append({"periodEnd": period_end, "lineItem": line_item, "value": amount})
+                if column in row.index and line_item not in bucket:
+                    val = to_scalar(row[column])
+                    if val is not None:
+                        bucket[line_item] = val
 
             # GrossProfit is derived (营业收入 - 营业成本), not a raw Sina column.
-            if statement == "利润表":
-                key = (period_end, "GrossProfit")
+            if statement == "利润表" and "GrossProfit" not in bucket:
                 revenue = to_scalar(row.get("营业收入"))
                 cogs = to_scalar(row.get("营业成本"))
-                if key not in seen and revenue is not None and cogs is not None:
-                    seen.add(key)
-                    records.append({"periodEnd": period_end, "lineItem": "GrossProfit", "value": revenue - cogs})
+                if revenue is not None and cogs is not None:
+                    bucket["GrossProfit"] = revenue - cogs
+
+    seen_keys: set[tuple[str, str, str]] = set()
+
+    def add_rec(period_end: str, period_type: str, line_item: str, val: float | None) -> None:
+        if val is None:
+            return
+        key = (period_end, period_type, line_item)
+        if key in seen_keys:
+            return
+        seen_keys.add(key)
+        records.append({
+            "periodEnd": period_end,
+            "periodType": period_type,
+            "lineItem": line_item,
+            "value": val,
+        })
+
+    # Generate records per year
+    unique_years = sorted({int(d[:4]) for d in raw_by_date.keys()})
+    for year in unique_years:
+        d_q1 = f"{year}-03-31"
+        d_q2 = f"{year}-06-30"
+        d_q3 = f"{year}-09-30"
+        d_fy = f"{year}-12-31"
+
+        # 1. FY records (full year cumulative from 12-31)
+        if d_fy in raw_by_date:
+            for item, val in raw_by_date[d_fy].items():
+                add_rec(d_fy, "FY", item, val)
+
+        # 2. Balance sheet snapshot at each quarter end
+        for p_date, ptype in [(d_q1, "Q1"), (d_q2, "Q2"), (d_q3, "Q3"), (d_fy, "Q4")]:
+            if p_date in raw_by_date:
+                for item in BALANCE_LINE_ITEMS:
+                    if item in raw_by_date[p_date]:
+                        add_rec(p_date, ptype, item, raw_by_date[p_date][item])
+
+        # 3. Flow items (discrete quarters via cumulative subtractions)
+        # Q1 = raw(03-31)
+        if d_q1 in raw_by_date:
+            for item in FLOW_LINE_ITEMS:
+                if item in raw_by_date[d_q1]:
+                    add_rec(d_q1, "Q1", item, raw_by_date[d_q1][item])
+
+        # Q2 = raw(06-30) - raw(03-31)
+        if d_q2 in raw_by_date:
+            for item in FLOW_LINE_ITEMS:
+                if item in raw_by_date[d_q2]:
+                    cum_q2 = raw_by_date[d_q2][item]
+                    cum_q1 = raw_by_date.get(d_q1, {}).get(item)
+                    val = cum_q2 - cum_q1 if cum_q1 is not None else cum_q2
+                    add_rec(d_q2, "Q2", item, val)
+
+        # Q3 = raw(09-30) - raw(06-30)
+        if d_q3 in raw_by_date:
+            for item in FLOW_LINE_ITEMS:
+                if item in raw_by_date[d_q3]:
+                    cum_q3 = raw_by_date[d_q3][item]
+                    cum_prev = raw_by_date.get(d_q2, {}).get(item) or raw_by_date.get(d_q1, {}).get(item)
+                    val = cum_q3 - cum_prev if cum_prev is not None else cum_q3
+                    add_rec(d_q3, "Q3", item, val)
+
+        # Q4 = raw(12-31) - raw(09-30)
+        if d_fy in raw_by_date:
+            for item in FLOW_LINE_ITEMS:
+                if item in raw_by_date[d_fy]:
+                    cum_fy = raw_by_date[d_fy][item]
+                    cum_prev = raw_by_date.get(d_q3, {}).get(item) or raw_by_date.get(d_q2, {}).get(item)
+                    if cum_prev is not None:
+                        add_rec(d_fy, "Q4", item, cum_fy - cum_prev)
 
     return records
 
@@ -270,7 +469,7 @@ def main() -> int:
     else:
         ticker = args.ticker or f"{args.code.lstrip('0') or '0'}.HK"
         print(f"Fetching HK financials for {args.code} ({ticker})...")
-        records = fetch_hk_records(args.code)
+        records = fetch_hk_records(args.code, args.from_year)
 
     if not records:
         print(f"No mapped line items returned for {args.code}", file=sys.stderr)

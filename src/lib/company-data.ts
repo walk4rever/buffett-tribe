@@ -218,7 +218,7 @@ export async function getCompanySecurities(entityId: string) {
   return rows;
 }
 
-async function getEntityFamilyIds(entityId: string) {
+export async function getEntityFamilyIds(entityId: string) {
   const base = await db.entity.findUnique({
     where: { id: entityId },
     select: { id: true, ticker: true, type: true, cik: true },

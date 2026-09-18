@@ -789,6 +789,30 @@ RACE 是在 SEC inline XBRL 这种**已经标准化**的格式上花了数天、
 
 该脚本真正值钱的是市场无关的骨架——checkpoint、每步查库 verify、断点续跑。跨市场差异只体现在 **steps 列表**：美股是现有八步（10-K 导入 → 股价 → 5 个 LLM 生成 → 名称映射同步），A 股/港股是十步（`seed_entity` → 股价 → 财务/年报 → 5 个 LLM 生成 → 名称映射同步）。按 market 选择 steps 列表，末尾统一由 `sync:company-name-map --ticker XXX` 闭环同步到 `CompanyNameMap`，而不是复制出 `onboard-cn-company.ts`。
 
+### 定期财报（季报/半年报）全链路更新体系（2026-09-18 定案）
+
+公司基本面数据随季度定期发布（美股 10-Q、A 股一季报/半年报/三季报、港股中报与季度业绩）。为保持公司财务与估值的时效性，系统确立全链路更新架构：
+
+#### 1. 核心设计原则：三层动静分离
+- **数值层（Hard Facts，强制全量更新）**：季报/中报发布后立即提取三大表数据，写入 `Financial` 表（`periodType: 'Q1' | 'Q2' | 'Q3'`），并实时触发 TTM（滚动 12 个月）与动态估值倍数（PE-TTM、PS-TTM）重算。
+- **原文层（Evidence，增量归档接入）**：抓取美股 10-Q HTML、A 股/港股季报中报 PDF 归档到 R2，分别接入站内 `FilingReader` 与 `PdfViewer`，并在公司页「参考资料」Tab 中呈现实时阅读卡片。
+- **AI 叙事层（LLM Analysis，稳态沉淀 + 轻量快评）**：
+  - **年度 5 维报告保持沉淀**：概览（profile）、商业模式画布（business）、护城河（moat）、管理层（management）具有强年度周期与结构稳定性，不因单季度波动盲目重跑。
+  - **新增页首「最新业绩速评」（quarterlyFlash）**：在 `CompanyAnalysis` 扩展 `quarterlyFlash Json?`，单次轻量 LLM 总结当季核心亮点、同比环比增速、超预期与承压点（300~500 字），展示在公司页首，并附带直达季报原文链接。
+
+#### 2. 三大市场打通路径
+| 市场 | 发布形态 | 探测感知 (Detection) | 原文归档 (Filing & R2) | 财务报表 (Financials) |
+| :--- | :--- | :--- | :--- | :--- |
+| **美股 (US)** | 10-Q (Q1~Q3) + 10-K (FY) | 轮询 SEC `submissions.json` 比较最新 filingDate | 抓取 Primary HTML 归档 R2，`kind: "10q"`，FilingReader 阅读 | 放宽 `ANNUAL_FORMS`，提取 CompanyFacts 季度数据写入 `Financial` |
+| **A 股 (CN)** | 一季报/中报/三季报/年报 | `ak.stock_report_disclosure()` 预约日程与窗口扫描 | 巨潮资讯 PDF 直链归档 R2，`kind: "cn-interim/quarterly"`，PdfViewer 阅读 | 放宽 1231 过滤，计算单季值（H1-Q1, Q3-H1），写入 `Financial` |
+| **港股 (HK)** | 中期报告/季度业绩/年报 | 披露易 `prefix.do` 获取 stockId 毫秒级查询公告 | 披露易 PDF 本地缓存并归档 R2，`kind: "hk-interim-report"`，PdfViewer 阅读 | `indicator="报告期"`，解析 H1/中报与季度数据写入 `Financial` |
+
+#### 3. 实施四阶段路线图
+- **Phase 1（当前）**：三大市场季度财务数据入库 + `src/lib/ttm-metrics.ts` 引擎 + 看板「年度/单季」切换。
+- **Phase 2**：美股 10-Q 与 A/港季报中报原文归档 + 参考资料列表与在线阅读器全打通。
+- **Phase 3**：`scripts/generate-quarterly-flash.ts` + `CompanyAnalysis.quarterlyFlash` 前端速评卡片上线。
+- **Phase 4**：`scripts/update-company.ts` 跨市场增量检测管线泛化 + 财报季 cron 自动调度。
+
 ### 技术方案（实际实现，非原计划伪代码）
 
 #### 数据库

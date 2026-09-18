@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import db from "../src/lib/prisma";
 
-type Record_ = { periodEnd: string; lineItem: string; value: number };
+type Record_ = { periodEnd: string; periodType?: string; lineItem: string; value: number };
 
 function getArg(flag: string): string | undefined {
   const args = process.argv.slice(2);
@@ -52,13 +52,14 @@ async function main() {
   for (const record of records) {
     const periodEnd = new Date(record.periodEnd);
     if (Number.isNaN(periodEnd.getTime())) continue;
+    const periodType = record.periodType ?? "FY";
 
     await db.financial.upsert({
       where: {
         entityId_periodEnd_periodType_lineItem: {
           entityId: entity.id,
           periodEnd,
-          periodType: "FY",
+          periodType,
           lineItem: record.lineItem,
         },
       },
@@ -66,7 +67,7 @@ async function main() {
         entityId: entity.id,
         sourceId: extSource.id,
         periodEnd,
-        periodType: "FY",
+        periodType,
         lineItem: record.lineItem,
         value: record.value,
         unit: currency,
