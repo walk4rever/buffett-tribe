@@ -10,6 +10,8 @@ import { InsightToc } from "@/components/InsightToc";
 import { InsightBackToTop } from "@/components/InsightBackToTop";
 import { extractInsightOverviewShareContent, isInsightFormat } from "@/lib/insights";
 import { extractHeadings } from "@/lib/extract-headings";
+import { addHeadingIds } from "@/lib/add-heading-ids";
+import { markdownToHtml } from "@/lib/markdown-to-html";
 import { BRAND_EN } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
@@ -28,11 +30,16 @@ export default async function InsightDetailPage({ params }: Props) {
   const dateLabel = post.publishedAt ? formatDate(post.publishedAt) : formatDate(post.updatedAt);
   const overview = extractInsightOverviewShareContent(post.contentRaw, post.description ?? undefined);
 
-  // Extract headings for TOC
-  const renderedContent = format === "markdown"
-    ? await import("@/lib/insights").then(m => m.markdownToHtmlMarkdown(post.contentRaw))
-    : post.contentRaw;
-  const headings = extractHeadings(renderedContent);
+  // Extract headings for TOC - convert markdown to HTML first, then add IDs
+  let baseContent: string;
+  if (format === "markdown") {
+    const normalized = await import("@/lib/insights").then(m => m.markdownToHtmlMarkdown(post.contentRaw));
+    baseContent = await markdownToHtml(normalized);
+  } else {
+    baseContent = post.contentRaw;
+  }
+  const contentWithIds = await addHeadingIds(baseContent);
+  const headings = extractHeadings(contentWithIds);
 
   const [relatedEntities, adjacent] = await Promise.all([
     post.entityIds.length > 0 ? getEntitiesByIds(post.entityIds) : Promise.resolve([]),

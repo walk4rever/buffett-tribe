@@ -11904,7 +11904,7 @@ body {
 .insight-toc {
   position: fixed;
   left: 1.5rem;
-  top: 1.5rem;
+  top: 5rem;
   z-index: 30;
 }
 
@@ -11915,7 +11915,8 @@ body {
   width: 2.75rem;
   height: 2.75rem;
   border-radius: 50%;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
   border: 1px solid var(--border);
   color: var(--foreground);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
@@ -11939,7 +11940,8 @@ body {
   overflow-y: auto;
   border-radius: 1rem;
   padding: 1rem;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px);
   border: 1px solid var(--border);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
 }
@@ -11993,7 +11995,8 @@ body {
   width: 2.75rem;
   height: 2.75rem;
   border-radius: 50%;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
   border: 1px solid var(--border);
   color: var(--foreground);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);

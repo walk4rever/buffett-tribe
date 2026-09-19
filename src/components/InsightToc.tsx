@@ -23,8 +23,9 @@ function scrollHeadingIntoView(id: string) {
     return;
   }
 
+  const scrollTop = window.scrollY + el.getBoundingClientRect().top - marginTop;
   window.scrollTo({
-    top: window.scrollY + el.getBoundingClientRect().top - marginTop,
+    top: scrollTop,
     behavior: "smooth",
   });
 }
