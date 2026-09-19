@@ -11759,6 +11759,7 @@ body {
 .insight-reader-body h3 {
   letter-spacing: 0;
   line-height: 1.25;
+  scroll-margin-top: 80px;
 }
 
 .insight-reader-body h1 { font-size: 1.55em; }
@@ -11896,6 +11897,117 @@ body {
   -webkit-touch-callout: default;
   user-select: auto;
   -webkit-user-select: auto;
+}
+
+/* ── Insight TOC (Table of Contents) ── */
+
+.insight-toc {
+  position: fixed;
+  left: 1.5rem;
+  top: 1.5rem;
+  z-index: 30;
+}
+
+.insight-toc-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.insight-toc-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+}
+
+.insight-toc-button:active {
+  transform: scale(0.98);
+}
+
+.insight-toc-panel {
+  margin-top: 0.5rem;
+  max-height: 70vh;
+  width: 18rem;
+  overflow-y: auto;
+  border-radius: 1rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+}
+
+.insight-toc-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--apple-blue);
+}
+
+.insight-toc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.insight-toc-item {
+  display: block;
+  width: 100%;
+  padding: 0.375rem 0;
+  text-align: left;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.insight-toc-item:hover {
+  color: var(--apple-blue);
+}
+
+/* ── Insight Back to Top ── */
+
+.insight-back-to-top {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.insight-back-to-top:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+}
+
+.insight-back-to-top:active {
+  transform: scale(0.98);
 }
 
 .insight-share-hint {

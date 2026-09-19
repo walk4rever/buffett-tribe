@@ -6,7 +6,10 @@ import { SiteNav } from "@/components/SiteNav";
 import { InsightReader } from "@/components/InsightReader";
 import { InsightOverviewShareButton } from "@/components/InsightOverviewShareButton";
 import { InsightChatShell } from "@/components/InsightChatShell";
+import { InsightToc } from "@/components/InsightToc";
+import { InsightBackToTop } from "@/components/InsightBackToTop";
 import { extractInsightOverviewShareContent, isInsightFormat } from "@/lib/insights";
+import { extractHeadings } from "@/lib/extract-headings";
 import { BRAND_EN } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +27,13 @@ export default async function InsightDetailPage({ params }: Props) {
   const format = isInsightFormat(post.format) ? post.format : "markdown";
   const dateLabel = post.publishedAt ? formatDate(post.publishedAt) : formatDate(post.updatedAt);
   const overview = extractInsightOverviewShareContent(post.contentRaw, post.description ?? undefined);
+
+  // Extract headings for TOC
+  const renderedContent = format === "markdown"
+    ? await import("@/lib/insights").then(m => m.markdownToHtmlMarkdown(post.contentRaw))
+    : post.contentRaw;
+  const headings = extractHeadings(renderedContent);
+
   const [relatedEntities, adjacent] = await Promise.all([
     post.entityIds.length > 0 ? getEntitiesByIds(post.entityIds) : Promise.resolve([]),
     getAdjacentPosts(post.slug),
@@ -33,6 +43,8 @@ export default async function InsightDetailPage({ params }: Props) {
     <div className="home-v2 insight-detail-page">
       <SiteNav />
       <main className="insight-detail-shell">
+        <InsightToc headings={headings} />
+        <InsightBackToTop />
         <InsightChatShell slug={post.slug} title={post.title} source={post.source}>
           <header className="insight-detail-head">
             <h1>{post.title}</h1>

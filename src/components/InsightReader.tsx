@@ -5,6 +5,7 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import rehypeSlug from "rehype-slug";
 import type { ReactNode } from "react";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import { markdownToHtmlMarkdown, rehypeInsightCallouts, rehypeInsightEmbeds, type InsightFormat } from "@/lib/insights";
@@ -48,6 +49,8 @@ const sanitizeSchema = {
     span: [["className"]],
     code: [...(defaultSchema.attributes?.code ?? []), ["className"]],
     pre: [...(defaultSchema.attributes?.pre ?? []), ["className"]],
+    h2: [["id"]],
+    h3: [["id"]],
   },
   protocols: {
     ...defaultSchema.protocols,
@@ -113,6 +116,7 @@ export function InsightReader({ title, content, format, backHref = "/insights", 
           remarkPlugins={[remarkGfm]}
           rehypePlugins={[
             rehypeRaw,
+            rehypeSlug,
             [rehypeSanitize, sanitizeSchema],
             rehypeInsightCallouts,
             rehypeInsightEmbeds,
