@@ -2,7 +2,7 @@
 
 # 价值部落 · Value Tribe — 产品设计文档
 
-> 最后更新：2026-09-18（v0.44.20）
+> 最后更新：2026-09-20（v0.44.25）
 
 ---
 
@@ -913,7 +913,7 @@ Apple HIG 精简风格：
 | Agent LLM | DeepSeek（对话）· Claude API（批量生成分析内容） |
 | 知识层 | GBrain（air7 :3457，Supabase 后端，pgvector 1536d）— 大师知识图谱 |
 | Agent 工具 | `search_wisdom` → GBrain / `search_holdings` → Supabase SQL / `search_filings` → FilingSection SQL |
-| 持仓数据 | SEC EDGAR 13F-HR |
+| 持仓数据 | SEC EDGAR 13F-HR（`pipeline-13f.ts` 自动化：导入持仓、对齐证券、自动通过 SEC 官方表补齐新公司 CIK、校验完整性） |
 | 财务数据 | SEC EDGAR XBRL（CompanyFacts + filing-level inline XBRL fallback） |
 | 原始文件 | Cloudflare R2（PDF、SEC filing HTML、index、附件、data files） |
 | 市场数据 | Yahoo Finance 导入脚本 + `StockPrice` |
