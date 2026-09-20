@@ -37,17 +37,21 @@ async function main() {
   const strict = args.includes("--strict");
   const importArgs = args.filter((a) => a !== "--strict");
 
-  console.log("\\n[1/3] Import 13F filings");
+  console.log("\n[1/4] Import 13F filings");
   const importRes = await run(process.execPath, ["--env-file=.env.local", "./node_modules/.bin/tsx", "scripts/import-13f-edgartools.ts", ...importArgs]);
   if (importRes.code !== 0) process.exit(importRes.code);
 
-  console.log("\\n[2/3] Reconcile security/company linkage");
+  console.log("\n[2/4] Reconcile security/company linkage");
   const reconcileArgs = ["--env-file=.env.local", "./node_modules/.bin/tsx", "scripts/backfill-security-company-links.ts"];
   if (strict) reconcileArgs.push("--strict");
   const reconcileRes = await run(process.execPath, reconcileArgs);
   if (reconcileRes.code !== 0) process.exit(reconcileRes.code);
 
-  console.log("\\n[3/3] Check security integrity");
+  console.log("\n[3/4] Backfill company CIKs");
+  const cikRes = await run(process.execPath, ["--env-file=.env.local", "./node_modules/.bin/tsx", "scripts/backfill-company-cik.ts"]);
+  if (cikRes.code !== 0) process.exit(cikRes.code);
+
+  console.log("\n[4/4] Check security integrity");
   const checkRes = await run(process.execPath, ["--env-file=.env.local", "./node_modules/.bin/tsx", "scripts/check-security-integrity.ts"]);
   if (checkRes.code !== 0) process.exit(checkRes.code);
 

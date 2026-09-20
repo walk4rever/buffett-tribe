@@ -33,7 +33,11 @@
 
 - 文件：[pipeline-13f.ts](/Users/rafael/R129/buffett-tribe/scripts/pipeline-13f.ts)
 - 命令：`npm run pipeline:13f`
-- 作用：封装 13F 导入主流程。
+- 作用：封装 13F 导入主流程，四步串行：
+  1. `import-13f-edgartools.ts`：抓取并写入 13F 季度持仓；
+  2. `backfill-security-company-links.ts`：核对证券与公司实体关联；
+  3. `backfill-company-cik.ts`：**自动为新出现的持仓公司桩补齐 SEC 官方 CIK**，确保新公司在 `/company` 目录可见且有合法访问路由；
+  4. `check-security-integrity.ts`：校验完整性。
 
 直接导入入口：
 
