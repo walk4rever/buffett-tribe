@@ -25,14 +25,13 @@ def parse_args() -> argparse.Namespace:
         default="AAPL",
         help="Comma-separated ticker list, e.g. AAPL,MSFT",
     )
-    # Default start = 2 years ago: older history is stored downsampled to
-    # weekly (downsample-stock-prices.ts); a fixed early default would
-    # re-backfill the deleted daily rows on every run.
-    two_years_ago = datetime.now(timezone.utc) - timedelta(days=730)
+    # Default start = 2020-01-01 (or IPO date, whichever is later): aligns
+    # with the 5+ year macro/financial history across the platform.
+    DEFAULT_START_DATE = "2020-01-01"
     parser.add_argument(
         "--start",
-        default=two_years_ago.strftime("%Y-%m-%d"),
-        help="Start date, inclusive, YYYY-MM-DD (default: 2 years ago)",
+        default=DEFAULT_START_DATE,
+        help="Start date, inclusive, YYYY-MM-DD (default: 2020-01-01 or IPO date)",
     )
     parser.add_argument("--end", default=None, help="End date, exclusive, YYYY-MM-DD")
     parser.add_argument(

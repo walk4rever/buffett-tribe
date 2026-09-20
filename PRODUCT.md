@@ -586,7 +586,7 @@ NextAuth（Credentials Provider，`src/lib/auth.ts`）是现有唯一认证实�
   - Tooltip 与静态信息栏当期周期相对涨跌幅计算修正，避免混杂日涨跌幅；
   - 支持红涨绿跌（国内习惯）与绿涨红跌（美股习惯）一键切换与本地记忆；
   - 禁用鼠标滚轮横向缩放，杜绝误触劫持网页垂直滚动。
-- 已有 Yahoo Finance 导入脚本：`npm run import:stock-prices:yf` 与 `npm run import:company-stock-prices:yf`。
+- 已有 Yahoo Finance 导入脚本：`npm run import:stock-prices:yf` 与 `npm run import:company-stock-prices:yf`，默认抓取起点已由 2 年前升级为 `2020-01-01`（或其实际上市日，对齐全站 5 年以上宏观与财报周期深度），已有数据标的依然基于 `lastDate - 3天` 智能微量增量追加。
 - 公司页会在存在入库价格数据时，展示价格历史模块。
 
 后续目标：

@@ -317,7 +317,7 @@ python3 -m venv .venv
 - 命令：`npm run import:company-stock-prices:yf`
 - 作用：自动从 `entity` 表读取所有 company ticker，按批调用 `yfinance` 导入脚本。
 - `--market cn,hk` / `--market us`：按 `Entity.market` 过滤（`us` 对应 `market IS NULL`）。air7 上的周度 cron（见下）用它把 A股/港股和美股拆成两次独立运行。
-- 不传 `--start` 时，每支 ticker 各自解析起始日期：已有 `StockPrice` 记录的从"自己最后一条记录日期 − 3 天"续跑（3 天是给 Yahoo 事后修正 adjusted-close 留的重叠余量），完全没有记录的新 ticker 才落回默认的 2 年前。这是 2026-08-29 排查发现的真实教训——最初设计成固定"最近 N 天"窗口，会让停更超过 N 天的 ticker（当时全站 625 支里有 159 支停更超过 2 周，AAPL 甚至停更 3 个月）永久漏掉中间的缺口。**显式传 `--start` 会对所有 ticker 统一生效**（人工全量回补场景，忽略每支 ticker 各自的续跑点）。
+- 不传 `--start` 时，每支 ticker 各自解析起始日期：已有 `StockPrice` 记录的从"自己最后一条记录日期 − 3 天"续跑（3 天是给 Yahoo 事后修正 adjusted-close 留的重叠余量），完全没有记录的新 ticker 才落回默认的 `2020-01-01`（或其实际上市日，对齐全站 5 年以上宏观与财报周期深度）。这是 2026-08-29 排查发现的真实教训——最初设计成固定"最近 N 天"窗口，会让停更超过 N 天的 ticker（当时全站 625 支里有 159 支停更超过 2 周，AAPL 甚至停更 3 个月）永久漏掉中间的缺口。**显式传 `--start` 会对所有 ticker 统一生效**（人工全量回补场景，忽略每支 ticker 各自的续跑点）。
 - 自动跳过 `Entity.metadata.delisted === true` 的 company（被收购/私有化/合并/改名，yfinance 永远查不到数据）——过滤在 JS 里做，不是 Prisma 的 `NOT: { metadata: { path, equals } }` where 条件：Postgres 对"key 不存在"的 JSON path 比较结果是 NULL，`NOT NULL` 还是 NULL 不是 TRUE，会把所有行都判不匹配从而整体排除掉，2026-08-29 上线时真的踩到过（`active` 查出来是 0，不是"625 减 56"）。标记入口见下方 [mark-delisted-tickers.ts](/Users/rafael/R129/buffett-tribe/scripts/mark-delisted-tickers.ts)。
 
 常用示例：

@@ -28,13 +28,11 @@ function getArgValue(argv: string[], name: string): string | undefined {
   return prefixed ? prefixed.slice(name.length + 1) : undefined;
 }
 
-// Default start = 2 years ago: history older than that is stored downsampled
-// to weekly (downsample-stock-prices.ts); a fixed early default would
-// re-backfill the deleted daily rows on every run.
+// Default start = 2020-01-01 (or IPO date, whichever is later): aligns
+// with the 5+ year macro/financial history across the platform. Existing tickers
+// with rows still resume from their own last stored date.
 function defaultStartDate(): string {
-  const d = new Date();
-  d.setUTCFullYear(d.getUTCFullYear() - 2);
-  return d.toISOString().slice(0, 10);
+  return "2020-01-01";
 }
 
 // 'us' companies have Entity.market === null (see prisma/schema.prisma); 'cn'/'hk'
