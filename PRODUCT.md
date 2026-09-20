@@ -578,9 +578,16 @@ NextAuth（Credentials Provider，`src/lib/auth.ts`）是现有唯一认证实�
 
 - 已有 `StockPrice` 表，以 `(ticker, date)` 唯一约束存储日线 OHLCV。
 - 已有 `/api/price/[ticker]`，支持 `1d / 1w / 1m / 3m / 6m / 1y / 5y / max` 查询。
-- 已有 `StockPriceChart`，使用 `lightweight-charts` 展示 K 线、成交量和均线，支持日 / 月 / 季维度切换。
+- 已有 `StockPriceChart`，使用 `lightweight-charts` 展示 K 线、成交量和均线：
+  - 支持日 / 周 / 月 / 季 K 线平滑聚合（自动识别两年前周降采样历史截断点，日K仅保留真实连续日频，周/月/季全量平滑连接，杜绝均线失真与成交量断崖）；
+  - 支持前复权（QFQ）与不复权切换，基于 `adjustedClose` 等比平滑消除除权拆股与大额分红跳空；
+  - 支持 1年 / 3年 / 全部时间跨度快速视口切换，默认以最近 100~120 根 K 线的饱满视口呈现；
+  - 统一主图与副图刻度于右侧坐标轴（rightPriceScale）；
+  - Tooltip 与静态信息栏当期周期相对涨跌幅计算修正，避免混杂日涨跌幅；
+  - 支持红涨绿跌（国内习惯）与绿涨红跌（美股习惯）一键切换与本地记忆；
+  - 禁用鼠标滚轮横向缩放，杜绝误触劫持网页垂直滚动。
 - 已有 Yahoo Finance 导入脚本：`npm run import:stock-prices:yf` 与 `npm run import:company-stock-prices:yf`。
-- 公司页会在存在入库价格数据时，在 `估值分析` tab 展示价格历史。
+- 公司页会在存在入库价格数据时，展示价格历史模块。
 
 后续目标：
 
