@@ -291,7 +291,7 @@ export default async function DigitalValueLinePage({ params, searchParams }: Pro
       ? {
           canvas: rawBusiness.canvas,
           versionSeq: 1,
-          generatedAt: analysis?.updatedAt ? analysis.updatedAt.toISOString() : null,
+          generatedAt: analysis?.updatedAt ?? new Date(),
         }
       : null;
 
