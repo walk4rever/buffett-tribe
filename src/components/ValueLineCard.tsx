@@ -433,7 +433,7 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
         <section className="vl-company-overview-pane" aria-label="公司概览">
           <div className="vl-overview-head">
             <div className="vl-overview-title-wrap">
-              <span className="vl-overview-badge">🏢 公司概览</span>
+              <span className="vl-overview-badge">公司概览</span>
               <span className="vl-overview-sub">业务本质 · 主打产品 · 营收结构</span>
             </div>
           </div>
@@ -453,7 +453,6 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
         <section className="vl-master-holdings-section" aria-label="大师持仓">
           <div className="vl-master-section-head">
             <div className="vl-master-title-group">
-              <span className="vl-master-section-icon">🎯</span>
               <span className="vl-master-section-title">大师持仓</span>
             </div>
             <span className="vl-master-section-hint">部落重仓与仓位明细</span>
@@ -508,7 +507,6 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
 
                   {hasDistinctFirm ? (
                     <div className="vl-master-firm-tag" title={h.name}>
-                      <span className="vl-master-firm-icon">🏛️</span>
                       <span className="vl-master-firm-text">{shortFirm}</span>
                     </div>
                   ) : null}
@@ -612,7 +610,7 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
         <div className="vl-briefing-col vl-briefing-col--moat">
           <div className="vl-briefing-head">
             <span className="vl-briefing-badge vl-briefing-badge--moat">
-              🏰 核心护城河 · {data.moatStrength}
+              核心护城河 · {data.moatStrength}
             </span>
           </div>
           <p className="vl-briefing-content">{data.aiMoat}</p>
@@ -623,7 +621,7 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
         <div className="vl-briefing-col vl-briefing-col--risk">
           <div className="vl-briefing-head">
             <span className="vl-briefing-badge vl-briefing-badge--risk">
-              ⚠️ 关键暗礁 / 风险
+              关键风险
             </span>
           </div>
           <p className="vl-briefing-content">{data.aiRisk}</p>

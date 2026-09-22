@@ -18712,17 +18712,18 @@ a.insight-entity-chip:hover {
 }
 
 .vl-overview-badge {
-  font-size: 0.76rem;
-  font-weight: 700;
-  padding: 0.22rem 0.6rem;
-  border-radius: 6px;
-  letter-spacing: 0.02em;
+  font-size: 0.75rem; /* ✓ Icon Fix: 12px - Apple Micro Bold */
+  font-weight: 600; /* ✓ Icon Fix: 强化字重 */
+  padding: 0.2rem 0.55rem;
+  border-radius: 5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase; /* ✓ Icon Fix: 大写强化层级 */
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  background: #eef2ff;
-  color: #3730a3;
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: rgba(0, 113, 227, 0.08);
+  color: #0071e3;
+  border: 1px solid rgba(0, 113, 227, 0.2);
 }
 
 .vl-overview-sub {
@@ -18770,17 +18771,19 @@ a.insight-entity-chip:hover {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 0.875rem; /* ✓ Icon Fix: 0.82rem → 0.875rem (14px Apple Caption Bold) */
+  font-weight: 600; /* ✓ Icon Fix: 700 → 600 强化无图标后的层级 */
   color: #1d1d1f; /* ✓ P0 Fix: 琥珀色文字 → Apple Near Black */
+  letter-spacing: -0.224px; /* ✓ Icon Fix: 添加 Apple Caption 标准字间距 */
 }
 
 .vl-master-section-icon {
-  font-size: 0.95rem;
+  /* ✓ Icon Fix: 已从 JSX 移除 emoji，保留类名避免报错 */
+  display: none;
 }
 
 .vl-master-section-title {
-  letter-spacing: 0.01em;
+  letter-spacing: inherit;
 }
 
 .vl-master-section-hint {
@@ -18908,23 +18911,23 @@ a.insight-entity-chip:hover {
   align-items: center;
   gap: 0.3rem;
   min-width: 0;
-  padding-top: 0.15rem;
-  border-top: 1px dashed rgba(0, 0, 0, 0.06);
+  padding-top: 0.35rem; /* ✓ Icon Fix: 增加上边距，强化视觉分隔 */
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .vl-master-firm-icon {
-  font-size: 0.72rem;
-  opacity: 0.75;
-  flex-shrink: 0;
+  /* ✓ Icon Fix: 已从 JSX 移除 emoji，保留类名避免报错 */
+  display: none;
 }
 
 .vl-master-firm-text {
-  font-size: 0.7rem;
-  color: #6b7280;
+  font-size: 0.75rem; /* ✓ Icon Fix: 12px - Apple Micro */
+  color: rgba(0, 0, 0, 0.48); /* ✓ Icon Fix: Apple Secondary */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-weight: 500;
+  font-weight: 400; /* ✓ Icon Fix: 500 → 400 更符合 Apple */
+  letter-spacing: -0.12px; /* ✓ Icon Fix: Apple Micro 标准字间距 */
 }
 
 /* 3. True Value Line Composite Chart */
@@ -19194,22 +19197,24 @@ a.insight-entity-chip:hover {
   background: rgba(0, 113, 227, 0.08); /* ✓ P0 Fix: 绿色 → Apple Blue */
   color: #0071e3;
   border: 1px solid rgba(0, 113, 227, 0.2);
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem; /* ✓ Icon Fix: 0.72rem → 0.75rem (12px Apple Micro Bold) */
+  font-weight: 600; /* ✓ Icon Fix: 700 → 600 */
+  padding: 0.2rem 0.55rem; /* ✓ Icon Fix: 增加 padding 强化存在感 */
   border-radius: 5px;
   display: inline-flex;
+  letter-spacing: -0.12px; /* ✓ Icon Fix: Apple Micro 标准字间距 */
 }
 
 .vl-briefing-badge--risk {
   background: rgba(0, 0, 0, 0.04); /* ✓ P0 Fix: 红色 → 灰色 */
   color: rgba(0, 0, 0, 0.8);
   border: 1px solid rgba(0, 0, 0, 0.08);
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem; /* ✓ Icon Fix: 0.72rem → 0.75rem (12px Apple Micro Bold) */
+  font-weight: 600; /* ✓ Icon Fix: 700 → 600 */
+  padding: 0.2rem 0.55rem; /* ✓ Icon Fix: 增加 padding */
   border-radius: 5px;
   display: inline-flex;
+  letter-spacing: -0.12px; /* ✓ Icon Fix: Apple Micro 标准字间距 */
 }
 
 .vl-briefing-content {
