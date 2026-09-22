@@ -6,6 +6,20 @@
 
 ## P0 — 下一步就做（用户点名，2026-07-17）
 
+- [x] **⑬ 数字价值线（Digital Value Line）Phase 1 & Phase 2：单公司旗舰页面 `/dvl/[id]`、卡片架构优化与全平台响应式适配**（2026-09-22 完成，详见 `PRODUCT.md`「规模化演进：数字价值线」）：
+  - **落地成果**：
+    1. **双路由平行解耦**：按照用户决策，`/company/[id]` 彻底移除非必要的双视图切换胶囊，100% 保持经典视图的稳定性；创建全新的数字价值线专用路由 `/dvl/[id]`，全站 636 家公司支持全量泛化无缝解析（纯 Ticker、纯代码、市场前缀、CIK 全覆盖）。
+    2. **卡片结构深度重构**：
+       - 移除冗余的单行「商业本质」引述框；
+       - 整合为单一规范的【公司概览】卡片，讲透公司基本盘、核心业务产品与最新分部营收结构；
+       - 【大师持仓】升级为精致小卡片（Mini Cards），突出投资人姓名、仓位占比、持仓金额与季度变动；基金公司长名称经净化法言后单行截断 + Tooltip 展示；
+       - 详细财务报表矩阵默认直接常驻展开，移除多余折叠按钮；
+       - 股价历史图（Stock Price Chart）整洁移入 Tab 5（估值分析）内部。
+    3. **Apple-Design 规范与移动端全维适配**：
+       - 视觉规范：浅灰 `#fbfbfd` 底色、纯白 `#ffffff` 表面、精密等宽数字排版与柔光漫反射；
+       - 移动端：表头上下流式折叠自适应、财务矩阵最左侧科目列自动粘滞吸顶（Sticky Column）且支持 iOS 惯性滑动、Tab 导航栏自动转换为 iOS 原生高斯模糊横向滑动手势胶囊。
+    4. **工程检验**：`npm run lint` 0 警告 0 错误，全站编译稳定无瑕疵。
+
 - [ ] **⑩ 回填缺失的 `section_text` artifact：645 份 filing / 4,780 个 section / 110 家公司**（2026-08-30 发现，详细复盘见 `handoff.md` 第二次会话追加）：早期那版「三种 kind 全删」的 `cleanup-section-artifacts.ts` 删掉了 `section_text` artifact，而 `FilingSection.textArtifact` 外键是 `onDelete: SetNull`，链接随之全部变 NULL；上次只回填了 BN/SU 两家。后果是 `search_filings` 对这 110 家公司**平均只能看到 27.4% 的正文**（`FilingSection.content` 只是导入时截断的预览），走 `primary_html` 现场重解析的兜底路径又常因大文件超时。P3 加的降级警告保证了它不会静默撒谎，但能力缺口是真的。
   - **判据**：`textArtifactId is null AND length(content) < contentTextLength`。按 `extractionVersion` 分：v2 全部 10,857 个 section text artifact 数为 0（那一代没这机制），v3 的 16,181 个里缺 1,839 个。8/29–8/30 两批重导的 10,082 个则 100% 完整——**当前写入路径是对的，这是历史存量问题**。
   - **受影响最多**：BABA(85/8)、LUV(70/7)、TM(69/6)、JOYY(67/6)、TSM(65/6)、NETTF(65/6)、RH(65/7)、GOTU(65/6)、AAL(63/6)、LBTYK(63/12)、TSLA(62/10)。

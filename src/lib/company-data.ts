@@ -183,11 +183,55 @@ export async function getCompanyByTicker(ticker: string) {
  */
 export async function getCompanyByIdentifier(raw: string) {
   const parsed = parseCompanyIdentifier(raw);
-  if (!parsed) return null;
-  if (parsed.market === "us") return getCompanyByCik(parsed.cik);
+  if (parsed) {
+    if (parsed.market === "us") {
+      const company = await getCompanyByCik(parsed.cik);
+      if (company) return company;
+    } else {
+      const company = await db.entity.findFirst({
+        where: { type: "company", market: parsed.market, code: parsed.code },
+        select: {
+          id: true,
+          type: true,
+          canonicalName: true,
+          ticker: true,
+          cik: true,
+          market: true,
+          code: true,
+          sector: true,
+          metadata: true,
+        },
+      });
+      if (company) return company;
+    }
+  }
 
+  // Fallback 1: Resolve directly by ticker (e.g. "KO", "AMZN", "BABA", "DIS", "AAPL")
+  const byTicker = await getCompanyByTicker(raw);
+  if (byTicker) {
+    return {
+      id: byTicker.id,
+      type: "company",
+      canonicalName: byTicker.canonicalName,
+      ticker: byTicker.ticker,
+      cik: byTicker.cik,
+      market: "us",
+      code: null,
+      sector: byTicker.sector,
+      metadata: byTicker.metadata,
+    };
+  }
+
+  // Fallback 2: Resolve by bare code (e.g. "09633", "600519") or entity ID
+  const trimmed = raw.trim();
   return db.entity.findFirst({
-    where: { type: "company", market: parsed.market, code: parsed.code },
+    where: {
+      type: "company",
+      OR: [
+        { code: trimmed },
+        { id: trimmed },
+      ],
+    },
     select: {
       id: true,
       type: true,

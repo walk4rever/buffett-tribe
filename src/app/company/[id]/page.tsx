@@ -31,12 +31,13 @@ import { buildCompanyFinancialDashboard } from "@/lib/company-financial-dashboar
 import { formatShares } from "@/lib/master-data";
 import { CompanyFinancialDashboardComponent } from "@/components/CompanyFinancialDashboard";
 import { computeCompanyTtmMetrics, getCompanyQuarterlyFinancials } from "@/lib/ttm-metrics";
+import { CompanyViewContainer } from "@/components/CompanyViewContainer";
 
 export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; embed?: string }>;
 }
 
 type MoatDimension = {
@@ -432,7 +433,8 @@ function getMoatMock(companyName: string, ticker: string | null): MoatMock {
 
 export default async function CompanyPage({ params, searchParams }: Props) {
   const { id: rawId } = await params;
-  const { tab: rawTab } = await searchParams;
+  const { tab: rawTab, embed: rawEmbed } = await searchParams;
+  const isEmbed = rawEmbed === "1";
   const trimmedId = rawId.trim();
   const parsed = parseCompanyIdentifier(trimmedId);
   if (!parsed) notFound();
@@ -592,47 +594,50 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   const initialTabId = typeof rawTab === "string" ? rawTab.trim() : "";
 
   return (
-    <div className="company-page">
-      <SiteNav />
+    <div className={`company-page ${isEmbed ? "company-page--embed" : ""}`}>
+      {!isEmbed ? <SiteNav /> : null}
       <CompanyAgentDialog companyName={zhName} ticker={company.ticker} />
 
       <div className="company-wrap">
-        <section className="company-hero">
-          <div className="company-hero-main">
-            <div className="company-hero-copy">
-              <Link href="/company" className="company-back-link">← 返回公司列表</Link>
-              <p className="company-eyebrow">{company.cik ? "SEC 公司档案" : "公司档案"}</p>
-              <h1 className="company-name">
-                <CompanyDisplayName
-                  zhName={zhName}
-                  enName={enNameShort}
-                  className="company-display--hero"
-                />
-              </h1>
-            </div>
-            <div className="company-intro-band">
-              <div className="company-narrative-block">
-                <h3>{companyNarrative.overview.title}</h3>
-                <p className="company-intro">{companyNarrative.overview.content}</p>
-              </div>
-            </div>
-            <aside className="company-profile-card" aria-label="Company profile">
-              <dl className="company-profile-grid">
-                {profileFacts.map((fact) => (
-                  <div key={fact.label} className="company-profile-row">
-                    <dt>
-                      <span className="company-profile-label">{fact.label}</span>
-                      <span className="company-profile-sub">{fact.subLabel}</span>
-                    </dt>
-                    <dd>{fact.value}</dd>
+        <CompanyViewContainer
+          backHref="/company"
+          dvlHref={canonicalUrl ? canonicalUrl.replace("/company/", "/dvl/") : undefined}
+        >
+          <section className="company-hero">
+                <div className="company-hero-main">
+                  <div className="company-hero-copy">
+                    <p className="company-eyebrow">{company.cik ? "SEC 公司档案" : "公司档案"}</p>
+                    <h1 className="company-name">
+                      <CompanyDisplayName
+                        zhName={zhName}
+                        enName={enNameShort}
+                        className="company-display--hero"
+                      />
+                    </h1>
                   </div>
-                ))}
-              </dl>
-            </aside>
-          </div>
-        </section>
+                  <div className="company-intro-band">
+                    <div className="company-narrative-block">
+                      <h3>{companyNarrative.overview.title}</h3>
+                      <p className="company-intro">{companyNarrative.overview.content}</p>
+                    </div>
+                  </div>
+                  <aside className="company-profile-card" aria-label="Company profile">
+                    <dl className="company-profile-grid">
+                      {profileFacts.map((fact) => (
+                        <div key={fact.label} className="company-profile-row">
+                          <dt>
+                            <span className="company-profile-label">{fact.label}</span>
+                            <span className="company-profile-sub">{fact.subLabel}</span>
+                          </dt>
+                          <dd>{fact.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </aside>
+                </div>
+              </section>
 
-        {availablePriceTickers.length > 0 ? (
+              {availablePriceTickers.length > 0 ? (
           <section className="company-section company-price-section">
             <div className="company-price-embed-head">
               <h3>价格历史</h3>
@@ -1084,6 +1089,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
           </section>
 
         </CompanySectionTabs>
+        </CompanyViewContainer>
       </div>
     </div>
   );
