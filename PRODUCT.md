@@ -1087,7 +1087,16 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.43.2）
+## 当前实现状态（v0.44.29）
+
+### v0.44.29 变更（2026-09-22）
+
+- **DVL 页面 Apple 设计规范全面对齐**：数字价值线（Digital Value Line）页面此前在配色、字体、圆角、图标使用上偏离 `APPLE-DESIGN.md` 规范，呈现出 Tailwind UI 风格而非 Apple.com 的克制美学。本次修复分三个优先级完成：
+  - **P0（色彩纪律）**：移除所有非 Apple 颜色——绿色 (#10b981)、红色 (#ef4444)、琥珀色 (#f59e0b) 等 7+ 种 accent 色统一为 Apple Blue (#0071e3) + 灰度系统；移除 2 处渐变背景（顶部装饰线三色渐变、大师持仓区琥珀色渐变）改为纯色；统一圆角为 Apple 标准档位（20px→12px, 14px→12px, 9px→8px）；修复 ticker badge 背景色从 Tailwind Gray-900 改为 Apple Near Black (#1d1d1f)；统一所有阴影为 Apple 标准阴影 `rgba(0, 0, 0, 0.22) 3px 5px 30px 0px`。共修改 18 处 CSS 规则。
+  - **P1（字体层级）**：字体尺寸标准化到 Apple 档位（23.2px→28px, 33.6px→40px, 13.76px→14px, 17.6px→21px）；行高调整到 Apple 标准（标题 1.10-1.14，正文 1.43）；字间距标准化（添加 0.196px / -0.224px / 0.231px 等 Apple HIG 精确值）；字重标准化（800→600, 700→400，符合 Apple 字重档位）；为所有数字元素添加 `font-variant-numeric: tabular-nums`。共修改 10 处 CSS 规则。
+  - **图标系统重构**：移除所有装饰性 emoji（🏢🎯🏰⚠️🏛️），遵循 Apple 原则"图标是功能性的，不是装饰性的"；强化无图标后的视觉层级（badge 字号统一为 12px Apple Micro Bold，关键 badge 添加 `text-transform: uppercase`，增强 padding）。Apple.com 产品卡片从不在标题前加装饰图标，层次靠字体大小 + 字重 + 颜色传达。共修改 5 处 JSX 和 7 处 CSS。
+  - **设计文档**：新增 `docs/dvl-apple-design-fixes.md`（28 处修复的详细对照清单）、`docs/dvl-icon-system.md`（图标使用原则与 Apple.com 实际案例分析）、更新 `docs/business-essence-implementation.md`（"两行精华"功能的实现计划，待后续排期）。
+  - **影响范围**：`src/app/globals.css`（35 处修改）、`src/components/ValueLineCard.tsx`（5 处图标移除）。修复后 DVL 页面色彩收敛到单一 Apple Blue accent + 灰度，字体层级符合 Apple HIG，视觉语言与 `/company` 经典视图、整站 Apple 风格完全统一。
 
 ### v0.43.2 变更（2026-08-20）
 
