@@ -337,11 +337,6 @@ export default async function DigitalValueLinePage({ params, searchParams }: Pro
             ← 公司
           </Link>
 
-          <div className="dvl-brand-pill">
-            <span className="dvl-brand-tag">DIGITAL VALUE LINE</span>
-            <span className="dvl-brand-title">数字价值线</span>
-          </div>
-
           <Link
             href={classicCompanyUrl}
             className="dvl-classic-switch-link"

@@ -4,6 +4,21 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { ValueLineData } from "@/lib/value-line-data";
 
+/**
+ * 根据市场返回货币符号和代码
+ */
+function getCurrencySymbol(market: "us" | "hk" | "cn"): { symbol: string; code: string } {
+  switch (market) {
+    case "cn":
+      return { symbol: "¥", code: "CNY" };
+    case "hk":
+      return { symbol: "HK$", code: "HKD" };
+    case "us":
+    default:
+      return { symbol: "$", code: "USD" };
+  }
+}
+
 export function formatCompactNumber(val: number | null | undefined, prefix = "$"): string {
   if (val == null || !Number.isFinite(val)) return "—";
   const abs = Math.abs(val);
@@ -402,17 +417,21 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
 
         {/* Pricing & Key Ratios */}
         <div className="vl-card-pricing">
-          <div className="vl-price-primary">
-            <span className="vl-price-currency">$</span>
-            <span className="vl-price-val">
-              {data.latestPrice ? data.latestPrice.toFixed(2) : "—"}
-            </span>
-            <span className="vl-price-sub">USD</span>
-          </div>
+          {data.latestPrice ? (
+            <div className="vl-price-primary">
+              <span className="vl-price-currency">{getCurrencySymbol(data.market).symbol}</span>
+              <span className="vl-price-val">{data.latestPrice.toFixed(2)}</span>
+              <span className="vl-price-sub">{getCurrencySymbol(data.market).code}</span>
+            </div>
+          ) : (
+            <div className="vl-price-primary">
+              <span className="vl-price-val">—</span>
+            </div>
+          )}
           <div className="vl-price-metrics">
             <span className="vl-price-metric-item">
               <span className="vl-metric-k">市值</span>
-              <span className="vl-metric-v">{formatCompactNumber(data.marketCap)}</span>
+              <span className="vl-metric-v">{formatCompactNumber(data.marketCap, getCurrencySymbol(data.market).symbol)}</span>
             </span>
             <span className="vl-dot-divider">·</span>
             <span className="vl-price-metric-item">

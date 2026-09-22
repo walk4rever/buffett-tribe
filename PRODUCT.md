@@ -1087,7 +1087,14 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.44.29）
+## 当前实现状态（v0.44.30）
+
+### v0.44.30 变更（2026-09-22）
+
+- **DVL 页面货币单位动态化 + 移除品牌标题**：修复两处 UX 问题：
+  - **货币单位硬编码**：`ValueLineCard` 此前对所有公司硬编码显示 `$` 和 `USD`，对中国公司（如贵州茅台）、港股公司应分别显示 `¥ CNY` 和 `HK$ HKD`。新增 `getCurrencySymbol(market)` 工具函数根据 `ValueLineData.market` 字段（"us" | "hk" | "cn"）动态返回正确的货币符号和代码；同时修复非上市公司（如 SpaceX）无股价时仍显示货币符号的问题——`latestPrice` 为 null 时只显示 `—`，不显示货币符号。市值（`marketCap`）的 `formatCompactNumber()` 调用同步传入正确的货币符号前缀。
+  - **顶部品牌标题移除**：DVL 页面导航栏 `<div className="dvl-brand-pill">` 区块（"DIGITAL VALUE LINE / 数字价值线"）占据中央位置但无功能性，与 Apple 设计原则"每个元素必须有功能"相悖。移除该区块，导航栏现在只保留功能性元素：左侧"← 公司"返回链接、右侧"经典视图 ↺"切换链接。
+  - **多 ticker 切换确认**：经核查，DVL 页面已通过 `availablePriceTickers` 数组传递给 `StockPriceChartLazy` 组件实现多 ticker 切换支持（与经典视图一致），无需额外修复。
 
 ### v0.44.29 变更（2026-09-22）
 
