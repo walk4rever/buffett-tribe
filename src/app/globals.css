@@ -18463,9 +18463,9 @@ a.insight-entity-chip:hover {
 .value-line-card {
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 20px;
+  border-radius: 12px; /* ✓ P0 Fix: 20px → 12px (Apple Large) */
   padding: 1.75rem 1.85rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02), 0 12px 32px -4px rgba(0, 0, 0, 0.04);
+  box-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0px; /* ✓ P0 Fix: 统一为 Apple 标准阴影 */
   display: flex;
   flex-direction: column;
   gap: 1.35rem;
@@ -18481,8 +18481,8 @@ a.insight-entity-chip:hover {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, #0071e3 0%, #38bdf8 50%, #f59e0b 100%);
-  opacity: 0.85;
+  background: #0071e3; /* ✓ P0 Fix: 移除渐变，纯 Apple Blue */
+  opacity: 1;
 }
 
 /* 1. Header: Ticker, Name, Editorial Essence & Pricing */
@@ -18513,7 +18513,7 @@ a.insight-entity-chip:hover {
   font-family: var(--font-mono);
   font-size: 0.8rem;
   font-weight: 700;
-  background: #111827;
+  background: #1d1d1f; /* ✓ P0 Fix: Tailwind Gray → Apple Near Black */
   color: #ffffff;
   padding: 0.2rem 0.55rem;
   border-radius: 6px;
@@ -18548,39 +18548,34 @@ a.insight-entity-chip:hover {
   height: 6px;
   border-radius: 50%;
   display: inline-block;
+  background: #0071e3; /* ✓ P0 Fix: 统一为 Apple Blue，移除绿/红/琥珀变体 */
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.2);
 }
 
-.vl-pulse-dot--green {
-  background: #10b981;
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
-}
-
-.vl-pulse-dot--red {
-  background: #ef4444;
-  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
-}
-
+/* ✓ P0 Fix: 移除彩色变体，保留类名避免 JS 报错，但样式统一 */
+.vl-pulse-dot--green,
+.vl-pulse-dot--red,
 .vl-pulse-dot--amber {
-  background: #f59e0b;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+  background: #0071e3;
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.2);
 }
 
 .vl-status-chip--undervalued {
-  background: #ecfdf5;
-  color: #065f46;
-  border: 1px solid rgba(5, 150, 105, 0.2);
+  background: rgba(0, 113, 227, 0.08); /* ✓ P0 Fix: 绿色 → Apple Blue 透明背景 */
+  color: #0071e3;
+  border: 1px solid rgba(0, 113, 227, 0.2);
 }
 
 .vl-status-chip--overvalued {
-  background: #fef2f2;
-  color: #991b1b;
-  border: 1px solid rgba(220, 38, 38, 0.2);
+  background: rgba(0, 0, 0, 0.04); /* ✓ P0 Fix: 红色 → 灰色中性背景 */
+  color: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .vl-status-chip--fair {
-  background: #fffbeb;
-  color: #92400e;
-  border: 1px solid rgba(217, 119, 6, 0.2);
+  background: rgba(0, 0, 0, 0.04); /* ✓ P0 Fix: 琥珀色 → 灰色中性背景 */
+  color: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .vl-title-row {
@@ -18591,10 +18586,10 @@ a.insight-entity-chip:hover {
 
 .vl-card-title {
   margin: 0;
-  font-size: 1.45rem;
-  font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: -0.025em;
+  font-size: 1.75rem; /* ✓ P1 Fix: 1.45rem (23.2px) → 1.75rem (28px) Apple Tile Heading */
+  font-weight: 400; /* ✓ P1 Fix: 700 → 400 (Apple Tile Heading 标准权重) */
+  line-height: 1.14; /* ✓ P1 Fix: 1.25 → 1.14 (Apple 标题紧凑行高) */
+  letter-spacing: 0.196px; /* ✓ P1 Fix: Apple Tile Heading 标准字间距 */
 }
 
 .vl-title-link {
@@ -18644,12 +18639,12 @@ a.insight-entity-chip:hover {
 }
 
 .vl-price-val {
-  font-size: 2.1rem;
-  font-weight: 800;
+  font-size: 2.5rem; /* ✓ P1 Fix: 2.1rem (33.6px) → 2.5rem (40px) Apple Section Heading */
+  font-weight: 600; /* ✓ P1 Fix: 800 → 600 (Apple Section Heading 标准权重) */
   color: #111827;
-  letter-spacing: -0.035em;
+  letter-spacing: normal; /* ✓ P1 Fix: -0.035em → normal (Apple 大标题不用负值) */
   font-variant-numeric: tabular-nums;
-  line-height: 1;
+  line-height: 1.10; /* ✓ P1 Fix: 1 → 1.10 (Apple Section Heading 标准行高) */
 }
 
 .vl-price-sub {
@@ -18683,6 +18678,7 @@ a.insight-entity-chip:hover {
 .vl-metric-v {
   color: #374151;
   font-weight: 600;
+  font-variant-numeric: tabular-nums; /* ✓ P1 Fix: 添加 tabular-nums */
 }
 
 .vl-dot-divider {
@@ -18744,9 +18740,10 @@ a.insight-entity-chip:hover {
 
 .vl-overview-para {
   margin: 0;
-  font-size: 0.86rem;
-  line-height: 1.65;
+  font-size: 0.875rem; /* ✓ P1 Fix: 0.86rem (13.76px) → 0.875rem (14px) Apple Caption */
+  line-height: 1.43; /* ✓ P1 Fix: 1.65 → 1.43 (Apple Caption 标准行高) */
   color: #374151;
+  letter-spacing: -0.224px; /* ✓ P1 Fix: 添加 Apple Caption 标准负字间距 */
   text-align: justify;
 }
 
@@ -18755,8 +18752,8 @@ a.insight-entity-chip:hover {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  background: linear-gradient(180deg, #fefce8 0%, #fffdf5 100%);
-  border: 1px solid rgba(217, 119, 6, 0.18);
+  background: #ffffff; /* ✓ P0 Fix: 移除琥珀色渐变，纯白背景 */
+  border: 1px solid rgba(0, 0, 0, 0.08); /* ✓ P0 Fix: 琥珀色边框 → 灰色 */
   border-radius: 12px;
   padding: 0.85rem 1.1rem;
 }
@@ -18775,7 +18772,7 @@ a.insight-entity-chip:hover {
   gap: 0.4rem;
   font-size: 0.82rem;
   font-weight: 700;
-  color: #92400e;
+  color: #1d1d1f; /* ✓ P0 Fix: 琥珀色文字 → Apple Near Black */
 }
 
 .vl-master-section-icon {
@@ -18788,9 +18785,9 @@ a.insight-entity-chip:hover {
 
 .vl-master-section-hint {
   font-size: 0.7rem;
-  color: #b45309;
+  color: rgba(0, 0, 0, 0.48); /* ✓ P0 Fix: 琥珀色 → Apple Secondary */
   font-weight: 500;
-  opacity: 0.85;
+  opacity: 1; /* ✓ P0 Fix: 移除额外的 opacity */
 }
 
 .vl-master-cards-grid {
@@ -18801,8 +18798,8 @@ a.insight-entity-chip:hover {
 
 .vl-master-holder-card {
   background: #ffffff;
-  border: 1px solid rgba(217, 119, 6, 0.16);
-  border-radius: 9px;
+  border: 1px solid rgba(0, 0, 0, 0.08); /* ✓ P0 Fix: 琥珀色边框 → 灰色 */
+  border-radius: 8px; /* ✓ P0 Fix: 9px → 8px (Apple Standard) */
   padding: 0.65rem 0.8rem;
   display: flex;
   flex-direction: column;
@@ -18813,8 +18810,8 @@ a.insight-entity-chip:hover {
 
 .vl-master-holder-card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(217, 119, 6, 0.12);
-  border-color: rgba(217, 119, 6, 0.32);
+  box-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0px; /* ✓ P0 Fix: 琥珀色阴影 → Apple 标准阴影 */
+  border-color: rgba(0, 113, 227, 0.3); /* ✓ P0 Fix: 琥珀色边框 → Apple Blue */
 }
 
 .vl-master-card-header {
@@ -18893,7 +18890,7 @@ a.insight-entity-chip:hover {
 }
 
 .vl-master-metric-weight {
-  color: #b45309;
+  color: #1d1d1f; /* ✓ P0 Fix: 琥珀色 → Apple Near Black */
 }
 
 .vl-master-metric-value {
@@ -18934,7 +18931,7 @@ a.insight-entity-chip:hover {
 .vl-card-chart-block {
   background: #fafafc;
   border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 14px;
+  border-radius: 12px; /* ✓ P0 Fix: 14px → 12px (Apple Large) */
   padding: 1rem 1.15rem;
 }
 
@@ -18981,8 +18978,8 @@ a.insight-entity-chip:hover {
 }
 
 .vl-legend-dot--amber {
-  background: #f59e0b;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+  background: #0071e3; /* ✓ P0 Fix: 琥珀色 → Apple Blue */
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.2);
 }
 
 .vl-legend-name {
@@ -18990,17 +18987,21 @@ a.insight-entity-chip:hover {
 }
 
 .vl-sparkline-cur-price {
-  font-size: 1.1rem;
+  font-size: 1.3125rem; /* ✓ P1 Fix: 1.1rem (17.6px) → 1.3125rem (21px) Apple Card Title */
   font-weight: 700;
   color: #0071e3;
   font-variant-numeric: tabular-nums;
+  line-height: 1.19; /* ✓ P1 Fix: 添加 Apple Card Title 标准行高 */
+  letter-spacing: 0.231px; /* ✓ P1 Fix: 添加 Apple Card Title 标准字间距 */
 }
 
 .vl-sparkline-val-num {
-  font-size: 1.1rem;
+  font-size: 1.3125rem; /* ✓ P1 Fix: 1.1rem → 1.3125rem (21px) Apple Card Title */
   font-weight: 700;
-  color: #d97706;
+  color: #0071e3; /* ✓ P0 Fix: 琥珀色 → Apple Blue */
   font-variant-numeric: tabular-nums;
+  line-height: 1.19; /* ✓ P1 Fix: 添加 Apple Card Title 标准行高 */
+  letter-spacing: 0.231px; /* ✓ P1 Fix: 添加标准字间距 */
 }
 
 .vl-valuation-pill {
@@ -19011,18 +19012,18 @@ a.insight-entity-chip:hover {
 }
 
 .vl-tag--green {
-  background: #ecfdf5;
-  color: #059669;
+  background: rgba(0, 113, 227, 0.08); /* ✓ P0 Fix: 绿色 → Apple Blue */
+  color: #0071e3;
 }
 
 .vl-tag--red {
-  background: #fef2f2;
-  color: #dc2626;
+  background: rgba(0, 0, 0, 0.04); /* ✓ P0 Fix: 红色 → 灰色 */
+  color: rgba(0, 0, 0, 0.8);
 }
 
 .vl-tag--amber {
-  background: #fffbeb;
-  color: #d97706;
+  background: rgba(0, 0, 0, 0.04); /* ✓ P0 Fix: 琥珀色 → 灰色 */
+  color: rgba(0, 0, 0, 0.8);
 }
 
 .vl-tag--neutral {
@@ -19112,28 +19113,28 @@ a.insight-entity-chip:hover {
 }
 
 .vl-badge--stellar {
-  background: #e6f7ec;
-  color: #1e7e34;
+  background: rgba(0, 113, 227, 0.08); /* ✓ P0 Fix: 绿色 → Apple Blue */
+  color: #0071e3;
 }
 
 .vl-badge--solid {
-  background: #e8f3ff;
+  background: rgba(0, 113, 227, 0.08);
   color: #0071e3;
 }
 
 .vl-badge--neutral {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.8);
 }
 
 .vl-badge--cash {
-  background: #f0fdf4;
-  color: #15803d;
+  background: rgba(0, 113, 227, 0.08); /* ✓ P0 Fix: 绿色 → Apple Blue */
+  color: #0071e3;
 }
 
 .vl-badge--alert {
-  background: #fef2f2;
-  color: #dc2626;
+  background: rgba(0, 0, 0, 0.04); /* ✓ P0 Fix: 红色 → 灰色 */
+  color: rgba(0, 0, 0, 0.8);
 }
 
 .vl-triad-body {
@@ -19143,12 +19144,12 @@ a.insight-entity-chip:hover {
 }
 
 .vl-triad-main-num {
-  font-size: 1.45rem;
-  font-weight: 800;
+  font-size: 1.75rem; /* ✓ P1 Fix: 1.45rem (23.2px) → 1.75rem (28px) Apple Tile Heading */
+  font-weight: 600; /* ✓ P1 Fix: 800 → 600 (更接近 Apple 标准) */
   color: #111827;
-  letter-spacing: -0.025em;
+  letter-spacing: 0.196px; /* ✓ P1 Fix: -0.025em → 0.196px (Apple Tile Heading) */
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
+  line-height: 1.14; /* ✓ P1 Fix: 1.15 → 1.14 (Apple 标准) */
 }
 
 .vl-triad-sub-text {
@@ -19190,9 +19191,9 @@ a.insight-entity-chip:hover {
 }
 
 .vl-briefing-badge--moat {
-  background: #ecfdf5;
-  color: #065f46;
-  border: 1px solid rgba(6, 95, 70, 0.15);
+  background: rgba(0, 113, 227, 0.08); /* ✓ P0 Fix: 绿色 → Apple Blue */
+  color: #0071e3;
+  border: 1px solid rgba(0, 113, 227, 0.2);
   font-size: 0.72rem;
   font-weight: 700;
   padding: 0.15rem 0.5rem;
@@ -19201,9 +19202,9 @@ a.insight-entity-chip:hover {
 }
 
 .vl-briefing-badge--risk {
-  background: #fff1f2;
-  color: #9f1239;
-  border: 1px solid rgba(159, 18, 57, 0.15);
+  background: rgba(0, 0, 0, 0.04); /* ✓ P0 Fix: 红色 → 灰色 */
+  color: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   font-size: 0.72rem;
   font-weight: 700;
   padding: 0.15rem 0.5rem;
@@ -19225,7 +19226,7 @@ a.insight-entity-chip:hover {
   align-items: center;
   padding: 0.55rem 0.95rem;
   background: #f9fafb;
-  border-radius: 9px;
+  border-radius: 8px; /* ✓ P1 Fix: 9px → 8px (Apple Standard) */
   border: 1px solid rgba(0, 0, 0, 0.05);
   flex-wrap: wrap;
   gap: 0.6rem;
