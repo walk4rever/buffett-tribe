@@ -584,7 +584,7 @@ export async function getRecentHolders(entityId: string, limit = 20) {
   return { holders: holders.slice(0, limit) };
 }
 
-export function formatMoney(v: string | bigint | null) {
+export function formatMoney(v: string | number | bigint | null) {
   return formatUsdInYi(v);
 }
 
