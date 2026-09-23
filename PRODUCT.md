@@ -1087,9 +1087,23 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.44.31）
+## 当前实现状态（v0.45.1）
 
-### v0.44.31 变更（2026-09-23）
+### v0.45.1 变更（2026-09-23）
+
+- **Onboard Phase 1 性能优化、生命周期治理与批量稳定性**：
+  - **`import:10k --fast` 并发提速**：`importFinancialsFastStep` 显式注入 `--filing-concurrency 6`，多财年并行导入入库，单家 Onboarding 耗时从 74 秒进一步压缩至 59 秒（快模式提速 37%）。
+  - **显式生命周期状态建模（`metadata.onboardPhase`）**：
+    - 将公司 Onboarding 状态规范为状态机：`0`（待完善 Stub）、`1`（Phase 1 基础可用态）、`2`（Phase 2 深度完整态）。
+    - `onboard-company.ts` 跑完各阶段后自动回写 `metadata.onboardPhase` 与 `onboardPhaseAt`。
+    - 新增 `scripts/backfill-onboard-phase.ts`，完成全库 636 家公司的历史存量回填（Phase 2: 162 家，Phase 1: 157 家，Phase 0: 317 家）。
+    - 前端目录页（`src/app/company/page.tsx`）将 `isComplete` 判定严格绑定到 `metadata.onboardPhase >= 1`（向后兼容 `financials > 0`）。
+  - **Vercel CDN ISR 缓存刷新优化**：
+    - 公司目录页 `revalidate` 从 3600 秒调整为 60 秒，新入库公司在 1 分钟内即可在 Vercel 线上展示，彻底解决 1 小时延迟问题。
+  - **批量处理失败隔离与自动推进**：
+    - `onboard-pending-companies.ts` 捕获单公司失败后，自动在 `metadata` 中记录 `onboardFailedAt` 和 `onboardError`，并默认跳过已失败/无有效报表的标的（支持 `--retry-failed`），防止队首卡死。
+
+### v0.45.0 变更（2026-09-23）
 
 - **CompanyAnalysis 概览与业务画布统一重构**：
   - **Schema 扩展与架构收敛**：`CompanyAnalysis` 表新增 `overview`（统一公司概览，TEXT，不超过3句话：公司是什么 + 主打产品 + 主营收入）和 `canvas`（9 宫格业务画布，JSONB）字段。旧字段 `profile` 和 `business` 标记为 DEPRECATED，用于平滑过渡与向后兼容。

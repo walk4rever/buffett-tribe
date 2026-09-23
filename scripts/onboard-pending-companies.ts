@@ -22,7 +22,7 @@ import { isNonCompanySecurityKind } from "@/lib/security-kind";
 import { getArg, hasFlag } from "./lib/company-generation";
 import { onboardTickersWithFailureIsolation } from "./lib/onboard-batch-runner";
 
-async function findPendingTickers(): Promise<string[]> {
+async function findPendingTickers(options?: { retryFailed?: boolean }): Promise<string[]> {
   const rows = await prisma.entity.findMany({
     where: {
       type: "company",
@@ -31,6 +31,7 @@ async function findPendingTickers(): Promise<string[]> {
     },
     select: {
       ticker: true,
+      metadata: true,
       createdAt: true,
       _count: { select: { financials: true } },
       // ETF/trust/warrant/etc. tickers show up as stubs the moment some
@@ -43,6 +44,17 @@ async function findPendingTickers(): Promise<string[]> {
   });
   return rows
     .filter((row) => row._count.financials === 0)
+    .filter((row) => {
+      const meta = row.metadata as Record<string, unknown> | null;
+      if (!options?.retryFailed && meta?.onboardFailedAt) {
+        return false;
+      }
+      const reason = meta?.unmatchedReason;
+      if (typeof reason === "string" && ["etf", "acquired", "delisted", "no_financial_facts"].includes(reason)) {
+        return false;
+      }
+      return true;
+    })
     .filter(
       (row) =>
         row.securitiesAsCompany.length === 0 ||
@@ -53,13 +65,14 @@ async function findPendingTickers(): Promise<string[]> {
 
 async function main() {
   const dryRun = hasFlag("--dry-run");
+  const retryFailed = hasFlag("--retry-failed");
   const limitArg = getArg("--limit");
   const limit = limitArg ? Number(limitArg) : undefined;
   if (limitArg && (!Number.isFinite(limit) || (limit as number) <= 0)) {
     throw new Error(`Invalid --limit "${limitArg}"`);
   }
 
-  const pending = await findPendingTickers();
+  const pending = await findPendingTickers({ retryFailed });
   const toRun = limit ? pending.slice(0, limit) : pending;
   console.log(`Pending stub companies: ${pending.length}${limit ? ` (running first ${toRun.length})` : ""}`);
 
@@ -75,7 +88,30 @@ async function main() {
   console.log(`  succeeded: ${result.succeeded.length}/${toRun.length}`);
   if (result.failed.length) {
     console.log(`  failed:`);
-    for (const f of result.failed) console.log(`    - ${f.ticker}: ${f.error}`);
+    for (const f of result.failed) {
+      console.log(`    - ${f.ticker}: ${f.error}`);
+      try {
+        const ent = await prisma.entity.findFirst({
+          where: { type: "company", ticker: { equals: f.ticker, mode: "insensitive" } },
+          select: { id: true, metadata: true },
+        });
+        if (ent) {
+          const meta = (ent.metadata as Record<string, unknown>) || {};
+          await prisma.entity.update({
+            where: { id: ent.id },
+            data: {
+              metadata: {
+                ...meta,
+                onboardFailedAt: new Date().toISOString(),
+                onboardError: f.error,
+              },
+            },
+          });
+        }
+      } catch {
+        // ignore metadata update failure
+      }
+    }
   }
 
   await prisma.$disconnect();

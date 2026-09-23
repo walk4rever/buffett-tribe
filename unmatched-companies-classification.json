@@ -1,0 +1,432 @@
+{
+  "summary": {
+    "etf": 16,
+    "acquired": 15,
+    "delisted": 5,
+    "ticker_changed": 6,
+    "still_public": 7,
+    "unknown": 31
+  },
+  "classifications": {
+    "etf": [
+      {
+        "ticker": "VTV",
+        "name": "VANGUARD INDEX FDS",
+        "entityId": "cmstq5eyq0019rs6hjgyjrhfg"
+      },
+      {
+        "ticker": "QQQ",
+        "name": "INVESCO QQQ TR",
+        "entityId": "cmq60qd8p002prs9xknwjnev9"
+      },
+      {
+        "ticker": "IXJ",
+        "name": "ISHARES TR",
+        "entityId": "cmscstsqa0044rs9h4hg0ftdl"
+      },
+      {
+        "ticker": "VUG",
+        "name": "VANGUARD INDEX FDS",
+        "entityId": "cmscsu3uk004lrs9hy4v7i4q4"
+      },
+      {
+        "ticker": "IWF",
+        "name": "ISHARES TR",
+        "entityId": "cmscsua1a004urs9hzksjq7xj"
+      },
+      {
+        "ticker": "VWO",
+        "name": "VANGUARD INTL EQUITY INDEX F",
+        "entityId": "cmscsue160050rs9huo2t0c0i"
+      },
+      {
+        "ticker": "VOE",
+        "name": "VANGUARD INDEX FDS",
+        "entityId": "cmscssy16002vrs9hohk8ndid"
+      },
+      {
+        "ticker": "OEF",
+        "name": "ISHARES TR",
+        "entityId": "cmscst86n003ars9h7dihnq2f"
+      },
+      {
+        "ticker": "IWM",
+        "name": "ISHARES TR",
+        "entityId": "cmscstecp003jrs9hmf5zjz0w"
+      },
+      {
+        "ticker": "SPLV",
+        "name": "INVESCO EXCH TRADED FD TR II",
+        "entityId": "cmscstghd003mrs9h9rn82gx2"
+      },
+      {
+        "ticker": "EWL",
+        "name": "ISHARES INC",
+        "entityId": "cmscstop3003yrs9hw8b6afeu"
+      },
+      {
+        "ticker": "VEA",
+        "name": "VANGUARD TAX-MANAGED INTL FD",
+        "entityId": "cmscui1ar001nrs3c0u0iosh4"
+      },
+      {
+        "ticker": "IJR",
+        "name": "ISHARES TR",
+        "entityId": "cmscui63s001srs3cdavp7wl8"
+      },
+      {
+        "ticker": "BSV",
+        "name": "VANGUARD BD INDEX FDS",
+        "entityId": "cmscuipqr0027rs3cvg9j4e9r"
+      },
+      {
+        "ticker": "GDX",
+        "name": "VANECK ETF TRUST",
+        "entityId": "cmrpshi7x002trsmad38aqzd6"
+      },
+      {
+        "ticker": "SMH",
+        "name": "VANECK ETF TRUST",
+        "entityId": "cmq610e9c0057rsu0cni6i3xc"
+      }
+    ],
+    "acquired": [
+      {
+        "ticker": "SUMO",
+        "name": "SUMO LOGIC INC",
+        "entityId": "cmq7j4ny9000ersrfwvoy8b1v"
+      },
+      {
+        "ticker": "MIME",
+        "name": "MIMECAST LTD",
+        "entityId": "cmq7j5m9n0011rsrfo1p5dfp6"
+      },
+      {
+        "ticker": "AVLR",
+        "name": "AVALARA INC",
+        "entityId": "cmq7j4h4z0008rsrf14c76y27"
+      },
+      {
+        "ticker": "MXIM",
+        "name": "MAXIM INTEGRATED PRODS INC",
+        "entityId": "cmq7j5tn80017rsrfu53m5ci6"
+      },
+      {
+        "ticker": "INST",
+        "name": "INSTRUCTURE HLDGS INC",
+        "entityId": "cmq7j8npt000ars2x02q8glpc"
+      },
+      {
+        "ticker": "XLNX",
+        "name": "XILINX INC",
+        "entityId": "cmq61d6ez00girsu0nmxe3fwn"
+      },
+      {
+        "ticker": "CWAN",
+        "name": "CLEARWATER ANALYTICS HLDGS I",
+        "entityId": "cmq7j8v9e000grs2xxt98i596"
+      },
+      {
+        "ticker": "OLPX",
+        "name": "OLAPLEX HLDGS INC",
+        "entityId": "cmq6196hz00csrsu0w9s90fwq"
+      },
+      {
+        "ticker": "CFLT",
+        "name": "CONFLUENT INC",
+        "entityId": "cmq60rihx003trs9x6xaqyfpv"
+      },
+      {
+        "ticker": "PLAN",
+        "name": "ANAPLAN INC",
+        "entityId": "cmq618o7m00carsu0ofqwv2l2"
+      },
+      {
+        "ticker": "ZEN",
+        "name": "ZENDESK INC",
+        "entityId": "cmq61asx100ecrsu0f8z8y7k3"
+      },
+      {
+        "ticker": "SPLK",
+        "name": "SPLUNK INC",
+        "entityId": "cmq7isgq9000ursterp23rijn"
+      },
+      {
+        "ticker": "SMAR",
+        "name": "SMARTSHEET INC",
+        "entityId": "cmq7ivgik002xrstermw5rqd3"
+      },
+      {
+        "ticker": "AYX",
+        "name": "ALTERYX INC",
+        "entityId": "cmq7iuco80027rsteckjthcuk"
+      },
+      {
+        "ticker": "COUP",
+        "name": "COUPA SOFTWARE INC",
+        "entityId": "cmq7iyfnv0051rsteqcu9x1lx"
+      }
+    ],
+    "delisted": [
+      {
+        "ticker": "TWTR",
+        "name": "TWITTER INC",
+        "entityId": "cmq618iux00c4rsu011phk4na"
+      },
+      {
+        "ticker": "SONDQ",
+        "name": "SONDER HOLDINGS INC",
+        "entityId": "cmq60sl40004trs9x9f2ont9f"
+      },
+      {
+        "ticker": "FTCHQ",
+        "name": "FARFETCH LTD",
+        "entityId": "cmq615tn8009trsu0elexrs3v"
+      },
+      {
+        "ticker": "STRYQ",
+        "name": "STARRY GROUP HOLDINGS INC",
+        "entityId": "cmq61627f00a2rsu0fmolb703"
+      },
+      {
+        "ticker": "BRDS",
+        "name": "BIRD GLOBAL INC",
+        "entityId": "cmq6177mc00b0rsu0rjjxty4f"
+      }
+    ],
+    "ticker_changed": [
+      {
+        "ticker": "FCAU",
+        "name": "FIAT CHRYSLER AUTOMOBILES N",
+        "entityId": "cmscuif69001yrs3can2gj68y"
+      },
+      {
+        "ticker": "UTX",
+        "name": "UNITED TECHNOLOGIES CORP",
+        "entityId": "cmscuj3oe002krs3cgtp3mlbq"
+      },
+      {
+        "ticker": "DCT",
+        "name": "DUCK CREEK TECHNOLOGIES INC",
+        "entityId": "cmq7ix6z10045rstewfjrqrj5"
+      },
+      {
+        "ticker": "HCP",
+        "name": "HASHICORP INC",
+        "entityId": "cmq612zpd007ersu0j9tqn4n4"
+      },
+      {
+        "ticker": "TWKS",
+        "name": "THOUGHTWORKS HOLDING INC",
+        "entityId": "cmq7iwo81003qrstevtq9arrm"
+      },
+      {
+        "ticker": "RTN",
+        "name": "RAYTHEON CO",
+        "entityId": "cmsfasjhw002vrsja2wu2yea2"
+      }
+    ],
+    "still_public": [
+      {
+        "ticker": "ANSS",
+        "name": "ANSYS INC",
+        "entityId": "cmsd930pv005drsaja1kc9u6a"
+      },
+      {
+        "ticker": "SEGRT",
+        "name": "SEAPORT ENTMT GROUP INC",
+        "entityId": "cmsrko9th000arsaew1fd1nzn"
+      },
+      {
+        "ticker": "HHC",
+        "name": "HOWARD HUGHES CORP",
+        "entityId": "cmsrkonwi000nrsae66dnjzcu"
+      },
+      {
+        "ticker": "JNPR",
+        "name": "JUNIPER NETWORKS INC",
+        "entityId": "cmq612qmp0075rsu0ylbk74dc"
+      },
+      {
+        "ticker": "RDFN",
+        "name": "REDFIN CORP",
+        "entityId": "cmq619xui00dirsu0oatmtgid"
+      },
+      {
+        "ticker": "EA",
+        "name": "ELECTRONIC ARTS INC",
+        "entityId": "cmq618rmq00cdrsu0kpfswjsc"
+      },
+      {
+        "ticker": "CYBR",
+        "name": "CYBERARK SOFTWARE LTD",
+        "entityId": "cmq7ioili002srsblueavfz2h"
+      }
+    ],
+    "unknown": [
+      {
+        "ticker": "OZON",
+        "name": "OZON HLDGS PLC",
+        "entityId": "cmq7j2pw9008crstexu4xefy8"
+      },
+      {
+        "ticker": "DAY",
+        "name": "CERIDIAN HCM HLDG INC",
+        "entityId": "cmq7j4kpt000brsrf4uvh7z4r"
+      },
+      {
+        "ticker": "ESMT",
+        "name": "ENGAGESMART INC",
+        "entityId": "cmq7j90lc000jrs2xa7td5xzf"
+      },
+      {
+        "ticker": "LBRDK",
+        "name": "LIBERTY BROADBAND CORP",
+        "entityId": "cmscstce5003grs9hxhlj1h70"
+      },
+      {
+        "ticker": "AKRE",
+        "name": "PROFESIONALLY MANAGED PORTFO",
+        "entityId": "cmsct0vd10006rsy9z33cog0z"
+      },
+      {
+        "ticker": "WBC",
+        "name": "WABCO HLDGS INC",
+        "entityId": "cmscuj1cx002hrs3chtxfx39p"
+      },
+      {
+        "ticker": "BITF",
+        "name": "BITFARMS LTD",
+        "entityId": "cmrpsfz4t0017rsmao9xtrabu"
+      },
+      {
+        "ticker": "ETHM",
+        "name": "DYNAMIX CORP",
+        "entityId": "cmscxi854000srsjozu0afixr"
+      },
+      {
+        "ticker": "MASI",
+        "name": "MASIMO CORP",
+        "entityId": "cmsd926iw004srsaj6n0t3lx6"
+      },
+      {
+        "ticker": "WNS",
+        "name": "WNS HOLDINGS - ADR",
+        "entityId": "cmsd933lv005grsajuv4hxecx"
+      },
+      {
+        "ticker": "CPRX",
+        "name": "CATALYST PHARMACEUTICALS INC",
+        "entityId": "cmsd8xuod001nrsajrg3hebpp"
+      },
+      {
+        "ticker": "BFB",
+        "name": "BROWN FORMAN CORP",
+        "entityId": "cmsd8zupx0030rsaj135rc9qi"
+      },
+      {
+        "ticker": "DISH",
+        "name": "DISH NETWORK CORPORATION",
+        "entityId": "cmq6153r70098rsu0zumei4zo"
+      },
+      {
+        "ticker": "IIVI",
+        "name": "II-VI INC",
+        "entityId": "cmq618xll00cjrsu0pa4i19t9"
+      },
+      {
+        "ticker": "FL",
+        "name": "FOOT LOCKER INC",
+        "entityId": "cmq61aq5w00e9rsu0cub6ynx6"
+      },
+      {
+        "ticker": "CREE",
+        "name": "CREE INC",
+        "entityId": "cmq7j094d006crste54184rtj"
+      },
+      {
+        "ticker": "CEIX",
+        "name": "CONSOL ENERGY INC NEW",
+        "entityId": "cmsdt2rmu0013rsbk3w23h9a3"
+      },
+      {
+        "ticker": "ARCH",
+        "name": "ARCH RESOURCES INC",
+        "entityId": "cmsdt31pf001arsbkwske3l6v"
+      },
+      {
+        "ticker": "INFO",
+        "name": "IHS MARKIT LTD",
+        "entityId": "cmsfaropk001xrsjann3z0std"
+      },
+      {
+        "ticker": "KNBE",
+        "name": "KNOWBE4 INC",
+        "entityId": "cmq7iwxbu003zrsteeq8gsiwy"
+      },
+      {
+        "ticker": "UNVR",
+        "name": "UNIVAR SOLUTIONS INC",
+        "entityId": "cmsfasbcm002lrsjaleim8jb1"
+      },
+      {
+        "ticker": "SATS",
+        "name": "ECHOSTAR CORP",
+        "entityId": "cmq60uicu000frsu0mwcdv9lf"
+      },
+      {
+        "ticker": "SOND",
+        "name": "SONDER HOLDINGS INC",
+        "entityId": "cmq614bfo008krsu07y5l0jmh"
+      },
+      {
+        "ticker": "CPARU",
+        "name": "CATALYST PARTNRS ACQUISITN C",
+        "entityId": "cmq615fhh009hrsu0y9lryhws"
+      },
+      {
+        "ticker": "AGCUU",
+        "name": "ALTIMETER GROWTH CORP",
+        "entityId": "cmq61995o00cvrsu05lzc0rvm"
+      },
+      {
+        "ticker": "MEKA",
+        "name": "MELI KASZEK PIONEER CORP",
+        "entityId": "cmq7iyphb005arstewvu150r6"
+      },
+      {
+        "ticker": "DGNR",
+        "name": "DRAGONEER GROWTH OPPORTUN CO",
+        "entityId": "cmq7j0kpo006lrstege733a2e"
+      },
+      {
+        "ticker": "OLO",
+        "name": "OLO INC",
+        "entityId": "cmq7j0rqb006rrstefgc61l9l"
+      },
+      {
+        "ticker": "RSVA",
+        "name": "RODGERS SILICON VALLEY AQ CO",
+        "entityId": "cmq7j0z6v006xrstep9h2miq0"
+      },
+      {
+        "ticker": "XM",
+        "name": "QUALTRICS INTL INC",
+        "entityId": "cmq7j1nlx007frstetnmcu1fu"
+      },
+      {
+        "ticker": "TBA",
+        "name": "THOMA BRAVO ADVANTAGE",
+        "entityId": "cmq7j1qgs007irste2t35irzw"
+      }
+    ]
+  },
+  "categoryLabels": {
+    "etf": "ETF（交易所基金）",
+    "acquired": "已被收购/私有化",
+    "delisted": "已退市/破产",
+    "ticker_changed": "Ticker 已变更",
+    "still_public": "仍在交易（可能是匹配错误）",
+    "unknown": "未知状态"
+  }
+}

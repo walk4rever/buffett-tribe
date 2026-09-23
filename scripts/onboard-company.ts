@@ -449,7 +449,7 @@ async function main() {
     id: "import_financials_fast",
     label: "导入财务数据（SEC 结构化 Facts → Financial，快模式）",
     run: () => {
-      const args = ["--ticker", ticker, "--from", fromYear, "--to", toYear, "--fast"];
+      const args = ["--ticker", ticker, "--from", fromYear, "--to", toYear, "--fast", "--filing-concurrency", "6"];
       if (resolvedCik) args.push("--cik", resolvedCik);
       return runNpmScript("import:10k", args);
     },
@@ -605,6 +605,28 @@ async function main() {
   const totalRunMs = summary.reduce((sum, row) => sum + (row.durationMs ?? 0), 0);
   console.log(`\nTotal step time: ${formatDuration(totalRunMs)} | Wall clock: ${formatDuration(Date.now() - runStartedAt)}`);
   const failed = summary.some((row) => row.status === "failed");
+  if (!failed) {
+    const finalEntity = await prisma.entity.findFirst({
+      where: { type: "company", ticker: { equals: ticker, mode: "insensitive" } },
+      select: { id: true, metadata: true },
+    });
+    if (finalEntity) {
+      const meta = (finalEntity.metadata as Record<string, unknown>) || {};
+      const currentPhase = typeof meta.onboardPhase === "number" ? meta.onboardPhase : 0;
+      const targetPhase = phaseArg === "2" || phaseArg === "all" ? 2 : 1;
+      const nextPhase = Math.max(currentPhase, targetPhase);
+      await prisma.entity.update({
+        where: { id: finalEntity.id },
+        data: {
+          metadata: {
+            ...meta,
+            onboardPhase: nextPhase,
+            onboardPhaseAt: new Date().toISOString(),
+          },
+        },
+      });
+    }
+  }
   console.log(failed ? "\nOnboarding incomplete — rerun the same command to resume from the failed step.\n" : "\nOnboarding complete.\n");
 
   await prisma.$disconnect();

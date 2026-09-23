@@ -57,6 +57,8 @@
     "backfill:capex:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-capex.ts --dry-run",
     "backfill:share-repurchase": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-share-repurchase.ts",
     "backfill:share-repurchase:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-share-repurchase.ts --dry-run",
+    "backfill:onboard-phase": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-onboard-phase.ts",
+    "backfill:onboard-phase:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-onboard-phase.ts --dry-run",
     "backfill:security:company-links": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-security-company-links.ts",
     "backfill:security:company-links:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-security-company-links.ts --dry-run",
     "backfill:security-kind": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-security-kind.ts",

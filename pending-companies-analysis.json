@@ -1,0 +1,2281 @@
+{
+  "summary": {
+    "total": 636,
+    "pending": 324,
+    "byMarket": {
+      "unknown": 324
+    },
+    "withTicker": 319,
+    "withoutTicker": 5
+  },
+  "companies": [
+    {
+      "id": "cmscxiadd000vrsjow44ac0ll",
+      "ticker": "GBTC",
+      "canonicalName": "GRAYSCALE BITCOIN TRUST ETF",
+      "market": null,
+      "cik": "1588489"
+    },
+    {
+      "id": "cmsd9099t0039rsaj4h7alzml",
+      "ticker": "IEX",
+      "canonicalName": "IDEX CORP",
+      "market": null,
+      "cik": "832101"
+    },
+    {
+      "id": "cmsd8zm19002trsajwvx9velq",
+      "ticker": "VRSK",
+      "canonicalName": "VERISK ANALYTICS INC",
+      "market": null,
+      "cik": "1442145"
+    },
+    {
+      "id": "cmscst2110031rs9ha2ggguj0",
+      "ticker": "SYY",
+      "canonicalName": "SYSCO CORP",
+      "market": null,
+      "cik": "96021"
+    },
+    {
+      "id": "cmq7imx2q001mrsbl7b264e2t",
+      "ticker": "CPNG",
+      "canonicalName": "COUPANG INC",
+      "market": null,
+      "cik": "1834584"
+    },
+    {
+      "id": "cmq612wjf007brsu06eqay6tz",
+      "ticker": "FTNT",
+      "canonicalName": "FORTINET INC",
+      "market": null,
+      "cik": "1262039"
+    },
+    {
+      "id": "cmq6196hz00csrsu0w9s90fwq",
+      "ticker": "OLPX",
+      "canonicalName": "OLAPLEX HLDGS INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmsct0zs60009rsy9innc3k3h",
+      "ticker": "TMO",
+      "canonicalName": "THERMO FISHER SCIENTIFIC INC",
+      "market": null,
+      "cik": "97745"
+    },
+    {
+      "id": "cmscuipqr0027rs3cvg9j4e9r",
+      "ticker": "BSV",
+      "canonicalName": "VANGUARD BD INDEX FDS",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmsct0ssm0003rsy9frzfwmlr",
+      "ticker": "FBTC",
+      "canonicalName": "FIDELITY WISE ORIGIN BITCOIN",
+      "market": null,
+      "cik": "1852317"
+    },
+    {
+      "id": "cmq7j1nlx007frstetnmcu1fu",
+      "ticker": "XM",
+      "canonicalName": "QUALTRICS INTL INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7j5m9n0011rsrfo1p5dfp6",
+      "ticker": "MIME",
+      "canonicalName": "MIMECAST LTD",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmsrkonwi000nrsae66dnjzcu",
+      "ticker": "HHC",
+      "canonicalName": "HOWARD HUGHES CORP",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmrpshazy002lrsmayo7nxoaf",
+      "ticker": "LBRT",
+      "canonicalName": "LIBERTY ENERGY INC",
+      "market": null,
+      "cik": "1694028"
+    },
+    {
+      "id": "cmscssy16002vrs9hohk8ndid",
+      "ticker": "VOE",
+      "canonicalName": "VANGUARD INDEX FDS",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7iy9ai004vrste4ji0sp8a",
+      "ticker": "DOCN",
+      "canonicalName": "DIGITALOCEAN HLDGS INC",
+      "market": null,
+      "cik": "1582961"
+    },
+    {
+      "id": "cmq7ino8n0028rsbldzzi1hki",
+      "ticker": "SMCI",
+      "canonicalName": "SUPER MICRO COMPUTER INC",
+      "market": null,
+      "cik": "1375365"
+    },
+    {
+      "id": "cmscssrir002mrs9h6ybqehi7",
+      "ticker": "UNP",
+      "canonicalName": "UNION PAC CORP",
+      "market": null,
+      "cik": "100885"
+    },
+    {
+      "id": "cmq617sfs00birsu0fg1al8gg",
+      "ticker": "PTON",
+      "canonicalName": "PELOTON INTERACTIVE INC",
+      "market": null,
+      "cik": "1639825"
+    },
+    {
+      "id": "cmsd930pv005drsaja1kc9u6a",
+      "ticker": "ANSS",
+      "canonicalName": "ANSYS INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7j1k1u007crsteq43vd4jy",
+      "ticker": "NCNO",
+      "canonicalName": "NCINO INC",
+      "market": null,
+      "cik": "1902733"
+    },
+    {
+      "id": "cmsd922vd004prsaj5qwjntsi",
+      "ticker": "EL",
+      "canonicalName": "ESTEE LAUDER COMPANIES CL A",
+      "market": null,
+      "cik": "1001250"
+    },
+    {
+      "id": "cmq7isl99000xrste9k6pp8f1",
+      "ticker": "ON",
+      "canonicalName": "ON SEMICONDUCTOR CORP",
+      "market": null,
+      "cik": "1097864"
+    },
+    {
+      "id": "cmq617p7900bfrsu0ta1o1ezo",
+      "ticker": "TGT",
+      "canonicalName": "TARGET CORP",
+      "market": null,
+      "cik": "27419"
+    },
+    {
+      "id": "cmq619oxt00d9rsu0ll0uxa5j",
+      "ticker": "TPR",
+      "canonicalName": "TAPESTRY INC",
+      "market": null,
+      "cik": "1116132"
+    },
+    {
+      "id": "cmq7j8npt000ars2x02q8glpc",
+      "ticker": "INST",
+      "canonicalName": "INSTRUCTURE HLDGS INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmsdt31pf001arsbkwske3l6v",
+      "ticker": "ARCH",
+      "canonicalName": "ARCH RESOURCES INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmsdt2c7y000prsbk9h201sg1",
+      "ticker": "NE",
+      "canonicalName": "NOBLE CORP PLC",
+      "market": null,
+      "cik": "1895262"
+    },
+    {
+      "id": "cmq617vh700blrsu0txleqdwa",
+      "ticker": "GRABW",
+      "canonicalName": "GRAB HOLDINGS LIMITED",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq6145i5008ersu0z2hcpmvf",
+      "ticker": "PLNT",
+      "canonicalName": "PLANET FITNESS INC",
+      "market": null,
+      "cik": "1637207"
+    },
+    {
+      "id": "cmsd8x05t000trsajwog9stl1",
+      "ticker": "IDXX",
+      "canonicalName": "IDEXX LABS INC",
+      "market": null,
+      "cik": "874716"
+    },
+    {
+      "id": "cmsd8wxca000qrsajgz6x7wh9",
+      "ticker": "WAT",
+      "canonicalName": "WATERS CORP",
+      "market": null,
+      "cik": "1000697"
+    },
+    {
+      "id": "cmq61b56r00eorsu0aruhj8en",
+      "ticker": "TRIP",
+      "canonicalName": "TRIPADVISOR INC",
+      "market": null,
+      "cik": "1526520"
+    },
+    {
+      "id": "cmrpshi7x002trsmad38aqzd6",
+      "ticker": "GDX",
+      "canonicalName": "VANECK ETF TRUST",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscstzt5004frs9hkfyzb6mo",
+      "ticker": "WMT",
+      "canonicalName": "WALMART INC",
+      "market": null,
+      "cik": "104169"
+    },
+    {
+      "id": "cmq615isc009krsu0oauxjlmf",
+      "ticker": "OPEN",
+      "canonicalName": "OPENDOOR TECHNOLOGIES INC",
+      "market": null,
+      "cik": "1801169"
+    },
+    {
+      "id": "cmq7j4kpt000brsrf4uvh7z4r",
+      "ticker": "DAY",
+      "canonicalName": "CERIDIAN HCM HLDG INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7inht30022rsblx71om6z6",
+      "ticker": "SLAB",
+      "canonicalName": "SILICON LABORATORIES INC",
+      "market": null,
+      "cik": "1038074"
+    },
+    {
+      "id": "cmq6153r70098rsu0zumei4zo",
+      "ticker": "DISH",
+      "canonicalName": "DISH NETWORK CORPORATION",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscstsqa0044rs9h4hg0ftdl",
+      "ticker": "IXJ",
+      "canonicalName": "ISHARES TR",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq610e9c0057rsu0cni6i3xc",
+      "ticker": "SMH",
+      "canonicalName": "VANECK ETF TRUST",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7j0kpo006lrstege733a2e",
+      "ticker": "DGNR",
+      "canonicalName": "DRAGONEER GROWTH OPPORTUN CO",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7j8rbk000drs2x8iq1mfjr",
+      "ticker": "LAW",
+      "canonicalName": "CS DISCO INC",
+      "market": null,
+      "cik": "1625641"
+    },
+    {
+      "id": "cmq61c09u00fgrsu0p5uvzqo6",
+      "ticker": "TREE",
+      "canonicalName": "LENDINGTREE INC NEW",
+      "market": null,
+      "cik": "1434621"
+    },
+    {
+      "id": "cmu6uemuv002coyuts452lioo",
+      "ticker": "FUTU",
+      "canonicalName": "FUTU HLDGS LTD",
+      "market": null,
+      "cik": "1754581"
+    },
+    {
+      "id": "cmq61bdy600exrsu08celaggh",
+      "ticker": "PAR",
+      "canonicalName": "PAR TECHNOLOGY CORP",
+      "market": null,
+      "cik": "708821"
+    },
+    {
+      "id": "cmscssvxz002srs9h14tbczgl",
+      "ticker": "CR",
+      "canonicalName": "CRANE COMPANY",
+      "market": null,
+      "cik": "1944013"
+    },
+    {
+      "id": "cmstq5gxf001crs6h0ywazdak",
+      "ticker": "YUM",
+      "canonicalName": "YUM BRANDS INC",
+      "market": null,
+      "cik": "1041061"
+    },
+    {
+      "id": "cmq617jpt00b9rsu0j6micw4c",
+      "ticker": "OKTA",
+      "canonicalName": "OKTA INC",
+      "market": null,
+      "cik": "1660134"
+    },
+    {
+      "id": "cmq618fp200c1rsu0zf8zz8to",
+      "ticker": "PENN",
+      "canonicalName": "PENN NATL GAMING INC",
+      "market": null,
+      "cik": "921738"
+    },
+    {
+      "id": "cmsfargjn001orsja06wmp7ru",
+      "ticker": "KLAC",
+      "canonicalName": "KLA CORP",
+      "market": null,
+      "cik": "319201"
+    },
+    {
+      "id": "cmq7iyw35005grstew3apbef0",
+      "ticker": "TASK",
+      "canonicalName": "TASKUS INC",
+      "market": null,
+      "cik": "1829864"
+    },
+    {
+      "id": "cmsd8y5s2001wrsajxivx62zh",
+      "ticker": "NSSC",
+      "canonicalName": "NAPCO SEC TECHNOLOGIES INC",
+      "market": null,
+      "cik": "69633"
+    },
+    {
+      "id": "cmscssnh5002grs9htm9lbk1d",
+      "ticker": "WM",
+      "canonicalName": "WASTE MGMT INC DEL",
+      "market": null,
+      "cik": "823768"
+    },
+    {
+      "id": "cmq7iwkb0003nrstelawl109t",
+      "ticker": "ENVX",
+      "canonicalName": "ENOVIX CORPORATION",
+      "market": null,
+      "cik": "1828318"
+    },
+    {
+      "id": "cmsd8ziq9002qrsajlc3vs61x",
+      "ticker": "EXPO",
+      "canonicalName": "EXPONENT INC",
+      "market": null,
+      "cik": "851520"
+    },
+    {
+      "id": "cmstpw32n0013rsad4lc79vgp",
+      "ticker": "NTRA",
+      "canonicalName": "NATERA INC",
+      "market": null,
+      "cik": "1604821"
+    },
+    {
+      "id": "cmq7imu9t001jrsblx7z1asbt",
+      "ticker": "VRT",
+      "canonicalName": "VERTIV HOLDINGS CO",
+      "market": null,
+      "cik": "1674101"
+    },
+    {
+      "id": "cmq7iyfnv0051rsteqcu9x1lx",
+      "ticker": "COUP",
+      "canonicalName": "COUPA SOFTWARE INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7ipl31003grsblnbuacx7i",
+      "ticker": "QCOM",
+      "canonicalName": "QUALCOMM INC",
+      "market": null,
+      "cik": "804328"
+    },
+    {
+      "id": "cmq7j4ny9000ersrfwvoy8b1v",
+      "ticker": "SUMO",
+      "canonicalName": "SUMO LOGIC INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmrpsfgin000mrsmagmzgx24q",
+      "ticker": "IREN",
+      "canonicalName": "IREN LIMITED",
+      "market": null,
+      "cik": "1878848"
+    },
+    {
+      "id": "cmq7iuco80027rsteckjthcuk",
+      "ticker": "AYX",
+      "canonicalName": "ALTERYX INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq61aq5w00e9rsu0cub6ynx6",
+      "ticker": "FL",
+      "canonicalName": "FOOT LOCKER INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscstqr00041rs9h0u0bjkrl",
+      "ticker": "RSG",
+      "canonicalName": "REPUBLIC SVCS INC",
+      "market": null,
+      "cik": "1060391"
+    },
+    {
+      "id": "cmscstghd003mrs9h9rn82gx2",
+      "ticker": "SPLV",
+      "canonicalName": "INVESCO EXCH TRADED FD TR II",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmsd8yrx6002arsajhpjq2ft6",
+      "ticker": "ODD",
+      "canonicalName": "ODDITY TECH LTD",
+      "market": null,
+      "cik": "1907085"
+    },
+    {
+      "id": "cmsdt33oy001drsbkdk6zo3ws",
+      "ticker": "DAC",
+      "canonicalName": "DANAOS CORPORATION",
+      "market": null,
+      "cik": "1369241"
+    },
+    {
+      "id": "cmq619u7800dfrsu0oqsam12c",
+      "ticker": "SONO",
+      "canonicalName": "SONOS INC",
+      "market": null,
+      "cik": "1314727"
+    },
+    {
+      "id": "cmstqovzw000ersvqgi6ierqm",
+      "ticker": "FICO",
+      "canonicalName": "FAIR ISAAC CORP",
+      "market": null,
+      "cik": "814547"
+    },
+    {
+      "id": "cmq61bb4b00eursu0xk6zqimp",
+      "ticker": "DRI",
+      "canonicalName": "DARDEN RESTAURANTS INC",
+      "market": null,
+      "cik": "940944"
+    },
+    {
+      "id": "cmscxicn6000yrsjoe99suc50",
+      "ticker": "BTC",
+      "canonicalName": "GRAYSCALE BITCOIN MINI TR BT",
+      "market": null,
+      "cik": "2015034"
+    },
+    {
+      "id": "cmscstacg003drs9hr0r52x0c",
+      "ticker": "DHR",
+      "canonicalName": "DANAHER CORPORATION",
+      "market": null,
+      "cik": "313616"
+    },
+    {
+      "id": "cmq614nvn008vrsu0xt050br3",
+      "ticker": "MTN",
+      "canonicalName": "VAIL RESORTS INC",
+      "market": null,
+      "cik": "812011"
+    },
+    {
+      "id": "cmscxhon2000brsjoyxxhmfba",
+      "ticker": "YOU",
+      "canonicalName": "CLEAR SECURE INC",
+      "market": null,
+      "cik": "1856314"
+    },
+    {
+      "id": "cmq613mfh007xrsu0ogakbg6n",
+      "ticker": "MGM",
+      "canonicalName": "MGM RESORTS INTERNATIONAL",
+      "market": null,
+      "cik": "789570"
+    },
+    {
+      "id": "cmsfas1yu002crsjao7erzlqg",
+      "ticker": "VNO",
+      "canonicalName": "VORNADO RLTY TR",
+      "market": null,
+      "cik": "899689"
+    },
+    {
+      "id": "cmscuj3oe002krs3cgtp3mlbq",
+      "ticker": "UTX",
+      "canonicalName": "UNITED TECHNOLOGIES CORP",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmrpsfz4t0017rsmao9xtrabu",
+      "ticker": "BITF",
+      "canonicalName": "BITFARMS LTD",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscuif69001yrs3can2gj68y",
+      "ticker": "FCAU",
+      "canonicalName": "FIAT CHRYSLER AUTOMOBILES N",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscsslhb002drs9hhbz7te37",
+      "ticker": "SCHW",
+      "canonicalName": "SCHWAB CHARLES CORP",
+      "market": null,
+      "cik": "316709"
+    },
+    {
+      "id": "cmq7j0dfa006frsteunuu49bp",
+      "ticker": "YMM",
+      "canonicalName": "FULL TRUCK ALLIANCE CO LTD",
+      "market": null,
+      "cik": "1838413"
+    },
+    {
+      "id": "cmstq5eyq0019rs6hjgyjrhfg",
+      "ticker": "VTV",
+      "canonicalName": "VANGUARD INDEX FDS",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq61asx100ecrsu0f8z8y7k3",
+      "ticker": "ZEN",
+      "canonicalName": "ZENDESK INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmrpsfqng000yrsma7qoo7iew",
+      "ticker": "CLSK",
+      "canonicalName": "CLEANSPARK INC",
+      "market": null,
+      "cik": "827876"
+    },
+    {
+      "id": "cmq7iwo81003qrstevtq9arrm",
+      "ticker": "TWKS",
+      "canonicalName": "THOUGHTWORKS HOLDING INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmstpw6cm0019rsad5andkobf",
+      "ticker": null,
+      "canonicalName": "QUANTINUUM INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmstqpohv000ars67cvkpaffq",
+      "ticker": "VMC",
+      "canonicalName": "VULCAN MATLS CO",
+      "market": null,
+      "cik": "1396009"
+    },
+    {
+      "id": "cmq7ix6z10045rstewfjrqrj5",
+      "ticker": "DCT",
+      "canonicalName": "DUCK CREEK TECHNOLOGIES INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmstpw8s3001crsad23zusjj3",
+      "ticker": "FRVO",
+      "canonicalName": "FERVO ENERGY CO",
+      "market": null,
+      "cik": "1853868"
+    },
+    {
+      "id": "cmq61995o00cvrsu05lzc0rvm",
+      "ticker": "AGCUU",
+      "canonicalName": "ALTIMETER GROWTH CORP",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7j2lxg0089rsteti6a838e",
+      "ticker": "ROOT",
+      "canonicalName": "ROOT INC",
+      "market": null,
+      "cik": "1788882"
+    },
+    {
+      "id": "cmq7j0z6v006xrstep9h2miq0",
+      "ticker": "RSVA",
+      "canonicalName": "RODGERS SILICON VALLEY AQ CO",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq6177mc00b0rsu0rjjxty4f",
+      "ticker": "BRDS",
+      "canonicalName": "BIRD GLOBAL INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7isgq9000ursterp23rijn",
+      "ticker": "SPLK",
+      "canonicalName": "SPLUNK INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscsseak0022rs9hkatui2mz",
+      "ticker": "PRM",
+      "canonicalName": "PERIMETER SOLUTIONS INC",
+      "market": null,
+      "cik": "1880319"
+    },
+    {
+      "id": "cmq7ip2vz0033rsbl5jf0cedf",
+      "ticker": "GWRE",
+      "canonicalName": "GUIDEWIRE SOFTWARE INC",
+      "market": null,
+      "cik": "1528396"
+    },
+    {
+      "id": "cmscuis97002ars3ccok2uu40",
+      "ticker": "NSC",
+      "canonicalName": "NORFOLK SOUTHERN CORP",
+      "market": null,
+      "cik": "702165"
+    },
+    {
+      "id": "cmq61azhg00eirsu0hnqu4405",
+      "ticker": "PAGS",
+      "canonicalName": "PAGSEGURO DIGITAL LTD",
+      "market": null,
+      "cik": "1712807"
+    },
+    {
+      "id": "cmstpvwa5000ursadurdnbbsf",
+      "ticker": null,
+      "canonicalName": "CEREBRAS SYSTEMS INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7j0h4p006irstevumtqmbf",
+      "ticker": "CRCT",
+      "canonicalName": "CRICUT INC",
+      "market": null,
+      "cik": "1828962"
+    },
+    {
+      "id": "cmq7im1zs000zrsblgymf5gpr",
+      "ticker": "DUOL",
+      "canonicalName": "DUOLINGO INC",
+      "market": null,
+      "cik": "1562088"
+    },
+    {
+      "id": "cmq7j29dv007xrste46teuant",
+      "ticker": "NXPI",
+      "canonicalName": "NXP SEMICONDUCTORS N V",
+      "market": null,
+      "cik": "1413447"
+    },
+    {
+      "id": "cmq7iv9n0002rrstekau5g7kh",
+      "ticker": "BEKE",
+      "canonicalName": "KE HLDGS INC",
+      "market": null,
+      "cik": "1809587"
+    },
+    {
+      "id": "cmrpsggfj001srsmapcj9foi8",
+      "ticker": "INFY",
+      "canonicalName": "INFOSYS LTD",
+      "market": null,
+      "cik": "1067491"
+    },
+    {
+      "id": "cmsd8zupx0030rsaj135rc9qi",
+      "ticker": "BFB",
+      "canonicalName": "BROWN FORMAN CORP",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscsu3uk004lrs9hy4v7i4q4",
+      "ticker": "VUG",
+      "canonicalName": "VANGUARD INDEX FDS",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscst86n003ars9h7dihnq2f",
+      "ticker": "OEF",
+      "canonicalName": "ISHARES TR",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7j2tm5008frstee4bks7vl",
+      "ticker": "YSG",
+      "canonicalName": "YATSEN HLDG LTD",
+      "market": null,
+      "cik": "1819580"
+    },
+    {
+      "id": "cmq618iux00c4rsu011phk4na",
+      "ticker": "TWTR",
+      "canonicalName": "TWITTER INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscst03v002yrs9h7w0ppixy",
+      "ticker": "PAYX",
+      "canonicalName": "PAYCHEX INC",
+      "market": null,
+      "cik": "723531"
+    },
+    {
+      "id": "cmq619rp900dcrsu02s45y26t",
+      "ticker": "SOFI",
+      "canonicalName": "SOFI TECHNOLOGIES INC",
+      "market": null,
+      "cik": "1818874"
+    },
+    {
+      "id": "cmq60sl40004trs9x9f2ont9f",
+      "ticker": "SONDQ",
+      "canonicalName": "SONDER HOLDINGS INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscug5lz000ars3c2xqumn2h",
+      "ticker": "CLX",
+      "canonicalName": "CLOROX CO DEL",
+      "market": null,
+      "cik": "21076"
+    },
+    {
+      "id": "cmq60uicu000frsu0mwcdv9lf",
+      "ticker": "SATS",
+      "canonicalName": "ECHOSTAR CORP",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscsu7v4004rrs9hezh4kwii",
+      "ticker": "ETN",
+      "canonicalName": "EATON CORP PLC",
+      "market": null,
+      "cik": "1551182"
+    },
+    {
+      "id": "cmscstop3003yrs9hw8b6afeu",
+      "ticker": "EWL",
+      "canonicalName": "ISHARES INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmrpsgdsl001prsmagkili9a7",
+      "ticker": "PUMP",
+      "canonicalName": "PROPETRO HLDG CORP",
+      "market": null,
+      "cik": "1680247"
+    },
+    {
+      "id": "cmrpsh4xc002crsma2pwtra5b",
+      "ticker": "TSEM",
+      "canonicalName": "TOWER SEMICONDUCTOR LTD",
+      "market": null,
+      "cik": "928876"
+    },
+    {
+      "id": "cmq7iuucl002grstef7t68rb6",
+      "ticker": "NOW",
+      "canonicalName": "SERVICENOW INC",
+      "market": null,
+      "cik": "1373715"
+    },
+    {
+      "id": "cmrpsh0r90026rsmasmruih9i",
+      "ticker": "CIFR",
+      "canonicalName": "CIPHER MINING INC",
+      "market": null,
+      "cik": "1819989"
+    },
+    {
+      "id": "cmstq2w1s000ers6hdyqxqbj5",
+      "ticker": "MKSI",
+      "canonicalName": "MKS INC.",
+      "market": null,
+      "cik": "1049502"
+    },
+    {
+      "id": "cmq614qy0008yrsu01lmww5an",
+      "ticker": "H",
+      "canonicalName": "HYATT HOTELS CORP",
+      "market": null,
+      "cik": "1468174"
+    },
+    {
+      "id": "cmq612bfm006trsu0xay7xufg",
+      "ticker": "DKNG",
+      "canonicalName": "DRAFTKINGS INC NEW",
+      "market": null,
+      "cik": "1883685"
+    },
+    {
+      "id": "cmq7irde4000arstec13frmni",
+      "ticker": "JBL",
+      "canonicalName": "JABIL INC",
+      "market": null,
+      "cik": "898293"
+    },
+    {
+      "id": "cmq7j4h4z0008rsrf14c76y27",
+      "ticker": "AVLR",
+      "canonicalName": "AVALARA INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmsfaropk001xrsjann3z0std",
+      "ticker": "INFO",
+      "canonicalName": "IHS MARKIT LTD",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7irabx0007rsteetwdddnp",
+      "ticker": "EXPE",
+      "canonicalName": "EXPEDIA GROUP INC",
+      "market": null,
+      "cik": "1324424"
+    },
+    {
+      "id": "cmq7it8h9001frsteoa95ihk0",
+      "ticker": "ONTO",
+      "canonicalName": "ONTO INNOVATION INC",
+      "market": null,
+      "cik": "704532"
+    },
+    {
+      "id": "cmsd8xolw001hrsajdi9fjvcd",
+      "ticker": "PAYC",
+      "canonicalName": "PAYCOM SOFTWARE INC",
+      "market": null,
+      "cik": "1590955"
+    },
+    {
+      "id": "cmq61c5l700fmrsu0sqjiwj4f",
+      "ticker": "RSI",
+      "canonicalName": "RUSH STREET INTERACTIVE INC",
+      "market": null,
+      "cik": "1793659"
+    },
+    {
+      "id": "cmq7j05ts0069rste1crnayb0",
+      "ticker": "FSLY",
+      "canonicalName": "FASTLY INC",
+      "market": null,
+      "cik": "1517413"
+    },
+    {
+      "id": "cmq7illu0000nrsblqbjtbi69",
+      "ticker": "SITM",
+      "canonicalName": "SITIME CORP",
+      "market": null,
+      "cik": "1451809"
+    },
+    {
+      "id": "cmq619lba00d6rsu0i9ascrug",
+      "ticker": "NFLX",
+      "canonicalName": "NETFLIX INC",
+      "market": null,
+      "cik": "1065280"
+    },
+    {
+      "id": "cmscstkkd003srs9hcnbpteiz",
+      "ticker": "LMT",
+      "canonicalName": "LOCKHEED MARTIN CORP",
+      "market": null,
+      "cik": "936468"
+    },
+    {
+      "id": "cmq7j59ur000srsrfd06dbhy2",
+      "ticker": "GTM",
+      "canonicalName": "ZOOMINFO TECHNOLOGIES INC",
+      "market": null,
+      "cik": "1794515"
+    },
+    {
+      "id": "cmstq2y2z000hrs6hgglqpgxk",
+      "ticker": "VIAV",
+      "canonicalName": "VIAVI SOLUTIONS INC",
+      "market": null,
+      "cik": "912093"
+    },
+    {
+      "id": "cmq7isu0w0013rstesyh3i4jr",
+      "ticker": "RMBS",
+      "canonicalName": "RAMBUS INC DEL",
+      "market": null,
+      "cik": "917273"
+    },
+    {
+      "id": "cmsfasbcm002lrsjaleim8jb1",
+      "ticker": "UNVR",
+      "canonicalName": "UNIVAR SOLUTIONS INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmrpshsn4003brsmas2hghlx4",
+      "ticker": "STX",
+      "canonicalName": "SEAGATE TECHNOLOGY HLDNGS PL",
+      "market": null,
+      "cik": "1137789"
+    },
+    {
+      "id": "cmstqpmkv0007rs674r0jc0tq",
+      "ticker": "MLM",
+      "canonicalName": "MARTIN MARIETTA MATLS INC",
+      "market": null,
+      "cik": "916076"
+    },
+    {
+      "id": "cmq7j9bxs000srs2x6byj7fw6",
+      "ticker": "FRSH",
+      "canonicalName": "FRESHWORKS INC",
+      "market": null,
+      "cik": "1544522"
+    },
+    {
+      "id": "cmsr02x4k000jrs2u8jw22j8z",
+      "ticker": "HLT",
+      "canonicalName": "HILTON WORLDWIDE HLDGS INC",
+      "market": null,
+      "cik": "1585689"
+    },
+    {
+      "id": "cmq61909b00cmrsu0km3c5tg7",
+      "ticker": "DT",
+      "canonicalName": "DYNATRACE INC",
+      "market": null,
+      "cik": "1773383"
+    },
+    {
+      "id": "cmsct0vd10006rsy9z33cog0z",
+      "ticker": "AKRE",
+      "canonicalName": "PROFESIONALLY MANAGED PORTFO",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq61dln900gwrsu0pi0zgm5m",
+      "ticker": "CMCSA",
+      "canonicalName": "COMCAST CORP NEW",
+      "market": null,
+      "cik": "1166691"
+    },
+    {
+      "id": "cmstq3n7w0011rs6heogxk5oc",
+      "ticker": "VSH",
+      "canonicalName": "VISHAY INTERTECHNOLOGY INC",
+      "market": null,
+      "cik": "103730"
+    },
+    {
+      "id": "cmq612qmp0075rsu0ylbk74dc",
+      "ticker": "JNPR",
+      "canonicalName": "JUNIPER NETWORKS INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7iliea000krsbl0mbqad4n",
+      "ticker": "FN",
+      "canonicalName": "FABRINET",
+      "market": null,
+      "cik": "1408710"
+    },
+    {
+      "id": "cmq7ilq6n000qrsblj96iirvk",
+      "ticker": "SNDK",
+      "canonicalName": "SANDISK CORP",
+      "market": null,
+      "cik": "2023554"
+    },
+    {
+      "id": "cmscsue160050rs9huo2t0c0i",
+      "ticker": "VWO",
+      "canonicalName": "VANGUARD INTL EQUITY INDEX F",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq61b2mm00elrsu0izl411xl",
+      "ticker": "RVLV",
+      "canonicalName": "REVOLVE GROUP INC",
+      "market": null,
+      "cik": "1746618"
+    },
+    {
+      "id": "cmsd8xxbp001qrsajaa9dwhmw",
+      "ticker": "QLYS",
+      "canonicalName": "QUALYS INC",
+      "market": null,
+      "cik": "1107843"
+    },
+    {
+      "id": "cmq7iugie002arsteo9xse17v",
+      "ticker": "PGY",
+      "canonicalName": "PAGAYA TECHNOLOGIES LTD",
+      "market": null,
+      "cik": "1883085"
+    },
+    {
+      "id": "cmsd8yesn0022rsajc6t35r88",
+      "ticker": "SABR",
+      "canonicalName": "SABRE CORP",
+      "market": null,
+      "cik": "1597033"
+    },
+    {
+      "id": "cmq7ixkbo004erstenrjci7rq",
+      "ticker": "SPT",
+      "canonicalName": "SPROUT SOCIAL INC",
+      "market": null,
+      "cik": "1517375"
+    },
+    {
+      "id": "cmq7j90lc000jrs2xa7td5xzf",
+      "ticker": "ESMT",
+      "canonicalName": "ENGAGESMART INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmsrko9th000arsaew1fd1nzn",
+      "ticker": "SEGRT",
+      "canonicalName": "SEAPORT ENTMT GROUP INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7j094d006crste54184rtj",
+      "ticker": "CREE",
+      "canonicalName": "CREE INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscug3j10007rs3c0climwz0",
+      "ticker": "PEP",
+      "canonicalName": "PEPSICO INC",
+      "market": null,
+      "cik": "77476"
+    },
+    {
+      "id": "cmq7isx8r0016rstehclq88z8",
+      "ticker": "ZS",
+      "canonicalName": "ZSCALER INC",
+      "market": null,
+      "cik": "1713683"
+    },
+    {
+      "id": "cmq615zm1009zrsu04m5zkhsv",
+      "ticker": "DLO",
+      "canonicalName": "DLOCAL LTD",
+      "market": null,
+      "cik": "1846832"
+    },
+    {
+      "id": "cmq7itg67001lrste94ci973c",
+      "ticker": "NVMI",
+      "canonicalName": "NOVA LTD",
+      "market": null,
+      "cik": "1109345"
+    },
+    {
+      "id": "cmq7j2pw9008crstexu4xefy8",
+      "ticker": "OZON",
+      "canonicalName": "OZON HLDGS PLC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmsd8wu3z000nrsajzx5t1glz",
+      "ticker": "SYK",
+      "canonicalName": "STRYKER CORPORATION",
+      "market": null,
+      "cik": "310764"
+    },
+    {
+      "id": "cmq615945009brsu01ksbwzy4",
+      "ticker": "PCOR",
+      "canonicalName": "PROCORE TECHNOLOGIES INC",
+      "market": null,
+      "cik": "1611052"
+    },
+    {
+      "id": "cmq7j0ocf006orste6xuok7ig",
+      "ticker": "VICR",
+      "canonicalName": "VICOR CORP",
+      "market": null,
+      "cik": "751978"
+    },
+    {
+      "id": "cmrpsgbb8001mrsmazpvr4pi4",
+      "ticker": "SHAZ",
+      "canonicalName": "SHARONAI HOLDINGS INC",
+      "market": null,
+      "cik": "2068385"
+    },
+    {
+      "id": "cmsd8yvor002drsajl9rhbw1q",
+      "ticker": "GGG",
+      "canonicalName": "GRACO INC",
+      "market": null,
+      "cik": "42888"
+    },
+    {
+      "id": "cmsdt1qat0007rsbk6m41bp0x",
+      "ticker": "HCC",
+      "canonicalName": "WARRIOR MET COAL INC",
+      "market": null,
+      "cik": "1691303"
+    },
+    {
+      "id": "cmstqoxzt000hrsvq3tj80g0f",
+      "ticker": "IDCC",
+      "canonicalName": "INTERDIGITAL INC",
+      "market": null,
+      "cik": "1405495"
+    },
+    {
+      "id": "cmq7j568q000prsrfvkhati7t",
+      "ticker": "RNG",
+      "canonicalName": "RINGCENTRAL INC",
+      "market": null,
+      "cik": "1384905"
+    },
+    {
+      "id": "cmrpsfw0w0014rsmazhbii6it",
+      "ticker": "TE",
+      "canonicalName": "T1 ENERGY INC",
+      "market": null,
+      "cik": "1992243"
+    },
+    {
+      "id": "cmq7j8fh30004rs2xxtqmh5md",
+      "ticker": "LCID",
+      "canonicalName": "LUCID GROUP INC",
+      "market": null,
+      "cik": "1811210"
+    },
+    {
+      "id": "cmsd8xioe001brsajudzni22s",
+      "ticker": "ROL",
+      "canonicalName": "ROLLINS INC",
+      "market": null,
+      "cik": "84839"
+    },
+    {
+      "id": "cmscxhqwj000ersjoxa10qu8l",
+      "ticker": "TONX",
+      "canonicalName": "TON STRATEGY CO",
+      "market": null,
+      "cik": "1566610"
+    },
+    {
+      "id": "cmrpshqkz0038rsmaov7w17xm",
+      "ticker": null,
+      "canonicalName": "WESTERN DIGITAL CORP",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscsstur002prs9hsk8bhkuv",
+      "ticker": "CL",
+      "canonicalName": "COLGATE PALMOLIVE CO",
+      "market": null,
+      "cik": "21665"
+    },
+    {
+      "id": "cmq7itcji001irstes9hh088l",
+      "ticker": "SPHR",
+      "canonicalName": "SPHERE ENTERTAINMENT CO",
+      "market": null,
+      "cik": "1795250"
+    },
+    {
+      "id": "cmq7ilezp000hrsbl5jmxxz0m",
+      "ticker": "TTMI",
+      "canonicalName": "TTM TECHNOLOGIES INC",
+      "market": null,
+      "cik": "1116942"
+    },
+    {
+      "id": "cmsd936lo005jrsaj61onss0f",
+      "ticker": "G",
+      "canonicalName": "Genpact Ltd",
+      "market": null,
+      "cik": "1398659"
+    },
+    {
+      "id": "cmq7iyphb005arstewvu150r6",
+      "ticker": "MEKA",
+      "canonicalName": "MELI KASZEK PIONEER CORP",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq6142ro008brsu0o7x5zs2u",
+      "ticker": "PINS",
+      "canonicalName": "PINTEREST INC",
+      "market": null,
+      "cik": "1506293"
+    },
+    {
+      "id": "cmq618rmq00cdrsu0kpfswjsc",
+      "ticker": "EA",
+      "canonicalName": "ELECTRONIC ARTS INC",
+      "market": null,
+      "cik": "712515"
+    },
+    {
+      "id": "cmscui1ar001nrs3c0u0iosh4",
+      "ticker": "VEA",
+      "canonicalName": "VANGUARD TAX-MANAGED INTL FD",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmstq65wj001krs6hg0l5lp74",
+      "ticker": null,
+      "canonicalName": "STABLECOINX INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscstijg003prs9h49zj3is6",
+      "ticker": "RTX",
+      "canonicalName": "RTX CORPORATION",
+      "market": null,
+      "cik": "101829"
+    },
+    {
+      "id": "cmsd8zxi90033rsajggqbb0go",
+      "ticker": "EFX",
+      "canonicalName": "EQUIFAX INC",
+      "market": null,
+      "cik": "33185"
+    },
+    {
+      "id": "cmq60qd8p002prs9xknwjnev9",
+      "ticker": "QQQ",
+      "canonicalName": "INVESCO QQQ TR",
+      "market": null,
+      "cik": "1067839"
+    },
+    {
+      "id": "cmq7ix1p50042rste26h63jzq",
+      "ticker": "DOCS",
+      "canonicalName": "DOXIMITY INC",
+      "market": null,
+      "cik": "1516513"
+    },
+    {
+      "id": "cmq7ixgxg004brsteeyuwr998",
+      "ticker": "PATH",
+      "canonicalName": "UIPATH INC",
+      "market": null,
+      "cik": "1734722"
+    },
+    {
+      "id": "cmq7j2ffq0083rstef3d627jk",
+      "ticker": "JD",
+      "canonicalName": "JD.COM INC",
+      "market": null,
+      "cik": "1549802"
+    },
+    {
+      "id": "cmq61akfd00e3rsu0k8c3gixr",
+      "ticker": "LYFT",
+      "canonicalName": "LYFT INC",
+      "market": null,
+      "cik": "1759509"
+    },
+    {
+      "id": "cmrpsg3j9001drsmaea53xed5",
+      "ticker": "PSIX",
+      "canonicalName": "POWER SOLUTIONS INTL INC",
+      "market": null,
+      "cik": "1137091"
+    },
+    {
+      "id": "cmq614bfo008krsu07y5l0jmh",
+      "ticker": "SOND",
+      "canonicalName": "SONDER HOLDINGS INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmstpw1190010rsadtsidyje6",
+      "ticker": "PDFS",
+      "canonicalName": "PDF SOLUTIONS INC",
+      "market": null,
+      "cik": "1120914"
+    },
+    {
+      "id": "cmq7ituvs001wrstezk21frmt",
+      "ticker": "GLOB",
+      "canonicalName": "GLOBANT S A",
+      "market": null,
+      "cik": "1557860"
+    },
+    {
+      "id": "cmq7j8v9e000grs2xxt98i596",
+      "ticker": "CWAN",
+      "canonicalName": "CLEARWATER ANALYTICS HLDGS I",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7imqqd001grsblixfkvizo",
+      "ticker": "SHOP",
+      "canonicalName": "SHOPIFY INC",
+      "market": null,
+      "cik": "1594805"
+    },
+    {
+      "id": "cmq61ahno00e0rsu0boxnui2l",
+      "ticker": "TJX",
+      "canonicalName": "TJX COS INC NEW",
+      "market": null,
+      "cik": "109198"
+    },
+    {
+      "id": "cmq61d6ez00girsu0nmxe3fwn",
+      "ticker": "XLNX",
+      "canonicalName": "XILINX INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq612nmu0072rsu0fsgdtrtj",
+      "ticker": "LOW",
+      "canonicalName": "LOWES COS INC",
+      "market": null,
+      "cik": "60667"
+    },
+    {
+      "id": "cmsd933lv005grsajuv4hxecx",
+      "ticker": "WNS",
+      "canonicalName": "WNS HOLDINGS - ADR",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmsdt21ps000jrsbkiirbwjp3",
+      "ticker": "VAL",
+      "canonicalName": "VALARIS LTD",
+      "market": null,
+      "cik": "314808"
+    },
+    {
+      "id": "cmsd8x3n2000wrsajhap29orp",
+      "ticker": "MTD",
+      "canonicalName": "METTLER TOLEDO INTERNATIONAL",
+      "market": null,
+      "cik": "1037646"
+    },
+    {
+      "id": "cmscuj1cx002hrs3chtxfx39p",
+      "ticker": "WBC",
+      "canonicalName": "WABCO HLDGS INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscxhy8y000krsjo8qaxg8fk",
+      "ticker": "PURR",
+      "canonicalName": "HYPERLIQUID STRATEGIES INC",
+      "market": null,
+      "cik": "2078856"
+    },
+    {
+      "id": "cmq61bx7c00fdrsu0mvfhq2fj",
+      "ticker": "FISV",
+      "canonicalName": "FISERV INC",
+      "market": null,
+      "cik": "798354"
+    },
+    {
+      "id": "cmsd8xaap0012rsajalyljbld",
+      "ticker": "TXN",
+      "canonicalName": "TEXAS INSTRS INC",
+      "market": null,
+      "cik": "97476"
+    },
+    {
+      "id": "cmq60wz6j002ursu04lp5i1hn",
+      "ticker": "BTGO",
+      "canonicalName": "BITGO HOLDINGS, INC.",
+      "market": null,
+      "cik": "1740604"
+    },
+    {
+      "id": "cmq616uoa00aorsu0gxl0vzzv",
+      "ticker": "SNAP",
+      "canonicalName": "SNAP INC",
+      "market": null,
+      "cik": "1564408"
+    },
+    {
+      "id": "cmq615tn8009trsu0elexrs3v",
+      "ticker": "FTCHQ",
+      "canonicalName": "FARFETCH LTD",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmsd8xd150015rsajbpux8tig",
+      "ticker": "ZTS",
+      "canonicalName": "ZOETIS INC",
+      "market": null,
+      "cik": "1555280"
+    },
+    {
+      "id": "cmq7in0g8001prsblvq7cyb1o",
+      "ticker": "HNGE",
+      "canonicalName": "HINGE HEALTH INC",
+      "market": null,
+      "cik": "1673743"
+    },
+    {
+      "id": "cmrpsh2zg0029rsmar0v8gi9b",
+      "ticker": "EQT",
+      "canonicalName": "EQT CORP",
+      "market": null,
+      "cik": "33213"
+    },
+    {
+      "id": "cmq7j5tn80017rsrfu53m5ci6",
+      "ticker": "MXIM",
+      "canonicalName": "MAXIM INTEGRATED PRODS INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7ip6ug0036rsblvx4wgxxo",
+      "ticker": "NWSA",
+      "canonicalName": "NEWS CORP NEW",
+      "market": null,
+      "cik": "1564708"
+    },
+    {
+      "id": "cmq616rxg00alrsu0s5ef562h",
+      "ticker": "MAR",
+      "canonicalName": "MARRIOTT INTL INC NEW",
+      "market": null,
+      "cik": "1048286"
+    },
+    {
+      "id": "cmq618lkb00c7rsu0cur3g329",
+      "ticker": "MTCH",
+      "canonicalName": "MATCH GROUP INC NEW",
+      "market": null,
+      "cik": "891103"
+    },
+    {
+      "id": "cmq61c2v800fjrsu0qjqkn2eg",
+      "ticker": "WH",
+      "canonicalName": "WYNDHAM HOTELS & RESORTS INC",
+      "market": null,
+      "cik": "1722684"
+    },
+    {
+      "id": "cmq7j5qgo0014rsrfvhflka8n",
+      "ticker": "KLIC",
+      "canonicalName": "KULICKE & SOFFA INDS INC",
+      "market": null,
+      "cik": "56978"
+    },
+    {
+      "id": "cmq61coyh00g3rsu0ffpai1mn",
+      "ticker": "RCL",
+      "canonicalName": "ROYAL CARIBBEAN GROUP",
+      "market": null,
+      "cik": "884887"
+    },
+    {
+      "id": "cmq61dcfb00gorsu0jhsnbccb",
+      "ticker": "VRM",
+      "canonicalName": "VROOM INC",
+      "market": null,
+      "cik": "1580864"
+    },
+    {
+      "id": "cmsd91pn4004grsajjs5ma9rp",
+      "ticker": "IPGP",
+      "canonicalName": "IPG PHOTONICS CORP",
+      "market": null,
+      "cik": "1111928"
+    },
+    {
+      "id": "cmsd8xkzh001ersajk0tijqp6",
+      "ticker": "MEDP",
+      "canonicalName": "MEDPACE HLDGS INC",
+      "market": null,
+      "cik": "1668397"
+    },
+    {
+      "id": "cmq618ud000cgrsu0o8yl9y1j",
+      "ticker": "GDRX",
+      "canonicalName": "GOODRX HLDGS INC",
+      "market": null,
+      "cik": "1809519"
+    },
+    {
+      "id": "cmq618o7m00carsu0ofqwv2l2",
+      "ticker": "PLAN",
+      "canonicalName": "ANAPLAN INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmrpsfo3l000vrsma1b2c272u",
+      "ticker": "RIOT",
+      "canonicalName": "RIOT PLATFORMS INC",
+      "market": null,
+      "cik": "1167419"
+    },
+    {
+      "id": "cmq61bh9r00f0rsu0xe3a47v9",
+      "ticker": "PSFE",
+      "canonicalName": "PAYSAFE LIMITED",
+      "market": null,
+      "cik": "1833835"
+    },
+    {
+      "id": "cmq7iolw4002vrsbl9lthynzp",
+      "ticker": "CRTO",
+      "canonicalName": "CRITEO S A",
+      "market": null,
+      "cik": "1576427"
+    },
+    {
+      "id": "cmsrkq1hl001rrsaeayge91qy",
+      "ticker": "PK",
+      "canonicalName": "PARK HOTELS RESORTS INC",
+      "market": null,
+      "cik": "1617406"
+    },
+    {
+      "id": "cmrpshk86002wrsmakhzxaquy",
+      "ticker": "GLXY",
+      "canonicalName": "GALAXY DIGITAL INC.",
+      "market": null,
+      "cik": "1859392"
+    },
+    {
+      "id": "cmrpsh8ys002irsmaok53ypdz",
+      "ticker": "HUT",
+      "canonicalName": "HUT 8 CORP",
+      "market": null,
+      "cik": "1964789"
+    },
+    {
+      "id": "cmscstce5003grs9hxhlj1h70",
+      "ticker": "LBRDK",
+      "canonicalName": "LIBERTY BROADBAND CORP",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscui63s001srs3cdavp7wl8",
+      "ticker": "IJR",
+      "canonicalName": "ISHARES TR",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq612zpd007ersu0j9tqn4n4",
+      "ticker": "HCP",
+      "canonicalName": "HASHICORP INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscsu1sq004irs9hjj25m6mx",
+      "ticker": "ELV",
+      "canonicalName": "ELEVANCE HEALTH INC",
+      "market": null,
+      "cik": "1156039"
+    },
+    {
+      "id": "cmq615csc009ersu0rj9ikwa8",
+      "ticker": "MQ",
+      "canonicalName": "MARQETA INC",
+      "market": null,
+      "cik": "1522540"
+    },
+    {
+      "id": "cmq7im51s0012rsbl92k20vps",
+      "ticker": "MTSI",
+      "canonicalName": "MACOM TECH SOLUTIONS HLDGS I",
+      "market": null,
+      "cik": "1493594"
+    },
+    {
+      "id": "cmq7j1qgs007irste2t35irzw",
+      "ticker": "TBA",
+      "canonicalName": "THOMA BRAVO ADVANTAGE",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7j2c7f0080rste8xms7ysj",
+      "ticker": "CRUS",
+      "canonicalName": "CIRRUS LOGIC INC",
+      "market": null,
+      "cik": "772406"
+    },
+    {
+      "id": "cmq7ily0s000wrsbl5weu8et5",
+      "ticker": "PI",
+      "canonicalName": "IMPINJ INC",
+      "market": null,
+      "cik": "1114995"
+    },
+    {
+      "id": "cmrpsfjrf000prsmanmfvgxyp",
+      "ticker": "CORZ",
+      "canonicalName": "CORE SCIENTIFIC INC NEW",
+      "market": null,
+      "cik": "1839341"
+    },
+    {
+      "id": "cmq7j94k5000mrs2xrf4hy0cb",
+      "ticker": "RELY",
+      "canonicalName": "REMITLY GLOBAL INC",
+      "market": null,
+      "cik": "1782170"
+    },
+    {
+      "id": "cmscugp3v000mrs3cmzgo5fc9",
+      "ticker": "STLA",
+      "canonicalName": "STELLANTIS N.V",
+      "market": null,
+      "cik": "1605484"
+    },
+    {
+      "id": "cmrpsgipe001vrsmamvmo6pis",
+      "ticker": "HIVE",
+      "canonicalName": "HIVE DIGITAL TECHNOLOGIES LT",
+      "market": null,
+      "cik": "1720424"
+    },
+    {
+      "id": "cmrpsg65x001grsmaq8kxqa4g",
+      "ticker": "WYFI",
+      "canonicalName": "WHITEFIBER INC",
+      "market": null,
+      "cik": "2042022"
+    },
+    {
+      "id": "cmq7iwgo0003krstexewha2zu",
+      "ticker": "FLYW",
+      "canonicalName": "FLYWIRE CORPORATION",
+      "market": null,
+      "cik": "1580560"
+    },
+    {
+      "id": "cmstqozyt000krsvqkz0nwiav",
+      "ticker": "ORLY",
+      "canonicalName": "OREILLY AUTOMOTIVE INC",
+      "market": null,
+      "cik": "898173"
+    },
+    {
+      "id": "cmsd8xfd40018rsajbl2jggkp",
+      "ticker": "OTIS",
+      "canonicalName": "OTIS WORLDWIDE CORP",
+      "market": null,
+      "cik": "1781335"
+    },
+    {
+      "id": "cmsfasjhw002vrsja2wu2yea2",
+      "ticker": "RTN",
+      "canonicalName": "RAYTHEON CO",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscxi854000srsjozu0afixr",
+      "ticker": "ETHM",
+      "canonicalName": "DYNAMIX CORP",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmt31wpxj000arsett4e39gu8",
+      "ticker": "GL",
+      "canonicalName": "GLOBE LIFE INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq61627f00a2rsu0fmolb703",
+      "ticker": "STRYQ",
+      "canonicalName": "STARRY GROUP HOLDINGS INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscssjjz002ars9hoblfymux",
+      "ticker": "DE",
+      "canonicalName": "DEERE & CO",
+      "market": null,
+      "cik": "315189"
+    },
+    {
+      "id": "cmsubiz100005rs5nvr94uddr",
+      "ticker": "PSUS",
+      "canonicalName": "PERSHING SQUARE USA LTD",
+      "market": null,
+      "cik": "2002660"
+    },
+    {
+      "id": "cmu6ueait0026oyutrykgjcea",
+      "ticker": "DCBO",
+      "canonicalName": "DOCEBO INC",
+      "market": null,
+      "cik": "1829959"
+    },
+    {
+      "id": "cmq7inleo0025rsbl5bwbiwxi",
+      "ticker": "ENTG",
+      "canonicalName": "ENTEGRIS INC",
+      "market": null,
+      "cik": "1101302"
+    },
+    {
+      "id": "cmu6u9qxr0009oyut1j8vaib3",
+      "ticker": "FOXA",
+      "canonicalName": "FOX CORP",
+      "market": null,
+      "cik": "1754301"
+    },
+    {
+      "id": "cmq612kh0006zrsu08uqqafhy",
+      "ticker": "SONY",
+      "canonicalName": "SONY GROUP CORP",
+      "market": null,
+      "cik": "313838"
+    },
+    {
+      "id": "cmq615fhh009hrsu0y9lryhws",
+      "ticker": "CPARU",
+      "canonicalName": "CATALYST PARTNRS ACQUISITN C",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7iyt7c005drste2afzng1q",
+      "ticker": "XMTR",
+      "canonicalName": "XOMETRY INC",
+      "market": null,
+      "cik": "1657573"
+    },
+    {
+      "id": "cmsttqjgz0009rsaugbbr65w3",
+      "ticker": "TLN",
+      "canonicalName": "Talen Energy Corp",
+      "market": null,
+      "cik": "1622536"
+    },
+    {
+      "id": "cmu6ucmli001hoyut1nc2hd0k",
+      "ticker": "LI",
+      "canonicalName": "LI AUTO INC",
+      "market": null,
+      "cik": "1791706"
+    },
+    {
+      "id": "cmstqaejz0005rsnrqp9saymm",
+      "ticker": "KSPI",
+      "canonicalName": "KASPI KZ JSC",
+      "market": null,
+      "cik": "1985487"
+    },
+    {
+      "id": "cmq61cs4900g6rsu0ylrfswtf",
+      "ticker": "TDOC",
+      "canonicalName": "TELADOC HEALTH INC",
+      "market": null,
+      "cik": "1477449"
+    },
+    {
+      "id": "cmq6173rf00axrsu0vvgpsdmh",
+      "ticker": "OWLT",
+      "canonicalName": "OWLET INC",
+      "market": null,
+      "cik": "1816708"
+    },
+    {
+      "id": "cmscst4780034rs9hy04blsjq",
+      "ticker": "LH",
+      "canonicalName": "LABCORP HOLDINGS INC",
+      "market": null,
+      "cik": "920148"
+    },
+    {
+      "id": "cmq6133es007hrsu00hkrxxwx",
+      "ticker": "TTWO",
+      "canonicalName": "TAKE-TWO INTERACTIVE SOFTWAR",
+      "market": null,
+      "cik": "946581"
+    },
+    {
+      "id": "cmstqou30000brsvqv054nyp5",
+      "ticker": "GEV",
+      "canonicalName": "GE VERNOVA INC",
+      "market": null,
+      "cik": "1996810"
+    },
+    {
+      "id": "cmq7ivgik002xrstermw5rqd3",
+      "ticker": "SMAR",
+      "canonicalName": "SMARTSHEET INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmstq3l3w000yrs6hf8y1bxuw",
+      "ticker": "KEEL",
+      "canonicalName": "KEEL INFRASTRUCTURE CORP",
+      "market": null,
+      "cik": "1812477"
+    },
+    {
+      "id": "cmsd939w1005mrsaj9ubkum8b",
+      "ticker": "XP",
+      "canonicalName": "XP CLASS A",
+      "market": null,
+      "cik": "1787425"
+    },
+    {
+      "id": "cmq619xui00dirsu0oatmtgid",
+      "ticker": "RDFN",
+      "canonicalName": "REDFIN CORP",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7iyjvt0054rstefbmedbyi",
+      "ticker": "RIVN",
+      "canonicalName": "RIVIAN AUTOMOTIVE INC",
+      "market": null,
+      "cik": "1874178"
+    },
+    {
+      "id": "cmq6170c700aursu0l6jf6crv",
+      "ticker": "ROKU",
+      "canonicalName": "ROKU INC",
+      "market": null,
+      "cik": "1428439"
+    },
+    {
+      "id": "cmq7ioili002srsblueavfz2h",
+      "ticker": "CYBR",
+      "canonicalName": "CYBERARK SOFTWARE LTD",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmsfaqamr000brsjasti09rfv",
+      "ticker": "FER",
+      "canonicalName": "FERROVIAL SE",
+      "market": null,
+      "cik": "1468522"
+    },
+    {
+      "id": "cmsh4caoc0002rsnrqmp8b3j2",
+      "ticker": "SPCX",
+      "canonicalName": "SPACE EXPLORATION TECHNOLOGIES CORP",
+      "market": null,
+      "cik": "1181412"
+    },
+    {
+      "id": "cmscssc59001zrs9hcu9i56yr",
+      "ticker": "TDG",
+      "canonicalName": "TRANSDIGM GROUP INC",
+      "market": null,
+      "cik": "1260221"
+    },
+    {
+      "id": "cmrpshzc9003hrsma2m1bfzsg",
+      "ticker": "CEG",
+      "canonicalName": "CONSTELLATION ENERGY CORP",
+      "market": null,
+      "cik": "1868275"
+    },
+    {
+      "id": "cmq7j52g1000mrsrf34trgq2k",
+      "ticker": "DOCU",
+      "canonicalName": "DOCUSIGN INC",
+      "market": null,
+      "cik": "1261333"
+    },
+    {
+      "id": "cmq7j0w10006ursteqspk4oal",
+      "ticker": "DLB",
+      "canonicalName": "DOLBY LABORATORIES INC",
+      "market": null,
+      "cik": "1308547"
+    },
+    {
+      "id": "cmq613pnv0080rsu077acauwn",
+      "ticker": "HAS",
+      "canonicalName": "HASBRO INC",
+      "market": null,
+      "cik": "46080"
+    },
+    {
+      "id": "cmq7ivrl80033rstexq3y73j7",
+      "ticker": "IBM",
+      "canonicalName": "INTERNATIONAL BUSINESS MACHS",
+      "market": null,
+      "cik": "51143"
+    },
+    {
+      "id": "cmq7j8jgg0007rs2xofikgx6g",
+      "ticker": "VTEX",
+      "canonicalName": "VTEX",
+      "market": null,
+      "cik": "1793663"
+    },
+    {
+      "id": "cmq7j0rqb006rrstefgc61l9l",
+      "ticker": "OLO",
+      "canonicalName": "OLO INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmsdt1sak000arsbk5q5k6pfd",
+      "ticker": "RIG",
+      "canonicalName": "TRANSOCEAN LTD",
+      "market": null,
+      "cik": "1451505"
+    },
+    {
+      "id": "cmq61aw3300efrsu0mw3r0xvw",
+      "ticker": "WYNN",
+      "canonicalName": "WYNN RESORTS LTD",
+      "market": null,
+      "cik": "1174922"
+    },
+    {
+      "id": "cmscssge20025rs9h7wwrgy7n",
+      "ticker": "WWD",
+      "canonicalName": "WOODWARD INC",
+      "market": null,
+      "cik": "108312"
+    },
+    {
+      "id": "cmstq3j36000vrs6heffttlyc",
+      "ticker": "STM",
+      "canonicalName": "STMICROELECTRONICS",
+      "market": null,
+      "cik": "932787"
+    },
+    {
+      "id": "cmsd926iw004srsaj6n0t3lx6",
+      "ticker": "MASI",
+      "canonicalName": "MASIMO CORP",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7inenl001zrsblim4hn9me",
+      "ticker": "MNDY",
+      "canonicalName": "MONDAY COM LTD",
+      "market": null,
+      "cik": "1845338"
+    },
+    {
+      "id": "cmscsua1a004urs9hzksjq7xj",
+      "ticker": "IWF",
+      "canonicalName": "ISHARES TR",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmsd8y2gl001trsajhq4cetkx",
+      "ticker": "MANH",
+      "canonicalName": "MANHATTAN ASSOCIATES INC",
+      "market": null,
+      "cik": "1056696"
+    },
+    {
+      "id": "cmq613gi8007rrsu0qb5m54rr",
+      "ticker": "PYPL",
+      "canonicalName": "PAYPAL HLDGS INC",
+      "market": null,
+      "cik": "1633917"
+    },
+    {
+      "id": "cmq618xll00cjrsu0pa4i19t9",
+      "ticker": "IIVI",
+      "canonicalName": "II-VI INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmscstecp003jrs9hmf5zjz0w",
+      "ticker": "IWM",
+      "canonicalName": "ISHARES TR",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7iwxbu003zrsteeq8gsiwy",
+      "ticker": "KNBE",
+      "canonicalName": "KNOWBE4 INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7irhb4000drstewdialeng",
+      "ticker": "WDAY",
+      "canonicalName": "WORKDAY INC",
+      "market": null,
+      "cik": "1327811"
+    },
+    {
+      "id": "cmq613jla007ursu0jv6g57s6",
+      "ticker": "LVS",
+      "canonicalName": "LAS VEGAS SANDS CORP",
+      "market": null,
+      "cik": "1300514"
+    },
+    {
+      "id": "cmu6u9lcv0006oyut60l3grak",
+      "ticker": "DELL",
+      "canonicalName": "DELL TECHNOLOGIES INC",
+      "market": null,
+      "cik": "1571996"
+    },
+    {
+      "id": "cmq7iluiw000trsblbib0tm2j",
+      "ticker": "GLW",
+      "canonicalName": "CORNING INC",
+      "market": null,
+      "cik": "24741"
+    },
+    {
+      "id": "cmsttqhhc0006rsau86b08jil",
+      "ticker": "MOD",
+      "canonicalName": "Modine Mfg Co",
+      "market": null,
+      "cik": "67347"
+    },
+    {
+      "id": "cmq60rihx003trs9x6xaqyfpv",
+      "ticker": "CFLT",
+      "canonicalName": "CONFLUENT INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7io2h8002hrsbl2uaa7b12",
+      "ticker": "MPWR",
+      "canonicalName": "MONOLITHIC PWR SYS INC",
+      "market": null,
+      "cik": "1280452"
+    },
+    {
+      "id": "cmsdt2rmu0013rsbk3w23h9a3",
+      "ticker": "CEIX",
+      "canonicalName": "CONSOL ENERGY INC NEW",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmsfaqctq000ersja6zl1vsyu",
+      "ticker": "CNI",
+      "canonicalName": "CANADIAN NATL RY CO",
+      "market": null,
+      "cik": "16868"
+    },
+    {
+      "id": "cmq7iycoh004yrstexsnkl9y3",
+      "ticker": "GLBE",
+      "canonicalName": "GLOBAL E ONLINE LTD",
+      "market": null,
+      "cik": "1835963"
+    },
+    {
+      "id": "cmq61c91a00fprsu0qah7og31",
+      "ticker": "NET",
+      "canonicalName": "CLOUDFLARE INC",
+      "market": null,
+      "cik": "1477333"
+    },
+    {
+      "id": "cmsfaslgu002yrsjaug17y66w",
+      "ticker": "LIN",
+      "canonicalName": "LINDE PLC",
+      "market": null,
+      "cik": "1707925"
+    },
+    {
+      "id": "cmrpsh6zm002frsmainjszarw",
+      "ticker": "KRC",
+      "canonicalName": "KILROY RLTY CORP",
+      "market": null,
+      "cik": "1025996"
+    },
+    {
+      "id": "cmq7j98a6000prs2x8exxw3wu",
+      "ticker": "DH",
+      "canonicalName": "DEFINITIVE HEALTHCARE CORP",
+      "market": null,
+      "cik": "1861795"
+    },
+    {
+      "id": "cmsd91d9s0046rsaj1yxl8j5c",
+      "ticker": "CGNX",
+      "canonicalName": "COGNEX CORP",
+      "market": null,
+      "cik": "851205"
+    },
+    {
+      "id": "cmq61doy300gzrsu0x6k7rcp1",
+      "ticker": "MCD",
+      "canonicalName": "MCDONALDS CORP",
+      "market": null,
+      "cik": "63908"
+    },
+    {
+      "id": "cmsd92j2d004zrsajdq20gtk1",
+      "ticker": "EW",
+      "canonicalName": "EDWARDS LIFESCIENCES ORD",
+      "market": null,
+      "cik": "1099800"
+    },
+    {
+      "id": "cmrpsfswt0011rsmabv1pthya",
+      "ticker": "SEI",
+      "canonicalName": "SOLARIS ENERGY INFRAS INC",
+      "market": null,
+      "cik": "1697500"
+    },
+    {
+      "id": "cmsdt3frr001trsbkpgak59ri",
+      "ticker": "SRG",
+      "canonicalName": "SERITAGE GROWTH PPTYS",
+      "market": null,
+      "cik": "1628063"
+    },
+    {
+      "id": "cmsd919v00043rsajj4cqfmii",
+      "ticker": "MKC",
+      "canonicalName": "MCCORMICK & CO NON VTG SHRS",
+      "market": null,
+      "cik": "63754"
+    },
+    {
+      "id": "cmu6uanhe000qoyut9bla9yho",
+      "ticker": "GSHD",
+      "canonicalName": "GOOSEHEAD INS INC",
+      "market": null,
+      "cik": "1726978"
+    },
+    {
+      "id": "cmq7iu8tq0024rsteshadv1p1",
+      "ticker": "BZ",
+      "canonicalName": "KANZHUN LIMITED",
+      "market": null,
+      "cik": "1842827"
+    },
+    {
+      "id": "cmstpw4qm0016rsadvff9g5sv",
+      "ticker": null,
+      "canonicalName": "INNIO NV",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmsd8xuod001nrsajrg3hebpp",
+      "ticker": "CPRX",
+      "canonicalName": "CATALYST PHARMACEUTICALS INC",
+      "market": null,
+      "cik": null
+    },
+    {
+      "id": "cmq7j8c640001rs2xp2197cjz",
+      "ticker": "UPST",
+      "canonicalName": "UPSTART HLDGS INC",
+      "market": null,
+      "cik": "1647639"
+    }
+  ]
+}

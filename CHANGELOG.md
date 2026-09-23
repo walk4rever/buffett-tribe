@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.45.1] - 2026-09-23
+
+### Added
+- 公司 Onboarding Phase 1 性能优化与并发提速：`import:10k --fast` 开启 `--filing-concurrency 6`，多财年并行导入入库，单家 Onboarding 耗时由 74 秒进一步压缩至 59 秒。
+- 公司生命周期显式建模（`metadata.onboardPhase`）：设立 0（待完善 Stub）、1（Phase 1 基础可用态）、2（Phase 2 深度完整态）三级状态机；全库 636 家公司完成全量回填打标。
+- 公司目录页筛选与缓存优化：`src/app/company/page.tsx` 收敛 `isComplete` 判定至 `metadata.onboardPhase >= 1`，将 ISR 缓存由 3600 秒缩短至 60 秒，解决 Vercel 线上展示延迟。
+- 待完善公司批处理失败隔离：`onboard-pending-companies.ts` 自动持久化失败详情到 `metadata.onboardFailedAt` 与 `metadata.onboardError`，并默认跳过已失败标的，支持队列自动平滑前进。
+
 ### Added
 - 港股年报三层降级语义精准提取架构：在 `fetch-hk-annual-report.py` 中实现 Tier 1 (PDF Outline 原生书签树) → Tier 2 (前 15 页目录文本正则与双语智能解析) → Tier 3 (正文标题滑动扫描) 的章节定位算法，精确提取 `hk_mda`（管理层讨论与分析全文）、`hk_company_profile`（公司资料/财务摘要）、`hk_governance`（企业管治报告）、`hk_chairman_statement`（主席报告/董事长致辞）及 `hk_mda_moat`/`hk_mda_business`/`hk_mda_review`/`hk_mda_outlook` 子切片。针对金融与保险等特殊行业章节命名（如“經營業績和財務狀況之討論與分析”）及中文数字编号前缀（如“二、 主要業務經營分析”）完成深度适配。
 - 港股年报入库与生成链路全面升级：`import-hk-annual-report-from-file.ts` 支持写入语义 sections 与提取元数据，同时保留 4 个 fallback chunks；`company-generation.ts` 接入港股语义 sections，自动过滤粗分块并放宽单节截断至 4000 字符，消除港股 AI 分析因上下文截断造成的幻觉问题。

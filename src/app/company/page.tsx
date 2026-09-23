@@ -8,9 +8,9 @@ import { BRAND_EN, BRAND_ZH } from "@/lib/brand";
 
 // Company directory changes in slow batches (manual onboarding runs), not
 // per-request — ISR caches the ~1.5-2s query result instead of re-running
-// it on every visit. Up to 1h staleness after an onboard run is a non-issue
-// here.
-export const revalidate = 3600;
+// it on every visit. 60s revalidation gives near-instant updates after an
+// onboarding run while still serving cached responses to visitors.
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: `公司库 | ${BRAND_EN}`,
@@ -72,6 +72,11 @@ function toDirectoryItem(row: EntityDirectoryRow): CompanyDirectoryItem {
   const tickers = uniqueTickers([row.ticker, ...row.securitiesAsCompany.map((s) => s.ticker)]);
   // Guaranteed non-null: the query requires cik OR (market AND code).
   const market = (row.market as "hk" | "cn" | null) ?? "us";
+  // Phase 1 completeness signal: either explicit metadata.onboardPhase >= 1,
+  // or Financial rows > 0 (backward-compatible with earlier onboarded companies).
+  // Without it, the row is a bare stub auto-created by 13F import the moment
+  // an investor holdings filing mentioned the ticker.
+  const isPhase1Complete = Boolean((meta?.onboardPhase as number) >= 1) || row._count.financials > 0;
   return {
     key: row.cik ?? `${row.market}-${row.code}`,
     nameZh,
@@ -79,7 +84,7 @@ function toDirectoryItem(row: EntityDirectoryRow): CompanyDirectoryItem {
     tickers,
     href: formatCompanyUrl(row),
     market,
-    isComplete: row._count.financials > 0,
+    isComplete: isPhase1Complete,
   };
 }
 
