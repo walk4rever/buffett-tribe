@@ -1120,6 +1120,11 @@ Apple HIG 精简风格：
     - 公司目录页 `revalidate` 从 3600 秒调整为 60 秒，新入库公司在 1 分钟内即可在 Vercel 线上展示，彻底解决 1 小时延迟问题。
   - **批量处理失败隔离与自动推进**：
     - `onboard-pending-companies.ts` 捕获单公司失败后，自动在 `metadata` 中记录 `onboardFailedAt` 和 `onboardError`，并默认跳过已失败/无有效报表的标的（支持 `--retry-failed`），防止队首卡死。
+  - **全量批处理战报与失败标的台账（223/233 完成）**：
+    - mini 批处理跑完 233 家有效待处理公司，成功 223 家（全站有财报公司由 319 家跃升至 544 家，Phase 1 规模从 157 家跃升至 379 家，存量 Phase 0 缩减至 95 家）。
+    - 剩余 10 家失败标的分类归档并入库记录：
+      - *类别 A（5 家）：因 DeepSeek API 偶发超时/503 失败，已具备基础数据，直接单独重跑即愈*：`NSC`（诺福克南方，财务已入库仅概览超时）、`YOU`（Clear Secure，翻译 503）、`TONX`（TON Strategy，翻译 503）、`PURR`（Hyperliquid，概览 503）、`GBTC`（灰度，概览 503）。
+      - *类别 B（5 家）：特殊标的/非 10-K 报表结构，需针对性处置*：`CNI`（加拿大国铁，40-F 申报人，US-GAAP 为空）、`SPCX`（SpaceX，未上市）、`FRVO`（Fervo Energy，未上市）、`PSUS`（潘兴广场，封闭式基金）、`GL`（Globe Life，保险财报口径核对）。详细任务见 `TODO.md` P0 ⑮。
 
 ### v0.45.0 变更（2026-09-23）
 
@@ -1657,7 +1662,7 @@ CompanyAnalysis {
 3. 10-K 年报没有批量入口、没有到期提醒、没有覆盖度巡检——链路最长、影响最大（下游连着 5 个 LLM 生成字段），但目前完全靠人记得逐家公司手动触发。
 4. GBrain 与 Postgres 信件表之间没有一致性巡检，两边可能已经在悄悄 drift。
 5. ~~全站没有任何真正的定时任务（cron/GitHub Actions schedule）~~ 2026-08-29 已破例：`StockPrice` 周更接入了 crontab（见上表，2026-08-30 从 air7 迁移到 mini），是第一条也是目前唯一一条。其余数据类型（13F、10-K、GBrain 同步等）仍然只是约定，没有强制机制。
-6. 批量 onboarding（`npm run onboard:pending`，扫描 `Financial` 行数为 0 的公司桩批量补全）2026-08-29/30 在 mini 上跑，259 家起始积压目前剩约 175 家。**根因诊断 2026-08-30 复盘修正**：瓶颈不是"需要把 R2 归档改并发"（这个方向错了），而是 `scripts/lib/filing-section-storage.ts` 一直在写一份 2026-06-13 起就已经零消费方的 `section_blocks` artifact（当时的清理 commit `9722cc8a` 漏删了写入端），且每个 artifact 的 Prisma 查重 + R2 上传 + Prisma upsert 三次往返本来就没做并发（`sectionConcurrency` 参数写好了但调用点没传，一直是 1）。2026-08-30 已实现修复（P0-P3，代码在本地工作区，**未 commit、未部署到 mini、`section_blocks` 存量清理脚本未执行**）：停写 `section_blocks`、`sectionConcurrency` 改传 6、`search_filings` 优先读 section 的 text artifact 而非重解析 `primary_html`、顺带修了 40-F（BN/SU）全文因同一次误删而静默降级到 0.26% 内容的正确性 bug。完整现状与部署清单见 `handoff.md`「当前状态与部署清单」。
+6. 批量 onboarding（`npm run onboard:pending`，扫描 `Financial` 行数为 0 的公司桩批量补全）：**2026-09-23 在 mini 上完成 Phase 1 极速批量导入**，233 家有效待处理池成功 223 家（全库 636 家中有完整财务指标的公司从 319 家跃升至 544 家，Phase 1 规模达 379 家，存量 Phase 0 缩减至 95 家）。剩余 10 家失败标的（5 家 DeepSeek 503 超时、5 家特殊报表/未上市）已分类建账至 `TODO.md` P0 ⑮ 待后续针对性重跑与补录。
 
 以上是本轮梳理的结论，尚未实施；后续排期见 `TODO.md`。
 
