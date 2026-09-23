@@ -376,13 +376,13 @@ export default async function CompanyPage({ params, searchParams }: Props) {
 
           <CompanySectionTabs
             tabs={[
-              { id: "business", label: "商业分析" },
-              { id: "financial", label: "财务分析" },
-              { id: "value", label: "价值分析" },
-              { id: "management", label: "管理分析", ...(hasManagement ? {} : { note: "●" }) },
-              { id: "valuation", label: "估值分析", ...(hasValuation ? {} : { note: "●" }) },
-              { id: "holdings", label: "大师持仓" },
-              { id: "references", label: "参考资料" },
+              { id: "business", label: "商业分析", desc: "九宫格商业模式画布" },
+              { id: "financial", label: "财务分析", desc: "核心三张表与杜邦分解" },
+              { id: "value", label: "价值分析", desc: "护城河雷达与资本回报" },
+              { id: "management", label: "管理分析", desc: "治理结构与资本配置", ...(hasManagement ? {} : { note: "●" }) },
+              { id: "valuation", label: "估值分析", desc: "历史分位与情景推演", ...(hasValuation ? {} : { note: "●" }) },
+              { id: "holdings", label: "大师持仓", desc: "13F顶尖机构季度动向" },
+              { id: "references", label: "参考资料", desc: "官方SEC 10-K年报原文" },
             ]}
             initialTabId={initialTabId}
           >

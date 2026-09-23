@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.45.5] - 2026-09-23
+
+### Fixed
+- 公司详情页移动端全宽自适应修复：定位并根治 CSS Grid 轨道因内部 540px 表格未设 `minmax(0, 1fr)` 导致整页轨道被撑至 642.8px、被外层裁剪截断右侧约 250px 的严重适配缺陷；理顺 `globals.css` 级联顺序，确保移动端内边距与弹性约束正确生效。
+
+### Added
+- 移动端深度投研 7 大维度交互体验全面升级（方案 A）：
+  - 自动平滑居中对齐：点击任意 Tab，通过 `scrollIntoView` 平滑滚动居中并对称展现前后标签；
+  - 动态滚动雾化光晕：提供左右双向边缘渐变遮罩（Fade Mask），直观传达横滑线索；
+  - 「全景矩阵 ⊞ 7」快捷入口与 iOS 原生毛玻璃抽屉：Tab 栏右侧固定常驻 `[ ⊞ 7 ]` 胶囊，点击滑出 iOS 质感 Bottom Sheet，双列卡片平铺展示 7 大维度中英文、投研描述与当前阅读标记，支持一键瞬切直达。
+
 ## [v0.45.1] - 2026-09-23
 
 ### Added
