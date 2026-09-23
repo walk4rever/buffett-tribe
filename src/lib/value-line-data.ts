@@ -1,5 +1,14 @@
 import db from "@/lib/prisma";
-import { formatCompanyUrl, formatMoney, getCompanyFinancials, getRecentHolders } from "@/lib/company-data";
+import {
+  formatCompanyUrl,
+  formatDvlUrl,
+  formatMoney,
+  formatSecurityClassLabel,
+  getCompanyFinancials,
+  getCompanySecurities,
+  getRecentHolders,
+  parseCompanyIdentifier,
+} from "@/lib/company-data";
 import { getTribeMembers } from "@/lib/tribe";
 
 function parseNum(items: Record<string, string | number> | undefined, key: string): number | null {
@@ -26,6 +35,14 @@ export type ValueLineAnnualData = {
   repurchaseAmt: number | null;
 };
 
+export type ValueLineHolderBreakdownItem = {
+  ticker: string;
+  shareClassLabel: string | null;
+  weightPct: number | null;
+  shares: number | null;
+  valueUsd: number | null;
+};
+
 export type ValueLineHolder = {
   name: string;
   investorName: string;
@@ -38,6 +55,30 @@ export type ValueLineHolder = {
   activity?: "New" | "Added" | "Reduced" | "Unchanged" | "SoldOut" | string | null;
   shareDeltaPct?: number | null;
   tribeId: string | null;
+  shareClassLabel?: string | null;
+  breakdownText?: string | null;
+  breakdown?: ValueLineHolderBreakdownItem[];
+};
+
+export type ValueLineSecurityOption = {
+  ticker: string;
+  shareClass: string | null;
+  titleOfClass: string | null;
+  classLabel: string;
+  isPrimary: boolean;
+
+  latestPrice: number | null;
+  latestPriceDate: string | null;
+  high52w: number | null;
+  low52w: number | null;
+  marketCap: number | null;
+  peRatio: number | null;
+  pbRatio: number | null;
+
+  pricePoints: Array<{ date: string; close: number }>;
+  valueLinePoints: Array<{ date: string; value: number }>;
+  valuationStatus: "undervalued" | "fair" | "overvalued" | "insufficient";
+  valuationDiffPct: number | null;
 };
 
 export type ValueLineData = {
@@ -50,8 +91,13 @@ export type ValueLineData = {
   exchange: string | null;
   market: "us" | "hk" | "cn";
   href: string;
+  dvlHref: string;
 
-  // Market & Pricing
+  // Multi-ticker / Security options
+  availableSecurities: ValueLineSecurityOption[];
+  selectedTicker: string;
+
+  // Market & Pricing (Active Security)
   latestPrice: number | null;
   latestPriceDate: string | null;
   high52w: number | null;
@@ -106,82 +152,91 @@ export type ValueLineData = {
   businessSegments: string | null;
 };
 
-export async function getValueLineData(identifier: string): Promise<ValueLineData | null> {
-  const trimmed = identifier.trim().toUpperCase();
+export async function getValueLineData(
+  identifier: string,
+  preferredTicker?: string,
+): Promise<ValueLineData | null> {
+  const trimmed = identifier.trim();
+  const parsed = parseCompanyIdentifier(trimmed);
 
-  const entity = await db.entity.findFirst({
-    where: {
-      type: "company",
-      OR: [
-        { ticker: trimmed },
-        { code: trimmed },
-        { id: identifier.trim() },
-        { cik: identifier.trim().replace(/^CIK/i, "") },
-      ],
-    },
-    select: {
-      id: true,
-      ticker: true,
-      code: true,
-      canonicalName: true,
-      sector: true,
-      market: true,
-      cik: true,
-      metadata: true,
-      analyses: {
-        select: {
-          overview: true,
-          canvas: true,
-          profile: true,
-          business: true,
-          moat: true,
-        },
+  const entitySelect = {
+    id: true,
+    ticker: true,
+    code: true,
+    canonicalName: true,
+    sector: true,
+    market: true,
+    cik: true,
+    metadata: true,
+    analyses: {
+      select: {
+        overview: true,
+        canvas: true,
+        profile: true,
+        business: true,
+        moat: true,
       },
     },
-  });
+  };
+
+  let entity = null;
+
+  if (parsed) {
+    if (parsed.market === "us") {
+      entity = await db.entity.findFirst({
+        where: { type: "company", cik: parsed.cik },
+        select: entitySelect,
+      });
+    } else {
+      entity = await db.entity.findFirst({
+        where: { type: "company", market: parsed.market, code: parsed.code },
+        select: entitySelect,
+      });
+    }
+  }
+
+  if (!entity) {
+    const upper = trimmed.toUpperCase();
+    entity = await db.entity.findFirst({
+      where: {
+        type: "company",
+        OR: [
+          { ticker: upper },
+          { code: upper },
+          { id: trimmed },
+          { cik: trimmed.replace(/^(CIK|US-)/i, "").replace(/^0+/, "") },
+        ],
+      },
+      select: entitySelect,
+    });
+  }
+
+  // Fallback: lookup via security table (e.g. searching GOOGL finds Alphabet)
+  if (!entity) {
+    const sec = await db.security.findFirst({
+      where: { ticker: { equals: trimmed, mode: "insensitive" } },
+      select: { companyEntityId: true },
+    });
+    if (sec?.companyEntityId) {
+      entity = await db.entity.findUnique({
+        where: { id: sec.companyEntityId },
+        select: entitySelect,
+      });
+    }
+  }
 
   if (!entity) return null;
 
-  const ticker = entity.ticker ?? entity.code ?? entity.canonicalName;
+  const canonicalTicker = entity.ticker ?? entity.code ?? entity.canonicalName;
   const meta = (entity.metadata as Record<string, unknown>) ?? {};
   const nameZh = typeof meta.nameZh === "string" ? meta.nameZh.trim() : null;
   const industry = typeof meta.industry === "string" ? meta.industry : null;
   const exchange = typeof meta.exchange === "string" ? meta.exchange : null;
   const market = (entity.market as "hk" | "cn" | null) ?? "us";
-  const href = formatCompanyUrl(entity) ?? `/company/${ticker}`;
+  const href = formatCompanyUrl(entity) ?? `/company/${canonicalTicker}`;
+  const dvlHref = formatDvlUrl(entity) ?? `/dvl/${canonicalTicker}`;
 
-  // 1. Fetch Price History (downsampled to weekly/monthly for fast sparkline)
-  const priceRows = await db.stockPrice.findMany({
-    where: { ticker },
-    orderBy: { date: "asc" },
-    select: { date: true, close: true, high: true, low: true },
-  });
-
-  const latestPriceRow = priceRows[priceRows.length - 1] ?? null;
-  const latestPrice = latestPriceRow ? Number(latestPriceRow.close) : null;
-  const latestPriceDate = latestPriceRow ? latestPriceRow.date.toISOString().slice(0, 10) : null;
-
-  // 52-week high/low calculation
-  const oneYearAgo = new Date();
-  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-  const pastYearPrices = priceRows.filter((p) => p.date >= oneYearAgo);
-  const high52w = pastYearPrices.length
-    ? Math.max(...pastYearPrices.map((p) => Number(p.high ?? p.close)))
-    : null;
-  const low52w = pastYearPrices.length
-    ? Math.min(...pastYearPrices.map((p) => Number(p.low ?? p.close)))
-    : null;
-
-  // Downsample price points for sparkline (~45 points max)
-  const step = Math.max(1, Math.floor(priceRows.length / 45));
-  const pricePoints = priceRows
-    .filter((_, idx) => idx % step === 0 || idx === priceRows.length - 1)
-    .map((p) => ({
-      date: p.date.toISOString().slice(0, 10),
-      close: Number(p.close),
-    }));
-
-  // 2. Fetch Multi-Year Financials
+  // 1. Fetch Multi-Year Financials first to establish earnings base & benchmark PE
   const financials = await getCompanyFinancials(entity.id, 7);
 
   const annuals: ValueLineAnnualData[] = financials
@@ -227,7 +282,7 @@ export async function getValueLineData(identifier: string): Promise<ValueLineDat
     })
     .sort((a, b) => a.year - b.year);
 
-  // 3. Compute Value Triad & Capital Allocation Metrics
+  // Value Triad & Capital Allocation Metrics
   const recentAnnuals = annuals.slice(-5);
   const validRoes = recentAnnuals.map((a) => a.roe).filter((r): r is number => r != null);
   const roeAvg5Y = validRoes.length
@@ -243,13 +298,11 @@ export async function getValueLineData(identifier: string): Promise<ValueLineDat
     else roeStability = "negative";
   }
 
-  // Cash Conversion Ratio = Total OCF / Total Net Income over last 3-5 years
   const totalOcf = recentAnnuals.reduce((acc, a) => acc + (a.operatingCashFlow ?? 0), 0);
   const totalNet = recentAnnuals.reduce((acc, a) => acc + (a.netIncome ?? 0), 0);
   const cashConversionRatio =
     totalNet > 0 && totalOcf > 0 ? Number((totalOcf / totalNet).toFixed(2)) : null;
 
-  // Debt to Assets
   const latestAnnual = annuals[annuals.length - 1] ?? null;
   const debtToAssetsRatio =
     latestAnnual?.totalLiabilities != null && latestAnnual?.totalAssets != null && latestAnnual.totalAssets > 0
@@ -269,7 +322,6 @@ export async function getValueLineData(identifier: string): Promise<ValueLineDat
     }
   }
 
-  // Capital Allocation: 5-Year Share Count Change (Buyback vs Dilution)
   const annualsWithShares = recentAnnuals.filter((a) => a.shares != null && a.shares > 0);
   let shareCountChangePct5Y: number | null = null;
   let buybackLabel: string | null = null;
@@ -286,11 +338,9 @@ export async function getValueLineData(identifier: string): Promise<ValueLineDat
     }
   }
 
-  // Total 5-Year Cash Repurchase
   const totalBuyback5YUsd =
     recentAnnuals.reduce((acc, a) => acc + (a.repurchaseAmt ?? 0), 0) || null;
 
-  // 5-Year CAGR (Revenue & Net Income)
   let revenueCagr5Y: number | null = null;
   let netIncomeCagr5Y: number | null = null;
   if (recentAnnuals.length >= 2) {
@@ -305,38 +355,67 @@ export async function getValueLineData(identifier: string): Promise<ValueLineDat
     }
   }
 
-  // Market Cap & PE Calculation
   const latestNetIncome = latestAnnual?.netIncome ?? null;
   const latestEquity = latestAnnual?.shareholdersEquity ?? null;
   const latestEps = latestAnnual?.eps ?? null;
   const sharesOutstanding = latestAnnual?.shares ?? null;
 
-  const marketCap =
-    latestPrice != null && sharesOutstanding != null && sharesOutstanding > 0
-      ? latestPrice * sharesOutstanding
-      : null;
+  // EPS by year map for corridor
+  const epsByYear = new Map<number, number>();
+  recentAnnuals.forEach((a) => {
+    if (a.eps != null && a.eps > 0) {
+      epsByYear.set(a.year, a.eps);
+    }
+  });
 
-  const peRatio =
-    latestPrice != null && latestEps != null && latestEps > 0
-      ? Number((latestPrice / latestEps).toFixed(1))
-      : marketCap != null && latestNetIncome != null && latestNetIncome > 0
-        ? Number((marketCap / latestNetIncome).toFixed(1))
-        : null;
+  const minAvailableYear = recentAnnuals[0]?.year ?? 2020;
+  const maxAvailableYear = recentAnnuals[recentAnnuals.length - 1]?.year ?? 2025;
 
-  const pbRatio =
-    marketCap != null && latestEquity != null && latestEquity > 0
-      ? Number((marketCap / latestEquity).toFixed(1))
-      : null;
+  // 2. Fetch all securities and stock price histories for multi-ticker support
+  const rawSecurities = await getCompanySecurities(entity.id);
 
-  // 4. Value Line Corridor (EPS x Benchmark PE)
+  const candidateTickers = Array.from(
+    new Set([canonicalTicker, ...rawSecurities.map((s) => s.ticker).filter((t): t is string => Boolean(t))])
+  );
+
+  const allPriceRows = await db.stockPrice.findMany({
+    where: { ticker: { in: candidateTickers } },
+    orderBy: { date: "asc" },
+    select: { ticker: true, date: true, close: true, high: true, low: true },
+  });
+
+  const priceRowsByTicker = new Map<string, typeof allPriceRows>();
+  for (const p of allPriceRows) {
+    if (!priceRowsByTicker.has(p.ticker)) {
+      priceRowsByTicker.set(p.ticker, []);
+    }
+    priceRowsByTicker.get(p.ticker)!.push(p);
+  }
+
+  // Tickers that actually have prices
+  const validTickers = candidateTickers.filter((t) => (priceRowsByTicker.get(t)?.length ?? 0) > 0);
+
+  // If no prices found under securities, try canonicalTicker
+  if (validTickers.length === 0 && priceRowsByTicker.has(canonicalTicker)) {
+    validTickers.push(canonicalTicker);
+  }
+
+  // Calculate benchmark PE across company's primary prices
+  const primaryRows = priceRowsByTicker.get(canonicalTicker) ?? allPriceRows;
   let benchmarkPe = 18.0;
-  if (peRatio != null && peRatio >= 10 && peRatio <= 45) {
-    benchmarkPe = peRatio;
+  const canonicalLatestClose = primaryRows.length ? Number(primaryRows[primaryRows.length - 1].close) : null;
+  const primaryPe =
+    canonicalLatestClose != null && latestEps != null && latestEps > 0
+      ? canonicalLatestClose / latestEps
+      : null;
+
+  if (primaryPe != null && primaryPe >= 10 && primaryPe <= 45) {
+    benchmarkPe = Number(primaryPe.toFixed(1));
   } else {
     const historicalPes: number[] = [];
     for (const a of recentAnnuals) {
       if (a.eps != null && a.eps > 0) {
-        const pNear = priceRows.find((p) => p.date.toISOString().startsWith(`${a.year}`));
+        const pNear = primaryRows.find((p) => p.date.toISOString().startsWith(`${a.year}`));
         if (pNear) {
           const pe = Number(pNear.close) / a.eps;
           if (pe >= 8 && pe <= 50) historicalPes.push(pe);
@@ -350,59 +429,153 @@ export async function getValueLineData(identifier: string): Promise<ValueLineDat
   }
   benchmarkPe = Math.max(12, Math.min(35, benchmarkPe));
 
-  const epsByYear = new Map<number, number>();
-  recentAnnuals.forEach((a) => {
-    if (a.eps != null && a.eps > 0) {
-      epsByYear.set(a.year, a.eps);
+  // Build security options
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+  const availableSecurities: ValueLineSecurityOption[] = validTickers.map((t) => {
+    const pRows = priceRowsByTicker.get(t) ?? [];
+    const secRow = rawSecurities.find((s) => s.ticker?.toUpperCase() === t.toUpperCase());
+    const isPrimary = t.toUpperCase() === canonicalTicker.toUpperCase();
+    const classLabel = secRow ? formatSecurityClassLabel(secRow) ?? (validTickers.length > 1 ? t : "") : "";
+
+    const latestRow = pRows[pRows.length - 1] ?? null;
+    const latestPrice = latestRow ? Number(latestRow.close) : null;
+    const latestPriceDate = latestRow ? latestRow.date.toISOString().slice(0, 10) : null;
+
+    const pastYearPrices = pRows.filter((p) => p.date >= oneYearAgo);
+    const high52w = pastYearPrices.length
+      ? Math.max(...pastYearPrices.map((p) => Number(p.high ?? p.close)))
+      : null;
+    const low52w = pastYearPrices.length
+      ? Math.min(...pastYearPrices.map((p) => Number(p.low ?? p.close)))
+      : null;
+
+    const step = Math.max(1, Math.floor(pRows.length / 45));
+    const pricePoints = pRows
+      .filter((_, idx) => idx % step === 0 || idx === pRows.length - 1)
+      .map((p) => ({
+        date: p.date.toISOString().slice(0, 10),
+        close: Number(p.close),
+      }));
+
+    const valueLinePoints = pricePoints.map((p) => {
+      const pointYear = parseInt(p.date.slice(0, 4), 10);
+      const clampedYear = Math.max(minAvailableYear, Math.min(maxAvailableYear, pointYear));
+      const epsVal =
+        epsByYear.get(clampedYear) ??
+        epsByYear.get(maxAvailableYear) ??
+        (latestPrice != null ? latestPrice / benchmarkPe : 1);
+      const val = Number((epsVal * benchmarkPe).toFixed(2));
+      return {
+        date: p.date,
+        value: val,
+      };
+    });
+
+    let valuationStatus: ValueLineData["valuationStatus"] = "insufficient";
+    let valuationDiffPct: number | null = null;
+    const latestValPoint = valueLinePoints[valueLinePoints.length - 1];
+    if (latestPrice != null && latestValPoint && latestValPoint.value > 0) {
+      const ratio = latestPrice / latestValPoint.value;
+      valuationDiffPct = Number(((ratio - 1) * 100).toFixed(0));
+      if (valuationDiffPct <= -15) {
+        valuationStatus = "undervalued";
+      } else if (valuationDiffPct >= 20) {
+        valuationStatus = "overvalued";
+      } else {
+        valuationStatus = "fair";
+      }
     }
-  });
 
-  const minAvailableYear = recentAnnuals[0]?.year ?? 2020;
-  const maxAvailableYear = recentAnnuals[recentAnnuals.length - 1]?.year ?? 2025;
+    const marketCap =
+      latestPrice != null && sharesOutstanding != null && sharesOutstanding > 0
+        ? latestPrice * sharesOutstanding
+        : null;
 
-  const valueLinePoints = pricePoints.map((p) => {
-    const pointYear = parseInt(p.date.slice(0, 4), 10);
-    const clampedYear = Math.max(minAvailableYear, Math.min(maxAvailableYear, pointYear));
-    const epsVal =
-      epsByYear.get(clampedYear) ??
-      epsByYear.get(maxAvailableYear) ??
-      (latestPrice != null ? latestPrice / benchmarkPe : 1);
-    const val = Number((epsVal * benchmarkPe).toFixed(2));
+    const peRatio =
+      latestPrice != null && latestEps != null && latestEps > 0
+        ? Number((latestPrice / latestEps).toFixed(1))
+        : marketCap != null && latestNetIncome != null && latestNetIncome > 0
+          ? Number((marketCap / latestNetIncome).toFixed(1))
+          : null;
+
+    const pbRatio =
+      marketCap != null && latestEquity != null && latestEquity > 0
+        ? Number((marketCap / latestEquity).toFixed(1))
+        : null;
+
     return {
-      date: p.date,
-      value: val,
+      ticker: t,
+      shareClass: secRow?.shareClass ?? null,
+      titleOfClass: secRow?.titleOfClass ?? null,
+      classLabel,
+      isPrimary,
+      latestPrice,
+      latestPriceDate,
+      high52w,
+      low52w,
+      marketCap,
+      peRatio,
+      pbRatio,
+      pricePoints,
+      valueLinePoints,
+      valuationStatus,
+      valuationDiffPct,
     };
   });
 
-  // Valuation Status at Latest Date
-  let valuationStatus: ValueLineData["valuationStatus"] = "insufficient";
-  let valuationDiffPct: number | null = null;
-  const latestValPoint = valueLinePoints[valueLinePoints.length - 1];
-  if (latestPrice != null && latestValPoint && latestValPoint.value > 0) {
-    const ratio = latestPrice / latestValPoint.value;
-    valuationDiffPct = Number(((ratio - 1) * 100).toFixed(0));
-    if (valuationDiffPct <= -15) {
-      valuationStatus = "undervalued";
-    } else if (valuationDiffPct >= 20) {
-      valuationStatus = "overvalued";
-    } else {
-      valuationStatus = "fair";
-    }
-  }
+  // Ensure canonical ticker is listed first
+  availableSecurities.sort((a, b) => (a.isPrimary ? -1 : b.isPrimary ? 1 : 0));
 
-  // 5. Tribe Superinvestor Holders (deduplicated by holder/tribe)
+  // Determine active security
+  const preferredNorm = preferredTicker?.trim().toUpperCase();
+  const activeSec =
+    availableSecurities.find((s) => s.ticker.toUpperCase() === preferredNorm) ??
+    availableSecurities.find((s) => s.isPrimary) ??
+    availableSecurities[0] ??
+    null;
+
+  const currentTicker = activeSec?.ticker ?? canonicalTicker;
+  const latestPrice = activeSec?.latestPrice ?? null;
+  const latestPriceDate = activeSec?.latestPriceDate ?? null;
+  const high52w = activeSec?.high52w ?? null;
+  const low52w = activeSec?.low52w ?? null;
+  const marketCap = activeSec?.marketCap ?? null;
+  const peRatio = activeSec?.peRatio ?? null;
+  const pbRatio = activeSec?.pbRatio ?? null;
+  const pricePoints = activeSec?.pricePoints ?? [];
+  const valueLinePoints = activeSec?.valueLinePoints ?? [];
+  const valuationStatus = activeSec?.valuationStatus ?? "insufficient";
+  const valuationDiffPct = activeSec?.valuationDiffPct ?? null;
+
+  // 3. Tribe Superinvestor Holders (aggregated with multi-ticker class breakdown)
   const [holdersRes, tribeMembers] = await Promise.all([
-    getRecentHolders(entity.id, 10),
+    getRecentHolders(entity.id, 20),
     getTribeMembers(),
   ]);
   const tribeMap = new Map(tribeMembers.map((m) => [m.id, m]));
-  const seenHolders = new Set<string>();
-  const topHolders: ValueLineHolder[] = [];
-  for (const h of holdersRes.holders ?? []) {
-    const key = h.tribeId ?? h.holderName;
-    if (seenHolders.has(key)) continue;
-    seenHolders.add(key);
 
+  type GroupedHolder = {
+    name: string;
+    investorName: string;
+    firmName?: string;
+    tribeId: string | null;
+    activity?: string | null;
+    quarterLabel: string | null;
+    items: Array<{
+      ticker: string;
+      classLabel: string | null;
+      shares: number | null;
+      weightPct: number | null;
+      valueUsd: number | null;
+    }>;
+  };
+
+  const holderGroups = new Map<string, GroupedHolder>();
+
+  for (const h of holdersRes.holders ?? []) {
+    const groupKey = h.tribeId ?? h.holderName;
     const member = h.tribeId ? tribeMap.get(h.tribeId) ?? null : null;
     const investorName = member?.nameZh ?? member?.name ?? h.holderName;
     const firmName = member?.firm ?? h.holderName;
@@ -410,25 +583,80 @@ export async function getValueLineData(identifier: string): Promise<ValueLineDat
     const rawValueUsd = h.valueUsd != null ? Number(h.valueUsd) : null;
     const effectiveValueUsd =
       rawValueUsd ?? (h.shares && latestPrice ? Number(h.shares) * latestPrice : null);
-    const valueLabel = effectiveValueUsd != null ? `$${formatMoney(effectiveValueUsd)}` : null;
 
-    topHolders.push({
-      name: h.holderName,
-      investorName,
-      firmName,
+    const secRow = rawSecurities.find((s) => s.ticker?.toUpperCase() === h.ticker?.toUpperCase());
+    const classLabel = secRow ? formatSecurityClassLabel(secRow) : null;
+
+    if (!holderGroups.has(groupKey)) {
+      holderGroups.set(groupKey, {
+        name: h.holderName,
+        investorName,
+        firmName,
+        tribeId: h.tribeId,
+        activity: h.activity ?? null,
+        quarterLabel: h.sourceYear && h.sourceQuarter ? `${h.sourceYear}Q${h.sourceQuarter}` : null,
+        items: [],
+      });
+    }
+
+    holderGroups.get(groupKey)!.items.push({
+      ticker: h.ticker ?? "",
+      classLabel,
       shares: h.shares ? Number(h.shares) : null,
-      weightPct: h.percent != null ? Number(h.percent.toFixed(1)) : null,
+      weightPct: h.percent != null ? Number(h.percent.toFixed(2)) : null,
       valueUsd: effectiveValueUsd,
-      valueLabel,
-      quarterLabel: h.sourceYear && h.sourceQuarter ? `${h.sourceYear}Q${h.sourceQuarter}` : null,
-      activity: h.activity ?? null,
-      shareDeltaPct: h.shareDeltaPct ?? null,
-      tribeId: h.tribeId,
     });
-    if (topHolders.length >= 4) break;
   }
 
-  // 6. AI Business Essence, Moat & Risk Insights
+  const aggregatedHolders: ValueLineHolder[] = [];
+  for (const group of holderGroups.values()) {
+    const totalShares = group.items.reduce((sum, it) => sum + (it.shares ?? 0), 0);
+    const totalWeight = group.items.reduce((sum, it) => sum + (it.weightPct ?? 0), 0);
+    const totalValue = group.items.reduce((sum, it) => sum + (it.valueUsd ?? 0), 0);
+
+    const breakdown: ValueLineHolderBreakdownItem[] = group.items.map((it) => ({
+      ticker: it.ticker,
+      shareClassLabel: it.classLabel,
+      weightPct: it.weightPct,
+      shares: it.shares,
+      valueUsd: it.valueUsd,
+    }));
+
+    let shareClassLabel: string | null = null;
+    let breakdownText: string | null = null;
+
+    if (group.items.length > 1) {
+      const shortLabels = group.items.map((it) => {
+        const cl = it.classLabel?.replace(/Class\s*/i, "CL ") || it.ticker;
+        return it.weightPct != null ? `${cl} ${it.weightPct.toFixed(1)}%` : cl;
+      });
+      shareClassLabel = group.items.map((it) => it.classLabel?.replace(/Class\s*/i, "CL ") || it.ticker).join(" + ");
+      breakdownText = shortLabels.join(" + ");
+    } else if (group.items.length === 1 && group.items[0].classLabel) {
+      shareClassLabel = group.items[0].classLabel.replace(/Class\s*/i, "CL ");
+    }
+
+    aggregatedHolders.push({
+      name: group.name,
+      investorName: group.investorName,
+      firmName: group.firmName,
+      shares: totalShares > 0 ? totalShares : null,
+      weightPct: totalWeight > 0 ? Number(totalWeight.toFixed(1)) : null,
+      valueUsd: totalValue > 0 ? totalValue : null,
+      valueLabel: totalValue > 0 ? `$${formatMoney(totalValue)}` : null,
+      quarterLabel: group.quarterLabel,
+      activity: group.activity,
+      tribeId: group.tribeId,
+      shareClassLabel,
+      breakdownText,
+      breakdown,
+    });
+  }
+
+  aggregatedHolders.sort((a, b) => (b.weightPct ?? 0) - (a.weightPct ?? 0));
+  const topHolders = aggregatedHolders.slice(0, 4);
+
+  // 4. AI Business Essence, Moat & Risk Insights
   const analysis = entity.analyses[0] ?? null;
   const hasDeepDive = Boolean(analysis?.canvas || analysis?.business || analysis?.moat);
   const profileJson = analysis?.profile as { title?: string; content?: string } | null | undefined;
@@ -486,7 +714,7 @@ export async function getValueLineData(identifier: string): Promise<ValueLineDat
 
   return {
     entityId: entity.id,
-    ticker,
+    ticker: currentTicker,
     canonicalName: entity.canonicalName,
     nameZh,
     sector: entity.sector,
@@ -494,6 +722,10 @@ export async function getValueLineData(identifier: string): Promise<ValueLineDat
     exchange,
     market,
     href,
+    dvlHref,
+
+    availableSecurities,
+    selectedTicker: currentTicker,
 
     latestPrice,
     latestPriceDate,

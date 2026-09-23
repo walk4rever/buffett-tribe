@@ -8817,7 +8817,8 @@ body.layout-no-header {
 }
 
 .company-holders-stock span,
-.company-holders-holder .company-holder-fund {
+.company-holders-holder .company-holder-fund,
+.holdings-stock-class {
   display: block;
   margin-top: 0.12rem;
   color: #64748b;
@@ -18521,6 +18522,49 @@ a.insight-entity-chip:hover {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
+.vl-ticker-segmented-control {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px;
+  border-radius: 8px;
+  gap: 2px;
+}
+
+.vl-ticker-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: #6e6e73;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.3;
+}
+
+.vl-ticker-pill-btn:hover {
+  color: #1d1d1f;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.vl-ticker-pill-btn.active {
+  background: #1d1d1f;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.vl-ticker-pill-btn .vl-ticker-class {
+  font-size: 0.68rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
 .vl-exchange-badge,
 .vl-sector-badge {
   font-size: 0.72rem;
@@ -18894,6 +18938,25 @@ a.insight-entity-chip:hover {
 
 .vl-master-metric-weight {
   color: #1d1d1f; /* ✓ P0 Fix: 琥珀色 → Apple Near Black */
+}
+
+.vl-master-weight-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.vl-master-class-tag {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #0071e3;
+  background: rgba(0, 113, 227, 0.08);
+  padding: 0.08rem 0.35rem;
+  border-radius: 4px;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .vl-master-metric-value {

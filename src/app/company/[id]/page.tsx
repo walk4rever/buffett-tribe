@@ -437,7 +437,13 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   const isEmbed = rawEmbed === "1";
   const trimmedId = rawId.trim();
   const parsed = parseCompanyIdentifier(trimmedId);
-  if (!parsed) notFound();
+  if (!parsed) {
+    const company = await getCompanyByIdentifier(trimmedId);
+    if (!company) notFound();
+    const canonical = formatCompanyUrl(company);
+    if (canonical) redirect(canonical);
+    notFound();
+  }
 
   const canonicalUrl = formatCompanyUrl(parsed);
   if (!canonicalUrl) notFound();

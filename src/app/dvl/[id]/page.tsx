@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { CompanyBusinessCanvas, type BusinessCanvasData } from "@/components/CompanyBusinessCanvas";
 import { CompanySectionTabs } from "@/components/CompanySectionTabs";
 import { CompanyAgentDialog } from "@/components/CompanyAgentDialog";
@@ -15,6 +15,8 @@ import {
   getFinancialsCurrency,
   getCompanySecurities,
   formatCompanyUrl,
+  formatDvlUrl,
+  formatSecurityClassLabel,
   getRecentHolders,
   getCompanyReferenceFilings,
 } from "@/lib/company-data";
@@ -37,7 +39,7 @@ export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; embed?: string }>;
+  searchParams: Promise<{ tab?: string; embed?: string; ticker?: string }>;
 }
 
 type MoatDimension = {
@@ -224,11 +226,32 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function DigitalValueLinePage({ params, searchParams }: Props) {
   const { id: rawId } = await params;
-  const { tab: rawTab, embed: rawEmbed } = await searchParams;
+  const { tab: rawTab, embed: rawEmbed, ticker: rawTicker } = await searchParams;
   const isEmbed = rawEmbed === "1";
   const trimmedId = rawId.trim();
   const company = await getCompanyByIdentifier(trimmedId);
   if (!company) notFound();
+
+  // Canonical DVL URL enforcement: /dvl/{market}-{code}
+  const canonicalDvlUrl = formatDvlUrl(company);
+  if (canonicalDvlUrl && `/dvl/${trimmedId}` !== canonicalDvlUrl) {
+    const q = new URLSearchParams();
+    if (rawTab) q.set("tab", rawTab);
+    if (rawEmbed) q.set("embed", rawEmbed);
+    // If user accessed via ticker (e.g. /dvl/GOOGL or /dvl/BRK-A)
+    const passedTicker =
+      rawTicker?.trim() ||
+      (trimmedId.toUpperCase() !== company.ticker?.toUpperCase() &&
+       /^[A-Za-z0-9.\-]+$/.test(trimmedId) &&
+       !/^(us|cn|hk)-/i.test(trimmedId)
+        ? trimmedId.toUpperCase()
+        : null);
+    if (passedTicker) {
+      q.set("ticker", passedTicker);
+    }
+    const queryString = q.toString() ? `?${q.toString()}` : "";
+    redirect(`${canonicalDvlUrl}${queryString}`);
+  }
 
   const canonicalUrl = formatCompanyUrl(company) ?? `/company/${company.ticker ?? trimmedId}`;
 
@@ -253,7 +276,7 @@ export default async function DigitalValueLinePage({ params, searchParams }: Pro
     getTribeMembers(),
     computeCompanyTtmMetrics({ entityId: company.id, ticker: company.ticker }),
     getCompanyQuarterlyFinancials(company.id, 8),
-    getValueLineData(company.id),
+    getValueLineData(company.id, rawTicker),
   ]);
   const tribeMemberById = new Map(tribeMembers.map((m) => [m.id, m] as const));
 
@@ -651,6 +674,8 @@ export default async function DigitalValueLinePage({ params, searchParams }: Pro
                           const holderName = member?.nameZh ?? h.holderName;
                           const prevHolder = i > 0 ? holders.holders[i - 1] : null;
                           const isFirstOfGroup = !prevHolder || prevHolder.holderName !== h.holderName;
+                          const secRow = securities.find((s) => s.ticker?.toUpperCase() === h.ticker?.toUpperCase());
+                          const classLabel = secRow ? formatSecurityClassLabel(secRow) : null;
                           return (
                             <tr
                               key={`${h.id}-${h.ticker ?? "unknown"}-${h.sourceYear ?? "unknown"}-${h.sourceQuarter ?? "unknown"}-${i}`}
@@ -671,6 +696,7 @@ export default async function DigitalValueLinePage({ params, searchParams }: Pro
                               </td>
                               <td className="holdings-td holdings-td--num company-holders-stock">
                                 <strong>{h.ticker ?? "—"}</strong>
+                                {classLabel ? <span className="holdings-stock-class">{classLabel}</span> : null}
                               </td>
                               <td className="holdings-td holdings-td--num">
                                 {h.percent != null ? `${h.percent.toFixed(2)}%` : "—"}

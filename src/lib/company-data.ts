@@ -15,7 +15,7 @@ export function normalizeCompanyCik(cikRaw: string | null | undefined) {
 export function formatCompanyCikSlug(cikRaw: string | null | undefined) {
   const cik = normalizeCompanyCik(cikRaw);
   if (!cik) return null;
-  return `CIK${cik.padStart(10, "0")}`;
+  return `us-${cik.padStart(10, "0")}`;
 }
 
 export function formatCompanyCikUrl(cikRaw: string | null | undefined) {
@@ -28,21 +28,67 @@ export type CompanyIdentifier =
   | { market: "cn" | "hk"; code: string };
 
 /**
+ * Format universal company URL slug across US, CN, and HK markets.
+ * Unified 3-market convention:
+ * - US: `us-{10-digit-cik}` (e.g. `us-0001652044`)
+ * - CN: `cn-{code}` (e.g. `cn-600519`)
+ * - HK: `hk-{code}` (e.g. `hk-00700`)
+ */
+export function formatCompanySlug(entity: {
+  cik?: string | null;
+  market?: string | null;
+  code?: string | null;
+}): string | null {
+  if (entity.market === "us" || entity.cik) {
+    const cik = normalizeCompanyCik(entity.cik ?? entity.code);
+    if (!cik) return null;
+    return `us-${cik.padStart(10, "0")}`;
+  }
+  if (entity.market && entity.code) {
+    return `${entity.market.toLowerCase()}-${entity.code}`;
+  }
+  return null;
+}
+
+/**
+ * Format security class label (e.g. "Class A", "Class B", "Class C").
+ */
+export function formatSecurityClassLabel(security: {
+  ticker?: string | null;
+  shareClass?: string | null;
+  titleOfClass?: string | null;
+}): string | null {
+  const shareClass = security.shareClass?.trim();
+  const titleOfClass = security.titleOfClass?.trim();
+  const titleClassMatch = titleOfClass?.match(/\bCL(?:ASS)?\s+([A-Z0-9]+)\b/i);
+  const shareClassMatch = shareClass?.match(/\bCLASS?\s+([A-Z0-9]+)\b/i);
+  const classLetter = shareClassMatch?.[1]?.toUpperCase() ?? titleClassMatch?.[1]?.toUpperCase() ?? null;
+  if (classLetter) return `Class ${classLetter}`;
+  const upperTicker = security.ticker?.toUpperCase() ?? "";
+  if (upperTicker.endsWith(".A") || upperTicker.endsWith("-A")) return "Class A";
+  if (upperTicker.endsWith(".B") || upperTicker.endsWith("-B")) return "Class B";
+  return null;
+}
+
+/**
  * Single entry point for turning a `/company/[id]` URL segment into a
- * market + identifier. `cn-`/`hk-` prefixes are checked first since they're
- * unambiguous; anything else falls back to the existing permissive CIK
- * parsing (normalizeCompanyCik already strips a `CIK` prefix or accepts a
- * bare digit string) so old non-canonical CIK URLs keep redirecting the way
- * they always have.
+ * market + identifier. Supports unified `us-`, `cn-`, `hk-` prefixes.
+ * Bare CIK digits or legacy `CIK...` prefix fall back cleanly to `us` market.
  */
 export function parseCompanyIdentifier(raw: string): CompanyIdentifier | null {
   const trimmed = raw.trim();
-  const marketMatch = trimmed.match(/^(cn|hk)-(\d+)$/i);
+  const marketMatch = trimmed.match(/^(us|cn|hk)-(\d+)$/i);
   if (marketMatch) {
-    return { market: marketMatch[1].toLowerCase() as "cn" | "hk", code: marketMatch[2] };
+    const market = marketMatch[1].toLowerCase() as "us" | "cn" | "hk";
+    if (market === "us") {
+      const cik = normalizeCompanyCik(marketMatch[2]);
+      return cik ? { market: "us", cik } : null;
+    }
+    return { market, code: marketMatch[2] };
   }
-  const cik = normalizeCompanyCik(trimmed);
-  return cik ? { market: "us", cik } : null;
+  // Backward-compatibility: CIK0001652044 or bare numeric digits
+  const legacyCik = normalizeCompanyCik(trimmed);
+  return legacyCik ? { market: "us", cik: legacyCik } : null;
 }
 
 /**
@@ -55,9 +101,20 @@ export function formatCompanyUrl(entity: {
   market?: string | null;
   code?: string | null;
 }): string | null {
-  if (entity.cik) return formatCompanyCikUrl(entity.cik);
-  if (entity.market && entity.code) return `/company/${entity.market}-${entity.code}`;
-  return null;
+  const slug = formatCompanySlug(entity);
+  return slug ? `/company/${slug}` : null;
+}
+
+/**
+ * Canonical URL builder for Digital Value Line (DVL) pages: `/dvl/{market}-{code}`.
+ */
+export function formatDvlUrl(entity: {
+  cik?: string | null;
+  market?: string | null;
+  code?: string | null;
+}): string | null {
+  const slug = formatCompanySlug(entity);
+  return slug ? `/dvl/${slug}` : null;
 }
 
 function logDbFallback(scope: string, err: unknown) {

@@ -359,6 +359,33 @@ interface ValueLineCardProps {
 }
 
 export function ValueLineCard({ data }: ValueLineCardProps) {
+  const [selectedTicker, setSelectedTicker] = useState(data.selectedTicker || data.ticker);
+
+  const activeSecurity = useMemo(() => {
+    if (!data.availableSecurities?.length) return null;
+    return (
+      data.availableSecurities.find((s) => s.ticker.toUpperCase() === selectedTicker.toUpperCase()) ||
+      data.availableSecurities[0]
+    );
+  }, [data.availableSecurities, selectedTicker]);
+
+  const handleTickerSelect = (t: string) => {
+    setSelectedTicker(t);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("ticker", t);
+      window.history.replaceState(null, "", url.toString());
+    }
+  };
+
+  const curPrice = activeSecurity ? activeSecurity.latestPrice : data.latestPrice;
+  const curPe = activeSecurity ? activeSecurity.peRatio : data.peRatio;
+  const curPb = activeSecurity ? activeSecurity.pbRatio : data.pbRatio;
+  const curMarketCap = activeSecurity ? activeSecurity.marketCap : data.marketCap;
+  const curPricePoints = activeSecurity ? activeSecurity.pricePoints : data.pricePoints;
+  const curValueLinePoints = activeSecurity ? activeSecurity.valueLinePoints : data.valueLinePoints;
+  const curValuationStatus = activeSecurity ? activeSecurity.valuationStatus : data.valuationStatus;
+  const curValuationDiffPct = activeSecurity ? activeSecurity.valuationDiffPct : data.valuationDiffPct;
 
   const roeBadgeClass =
     data.roeStability === "stellar"
@@ -375,15 +402,15 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
         : "周期性波动";
 
   const valuationStatusBadge =
-    data.valuationStatus === "undervalued" ? (
+    curValuationStatus === "undervalued" ? (
       <span className="vl-status-chip vl-status-chip--undervalued">
         <span className="vl-pulse-dot vl-pulse-dot--green" />
-        价值击球区 (折价 ~{Math.abs(data.valuationDiffPct ?? 0)}%)
+        价值击球区 (折价 ~{Math.abs(curValuationDiffPct ?? 0)}%)
       </span>
-    ) : data.valuationStatus === "overvalued" ? (
+    ) : curValuationStatus === "overvalued" ? (
       <span className="vl-status-chip vl-status-chip--overvalued">
         <span className="vl-pulse-dot vl-pulse-dot--red" />
-        溢价高估区 (溢价 ~{data.valuationDiffPct ?? 0}%)
+        溢价高估区 (溢价 ~{curValuationDiffPct ?? 0}%)
       </span>
     ) : (
       <span className="vl-status-chip vl-status-chip--fair">
@@ -398,7 +425,28 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
       <header className="vl-card-head">
         <div className="vl-card-identity">
           <div className="vl-card-badges">
-            <span className="vl-ticker-badge">{data.ticker}</span>
+            {data.availableSecurities && data.availableSecurities.length > 1 ? (
+              <div className="vl-ticker-segmented-control" role="tablist" aria-label="交易代码与类股选择">
+                {data.availableSecurities.map((sec) => {
+                  const isSelected = selectedTicker.toUpperCase() === sec.ticker.toUpperCase();
+                  return (
+                    <button
+                      key={sec.ticker}
+                      type="button"
+                      role="tab"
+                      aria-selected={isSelected}
+                      className={`vl-ticker-pill-btn ${isSelected ? "active" : ""}`}
+                      onClick={() => handleTickerSelect(sec.ticker)}
+                    >
+                      <span className="vl-ticker-code">{sec.ticker}</span>
+                      {sec.classLabel ? <span className="vl-ticker-class">{sec.classLabel}</span> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <span className="vl-ticker-badge">{selectedTicker}</span>
+            )}
             {data.exchange ? <span className="vl-exchange-badge">{data.exchange}</span> : null}
             {data.sector ? <span className="vl-sector-badge">{data.sector}</span> : null}
             {valuationStatusBadge}
@@ -417,10 +465,10 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
 
         {/* Pricing & Key Ratios */}
         <div className="vl-card-pricing">
-          {data.latestPrice ? (
+          {curPrice ? (
             <div className="vl-price-primary">
               <span className="vl-price-currency">{getCurrencySymbol(data.market).symbol}</span>
-              <span className="vl-price-val">{data.latestPrice.toFixed(2)}</span>
+              <span className="vl-price-val">{curPrice.toFixed(2)}</span>
               <span className="vl-price-sub">{getCurrencySymbol(data.market).code}</span>
             </div>
           ) : (
@@ -431,17 +479,17 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
           <div className="vl-price-metrics">
             <span className="vl-price-metric-item">
               <span className="vl-metric-k">市值</span>
-              <span className="vl-metric-v">{formatCompactNumber(data.marketCap, getCurrencySymbol(data.market).symbol)}</span>
+              <span className="vl-metric-v">{formatCompactNumber(curMarketCap, getCurrencySymbol(data.market).symbol)}</span>
             </span>
             <span className="vl-dot-divider">·</span>
             <span className="vl-price-metric-item">
               <span className="vl-metric-k">PE</span>
-              <span className="vl-metric-v">{data.peRatio ? `${data.peRatio}x` : "—"}</span>
+              <span className="vl-metric-v">{curPe ? `${curPe}x` : "—"}</span>
             </span>
             <span className="vl-dot-divider">·</span>
             <span className="vl-price-metric-item">
               <span className="vl-metric-k">PB</span>
-              <span className="vl-metric-v">{data.pbRatio ? `${data.pbRatio}x` : "—"}</span>
+              <span className="vl-metric-v">{curPb ? `${curPb}x` : "—"}</span>
             </span>
           </div>
         </div>
@@ -506,9 +554,16 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
                   <div className="vl-master-card-metrics">
                     <div className="vl-master-metric-cell">
                       <span className="vl-master-metric-label">仓位</span>
-                      <span className="vl-master-metric-val vl-master-metric-weight">
-                        {h.weightPct != null ? `${h.weightPct}%` : "—"}
-                      </span>
+                      <div className="vl-master-weight-wrap">
+                        <span className="vl-master-metric-val vl-master-metric-weight">
+                          {h.weightPct != null ? `${h.weightPct}%` : "—"}
+                        </span>
+                        {h.shareClassLabel ? (
+                          <span className="vl-master-class-tag" title={h.breakdownText ?? h.shareClassLabel}>
+                            {h.shareClassLabel}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     <div className="vl-master-metric-sep" />
                     <div className="vl-master-metric-cell">
@@ -533,7 +588,7 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
 
       {/* ── 3. True Value Line Composite Chart (Price vs Earnings Value Line) ── */}
       <section className="vl-card-chart-block">
-        <ValueLineSparkline points={data.pricePoints} valuePoints={data.valueLinePoints} />
+        <ValueLineSparkline points={curPricePoints} valuePoints={curValueLinePoints} />
       </section>
 
       {/* ── 4. The Buffett Quadrant: 巴菲特价值体检精密四宫格 ── */}

@@ -14,11 +14,11 @@ export const dynamic = "force-dynamic";
 const POPULAR_COMPANIES = [
   { name: "贵州茅台", ticker: "600519", href: "/company/cn-600519" },
   { name: "腾讯控股", ticker: "00700", href: "/company/hk-00700" },
-  { name: "苹果", ticker: "AAPL", href: "/company/CIK0000320193" },
+  { name: "苹果", ticker: "AAPL", href: "/company/us-0000320193" },
   { name: "泡泡玛特", ticker: "09992", href: "/company/hk-09992" },
-  { name: "阿里巴巴", ticker: "BABA", href: "/company/CIK0001577552" },
-  { name: "英伟达", ticker: "NVDA", href: "/company/CIK0001045810" },
-  { name: "Alphabet", ticker: "GOOG", href: "/company/CIK0001652044" },
+  { name: "阿里巴巴", ticker: "BABA", href: "/company/us-0001577552" },
+  { name: "英伟达", ticker: "NVDA", href: "/company/us-0001045810" },
+  { name: "Alphabet", ticker: "GOOG", href: "/company/us-0001652044" },
 ];
 
 async function getCoreMasters() {

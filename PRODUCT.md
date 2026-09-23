@@ -2,7 +2,7 @@
 
 # 价值部落 · Value Tribe — 产品设计文档
 
-> 最后更新：2026-09-23（v0.44.31）
+> 最后更新：2026-09-23（v0.45.2）
 
 ---
 
@@ -32,7 +32,7 @@
 6. [A股与港股覆盖扩展](#a股与港股覆盖扩展)
 7. [设计与技术基线](#设计与技术基线)
 8. [测试体系](#测试体系)
-9. [当前实现状态](#当前实现状态v0432)
+9. [当前实现状态](#当前实现状态v0452)
 10. [数据字典与工程口径](#数据字典与工程口径)
 11. [数据资产清单](#数据资产清单)
 12. [公司页财务看板](#公司页财务看板truth-of-source-设计)
@@ -701,14 +701,18 @@ NextAuth（Credentials Provider，`src/lib/auth.ts`）是现有唯一认证实�
 
 #### 4. 路由与架构解耦范式：独立数字价值线 URL（`/dvl/[id]`）
 
-- **独立 URL 平行演进**：
-  - `/company/[id]` 坚决保持 100% 经典视图与原始排版结构稳定不变，移除混淆的切换胶囊；
-  - 增设全新的数字价值线旗舰页面 `/dvl/[id]`（如 `/dvl/AAPL`、`/dvl/KO`、`/dvl/600519`），包含“价值线旗舰卡片”与“深度投研 Tab 流”；
-  - 股价历史图（Stock Price Chart）直接内嵌至 Tab 5（估值分析），界面整体结构清爽；
-  - 全站 636 家公司支持全量泛化无缝解析（纯 Ticker、纯代码、市场前缀、CIK）。
+- **三市场统一规范 Slug 体系（`formatCompanySlug`）**：
+  - 核心设计原则：**公司 URL 锚定的是实体（Entity）本身，而非特定股票代码（Ticker）**；
+  - 规范 URL 格式：美股统一为 `/dvl/us-{10位标准CIK}`（例如 Alphabet `/dvl/us-0001652044`、苹果 `/dvl/us-0000320193`），A 股为 `/dvl/cn-{代码}`（如 `/dvl/cn-600519`），港股为 `/dvl/hk-{5位代码}`（如 `/dvl/hk-09992`）；
+  - 规范重定向：传入纯 Ticker（如 `/dvl/GOOG`、`/dvl/GOOGL`）或历史 CIK 时，系统执行 307 严格重定向至规范的 `us-xxxx` 实体 URL，并保留相应 `?ticker=...` 查询参数；`/company/[id]` 经典视图同步采用相同的规范 Slug。
+- **多 Ticker / 分级股权（Share Class）原生交互支持**：
+  - 针对美股多代码结构（如谷歌 GOOG Class C 无投票权与 GOOGL Class A 投票权；伯克希尔 BRK-A 与 BRK-B），`getValueLineData` 自动拉取该 Entity 下的所有有效证券（`availableSecurities`），并建立各自独立的现价、52 周波动区间、PE/PB 估值与 5 年价值线通道拟合；
+  - `ValueLineCard` 顶部采用 Apple HIG 分段控制器（Segmented Control）交互：`[ GOOG · Class C | GOOGL · Class A ]`，支持在页面就地平滑切换，实时刷新价格与估值走势，同时通过 `window.history.replaceState` 维持当前选中的 Ticker 参数；
+  - 13F 大师持仓穿透聚合：若大师（如李录、巴菲特）同时持有公司的多级股票，持仓卡片自动按投资人进行市值合并计算其在投资组合中的总比重（例如李录 47.9%），右上角展示如 `CL A 24.5% + CL C 23.4%` 的细分标签与悬浮明细。
 - **Apple-Design 风格与全移动端适配**：
   - 遵循 `APPLE-DESIGN.md`：浅灰 `#fbfbfd` 画布、纯白 `#ffffff` 卡片、`18px/12px` 圆角、漫反射柔光投影与精密等宽数字排版；
   - 移动端体验：头部竖向自适应、大师持仓自适应全宽流式、年报表左栏吸顶、Tab 导航栏自动转换为 iOS 原生高斯模糊横向滑动手势胶囊。
+  - 股价历史图（Stock Price Chart）内嵌至 Tab 5（估值分析），界面整体结构清爽。
 
 #### 6. 重型资产解耦原则（PDF 与 R2 归档）
 
@@ -1087,7 +1091,21 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.45.1）
+## 当前实现状态（v0.45.2）
+
+### v0.45.2 变更（2026-09-23）
+
+- **三市场 URL 统一规范 Slug 与多 Ticker 股票类别（Share Class）原生交互**：
+  - **三市场规范 Slug 体系（`formatCompanySlug`）**：
+    - 废弃历史混杂的 URL（如美股 `/company/CIK0001652044`），统一三大市场实体级路由规范：美股 `us-{10位标准CIK}`（如 `us-0001652044`）、港股 `hk-{代码}`（如 `hk-09992`）、A股 `cn-{代码}`（如 `cn-600519`）。
+    - 无论 `/company/[id]` 还是 `/dvl/[id]`，全面对齐该唯一实体标识规范；直接传入纯 Ticker（如 `/dvl/GOOG`、`/dvl/GOOGL`）或历史 CIK 自动通过 307 严格重定向到标准 Slug（并附带相应 `?ticker=...` 查询参数）。
+  - **DVL 视图原生多 Ticker / 分级股权（Share Class）切换支持**：
+    - **多证券智能探查**：`getValueLineData` 在加载公司时，自动从 `StockPrice` 表拉取属于该实体（`Entity.id`）的所有可用证券代码（如 Alphabet 的 `GOOG` Class C 无投票权股与 `GOOGL` Class A 投票权股；伯克希尔的 `BRK-A` 与 `BRK-B`）。
+    - **独立走势与估值通道**：为不同 Ticker 独立构建各自的现价、52 周区间、历史估值中枢（PE / PB）与 5 年数字价值线拟合通道。
+    - **Apple HIG 分段控制器（Segmented Control）交互**：在 `ValueLineCard` 顶部证券代码区，为多 Ticker 公司呈现平滑切换的分段选择器（`[ GOOG · Class C | GOOGL · Class A ]`），单 Ticker 公司自动保持经典 Badge；点击切换实时就地更新现价、估值倍数、52 周区间与 Sparkline，并通过 `window.history.replaceState` 无刷新同步地址栏 `?ticker=...` 参数。
+  - **13F 大师持仓穿透聚合与多类别标签展示**：
+    - 针对拥有多级股票的大型公司（如喜马拉雅资本李录、伯克希尔哈撒韦巴菲特持仓谷歌时同时持有 Class A 与 Class C），13F 持仓卡片自动按投资人进行穿透合并，准确展示该投资人在这家公司的总投资组合权重（如李录 47.9%）；
+    - 卡片右上方呈现拆解标签组（如 `CL A 24.5% + CL C 23.4%`），并在悬浮 Tooltip 中详细提示不同类别的独立持股数量与市值占比。
 
 ### v0.45.1 变更（2026-09-23）
 

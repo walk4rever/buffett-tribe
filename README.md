@@ -45,6 +45,7 @@
 | `/agent` | 投资研究 Agent（主入口，五工具驱动） |
 | `/master` | 追踪投资人的信件、演讲、持仓（3 位核心大师 + 10 位 Alpha 部落） |
 | `/company` | 任意公司的结构化研究画布（7 Tab，美股/港股/A股） |
+| `/dvl/[id]` | 数字价值线（Digital Value Line）：旗舰卡片、多 Ticker 类别无缝切换、大师持仓穿透聚合与 3 市场规范 slug |
 | `/insights` | 投资洞见，按播客/栏目过滤，正文划词支持「AI解读」与「高光分享」 |
 | `/dashboard` | 用户控制台，展示当月配额余额与账号管理 |
 | `/admin/announcements` | 管理员产品发布与邮件广播（Markdown、图片上传R2、实时预览、草稿箱、Resend 群发） |
@@ -135,12 +136,14 @@ src/
   app/
     agent/         # 投资研究 Agent（主入口）
     master/[id]/   # 大师主页
-    company/[id]/  # 公司研究画布（/company/CIK... / cn-600519 / hk-9992）
+    company/[id]/  # 公司研究画布（/company/us-0001652044 / cn-600519 / hk-09992）
+    dvl/[id]/      # 数字价值线旗舰页面（/dvl/us-0001652044 / cn-600519 / hk-09992）
     insights/      # 投资洞见
     page.tsx       # 首页
   components/
     AgentChat.tsx           # Agent 对话组件（SSE 流、工具调用指示器、Markdown 渲染）
     CompanySectionTabs.tsx  # 七 Tab 研究画布
+    ValueLineCard.tsx       # 数字价值线旗舰卡片（多 Ticker 切换、估值通道、大师持仓）
     CompanyAgentDialog.tsx  # 公司页右下角 "AI 解读" 悬浮入口
 services/
   pi-gateway/      # Agent 服务（Express SSE，部署到 air7）
@@ -156,11 +159,12 @@ services/
 
 ---
 
-## 当前状态（v0.44.10）
+## 当前状态（v0.45.2）
 
+- `/dvl/[id]` 数字价值线（Digital Value Line）全新上线，支持多 Ticker 股票类别切换（如 Alphabet GOOG Class C 与 GOOGL Class A 原生交互切换、价格/52周区间/估值通道/Sparkline 无刷新联动更新），13F 大师持仓智能穿透合并（如李录、巴菲特同时持有多类股份时的权重合并显示与明细标签拆解）；全站统一三大市场规范化 URL Slug（`us-{10位CIK}` / `cn-{代码}` / `hk-{5位代码}`），美股直接 Ticker 或旧 CIK 自动 307 重定向。
 - `/agent` 投资研究 Agent，五工具上线，工具调用有实时指示器；公司页额外有独立锚定当前公司的 "AI 解读" 入口；所有 AI 解读对话框均支持剪贴板粘贴图片提问（DeepSeek vision）；登录用户对话按页面/投资人/公司维度持久化（含图片），冷启动时 Agent 会回放历史，不会对已聊过的内容"失忆"；页面左侧有个人工作区（笔记本，自动保存），右侧有资产组合 Portfolio 面板（手动录入持仓 ticker/份额/成本，市值/盈亏按站内已同步的价格计算）
 - `/master` 投资人主页、资料阅读、最新持仓 + 季度点评——3 位核心大师（巴菲特 / 李录 / 段永平）+ 10 位 Alpha 部落投资人
-- `/company/[id]` 公司研究画布，覆盖美股 / 港股 / A 股三个市场；约 150 家公司有完整的财务 + LLM 生成分析
+- `/company/[id]` 公司研究画布，覆盖美股 / 港股 / A 股三个市场；约 160+ 家公司有完整的财务 + LLM 生成分析，支持 Onboard Phase 1（极速基础可用）与 Phase 2（深度完整态）生命周期管理
 - `/insights` 投资洞见，按来源栏目过滤，71 篇已发布；正文阅读支持划词悬浮工具栏（「AI解读」结合 AI 对话解读，「高光分享」一键复制带精选段落、文章出处与原文链接的格式化文本）；文章页左上角显示目录悬浮按钮（自动提取 h2/h3 标题，可快速跳转章节），左下角显示返回顶部按钮（滚动 600px 后出现）
 - `/dashboard` 用户控制台，展示当月 1000 次免费配额流水与账号管理（修改昵称、重置密码）
 - `/admin/announcements` 管理员产品发布与邮件广播系统，支持 Markdown 实时编辑、截图与图片直接粘贴上传 Cloudflare R2、同屏实时邮件预览、草稿箱本地与数据库双重自动保存、单人测试邮件验证与基于 Resend 的全员/指定用户批量推送
