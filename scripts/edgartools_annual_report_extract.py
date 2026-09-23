@@ -105,8 +105,24 @@ def _filing_to_dict(filing: Any, include_html: bool) -> dict[str, Any]:
 def extract(args: argparse.Namespace) -> dict[str, Any]:
     set_identity(args.identity)
     ticker = args.ticker.strip().upper()
-    print(f"[edgartools-helper] {ticker}: create Company", file=sys.stderr, flush=True)
-    company = Company(ticker)
+    cik_arg = (args.cik or "").strip() if getattr(args, "cik", None) else None
+    print(f"[edgartools-helper] {ticker}: create Company (cik={cik_arg})", file=sys.stderr, flush=True)
+    company = None
+    if cik_arg:
+        try:
+            company = Company(cik_arg)
+        except Exception as exc:
+            print(f"[edgartools-helper] Company({cik_arg}) failed: {exc}, trying ticker...", file=sys.stderr, flush=True)
+
+    if company is None:
+        try:
+            company = Company(ticker)
+        except Exception as exc:
+            if cik_arg and company is None:
+                raise
+            if not cik_arg:
+                raise
+
     print(f"[edgartools-helper] {ticker}: get annual filings", file=sys.stderr, flush=True)
     filings = company.get_filings(form=ANNUAL_FORMS)
     print(f"[edgartools-helper] {ticker}: scan filings", file=sys.stderr, flush=True)
@@ -168,6 +184,7 @@ def extract(args: argparse.Namespace) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Extract annual SEC filings with edgartools.")
     parser.add_argument("--ticker", required=True)
+    parser.add_argument("--cik", help="SEC CIK identifier (optional fallback if ticker lookup fails)")
     parser.add_argument("--from", dest="from_year", type=int, required=True)
     parser.add_argument("--to", dest="to_year", type=int, required=True)
     parser.add_argument("--identity", default=DEFAULT_IDENTITY)

@@ -425,9 +425,18 @@ export async function callJsonLLM(params: {
   }
 
   const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: Array<{ message?: { content?: string; reasoning_content?: string }; finish_reason?: string }>;
   };
-  return data.choices?.[0]?.message?.content ?? "";
+  const choice = data.choices?.[0];
+  if (!choice?.message?.content) {
+    if (choice?.finish_reason === "length") {
+      throw new Error(
+        `AI response truncated (finish_reason=length, reasoning length: ${choice.message?.reasoning_content?.length ?? 0}). Increase maxTokens.`
+      );
+    }
+    throw new Error(`AI returned empty message content (finish_reason: ${choice?.finish_reason ?? "unknown"})`);
+  }
+  return choice.message.content;
 }
 
 export async function createGeneratedContentVersion(params: {

@@ -1099,6 +1099,15 @@ Apple HIG 精简风格：
     - 经典视图顶部 Hero 统一展示 `overview`（优先使用 `analysis.overview`，向后兼容 `profile.content`）。
     - 经典视图“业务分析”Tab 移除废弃的 `business.narrative` 文本卡片，与 DVL 视图保持一致，直接呈现完整的商业模式九宫格画布（Business Canvas）。
   - **配套服务升级**：`services/pi-gateway/src/tools/get-company-analysis.ts` 工具同步支持 `overview` 与 `canvas` 字段查询。
+  - **Onboard 流程两阶段重构（Phase 1 极速可展示 vs Phase 2 异步深度挖掘）**：
+    - **彻底解耦年报切片强依赖**：彻底移除对 `FilingSection`（官方年报长切片与 R2 归档）的强阻断校验，解除 Phase 1 生成必须等待年报全文 PDF 下载切片的阻塞；概览输入仅依赖 `Entity` 元数据（名称、行业、交易所）与 `Financial`（5年结构化财务指标）。
+    - **3句话极简概览规范**：严格限定 3 句话、100-120 字（公司定位与业务本质 + 主打产品与服务 + 最新财年营收与商业模式关键词），直接写入 `CompanyAnalysis.overview` 列。
+    - **`import:10k` 极速财务模式（`--fast` / `--financials-only`）**：仅拉取 SEC EDGAR API 结构化 facts 写入 `Financial` 表，跳过 HTML 下载、切片入库及 R2 归档，美股 5 年财报导入时间从 3~5 分钟压缩至 15~30 秒。
+    - **`onboard:company` 支持 `--phase <1|2|all>` 分阶段流水线**：
+      - `--phase 1`（默认）：串联 `Entity -> Financials (fast) -> StockPrice -> overview -> name_map`，20~50 秒内让 DVL 页面核心卡片与财务图表完全可用。
+      - `--phase 2`：异步后台下载年报全文切片（`FilingSection`），并生成 4 项深度研报（商业画布、护城河、管理层、内在价值估值）。
+      - `--phase all`：按顺序跑完完整全流程。
+    - **退市/并购公司（Delisted）与 CIK 容错增强**：支持 `--cik` 显式或自动降级匹配，自动识别 `metadata.delisted` 跳过无效股价拉取，在实测 Confluent（`CFLT`，已被并购）案例中全流程一次性跑通。
 
 ### v0.44.30 变更（2026-09-22）
 

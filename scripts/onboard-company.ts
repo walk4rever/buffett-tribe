@@ -65,6 +65,7 @@ type Market = "us" | "cn" | "hk";
 
 type StepId =
   | "seed_entity"
+  | "import_financials_fast"
   | "import_10k"
   | "import_price"
   | "import_financials"
@@ -156,7 +157,7 @@ async function findEntityId(ticker: string): Promise<string | null> {
   return entity?.id ?? null;
 }
 
-type CompanyAnalysisField = "profile" | "business" | "moat" | "management" | "valuation";
+type CompanyAnalysisField = "overview" | "canvas" | "profile" | "business" | "moat" | "management" | "valuation";
 
 // Without --force: a non-null field is success, regardless of when it was
 // written — resuming without a checkpoint (e.g. after moving to a new
@@ -178,7 +179,7 @@ async function verifyCompanyAnalysisField(
 ): Promise<boolean> {
   const row = await prisma.companyAnalysis.findUnique({
     where: { entityId },
-    select: { profile: true, business: true, moat: true, management: true, valuation: true, updatedAt: true },
+    select: { overview: true, canvas: true, profile: true, business: true, moat: true, management: true, valuation: true, updatedAt: true },
   });
   if (row == null || row[field] == null) return false;
   // Without --force, the generate:* script's own "already has X, use
@@ -340,6 +341,12 @@ function buildImportAnnualReportStep(ticker: string, market: "cn" | "hk", fromYe
 async function main() {
   const ticker = normalizeTicker(getArg("--ticker"));
   const market = parseMarket(getArg("--market"));
+  const phaseArg = (getArg("--phase") ?? "1").toLowerCase();
+  if (phaseArg !== "1" && phaseArg !== "2" && phaseArg !== "all") {
+    throw new Error(`Invalid --phase "${phaseArg}". Expected 1, 2, or all.`);
+  }
+  const cikArg = getArg("--cik");
+
   const defaultToYear = new Date().getUTCFullYear();
   const fromYear = getArg("--from") ?? "2020";
   const toYear = getArg("--to") ?? String(defaultToYear);
@@ -350,37 +357,58 @@ async function main() {
   const fresh = hasFlag("--fresh");
   const dryRun = hasFlag("--dry-run");
 
+  const existingEntity = await prisma.entity.findFirst({
+    where: { type: "company", ticker: { equals: ticker, mode: "insensitive" } },
+    select: { id: true, cik: true, metadata: true },
+  });
+  const entityMeta = existingEntity?.metadata as Record<string, unknown> | null;
+  const isDelisted = Boolean(entityMeta?.delisted);
+  const resolvedCik = cikArg ?? existingEntity?.cik ?? (typeof entityMeta?.cik === "string" ? entityMeta.cik : undefined);
+
+  if (resolvedCik && existingEntity && existingEntity.cik !== resolvedCik) {
+    await prisma.entity.update({
+      where: { id: existingEntity.id },
+      data: { cik: resolvedCik },
+    });
+  }
+
   const checkpoint = await loadCheckpoint(ticker, fresh);
 
   const importPriceStep: Step = {
     id: "import_price",
-    label: "导入股价（StockPrice）",
-    skip: skipPrice,
+    label: isDelisted ? "导入股价（已退市/被收购，自动跳过）" : "导入股价（StockPrice）",
+    skip: skipPrice || isDelisted,
     run: () => {
       const priceArgs = ["--ticker", ticker, "--import-db"];
       if (priceStart) priceArgs.push("--start", priceStart);
       return runNpmScript("import:stock-prices:yf", priceArgs);
     },
     verify: async () => {
+      if (isDelisted) return true;
       const count = await prisma.stockPrice.count({ where: { ticker } });
       return count > 0;
     },
   };
 
-  const generateSteps: Step[] = [
-    {
-      id: "generate_company_profile",
-      label: "生成公司概览（company_profile）",
-      skip: skipGeneration,
-      run: () => runNpmScript("generate:company-profile", buildGenerateArgs(ticker, force)),
-      verify: (entityId, stepStartedAt) => verifyCompanyAnalysisField(entityId, "profile", stepStartedAt, force),
-    },
+  const generateOverviewStep: Step = {
+    id: "generate_company_profile",
+    label: "生成公司概览（overview）",
+    skip: skipGeneration,
+    run: () => runNpmScript("generate:overview", buildGenerateArgs(ticker, force)),
+    verify: async (entityId, stepStartedAt) =>
+      (await verifyCompanyAnalysisField(entityId, "overview", stepStartedAt, force)) ||
+      (await verifyCompanyAnalysisField(entityId, "profile", stepStartedAt, force)),
+  };
+
+  const phase2AnalysisSteps: Step[] = [
     {
       id: "generate_business_model",
       label: "生成业务概览与商业画布（business_overview）",
       skip: skipGeneration,
       run: () => runNpmScript("generate:business-model", buildGenerateArgs(ticker, force)),
-      verify: (entityId, stepStartedAt) => verifyCompanyAnalysisField(entityId, "business", stepStartedAt, force),
+      verify: async (entityId, stepStartedAt) =>
+        (await verifyCompanyAnalysisField(entityId, "canvas", stepStartedAt, force)) ||
+        (await verifyCompanyAnalysisField(entityId, "business", stepStartedAt, force)),
     },
     {
       id: "generate_value_analysis",
@@ -417,54 +445,102 @@ async function main() {
     },
   };
 
-  const steps: Step[] =
-    market === "us"
-      ? [
-          {
-            id: "import_10k",
-            label: "导入 10-K/20-F/40-F（Entity + Financial + FilingSection + R2）",
-            run: () => runNpmScript("import:10k", ["--ticker", ticker, "--from", fromYear, "--to", toYear]),
-            verify: async (entityId) => {
-              const financialCount = await prisma.financial.count({ where: { entityId } });
-              if (financialCount === 0) return false;
+  const importFinancialsFastStep: Step = {
+    id: "import_financials_fast",
+    label: "导入财务数据（SEC 结构化 Facts → Financial，快模式）",
+    run: () => {
+      const args = ["--ticker", ticker, "--from", fromYear, "--to", toYear, "--fast"];
+      if (resolvedCik) args.push("--cik", resolvedCik);
+      return runNpmScript("import:10k", args);
+    },
+    verify: async (entityId) => {
+      const financialCount = await prisma.financial.count({ where: { entityId } });
+      return financialCount > 0;
+    },
+  };
 
-              // Per-filing, not per-entity: an entity-level sectionCount > 0 check
-              // stays green even when some filings extracted zero sections (e.g.
-              // Ferrari/RACE 2022-2025 20-Fs silently returned 0 sections while
-              // 2020-2021 worked, so the aggregate count masked the gap for weeks).
-              const filingKindFilter = { in: ["10k", "20f", "40f"] };
-              const [totalFilings, filingsWithoutSections] = await Promise.all([
-                prisma.extSource.count({
-                  where: { filerEntityId: entityId, kind: filingKindFilter },
-                }),
-                prisma.extSource.count({
-                  where: { filerEntityId: entityId, kind: filingKindFilter, sections: { none: {} } },
-                }),
-              ]);
-              return totalFilings > 0 && filingsWithoutSections === 0;
-            },
-          },
-          importPriceStep,
-          ...generateSteps,
-          syncNameMapStep,
-        ]
-      : (() => {
-          const code = resolveCnHkCode(ticker, market);
-          const seedEntityStep = buildSeedEntityStep(ticker, market, code);
-          const importFinancialsStep = buildImportFinancialsStep(ticker, market, code);
-          const importAnnualReportStep = buildImportAnnualReportStep(ticker, market, fromYear, code);
-          // HK: import_financials needs the reporting currency, which for HK
-          // is only resolvable from the annual report text — so annual report
-          // must be imported first. CN's currency is a hardcoded constant
-          // (resolveCnCurrency), no such dependency, order unchanged.
-          const marketSteps =
-            market === "hk"
-              ? [importAnnualReportStep, importFinancialsStep]
-              : [importFinancialsStep, importAnnualReportStep];
-          return [seedEntityStep, importPriceStep, ...marketSteps, ...generateSteps, syncNameMapStep];
-        })();
+  const import10kFullStep: Step = {
+    id: "import_10k",
+    label: "导入 10-K/20-F/40-F 全文切片（FilingSection + R2 归档）",
+    run: () => {
+      const args = ["--ticker", ticker, "--from", fromYear, "--to", toYear];
+      if (resolvedCik) args.push("--cik", resolvedCik);
+      return runNpmScript("import:10k", args);
+    },
+    verify: async (entityId) => {
+      const financialCount = await prisma.financial.count({ where: { entityId } });
+      if (financialCount === 0) return false;
 
-  console.log(`\nOnboarding ${ticker} [market: ${market}]${market === "us" ? ` (${fromYear} -> ${toYear})` : ""}`);
+      const filingKindFilter = { in: ["10k", "20f", "40f"] };
+      const [totalFilings, filingsWithoutSections] = await Promise.all([
+        prisma.extSource.count({
+          where: { filerEntityId: entityId, kind: filingKindFilter },
+        }),
+        prisma.extSource.count({
+          where: { filerEntityId: entityId, kind: filingKindFilter, sections: { none: {} } },
+        }),
+      ]);
+      return totalFilings > 0 && filingsWithoutSections === 0;
+    },
+  };
+
+  let steps: Step[];
+
+  if (market === "us") {
+    const phase1Steps: Step[] = [
+      importFinancialsFastStep,
+      importPriceStep,
+      generateOverviewStep,
+      syncNameMapStep,
+    ];
+    const phase2Steps: Step[] = [
+      import10kFullStep,
+      ...phase2AnalysisSteps,
+    ];
+
+    if (phaseArg === "1") {
+      steps = phase1Steps;
+    } else if (phaseArg === "2") {
+      steps = phase2Steps;
+    } else {
+      steps = [...phase1Steps, ...phase2Steps];
+    }
+  } else {
+    const code = resolveCnHkCode(ticker, market);
+    const seedEntityStep = buildSeedEntityStep(ticker, market, code);
+    const importFinancialsStep = buildImportFinancialsStep(ticker, market, code);
+    const importAnnualReportStep = buildImportAnnualReportStep(ticker, market, fromYear, code);
+
+    const phase1Steps: Step[] = [
+      seedEntityStep,
+      importPriceStep,
+      importFinancialsStep,
+      generateOverviewStep,
+      syncNameMapStep,
+    ];
+    const phase2Steps: Step[] = [
+      importAnnualReportStep,
+      ...phase2AnalysisSteps,
+    ];
+
+    if (phaseArg === "1") {
+      steps = phase1Steps;
+    } else if (phaseArg === "2") {
+      steps = phase2Steps;
+    } else {
+      steps = [
+        seedEntityStep,
+        importPriceStep,
+        market === "hk" ? importAnnualReportStep : importFinancialsStep,
+        market === "hk" ? importFinancialsStep : importAnnualReportStep,
+        generateOverviewStep,
+        ...phase2AnalysisSteps,
+        syncNameMapStep,
+      ];
+    }
+  }
+
+  console.log(`\nOnboarding ${ticker} [market: ${market}, phase: ${phaseArg}]${market === "us" ? ` (${fromYear} -> ${toYear})` : ""}`);
   if (dryRun) console.log("(dry run — no commands will execute)");
   console.log(`Checkpoint: ${checkpointFile(ticker)}\n`);
 

@@ -109,8 +109,10 @@ function parseArgs(args: string[]) {
   const yearsArg = args.find((_, i) => args[i - 1] === "--years");
   const filingConcurrency = parsePositiveInt(getArg("--filing-concurrency"), 1);
   const extractTimeoutMs = parsePositiveInt(getArg("--extract-timeout-ms"), 8 * 60 * 1000);
-  const noHtml = hasFlag("--no-edgartools-html");
+  const financialsOnly = hasFlag("--financials-only") || hasFlag("--fast");
+  const noHtml = financialsOnly || hasFlag("--no-edgartools-html");
   const python = getArg("--python") ?? (process.env.EDGARTOOLS_PYTHON || path.join(process.cwd(), ".venv/bin/python"));
+  const cik = getArg("--cik");
 
   if (!ticker) throw new Error("Missing --ticker. Example: --ticker AAPL");
   if ((fromArg && !toArg) || (!fromArg && toArg)) throw new Error("--from and --to must be used together.");
@@ -128,7 +130,7 @@ function parseArgs(args: string[]) {
     fromYear = toYear - years + 1;
   }
 
-  return { ticker, fromYear, toYear, filingConcurrency, extractTimeoutMs, noHtml, python };
+  return { ticker, fromYear, toYear, filingConcurrency, extractTimeoutMs, noHtml, python, financialsOnly, cik };
 }
 
 function runEdgarToolsHelper(params: {
@@ -170,6 +172,7 @@ function runEdgarToolsHelper(params: {
 
 async function extractWithEdgarTools(params: {
   ticker: string;
+  cik?: string;
   fromYear: number;
   toYear: number;
   python: string;
@@ -190,6 +193,9 @@ async function extractWithEdgarTools(params: {
       "--output",
       outputPath,
     ];
+    if (params.cik) {
+      args.push("--cik", params.cik);
+    }
     if (params.noHtml) args.push("--no-html");
 
     await runEdgarToolsHelper({ python: params.python, args, timeoutMs: params.extractTimeoutMs });
@@ -215,12 +221,14 @@ function normalizeInlineUnitRef(unitRef: string | null) {
 
 async function importEdgarToolsAnnualReports(params: {
   ticker: string;
+  cik?: string;
   fromYear: number;
   toYear: number;
   filingConcurrency: number;
   extractTimeoutMs: number;
   noHtml: boolean;
   python: string;
+  financialsOnly?: boolean;
 }) {
   const importTimer = new ImportTimer("[10K]");
   const extracted = await importTimer.time(
@@ -247,12 +255,68 @@ async function importEdgarToolsAnnualReports(params: {
 
   console.log(`Found ${targetFilings.length} annual filings from edgartools (${params.fromYear}-${params.toYear})`);
   console.log(
-    `Filing concurrency: ${params.filingConcurrency}; archive strategy: standard (primary/index + section text/blocks; attachment metadata only)`,
+    params.financialsOnly
+      ? `Fast mode: financials only, skipping HTML fetch, filing sections, and R2 archive.`
+      : `Filing concurrency: ${params.filingConcurrency}; archive strategy: standard (primary/index + section text/blocks; attachment metadata only)`,
   );
 
   await mapLimit(targetFilings, params.filingConcurrency, async (filing) => {
     const filingTimer = new ImportTimer(`[10K ${ticker} ${filing.reportDate} ${filing.accession}]`, "    ");
     const extSource = await filingTimer.time("upsert source", () => upsertExtSource(companyEntity.id, cik, filing));
+
+    if (params.financialsOnly) {
+      let upserted = 0;
+      let missing = 0;
+      await filingTimer.time("upsert derived financials (fast)", async () => {
+        const results = await mapLimit(LINE_ITEMS, 5, async (item) => {
+          const companyFactsValue = findBestFactValue(
+            facts,
+            item.tagsUsGaap,
+            item.tagsIfrs,
+            item.unitCandidates,
+            filing.reportDate,
+          );
+          if (companyFactsValue == null) return { upserted: 0, missing: 1 };
+          const unit = item.unitCandidates[0];
+          await db.financial.upsert({
+            where: {
+              entityId_periodEnd_periodType_lineItem: {
+                entityId: companyEntity.id,
+                periodEnd: new Date(filing.reportDate),
+                periodType: "FY",
+                lineItem: item.key,
+              },
+            },
+            create: {
+              entityId: companyEntity.id,
+              sourceId: extSource.id,
+              periodEnd: new Date(filing.reportDate),
+              periodType: "FY",
+              lineItem: item.key,
+              value: decimalFromNumber(companyFactsValue),
+              unit,
+            },
+            update: {
+              sourceId: extSource.id,
+              value: decimalFromNumber(companyFactsValue),
+              unit,
+            },
+          });
+          return { upserted: 1, missing: 0 };
+        });
+
+        for (const result of results) {
+          upserted += result.upserted;
+          missing += result.missing;
+        }
+      }, () => `derived=${upserted}, missing=${missing}`);
+
+      console.log(
+        `  ${filing.reportDate} (${filing.accession}) -> [fast financials] derived ${upserted}, missing ${missing}`,
+      );
+      return;
+    }
+
     const primaryUrl = filing.primaryUrl ?? `${filing.filingUrlBase}/${filing.primaryDocument}`;
 
     const html = await filingTimer.time(
@@ -414,6 +478,22 @@ async function importEdgarToolsAnnualReports(params: {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  if (!args.cik) {
+    const existing = await db.entity.findFirst({
+      where: {
+        ticker: { equals: args.ticker, mode: "insensitive" },
+      },
+      select: { cik: true, metadata: true },
+    });
+    if (existing?.cik) {
+      args.cik = existing.cik;
+    } else {
+      const meta = existing?.metadata as Record<string, unknown> | null;
+      if (meta?.cik && typeof meta.cik === "string") {
+        args.cik = meta.cik;
+      }
+    }
+  }
   await importEdgarToolsAnnualReports(args);
   console.log("Done.");
 }

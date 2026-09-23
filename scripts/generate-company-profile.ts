@@ -19,49 +19,42 @@ import {
   findCompanies,
   getArg,
   hasFlag,
-  hasUsableFilingEvidence,
-  jsonObject,
   normalizeText,
   parseJsonObject,
   prisma,
   toJsonValue,
 } from "./lib/company-generation";
 
-type NarrativeSection = {
-  title: string;
-  content: string;
-};
+const SYSTEM_PROMPT = `你是价值投资研究员，为上市公司撰写统一精炼的公司概览。
 
-const SYSTEM_PROMPT = `You generate factual Chinese company basic information for an investing product.
-
-Output shape:
+输出要求（JSON 格式）：
 {
-  "overview": {
-    "title": "公司基本信息",
-    "content": "200字左右的中文概述，包括公司定位、主营业务、市场地位。"
-  }
+  "overview": "严格不超过3句话的中文概览（总字数 100-120 字）。"
 }
 
-Rules:
-- This is a factual company profile, not investment advice.
-- Focus on what the company is, where it operates, what it sells, and its broad market position.
-- Use SEC filing evidence and supplied metadata where available.
-- Do not discuss moat, valuation, stock attractiveness, or investment thesis.
-- overview.content must end with a Chinese full stop.
-- Output ONLY valid JSON. No markdown, no explanation.`;
+三句话规范：
+1. 第一句【行业定位与业务本质】：公司是什么、行业定位与核心业务本质（40-50字）。
+2. 第二句【主打产品与服务体系】：主打核心产品系列或核心服务（30-40字）。
+3. 第三句【主营收入与商业模式】：FY{年份} 营收规模与商业模式关键词（如生态锁定、规模效应、高转换成本、轻资产、订阅付费等）（40-50字）。如无具体财年数据，侧重说明核心商业模式与变现路径。
 
-function parseProfile(raw: string): NarrativeSection {
+规则：
+- 聚焦客观事实与商业模式，不提供买卖建议或主观投资评级。
+- 如提供了财务数据，必须引用真实最新财年年份与营收；如未提供财务数据，不得臆造具体数值，侧重提炼业务模式。
+- 必须严格控制在3句话以内，总字数在 100-130 字之间，严禁冗长展开。
+- overview 必须以中文句号结尾。
+- 输出必须是合法 JSON，不要任何 Markdown 标记或额外解释。`;
+
+function parseOverview(raw: string): string {
   const parsed = parseJsonObject(raw);
-  const overview = jsonObject(parsed.overview);
-  if (!overview) {
-    throw new Error("Invalid overview");
+  let text = typeof parsed.overview === "string" ? parsed.overview : "";
+  if (!text && parsed.content && typeof parsed.content === "string") {
+    text = parsed.content;
   }
-  const title = normalizeText(overview.title);
-  const content = normalizeText(overview.content);
-  if (!title || !content) {
-    throw new Error("Invalid overview title/content");
+  text = normalizeText(text);
+  if (!text) {
+    throw new Error("Invalid overview text in response");
   }
-  return { title, content };
+  return text;
 }
 
 function buildPrompt(params: {
@@ -71,7 +64,7 @@ function buildPrompt(params: {
   sector: string | null;
   metadata: Record<string, unknown> | null;
   financials: Awaited<ReturnType<typeof fetchFinancials>>;
-  filingEvidence: Awaited<ReturnType<typeof fetchLatestFilingEvidence>>;
+  filingEvidence: Awaited<ReturnType<typeof fetchLatestFilingEvidence>> | null;
 }) {
   const dashboard = buildFinancialDashboardText({
     sector: params.sector,
@@ -79,23 +72,26 @@ function buildPrompt(params: {
     financials: params.financials,
   });
   const meta = params.metadata ?? {};
+  const zhName = typeof meta.nameZh === "string" ? meta.nameZh : "";
 
-  return `Company: ${params.name}${params.ticker ? ` (${params.ticker})` : ""}
-CIK: ${params.cik ?? "N/A"}
+  const evidenceBlock = params.filingEvidence && params.filingEvidence.sections.length > 0
+    ? `\nFiling Excerpts (optional background):\n${buildFilingEvidenceText(params.filingEvidence)}`
+    : "";
+
+  return `Company: ${params.name}${zhName ? ` (${zhName})` : ""}${params.ticker ? ` [${params.ticker}]` : ""}
 Sector: ${params.sector ?? "N/A"}
 Industry: ${typeof meta.industry === "string" ? meta.industry : "N/A"}
 Exchange: ${typeof meta.exchange === "string" ? meta.exchange : "N/A"}
 
-Latest FY: ${dashboard.latestYear ?? "N/A"}
+Latest Financial Year: ${dashboard.latestYear ?? "最新"}
 Key Metrics:
 ${dashboard.cardLines}
 
 Financial history:
 ${buildFinancialHistoryText(params.financials)}
+${evidenceBlock}
 
-${buildFilingEvidenceText(params.filingEvidence)}
-
-Generate only the company basic information overview.`;
+请根据以上事实，严格按照三句话规范（行业定位/业务本质 + 主打产品 + 最新财年营收与商业模式关键词）生成 100-120 字的公司概览。`;
 }
 
 async function main() {
@@ -124,24 +120,23 @@ async function main() {
 
     const existing = await prisma.companyAnalysis.findUnique({
       where: { entityId: company.id },
-      select: { profile: true, updatedAt: true },
+      select: { overview: true, profile: true, updatedAt: true },
     });
-    const existingProfile = jsonObject(existing?.profile);
-    if (existingProfile && normalizeText(existingProfile.content) && !force) {
-      console.log(`  SKIP: already has company profile (updatedAt: ${existing?.updatedAt.toISOString()}), use --force to overwrite`);
+    const hasOverview = Boolean(existing?.overview && existing.overview.trim());
+    if (hasOverview && !force) {
+      console.log(`  SKIP: already has overview (updatedAt: ${existing?.updatedAt.toISOString()}), use --force to overwrite`);
       continue;
     }
 
     const financials = await fetchFinancials(company.id, 5);
-    const filingEvidence = await fetchLatestFilingEvidence(company.id);
-    console.log(`  Financials: ${financials.length} years`);
-    console.log(`  Filing evidence: ${filingEvidence ? filingEvidence.filingLabel : "none"}`);
-
-    const filingEvidenceState = filingEvidence ? `${filingEvidence.filingLabel} matched 0 sections` : "no 10-K/20-F/40-F filing found";
-    if (!hasUsableFilingEvidence(filingEvidence)) {
-      console.log(`  SKIP: no usable filing section evidence (${filingEvidenceState}) — refusing to generate a company profile without SEC filing evidence`);
-      continue;
+    let filingEvidence: Awaited<ReturnType<typeof fetchLatestFilingEvidence>> | null = null;
+    try {
+      filingEvidence = await fetchLatestFilingEvidence(company.id);
+    } catch {
+      // Optional background evidence, non-blocking for Phase 1
     }
+    console.log(`  Financials: ${financials.length} years`);
+    console.log(`  Filing evidence: ${filingEvidence ? filingEvidence.filingLabel : "none (Phase 1 fast mode)"}`);
 
     const prompt = buildPrompt({
       name: company.canonicalName,
@@ -159,34 +154,39 @@ async function main() {
       continue;
     }
 
+    let rawContent = "";
     try {
-      const content = await callJsonLLM({
+      rawContent = await callJsonLLM({
         systemPrompt: SYSTEM_PROMPT,
         userPrompt: prompt,
         temperature: 0.2,
-        maxTokens: 16000,
       });
-      const profile = parseProfile(content);
+      const overviewText = parseOverview(rawContent);
       const source = AI_MODEL ?? "unknown";
 
       await prisma.companyAnalysis.upsert({
         where: { entityId: company.id },
         create: {
           entityId: company.id,
-          profile: toJsonValue(profile),
+          overview: overviewText,
+          profile: toJsonValue({ title: "公司概览", content: overviewText }),
           source,
           version: 1,
         },
         update: {
-          profile: toJsonValue(profile),
+          overview: overviewText,
+          profile: toJsonValue({ title: "公司概览", content: overviewText }),
           source,
           version: { increment: 1 },
         },
       });
 
-      console.log("  Saved company profile");
+      console.log(`  ✓ Saved overview (${overviewText.length} chars): ${overviewText.slice(0, 60)}...`);
     } catch (err) {
       console.error("  Failed:", err instanceof Error ? err.message : String(err));
+      if (rawContent) {
+        console.error("  Raw content received:", rawContent.slice(0, 300));
+      }
     }
 
     console.log();

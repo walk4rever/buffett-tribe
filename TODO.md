@@ -18,7 +18,9 @@
     3. **Apple-Design 规范与移动端全维适配**：
        - 视觉规范：浅灰 `#fbfbfd` 底色、纯白 `#ffffff` 表面、精密等宽数字排版与柔光漫反射；
        - 移动端：表头上下流式折叠自适应、财务矩阵最左侧科目列自动粘滞吸顶（Sticky Column）且支持 iOS 惯性滑动、Tab 导航栏自动转换为 iOS 原生高斯模糊横向滑动手势胶囊。
-    4. **工程检验**：`npm run lint` 0 警告 0 错误，全站编译稳定无瑕疵。
+- [ ] **⑭ 退市/被收购（Delisted）美股历史股价归档补录通道**（2026-09-23 讨论 CFLT Onboard 流程时提出）：
+  - **背景**：已退市/被收购的美股标的（如 IBM 收购的 Confluent `CFLT`、推特 `TWTR`、动视暴雪 `ATVI` 等），Yahoo Finance 接口具有幸存者偏差，会在摘牌后清理 Ticker 行情接口并返回 404（`No data found, symbol may be delisted`）。目前 Onboard Phase 1 实现了对 delisted 的容错跳过，但退市股的 `StockPrice` 数据缺失，导致历史持仓复盘、DVL 历史估值线与分位走势图空白。
+  - **目标**：建立退市标的历史日 K 归档补录机制（如 `data/stock-prices-archive/<TICKER>.csv` 静态文件导入或集成 FMP / Tiingo / EODHD 等支持 delisted 的专业数据源），将 2020 年至退市日的历史真实日 K 灌入 `StockPrice` 表，一次性永久解决退市标的的历史股价回溯。
 
 - [ ] **⑩ 回填缺失的 `section_text` artifact：645 份 filing / 4,780 个 section / 110 家公司**（2026-08-30 发现，详细复盘见 `handoff.md` 第二次会话追加）：早期那版「三种 kind 全删」的 `cleanup-section-artifacts.ts` 删掉了 `section_text` artifact，而 `FilingSection.textArtifact` 外键是 `onDelete: SetNull`，链接随之全部变 NULL；上次只回填了 BN/SU 两家。后果是 `search_filings` 对这 110 家公司**平均只能看到 27.4% 的正文**（`FilingSection.content` 只是导入时截断的预览），走 `primary_html` 现场重解析的兜底路径又常因大文件超时。P3 加的降级警告保证了它不会静默撒谎，但能力缺口是真的。
   - **判据**：`textArtifactId is null AND length(content) < contentTextLength`。按 `extractionVersion` 分：v2 全部 10,857 个 section text artifact 数为 0（那一代没这机制），v3 的 16,181 个里缺 1,839 个。8/29–8/30 两批重导的 10,082 个则 100% 完整——**当前写入路径是对的，这是历史存量问题**。
