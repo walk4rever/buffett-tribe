@@ -2,7 +2,7 @@
 
 # 价值部落 · Value Tribe — 产品设计文档
 
-> 最后更新：2026-09-20（v0.44.25）
+> 最后更新：2026-09-23（v0.44.31）
 
 ---
 
@@ -1087,7 +1087,18 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.44.30）
+## 当前实现状态（v0.44.31）
+
+### v0.44.31 变更（2026-09-23）
+
+- **CompanyAnalysis 概览与业务画布统一重构**：
+  - **Schema 扩展与架构收敛**：`CompanyAnalysis` 表新增 `overview`（统一公司概览，TEXT，不超过3句话：公司是什么 + 主打产品 + 主营收入）和 `canvas`（9 宫格业务画布，JSONB）字段。旧字段 `profile` 和 `business` 标记为 DEPRECATED，用于平滑过渡与向后兼容。
+  - **全量数据平滑迁移**：通过 `scripts/migrate-company-analysis-data.ts` 原生 SQL 批量将全库 245 家公司的 `profile.content` 迁移到 `overview`，`business.canvas` 迁移到 `canvas`（245/245 成功完成）。
+  - **DVL 视图体验升级**：`ValueLineCard` 消除原先 `businessSummary` 与 `businessSegments` 双段重复冗余的体验问题，统一渲染单一精炼的 `data.overview`。
+  - **经典视图与 DVL 视图对齐**：
+    - 经典视图顶部 Hero 统一展示 `overview`（优先使用 `analysis.overview`，向后兼容 `profile.content`）。
+    - 经典视图“业务分析”Tab 移除废弃的 `business.narrative` 文本卡片，与 DVL 视图保持一致，直接呈现完整的商业模式九宫格画布（Business Canvas）。
+  - **配套服务升级**：`services/pi-gateway/src/tools/get-company-analysis.ts` 工具同步支持 `overview` 与 `canvas` 字段查询。
 
 ### v0.44.30 变更（2026-09-22）
 

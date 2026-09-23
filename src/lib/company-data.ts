@@ -591,7 +591,18 @@ export function formatMoney(v: string | number | bigint | null) {
 export async function getCompanyAnalysis(entityId: string) {
   const row = await db.companyAnalysis.findUnique({
     where: { entityId },
-    select: { profile: true, business: true, moat: true, management: true, valuation: true, source: true, version: true, updatedAt: true },
+    select: {
+      overview: true,
+      canvas: true,
+      profile: true,
+      business: true,
+      moat: true,
+      management: true,
+      valuation: true,
+      source: true,
+      version: true,
+      updatedAt: true,
+    },
   });
   return row ?? null;
 }

@@ -3,11 +3,13 @@ import { Type } from "typebox";
 import { pool } from "../db.js";
 import { BRAND_EN } from "../brand.js";
 
-// The 5 fields on CompanyAnalysis written by scripts/generate-*.ts during
+// The fields on CompanyAnalysis written by scripts/generate-*.ts during
 // onboarding (see scripts/onboard-company.ts) — the same content rendered on
 // the company page tabs. master_profile / portfolio_insight are a different
 // scope (master, not company) and out of scope for this tool.
 const ARTIFACT_TYPES = [
+  "overview",
+  "canvas",
   "profile",
   "business",
   "moat",
@@ -17,8 +19,10 @@ const ARTIFACT_TYPES = [
 type ArtifactType = (typeof ARTIFACT_TYPES)[number];
 
 const ARTIFACT_LABELS: Record<ArtifactType, string> = {
-  profile: "Company Profile",
-  business: "Business Overview & Model",
+  overview: "Company Overview",
+  canvas: "Business Model Canvas (9 sections)",
+  profile: "Company Profile (legacy)",
+  business: "Business Overview & Model (legacy)",
   moat: "Moat / Value Analysis",
   management: "Management Analysis (capital allocation, alignment)",
   valuation: "Valuation Analysis (scenarios, multiples)",
@@ -51,7 +55,7 @@ type ArtifactRow = { artifact_type: string; payload: unknown; generated_at: stri
 
 async function queryArtifacts(entityId: string, types: readonly string[]): Promise<ArtifactRow[]> {
   const r = await pool.query<Record<string, unknown>>(
-    `SELECT profile, business, moat, management, valuation, "updatedAt"::text AS updated_at
+    `SELECT overview, canvas, profile, business, moat, management, valuation, "updatedAt"::text AS updated_at
      FROM "CompanyAnalysis"
      WHERE "entityId" = $1`,
     [entityId],

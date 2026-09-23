@@ -447,8 +447,8 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
         </div>
       </header>
 
-      {/* ── 2. Company Overview: Merged Identity, Products & Revenue Model (Replaces Business Essence) ── */}
-      {data.businessSummary || data.businessSegments ? (
+      {/* ── 2. Company Overview: Merged Identity, Products & Revenue Model ── */}
+      {data.overview || data.businessSummary ? (
         <section className="vl-company-overview-pane" aria-label="公司概览">
           <div className="vl-overview-head">
             <div className="vl-overview-title-wrap">
@@ -457,12 +457,7 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
             </div>
           </div>
           <div className="vl-overview-body">
-            {data.businessSummary ? (
-              <p className="vl-overview-para">{data.businessSummary}</p>
-            ) : null}
-            {data.businessSegments ? (
-              <p className="vl-overview-para">{data.businessSegments}</p>
-            ) : null}
+            <p className="vl-overview-para">{data.overview ?? data.businessSummary}</p>
           </div>
         </section>
       ) : null}

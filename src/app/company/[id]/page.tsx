@@ -567,11 +567,16 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     latestYear,
     revenue: rev,
   });
+  const overviewTitle = profile?.title || "公司概览";
+  const overviewContent = analysis?.overview || profile?.content || mockNarrative.overview.content;
   const companyNarrative: CompanyNarrative = {
-    overview: profile ?? mockNarrative.overview,
+    overview: {
+      title: overviewTitle,
+      content: overviewContent,
+    },
     business: business ?? mockNarrative.business,
   };
-  const rawCanvas = (analysis?.business as unknown as { canvas?: BusinessCanvasData } | null | undefined)?.canvas;
+  const rawCanvas = (analysis?.canvas ?? (analysis?.business as unknown as { canvas?: BusinessCanvasData } | null | undefined)?.canvas) as BusinessCanvasData | null | undefined;
   const businessCanvas = rawCanvas && analysis
     ? { canvas: rawCanvas, versionSeq: analysis.version, generatedAt: analysis.updatedAt }
     : null;
@@ -660,12 +665,6 @@ export default async function CompanyPage({ params, searchParams }: Props) {
         >
           <section className="company-section" data-tab-panel="business">
             <div className="company-financial-trend-head">
-              <h3>业务概览</h3>
-            </div>
-            <div className="company-text-card">
-              <p>{companyNarrative.business.content}</p>
-            </div>
-            <div className="company-financial-trend-head">
               <h3>业务画布{businessCanvas ? "" : "（构建中）"}</h3>
             </div>
             {businessCanvas ? (
@@ -679,7 +678,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
             ) : (
               <div className="company-canvas-placeholder">
                 <p>商业画布数据正在构建中。</p>
-                <span>可结合上方业务概览与下方财务分析了解这家公司。</span>
+                <span>可结合上方公司概览与下方财务分析了解这家公司。</span>
               </div>
             )}
           </section>

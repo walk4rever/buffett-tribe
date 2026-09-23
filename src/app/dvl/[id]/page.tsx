@@ -285,12 +285,12 @@ export default async function DigitalValueLinePage({ params, searchParams }: Pro
   const zhName =
     typeof meta.nameZh === "string" && meta.nameZh.trim() ? meta.nameZh.trim() : company.canonicalName;
 
-  const rawBusiness = analysis?.business as unknown as { canvas?: BusinessCanvasData } | null | undefined;
+  const rawCanvas = (analysis?.canvas ?? (analysis?.business as unknown as { canvas?: BusinessCanvasData } | null | undefined)?.canvas) as BusinessCanvasData | null | undefined;
   const businessCanvas =
-    rawBusiness?.canvas && Object.keys(rawBusiness.canvas).length > 0
+    rawCanvas && Object.keys(rawCanvas).length > 0
       ? {
-          canvas: rawBusiness.canvas,
-          versionSeq: 1,
+          canvas: rawCanvas,
+          versionSeq: analysis?.version ?? 1,
           generatedAt: analysis?.updatedAt ?? new Date(),
         }
       : null;

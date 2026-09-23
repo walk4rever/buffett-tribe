@@ -598,11 +598,16 @@ model MasterProfile {
 model CompanyAnalysis {
   id         String   @id @default(cuid())
   entityId   String   @unique
-  profile    Json? // { title, content } — generate-company-profile.ts
-  business   Json? // { narrative: {title, content}, canvas: {...9 sections...} } — generate-business-model.ts
+  overview   String? // 统一的公司概览（不超过3句话）：公司是什么 + 主打产品 + 主营收入
+  canvas     Json? // 业务画布（9 sections）
   moat       Json? // { summary, dimensions, notes } — generate-value-analysis.ts
   management Json? // capital allocation behavior — generate-management-analysis.ts
   valuation  Json? // scenarios, multiples — generate-valuation-analysis.ts
+
+  // 旧字段保留用于迁移（TODO: 迁移完成后删除）
+  profile    Json? // DEPRECATED: 迁移到 overview
+  business   Json? // DEPRECATED: canvas 部分迁移到 canvas 字段，narrative 部分废弃
+
   source     String   @default("claude")
   version    Int      @default(1)
   createdAt  DateTime @default(now())

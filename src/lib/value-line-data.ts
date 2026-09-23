@@ -101,6 +101,7 @@ export type ValueLineData = {
 
   // Deep Dive Status & Company Narrative Profile
   hasDeepDive: boolean;
+  overview: string | null;
   businessSummary: string | null;
   businessSegments: string | null;
 };
@@ -129,6 +130,8 @@ export async function getValueLineData(identifier: string): Promise<ValueLineDat
       metadata: true,
       analyses: {
         select: {
+          overview: true,
+          canvas: true,
           profile: true,
           business: true,
           moat: true,
@@ -427,7 +430,7 @@ export async function getValueLineData(identifier: string): Promise<ValueLineDat
 
   // 6. AI Business Essence, Moat & Risk Insights
   const analysis = entity.analyses[0] ?? null;
-  const hasDeepDive = Boolean(analysis?.business || analysis?.moat);
+  const hasDeepDive = Boolean(analysis?.canvas || analysis?.business || analysis?.moat);
   const profileJson = analysis?.profile as { title?: string; content?: string } | null | undefined;
   const businessJson = analysis?.business as { narrative?: { title?: string; content?: string } } | null | undefined;
   const moatJson = analysis?.moat as {
@@ -436,7 +439,9 @@ export async function getValueLineData(identifier: string): Promise<ValueLineDat
   } | null | undefined;
 
   let businessEssence = "";
-  if (moatJson?.summary?.thesis && moatJson.summary.thesis.length >= 10) {
+  if (analysis?.overview) {
+    businessEssence = analysis.overview.split(/[。！？\n]/)[0] + "。";
+  } else if (moatJson?.summary?.thesis && moatJson.summary.thesis.length >= 10) {
     businessEssence = moatJson.summary.thesis.split(/[。！？\n]/)[0] + "。";
   } else if (profileJson?.content) {
     businessEssence = profileJson.content.split(/[。！？\n]/)[0] + "。";
@@ -475,7 +480,8 @@ export async function getValueLineData(identifier: string): Promise<ValueLineDat
     ? `${nameZh ?? entity.canonicalName} 最近完整财年营收约 ${revStr}。主营业务与产品结构涵盖其细分领域核心产品线，盈利质量与现金流表现可参见下方报表细目。`
     : null;
 
-  const businessSummary = profileJson?.content ?? fallbackSummary;
+  const overview = analysis?.overview ?? profileJson?.content ?? fallbackSummary;
+  const businessSummary = overview;
   const businessSegments = businessJson?.narrative?.content ?? fallbackSegments;
 
   return {
@@ -527,6 +533,7 @@ export async function getValueLineData(identifier: string): Promise<ValueLineDat
     netIncomeCagr5Y,
 
     hasDeepDive,
+    overview,
     businessSummary,
     businessSegments,
   };
