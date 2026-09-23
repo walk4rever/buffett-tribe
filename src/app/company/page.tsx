@@ -72,11 +72,10 @@ function toDirectoryItem(row: EntityDirectoryRow): CompanyDirectoryItem {
   const tickers = uniqueTickers([row.ticker, ...row.securitiesAsCompany.map((s) => s.ticker)]);
   // Guaranteed non-null: the query requires cik OR (market AND code).
   const market = (row.market as "hk" | "cn" | null) ?? "us";
-  // Phase 1 completeness signal: either explicit metadata.onboardPhase >= 1,
-  // or Financial rows > 0 (backward-compatible with earlier onboarded companies).
-  // Without it, the row is a bare stub auto-created by 13F import the moment
-  // an investor holdings filing mentioned the ticker.
-  const isPhase1Complete = Boolean((meta?.onboardPhase as number) >= 1) || row._count.financials > 0;
+  // Phase 1 completeness signal: strictly requires explicit metadata.onboardPhase >= 1.
+  // Financial rows alone is NOT sufficient because a company could fail overview generation
+  // or name mapping and remain an incomplete stub.
+  const isPhase1Complete = typeof meta?.onboardPhase === "number" && meta.onboardPhase >= 1;
   return {
     key: row.cik ?? `${row.market}-${row.code}`,
     nameZh,
