@@ -106,7 +106,8 @@ export function formatCompanyUrl(entity: {
 }
 
 /**
- * Canonical URL builder for Digital Value Line (DVL) pages: `/dvl/{market}-{code}`.
+ * Canonical URL builder for Digital Value Line (DVL) pages.
+ * Since the default company details page is now the DVL page, this returns `/company/{slug}`.
  */
 export function formatDvlUrl(entity: {
   cik?: string | null;
@@ -114,7 +115,7 @@ export function formatDvlUrl(entity: {
   code?: string | null;
 }): string | null {
   const slug = formatCompanySlug(entity);
-  return slug ? `/dvl/${slug}` : null;
+  return slug ? `/company/${slug}` : null;
 }
 
 function logDbFallback(scope: string, err: unknown) {

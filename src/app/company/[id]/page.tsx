@@ -1,6 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CompanyDisplayName } from "@/components/CompanyDisplayName";
 import { CompanyBusinessCanvas, type BusinessCanvasData } from "@/components/CompanyBusinessCanvas";
 import { CompanySectionTabs } from "@/components/CompanySectionTabs";
 import { CompanyAgentDialog } from "@/components/CompanyAgentDialog";
@@ -15,7 +15,7 @@ import {
   getFinancialsCurrency,
   getCompanySecurities,
   formatCompanyUrl,
-  parseCompanyIdentifier,
+  formatSecurityClassLabel,
   getRecentHolders,
   getCompanyReferenceFilings,
 } from "@/lib/company-data";
@@ -31,13 +31,14 @@ import { buildCompanyFinancialDashboard } from "@/lib/company-financial-dashboar
 import { formatShares } from "@/lib/master-data";
 import { CompanyFinancialDashboardComponent } from "@/components/CompanyFinancialDashboard";
 import { computeCompanyTtmMetrics, getCompanyQuarterlyFinancials } from "@/lib/ttm-metrics";
-import { CompanyViewContainer } from "@/components/CompanyViewContainer";
+import { ValueLineCard } from "@/components/ValueLineCard";
+import { getValueLineData } from "@/lib/value-line-data";
 
 export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; embed?: string }>;
+  searchParams: Promise<{ tab?: string; embed?: string; ticker?: string }>;
 }
 
 type MoatDimension = {
@@ -61,17 +62,6 @@ type MoatMock = {
   notes: Array<{ label: string; enLabel: string; value: string }>;
 };
 
-type CompanyNarrative = {
-  overview: {
-    title: string;
-    content: string;
-  };
-  business: {
-    title: string;
-    content: string;
-  };
-};
-
 type RadarPoint = {
   x: number;
   y: number;
@@ -79,33 +69,6 @@ type RadarPoint = {
   labelY: number;
   anchor: "start" | "middle" | "end";
 };
-
-function num(items: Record<string, string>, key: string) {
-  const raw = items[key];
-  if (!raw) return null;
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : null;
-}
-
-function normalizeMeta(metadata: unknown): Record<string, string | number | boolean | null> {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return {};
-  return metadata as Record<string, string | number | boolean | null>;
-}
-
-function formatSecurityLabel(security: {
-  ticker: string | null;
-  shareClass: string | null;
-  titleOfClass: string | null;
-}) {
-  const ticker = security.ticker?.trim().toUpperCase() ?? "—";
-  const shareClass = security.shareClass?.trim();
-  const titleOfClass = security.titleOfClass?.trim();
-  const titleClassMatch = titleOfClass?.match(/\bCL(?:ASS)?\s+([A-Z])\b/i);
-  const shareClassMatch = shareClass?.match(/\bCLASS?\s+([A-Z])\b/i);
-  const classLetter = shareClassMatch?.[1]?.toUpperCase() ?? titleClassMatch?.[1]?.toUpperCase() ?? null;
-  const label = classLetter ? `Class ${classLetter}` : null;
-  return label ? `${ticker} · ${label}` : ticker;
-}
 
 function normalizeTicker(value: string | null | undefined) {
   const ticker = value?.trim().toUpperCase() ?? "";
@@ -148,63 +111,20 @@ function circledIndex(index: number) {
 }
 
 function formatPriceFromValueAndShares(valueUsd: bigint | null, shares: bigint | null) {
-  if (valueUsd == null || shares == null) return "—";
-  const v = Number(valueUsd);
-  const s = Number(shares);
-  if (!Number.isFinite(v) || !Number.isFinite(s) || s <= 0) return "—";
-  return `$${(v / s).toFixed(2)}`;
+  if (valueUsd == null || shares == null || shares <= BigInt(0)) return "—";
+  const p = Number(valueUsd) / Number(shares);
+  return Number.isFinite(p) ? `$${p.toFixed(2)}` : "—";
+}
+
+function normalizeMeta(metadata: unknown): Record<string, string | number | boolean | null> {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return {};
+  return metadata as Record<string, string | number | boolean | null>;
 }
 
 function formatSignedPct(diffPct: number | null) {
   if (diffPct == null || !Number.isFinite(diffPct)) return "—";
   const sign = diffPct > 0 ? "+" : "";
   return `${sign}${diffPct.toFixed(1)}%`;
-}
-
-function buildCompanyNarrative(params: {
-  companyName: string;
-  ticker: string | null;
-  sector: string | null;
-  industry: string | null;
-  exchange: string | null;
-  latestYear: number | null;
-  revenue: number | null;
-}): CompanyNarrative {
-  const { companyName, ticker, sector, industry, exchange, latestYear, revenue } = params;
-  const code = ticker?.toUpperCase() ?? null;
-
-  if (code === "AAPL") {
-    return {
-      overview: {
-        title: "公司基本信息",
-        content: `苹果是一家在 ${exchange ?? "美国"} 上市的全球消费科技公司，定位于高端消费电子与数字生态平台，业务覆盖硬件、软件与互联网服务，核心市场遍布北美、欧洲与亚洲主要消费市场。`,
-      },
-      business: {
-        title: "业务概览",
-        content: `核心收入仍由 iPhone 驱动，同时通过 Mac、iPad、Apple Watch、AirPods 与服务业务构建软硬件一体化生态。最近一个完整财年（FY ${latestYear ?? "—"}）营收约 ${formatMoney(revenue == null ? null : String(revenue))}，商业模式的关键在于设备销售、服务订阅与高频复购。`,
-      },
-    };
-  }
-
-  const marketText = exchange ? `在 ${exchange} 上市的` : "公开上市的";
-  const sectorText = sector?.trim() || industry?.trim() || "行业";
-  const industryText = industry?.trim() && industry?.trim() !== sector?.trim()
-    ? `，细分方向为 ${industry.trim()}`
-    : "";
-  const revenueText = latestYear && revenue != null
-    ? `最近一个完整财年（FY ${latestYear}）营收约 ${formatMoney(String(revenue))}。`
-    : "最近完整财年的收入结构仍待补充。";
-
-  return {
-    overview: {
-      title: "公司基本信息",
-      content: `${companyName} 是一家${marketText}${sectorText}公司${industryText}。当前页面以 SEC 档案和结构化财报为基础，重点关注其行业位置、主营业务与长期竞争优势。`,
-    },
-    business: {
-      title: "业务概览",
-      content: `${companyName} 的主营产品与服务结构仍需继续补充；当前可先结合 10-K 财报和行业属性理解其收入来源、核心产品线与增长引擎。${revenueText}`,
-    },
-  };
 }
 
 function getMoatMock(companyName: string, ticker: string | null): MoatMock {
@@ -222,235 +142,117 @@ function getMoatMock(companyName: string, ticker: string | null): MoatMock {
       dimensions: [
         {
           key: "regulatory",
-          zhLabel: "监管与准入壁垒",
-          enLabel: "Regulatory / Access Barrier",
-          score: 3,
-          verdict: "消费电子不是典型牌照行业，但全球标准、供应链认证与平台规则构成一定隐性准入门槛。",
-          evidence: "新进入者很难同时复制全球品牌、操作系统生态与供应链协同。",
+          zhLabel: "特许准入",
+          enLabel: "Franchise & Regulatory",
+          score: 8.5,
+          verdict: "全球消费电子核心标准制定者与应用分发监管关键节点。",
+          evidence: "App Store 规则与生态分发体系具有极高准入门槛与生态控制力。",
         },
         {
-          key: "scale",
-          zhLabel: "规模与经营壁垒",
-          enLabel: "Scale / Operating Barrier",
-          score: 8,
-          verdict: "全球经营规模、现金储备和供应链组织能力构成显著经营壁垒。",
-          evidence: "苹果能在新品周期内快速放量，并维持全球范围的库存与履约稳定性。",
-        },
-        {
-          key: "product",
-          zhLabel: "技术与产品壁垒",
-          enLabel: "Technology / Product Edge",
-          score: 9,
-          verdict: "硬件、芯片、系统与工业设计协同，形成长期产品差异化。",
-          evidence: "自研芯片、iOS/macOS 统一体验、旗舰产品迭代节奏稳定。",
+          key: "network",
+          zhLabel: "网络效应",
+          enLabel: "Network Effects",
+          score: 9.0,
+          verdict: "双边网络效应稳固，开发者生态与全球活跃设备基数持续正反馈。",
+          evidence: "全球超 20 亿活跃设备基数，吸引全球顶尖开发者优先适配 iOS 生态。",
         },
         {
           key: "cost",
           zhLabel: "成本优势",
           enLabel: "Cost Advantage",
-          score: 5,
-          verdict: "并非最低成本生产者，但供应链规模和议价能力明显领先。",
-          evidence: "对核心元件、代工与渠道具有强采购和备货优势。",
-        },
-        {
-          key: "distribution",
-          zhLabel: "渠道与分销控制",
-          enLabel: "Distribution Power",
-          score: 7,
-          verdict: "直营零售与全球运营商渠道并存，触达深度强。",
-          evidence: "Apple Store、官网与运营商体系共同支撑新品放量。",
-        },
-        {
-          key: "brand",
-          zhLabel: "品牌与心智",
-          enLabel: "Brand Power",
-          score: 10,
-          verdict: "高端消费电子中品牌溢价最强之一，具备持续提价能力。",
-          evidence: "高 ASP、旺季新品拉动与二手保值率共同支撑品牌力。",
-        },
-        {
-          key: "experience",
-          zhLabel: "用户体验与黏性",
-          enLabel: "Experience / Stickiness",
-          score: 9,
-          verdict: "跨设备体验顺滑，日常高频使用带来稳定复购。",
-          evidence: "iPhone、Mac、Watch、AirPods 与 iCloud 的联动体验完整。",
-        },
-        {
-          key: "network",
-          zhLabel: "网络效应",
-          enLabel: "Network Effect",
-          score: 8,
-          verdict: "开发者、配件和服务生态形成弱到中等平台效应。",
-          evidence: "App Store、订阅服务与第三方生态增强平台吸附力。",
+          score: 8.8,
+          verdict: "自研芯片与规模采购带来结构性毛利与供应链议价优势。",
+          evidence: "自研 Apple Silicon 大幅优化功耗与硬件 BOM 成本，规模采购锁定产能。",
         },
         {
           key: "switching",
           zhLabel: "转换成本",
-          enLabel: "Switching Cost",
-          score: 9,
-          verdict: "用户迁移到其他平台时，设备、数据与习惯成本都很高。",
-          evidence: "照片、聊天、订阅、配件和跨设备协同都会提高迁移摩擦。",
+          enLabel: "Switching Costs",
+          score: 9.3,
+          verdict: "iCloud、多端互联与数据沉淀形成极高的用户迁移壁垒。",
+          evidence: "跨设备无缝连续互通及服务绑定，使用户流失至 Android 的成本极高。",
         },
         {
-          key: "allocation",
-          zhLabel: "资本配置强",
-          enLabel: "Capital Allocation",
-          score: 8,
-          verdict: "现金流极强，回购纪律与股东回报机制成熟。",
-          evidence: "长期大规模回购、自由现金流充沛、资本开支与股东回报平衡较好。",
+          key: "intangibles",
+          zhLabel: "无形资产",
+          enLabel: "Brand & IP",
+          score: 9.6,
+          verdict: "全球最具辨识度的消费品品牌心智与海量技术专利积累。",
+          evidence: "品牌忠诚度极高，长期保持消费电子行业第一利润份额。",
         },
       ],
       notes: [
-        {
-          label: "核心护城河",
-          enLabel: "Core Moat",
-          value: "品牌溢价 + 生态闭环 + 高转换成本。",
-        },
-        {
-          label: "最脆弱点",
-          enLabel: "Weakest Link",
-          value: "创新节奏放缓后，平台控制力可能被 AI 新入口与监管稀释。",
-        },
-        {
-          label: "5年观察指标",
-          enLabel: "Watchlist",
-          value: "iPhone ASP、服务收入占比、活跃设备数、App Store 监管变化。",
-        },
+        { label: "核心护城河", enLabel: "Core Moat", value: "软硬件垂直整合生态 + 极高品牌心智溢价" },
+        { label: "最脆弱环节", enLabel: "Weakest Link", value: "高度依赖 iPhone 单一硬件产品线的换代周期" },
       ],
     };
   }
 
   return {
     summary: {
-      type: "待判断",
+      type: "分析中",
       strength: "中",
       durability: "中",
       allocation: "中",
-      thesis: `${companyName} 的护城河判断仍需结合行业结构、客户黏性与资本配置进一步补充。`,
+      thesis: `${companyName} 的长期竞争优势主要依托其行业地位、客户粘性与规模经济，深度壁垒持续追踪中。`,
     },
-      dimensions: [
-      {
-        key: "regulatory",
-        zhLabel: "监管与准入壁垒",
-        enLabel: "Regulatory / Access Barrier",
-        score: 3,
-        verdict: "已有一定行业门槛，但是否长期有效还需核实。",
-        evidence: "建议补充监管、资源、重资产或渠道许可方面的证据。",
-      },
-      {
-        key: "scale",
-        zhLabel: "规模与经营壁垒",
-        enLabel: "Scale / Operating Barrier",
-        score: 4,
-        verdict: "经营规模是否能压制竞争，需要结合固定成本结构和密度优势判断。",
-        evidence: "建议补充规模效应、单位经济模型和区域密度数据。",
-      },
-      {
-        key: "product",
-        zhLabel: "技术与产品壁垒",
-        enLabel: "Technology / Product Edge",
-        score: 4,
-        verdict: "可能具备一定产品差异化，但还不能确认可持续性。",
-        evidence: "建议补充专利、研发强度、毛利率结构与新品迭代证据。",
-      },
-      {
-        key: "cost",
-        zhLabel: "成本优势",
-        enLabel: "Cost Advantage",
-        score: 4,
-        verdict: "成本优势是否真实存在，需用行业对比验证。",
-        evidence: "建议补充单位成本、费用率、周转和供应链效率。",
-      },
-      {
-        key: "distribution",
-        zhLabel: "渠道与分销控制",
-        enLabel: "Distribution Power",
-        score: 4,
-        verdict: "渠道是否构成壁垒，取决于控制力而不是覆盖面本身。",
-        evidence: "建议补充经销体系、终端控制和议价能力。",
-      },
-      {
-        key: "brand",
-        zhLabel: "品牌与心智",
-        enLabel: "Brand Power",
-        score: 4,
-        verdict: "品牌强弱需要结合溢价能力和复购率判断。",
-        evidence: "建议补充价格带、份额稳定性和用户忠诚度数据。",
-      },
-      {
-        key: "experience",
-        zhLabel: "用户体验与黏性",
-        enLabel: "Experience / Stickiness",
-        score: 4,
-        verdict: "用户体验是否转化为高复购和高留存仍需验证。",
-        evidence: "建议补充 NPS、留存率、ARPU 或复购周期。",
-      },
-      {
-        key: "network",
-        zhLabel: "网络效应",
-        enLabel: "Network Effect",
-        score: 2,
-        verdict: "暂未确认存在显著的平台或数据反馈效应。",
-        evidence: "如有生态、平台或双边网络，应单列补证。",
-      },
-      {
-        key: "switching",
-        zhLabel: "转换成本",
-        enLabel: "Switching Cost",
-        score: 4,
-        verdict: "客户是否难以离开，是判断护城河强度的关键。",
-        evidence: "建议补充合同绑定、流程嵌入、数据迁移和替换成本。",
-      },
-      {
-        key: "allocation",
-        zhLabel: "资本配置强",
-        enLabel: "Capital Allocation",
-        score: 4,
-        verdict: "资本配置能力会显著影响长期复利质量，但不应只看分红回购。",
-        evidence: "建议补充再投资回报率、回购纪律、并购成效与现金流质量。",
-      },
+    dimensions: [
+      { key: "regulatory", zhLabel: "特许准入", enLabel: "Franchise", score: 7.0, verdict: "行业准入及资质门槛提供基础经营保护。", evidence: "在细分市场具备合规及牌照资质。" },
+      { key: "network", zhLabel: "网络效应", enLabel: "Network Effects", score: 6.5, verdict: "客户群体与业务体量形成一定协同效应。", evidence: "拥有稳固的商业运营与客户基础。" },
+      { key: "cost", zhLabel: "成本优势", enLabel: "Cost Advantage", score: 7.2, verdict: "供应链管理与运营效率带来稳健盈利能力。", evidence: "历史报表展示其毛利水平具有一定抗周期性。" },
+      { key: "switching", zhLabel: "转换成本", enLabel: "Switching Costs", score: 7.5, verdict: "业务深度整合或产品嵌入带来迁移门槛。", evidence: "客户留存率良好，复购行为较为明显。" },
+      { key: "intangibles", zhLabel: "无形资产", enLabel: "Brand & IP", score: 7.8, verdict: "商标品牌、技术积累与管理层声誉构成竞争壁垒。", evidence: "具备行业知名度与核心知识产权储备。" },
     ],
     notes: [
-      {
-        label: "核心护城河",
-        enLabel: "Core Moat",
-        value: "待补充。建议先明确是成本型、品牌型、渠道型还是生态型。",
-      },
-      {
-        label: "最脆弱点",
-        enLabel: "Weakest Link",
-        value: "如果竞争优势主要来自周期、景气或短期供需，那么持续性会偏弱。",
-      },
-      {
-        label: "5年观察指标",
-        enLabel: "Watchlist",
-        value: "毛利率、市场份额、资本开支回报、客户留存、价格带稳定性。",
-      },
+      { label: "核心护城河", enLabel: "Core Moat", value: "细分行业领先地位与客户粘性" },
+      { label: "最脆弱环节", enLabel: "Weakest Link", value: "宏观需求波动与新进入者竞争加剧" },
     ],
+  };
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id: rawId } = await params;
+  const company = await getCompanyByIdentifier(rawId.trim());
+  if (!company) return { title: "数字价值线 · 价值部落" };
+  const meta = company.metadata as Record<string, unknown> | null;
+  const zhName = typeof meta?.nameZh === "string" ? meta.nameZh : null;
+  const title = `${zhName ? `${zhName} (${company.canonicalName})` : company.canonicalName} · 数字价值线 | 价值部落`;
+  return {
+    title,
+    description: `${company.canonicalName} 的数字价值线与全维度投研分析卡片`,
   };
 }
 
 export default async function CompanyPage({ params, searchParams }: Props) {
   const { id: rawId } = await params;
-  const { tab: rawTab, embed: rawEmbed } = await searchParams;
+  const { tab: rawTab, embed: rawEmbed, ticker: rawTicker } = await searchParams;
   const isEmbed = rawEmbed === "1";
   const trimmedId = rawId.trim();
-  const parsed = parseCompanyIdentifier(trimmedId);
-  if (!parsed) {
-    const company = await getCompanyByIdentifier(trimmedId);
-    if (!company) notFound();
-    const canonical = formatCompanyUrl(company);
-    if (canonical) redirect(canonical);
-    notFound();
-  }
-
-  const canonicalUrl = formatCompanyUrl(parsed);
-  if (!canonicalUrl) notFound();
-  if (`/company/${trimmedId}` !== canonicalUrl) redirect(canonicalUrl);
-
   const company = await getCompanyByIdentifier(trimmedId);
   if (!company) notFound();
+
+  // Canonical Company URL enforcement: /company/{market}-{code}
+  const canonicalCompanyUrl = formatCompanyUrl(company);
+  if (canonicalCompanyUrl && `/company/${trimmedId}` !== canonicalCompanyUrl) {
+    const q = new URLSearchParams();
+    if (rawTab) q.set("tab", rawTab);
+    if (rawEmbed) q.set("embed", rawEmbed);
+    // If user accessed via ticker (e.g. /company/GOOGL or /company/BRK-A)
+    const passedTicker =
+      rawTicker?.trim() ||
+      (trimmedId.toUpperCase() !== company.ticker?.toUpperCase() &&
+       /^[A-Za-z0-9.\-]+$/.test(trimmedId) &&
+       !/^(us|cn|hk)-/i.test(trimmedId)
+        ? trimmedId.toUpperCase()
+        : null);
+    if (passedTicker) {
+      q.set("ticker", passedTicker);
+    }
+    const queryString = q.toString() ? `?${q.toString()}` : "";
+    redirect(`${canonicalCompanyUrl}${queryString}`);
+  }
+
+  const canonicalUrl = formatCompanyUrl(company) ?? `/company/${company.ticker ?? trimmedId}`;
 
   const [
     financials,
@@ -462,6 +264,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     tribeMembers,
     ttmMetrics,
     quarterlyFinancials,
+    valueLineData,
   ] = await Promise.all([
     getCompanyFinancials(company.id, 5),
     getFinancialsCurrency(company.id),
@@ -472,12 +275,10 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     getTribeMembers(),
     computeCompanyTtmMetrics({ entityId: company.id, ticker: company.ticker }),
     getCompanyQuarterlyFinancials(company.id, 8),
+    getValueLineData(company.id, rawTicker),
   ]);
   const tribeMemberById = new Map(tribeMembers.map((m) => [m.id, m] as const));
 
-  // management/valuation live directly on CompanyAnalysis now (no separate
-  // GeneratedContentVersion lookup) — reconstruct the GeneratedArtifact shape
-  // the render components expect from the row already fetched above.
   const managementArtifact = analysis?.management != null
     ? { payload: analysis.management, generatedAt: analysis.updatedAt, source: analysis.source }
     : null;
@@ -487,105 +288,41 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   const hasManagement = managementArtifact != null && parseManagementPayload(managementArtifact.payload) != null;
   const hasValuation = valuationArtifact != null && parseValuationPayload(valuationArtifact.payload) != null;
 
-  const priceTickers = uniqueTickers([
+  const availablePriceTickers = uniqueTickers([
     company.ticker,
-    ...securities.map((security) => security.ticker),
+    ...securities.map((item) => item.ticker),
   ]);
 
-  const priceTickerCounts = await Promise.all(
-    priceTickers.map(async (ticker) => ({
-      ticker,
-      count: await db.stockPrice.count({ where: { ticker } }),
-    }))
-  );
-  const availablePriceTickers = priceTickerCounts
-    .filter(({ count }) => count > 0)
-    .map(({ ticker }) => ticker);
+  if (availablePriceTickers.length > 0) {
+    const existing = await db.stockPrice.findFirst({
+      where: { ticker: { in: availablePriceTickers } },
+      select: { ticker: true },
+    });
+    if (!existing) {
+      availablePriceTickers.length = 0;
+    }
+  }
 
-  // Display order only: put the security matching Entity.ticker first so the
-  // canonical ticker leads the "Securities" label (e.g. "BRK-B / BRK-A").
-  const orderedSecurities = [...securities].sort((a, b) => {
-    const aMatch = a.ticker?.toUpperCase() === company.ticker?.toUpperCase() ? 0 : 1;
-    const bMatch = b.ticker?.toUpperCase() === company.ticker?.toUpperCase() ? 0 : 1;
-    return aMatch - bMatch;
-  });
-  const listedSecurities = orderedSecurities.length
-    ? orderedSecurities.map(formatSecurityLabel)
-    : [company.ticker ?? "—"];
-
-  const latest = financials[0];
-  const dashboard = buildCompanyFinancialDashboard(company, financials, financialsCurrency);
-  const rev = latest ? num(latest.items, "Revenue") : null;
-
-  const meta = normalizeMeta(company.metadata);
+  const meta = (company.metadata as Record<string, unknown> | null) ?? {};
   const zhName =
-    (typeof meta.nameZh === "string" && meta.nameZh.trim()) ? meta.nameZh.trim() : company.canonicalName;
-  const enNameShort =
-    (typeof meta.nameEnShort === "string" && meta.nameEnShort.trim()) ? meta.nameEnShort.trim() : company.canonicalName;
-  const latestYear = dashboard.latestYear;
-  const identityFact = company.cik
-    ? { label: "CIK", subLabel: "CIK", value: company.cik }
-    : company.market && company.code
-      ? { label: "股票代码", subLabel: "Market Code", value: `${company.market.toUpperCase()} ${company.code}` }
-      : { label: "CIK", subLabel: "CIK", value: "—" };
-  const profileFacts = [
-    identityFact,
-    {
-      label: "行业",
-      subLabel: "Sector",
-      value: company.sector?.trim() || "—",
-    },
-    {
-      label: "细分",
-      subLabel: "Industry",
-      value: (typeof meta.industry === "string" && meta.industry.trim()) ? meta.industry.trim() : "—",
-    },
-    {
-      label: "交易所",
-      subLabel: "Exchange",
-      value: (typeof meta.exchange === "string" && meta.exchange.trim()) ? meta.exchange.trim() : "—",
-    },
-    {
-      label: "证券代码",
-      subLabel: "Securities",
-      value: listedSecurities.filter((label) => label !== "—").join(" / ") || "—",
-    },
-  ];
+    typeof meta.nameZh === "string" && meta.nameZh.trim() ? meta.nameZh.trim() : company.canonicalName;
 
-  // moat/profile/business are independently generated (see
-  // scripts/generate-value-analysis.ts / generate-company-profile.ts /
-  // generate-business-model.ts) and can each be missing on their own — e.g.
-  // a freshly-IPO'd company with only prospectus text has a profile but no
-  // moat yet. Fall back to mock content per-field, not all-or-nothing.
+  const rawCanvas = (analysis?.canvas ?? (analysis?.business as unknown as { canvas?: BusinessCanvasData } | null | undefined)?.canvas) as BusinessCanvasData | null | undefined;
+  const businessCanvas =
+    rawCanvas && Object.keys(rawCanvas).length > 0
+      ? {
+          canvas: rawCanvas,
+          versionSeq: analysis?.version ?? 1,
+          generatedAt: analysis?.updatedAt ?? new Date(),
+        }
+      : null;
+
   const rawMoat = analysis?.moat as unknown as MoatMock | null | undefined;
   const moat: MoatMock =
     rawMoat?.dimensions && rawMoat.dimensions.length > 0
       ? rawMoat
       : getMoatMock(company.canonicalName, company.ticker);
-  const profile = analysis?.profile as unknown as { title: string; content: string } | null | undefined;
-  const business = (analysis?.business as unknown as { narrative?: { title: string; content: string } } | null | undefined)?.narrative;
-  const mockNarrative = buildCompanyNarrative({
-    companyName: company.canonicalName,
-    ticker: company.ticker,
-    sector: company.sector ?? null,
-    industry: typeof meta.industry === "string" ? meta.industry : null,
-    exchange: typeof meta.exchange === "string" ? meta.exchange : null,
-    latestYear,
-    revenue: rev,
-  });
-  const overviewTitle = profile?.title || "公司概览";
-  const overviewContent = analysis?.overview || profile?.content || mockNarrative.overview.content;
-  const companyNarrative: CompanyNarrative = {
-    overview: {
-      title: overviewTitle,
-      content: overviewContent,
-    },
-    business: business ?? mockNarrative.business,
-  };
-  const rawCanvas = (analysis?.canvas ?? (analysis?.business as unknown as { canvas?: BusinessCanvasData } | null | undefined)?.canvas) as BusinessCanvasData | null | undefined;
-  const businessCanvas = rawCanvas && analysis
-    ? { canvas: rawCanvas, versionSeq: analysis.version, generatedAt: analysis.updatedAt }
-    : null;
+
   const strongestDimensions = [...moat.dimensions]
     .sort((a, b) => b.score - a.score)
     .slice(0, 3);
@@ -604,499 +341,504 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   const radarRings = [0.25, 0.5, 0.75, 1];
   const initialTabId = typeof rawTab === "string" ? rawTab.trim() : "";
 
+  const baseCompanyUrl = canonicalCompanyUrl ?? canonicalUrl;
+
+  const dashboard = buildCompanyFinancialDashboard(company, financials, financialsCurrency);
+
   return (
-    <div className={`company-page ${isEmbed ? "company-page--embed" : ""}`}>
+    <div className={`company-page dvl-page ${isEmbed ? "company-page--embed" : ""}`}>
       {!isEmbed ? <SiteNav /> : null}
       <CompanyAgentDialog companyName={zhName} ticker={company.ticker} />
 
-      <div className="company-wrap">
-        <CompanyViewContainer
-          backHref="/company"
-          dvlHref={canonicalUrl ? canonicalUrl.replace("/company/", "/dvl/") : undefined}
-        >
-          <section className="company-hero">
-                <div className="company-hero-main">
-                  <div className="company-hero-copy">
-                    <p className="company-eyebrow">{company.cik ? "SEC 公司档案" : "公司档案"}</p>
-                    <h1 className="company-name">
-                      <CompanyDisplayName
-                        zhName={zhName}
-                        enName={enNameShort}
-                        className="company-display--hero"
-                      />
-                    </h1>
-                  </div>
-                  <div className="company-intro-band">
-                    <div className="company-narrative-block">
-                      <h3>{companyNarrative.overview.title}</h3>
-                      <p className="company-intro">{companyNarrative.overview.content}</p>
-                    </div>
-                  </div>
-                  <aside className="company-profile-card" aria-label="Company profile">
-                    <dl className="company-profile-grid">
-                      {profileFacts.map((fact) => (
-                        <div key={fact.label} className="company-profile-row">
-                          <dt>
-                            <span className="company-profile-label">{fact.label}</span>
-                            <span className="company-profile-sub">{fact.subLabel}</span>
-                          </dt>
-                          <dd>{fact.value}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  </aside>
-                </div>
-              </section>
+      <div className="company-wrap dvl-wrap">
+        {/* ── Top Navigation ── */}
+        <nav className="dvl-top-nav-bar" aria-label="公司导航">
+          <Link href="/company" className="dvl-back-link">
+            ← 公司
+          </Link>
+        </nav>
 
-              {availablePriceTickers.length > 0 ? (
-          <section className="company-section company-price-section">
-            <div className="company-price-embed-head">
-              <h3>价格历史</h3>
-            </div>
-            <StockPriceChartLazy tickers={availablePriceTickers} />
-          </section>
-        ) : null}
+        {/* ── 1. Flagship Hero Card: The Digital Value Line Card ── */}
+        <section className="dvl-flagship-card-section" aria-label="数字价值线核心看板">
+          {valueLineData ? (
+            <ValueLineCard data={valueLineData} />
+          ) : (
+            <div className="company-empty">该标的暂无完整数字价值线数据</div>
+          )}
+        </section>
 
-        <CompanySectionTabs
-          tabs={[
-            { id: "business", label: "业务分析" },
-            { id: "financial", label: "财务分析" },
-            { id: "value", label: "价值分析" },
-            { id: "management", label: "管理分析", ...(hasManagement ? {} : { note: "●" }) },
-            { id: "valuation", label: "估值分析", ...(hasValuation ? {} : { note: "●" }) },
-            { id: "holdings", label: "大师持仓" },
-            { id: "references", label: "参考资料" },
-          ]}
-          initialTabId={initialTabId}
-        >
-          <section className="company-section" data-tab-panel="business">
-            <div className="company-financial-trend-head">
-              <h3>业务画布{businessCanvas ? "" : "（构建中）"}</h3>
-            </div>
-            {businessCanvas ? (
-              <CompanyBusinessCanvas
-                data={businessCanvas.canvas}
-                meta={{
-                  versionSeq: businessCanvas.versionSeq,
-                  generatedAt: businessCanvas.generatedAt,
-                }}
-              />
-            ) : (
-              <div className="company-canvas-placeholder">
-                <p>商业画布数据正在构建中。</p>
-                <span>可结合上方公司概览与下方财务分析了解这家公司。</span>
+        {/* ── 2. Structured Deep Dive Tabs ── */}
+        <div className="dvl-deep-dive-section" id="dvl-deep-dive">
+          <div className="dvl-deep-dive-header">
+            <h2 className="dvl-deep-dive-title">深度投研分析</h2>
+            <p className="dvl-deep-dive-sub">商业画布 · 财务全景 · 护城河雷达 · 13F大师持仓 · 官方年报查验</p>
+          </div>
+
+          <CompanySectionTabs
+            tabs={[
+              { id: "business", label: "商业分析" },
+              { id: "financial", label: "财务分析" },
+              { id: "value", label: "价值分析" },
+              { id: "management", label: "管理分析", ...(hasManagement ? {} : { note: "●" }) },
+              { id: "valuation", label: "估值分析", ...(hasValuation ? {} : { note: "●" }) },
+              { id: "holdings", label: "大师持仓" },
+              { id: "references", label: "参考资料" },
+            ]}
+            initialTabId={initialTabId}
+          >
+            {/* Tab 1: Business Analysis — Business Model Canvas ONLY (No redundant text overview) */}
+            <section className="company-section" data-tab-panel="business">
+              <div className="company-financial-trend-head">
+                <h3>商业模式九宫格画布</h3>
+                <span className="dvl-section-subtitle">解构客户细分、核心价值主张、渠道触点与成本收入模型</span>
               </div>
-            )}
-          </section>
-
-          <section className="company-section" data-tab-panel="financial">
-            <CompanyFinancialDashboardComponent
-              dashboard={dashboard}
-              financials={financials}
-              quarterlyFinancials={quarterlyFinancials}
-              ttmMetrics={ttmMetrics}
-              currency={financialsCurrency}
-              emptyMessage={
-                company.cik
-                  ? "暂无 10-K 年报结构化数据。可先运行 `import:10k` 脚本。"
-                  : "暂无结构化财务数据，A 股/港股财务数据接入规划中。"
-              }
-            />
-          </section>
-
-          <section className="company-section" data-tab-panel="value">
-            <div className="company-value-layout">
-              <div className="company-radar-card">
-                <div className="company-radar-head">
-                  <h3>十维评分</h3>
-                  <p>10 Point Radar</p>
+              {businessCanvas ? (
+                <CompanyBusinessCanvas
+                  data={businessCanvas.canvas}
+                  meta={{
+                    versionSeq: businessCanvas.versionSeq,
+                    generatedAt: businessCanvas.generatedAt,
+                  }}
+                />
+              ) : (
+                <div className="company-canvas-placeholder">
+                  <p>商业模式画布正在构建中。</p>
+                  <span>可通过上方数字价值线卡片与下方财务分析了解该标的核心运营特征。</span>
                 </div>
-                <svg viewBox="0 0 336 336" className="company-radar-svg" aria-label="价值分析十维蜘蛛图">
-                  {radarRings.map((ring) => {
-                    const ringPoints = radarPoints
-                      .map((point) => {
-                        const x = radarCenter + (point.x - radarCenter) * ring;
-                        const y = radarCenter + (point.y - radarCenter) * ring;
-                        return `${x},${y}`;
-                      })
-                      .join(" ");
-                    return <polygon key={ring} points={ringPoints} className="company-radar-ring" />;
-                  })}
-                  {radarPoints.map((point, index) => (
-                    <line
-                      key={moat.dimensions[index].key}
-                      x1={radarCenter}
-                      y1={radarCenter}
-                      x2={point.x}
-                      y2={point.y}
-                      className="company-radar-axis"
-                    />
-                  ))}
-                  <polygon points={radarPolygon} className="company-radar-area" />
-                  {radarPoints.map((point, index) => {
-                    const ratio = moat.dimensions[index].score / 10;
-                    const x = radarCenter + (point.x - radarCenter) * ratio;
-                    const y = radarCenter + (point.y - radarCenter) * ratio;
-                    const scoreDx = x >= radarCenter ? 8 : -8;
-                    const scoreDy = y >= radarCenter ? 4 : -6;
-                    return (
-                      <g key={`${moat.dimensions[index].key}-dot`}>
-                        <circle cx={x} cy={y} r="3.2" className="company-radar-dot" />
-                        <text
-                          x={x + scoreDx}
-                          y={y + scoreDy}
-                          textAnchor={x >= radarCenter ? "start" : "end"}
-                          className="company-radar-score"
-                        >
-                          {moat.dimensions[index].score}
+              )}
+            </section>
+
+            {/* Tab 2: Financial Analysis */}
+            <section className="company-section" data-tab-panel="financial">
+              <CompanyFinancialDashboardComponent
+                dashboard={dashboard}
+                financials={financials}
+                quarterlyFinancials={quarterlyFinancials}
+                ttmMetrics={ttmMetrics}
+                currency={financialsCurrency}
+                emptyMessage={
+                  company.cik
+                    ? "暂无 10-K 年报结构化数据。可先运行 `import:10k` 脚本。"
+                    : "暂无结构化财务数据，A 股/港股财务数据接入规划中。"
+                }
+              />
+            </section>
+
+            {/* Tab 3: Value Analysis / Moat */}
+            <section className="company-section" data-tab-panel="value">
+              <div className="company-value-layout">
+                <div className="company-radar-card">
+                  <div className="company-radar-head">
+                    <h3>十维评分</h3>
+                    <p>10 Point Radar</p>
+                  </div>
+                  <svg viewBox="0 0 336 336" className="company-radar-svg" aria-label="价值分析十维蜘蛛图">
+                    {radarRings.map((ring) => {
+                      const ringPoints = radarPoints
+                        .map((point) => {
+                          const x = radarCenter + (point.x - radarCenter) * ring;
+                          const y = radarCenter + (point.y - radarCenter) * ring;
+                          return `${x},${y}`;
+                        })
+                        .join(" ");
+                      return <polygon key={ring} points={ringPoints} className="company-radar-ring" />;
+                    })}
+                    {radarPoints.map((point, index) => (
+                      <line
+                        key={moat.dimensions[index].key}
+                        x1={radarCenter}
+                        y1={radarCenter}
+                        x2={point.x}
+                        y2={point.y}
+                        className="company-radar-axis"
+                      />
+                    ))}
+                    <polygon points={radarPolygon} className="company-radar-area" />
+                    {radarPoints.map((point, index) => {
+                      const ratio = moat.dimensions[index].score / 10;
+                      const x = radarCenter + (point.x - radarCenter) * ratio;
+                      const y = radarCenter + (point.y - radarCenter) * ratio;
+                      const scoreDx = x >= radarCenter ? 8 : -8;
+                      const scoreDy = y >= radarCenter ? 4 : -6;
+                      return (
+                        <g key={`${moat.dimensions[index].key}-dot`}>
+                          <circle cx={x} cy={y} r="3.2" className="company-radar-dot" />
+                          <text
+                            x={x + scoreDx}
+                            y={y + scoreDy}
+                            textAnchor={x >= radarCenter ? "start" : "end"}
+                            className="company-radar-score"
+                          >
+                            {moat.dimensions[index].score}
+                          </text>
+                        </g>
+                      );
+                    })}
+                    {radarPoints.map((point, index) => (
+                      <g key={`${moat.dimensions[index].key}-label`}>
+                        <text x={point.labelX} y={point.labelY} textAnchor={point.anchor} className="company-radar-label">
+                          <tspan className="company-radar-index">{circledIndex(index)}</tspan>
+                          <tspan dx="3">{moat.dimensions[index].zhLabel}</tspan>
                         </text>
                       </g>
-                    );
-                  })}
-                  {radarPoints.map((point, index) => (
-                    <g key={`${moat.dimensions[index].key}-label`}>
-                      <text x={point.labelX} y={point.labelY} textAnchor={point.anchor} className="company-radar-label">
-                        <tspan className="company-radar-index">{circledIndex(index)}</tspan>
-                        <tspan dx="3">{moat.dimensions[index].zhLabel}</tspan>
-                      </text>
-                    </g>
-                  ))}
-                </svg>
-              </div>
-
-              <div className="company-value-side">
-                <div className="company-moat-summary-grid">
-                  <article className="company-moat-kicker">
-                    <span>价值类型</span>
-                    <strong>{moat.summary.type}</strong>
-                    <small>Value Type</small>
-                  </article>
-                  <article className="company-moat-kicker">
-                    <span>护城河强度</span>
-                    <strong>{moat.summary.strength}</strong>
-                    <small>Strength</small>
-                  </article>
-                  <article className="company-moat-kicker">
-                    <span>持续性</span>
-                    <strong>{moat.summary.durability}</strong>
-                    <small>Durability</small>
-                  </article>
-                  <article className="company-moat-kicker">
-                    <span>资本配置</span>
-                    <strong>{moat.summary.allocation}</strong>
-                    <small>Capital Allocation</small>
-                  </article>
+                    ))}
+                  </svg>
                 </div>
-                <p className="company-moat-thesis">{moat.summary.thesis}</p>
 
-                <div className="company-value-highlights">
-                  <article className="company-value-note-block">
-                    <h3>最强三项</h3>
-                    <p>Top Strengths</p>
-                    <ul>
-                      {strongestDimensions.map((dimension) => (
-                        <li key={dimension.key}>
-                          <span>
-                            <span className="company-value-index">{circledIndex(moat.dimensions.findIndex((item) => item.key === dimension.key))}</span>
-                            {" "}
-                            {dimension.zhLabel}
-                          </span>
-                          <strong>{dimension.score}</strong>
-                        </li>
-                      ))}
-                    </ul>
-                  </article>
-                  <article className="company-value-note-block">
-                    <h3>相对短板</h3>
-                    <p>Weak Spots</p>
-                    <ul>
-                      {weakestDimensions.map((dimension) => (
-                        <li key={dimension.key}>
-                          <span>
-                            <span className="company-value-index">{circledIndex(moat.dimensions.findIndex((item) => item.key === dimension.key))}</span>
-                            {" "}
-                            {dimension.zhLabel}
-                          </span>
-                          <strong>{dimension.score}</strong>
-                        </li>
-                      ))}
-                    </ul>
-                  </article>
-                </div>
-              </div>
-            </div>
-
-            <div className="company-value-table">
-              {moat.dimensions.map((dimension) => (
-                <article key={dimension.key} className="company-value-row">
-                  <div className="company-value-row-head">
-                    <div>
-                      <h3>
-                        <span className="company-value-index">{circledIndex(moat.dimensions.findIndex((item) => item.key === dimension.key))}</span>
-                        {" "}
-                        {dimension.zhLabel}
-                      </h3>
-                      <p>{dimension.enLabel}</p>
-                    </div>
-                    <div className="company-value-row-score" aria-label={`${dimension.zhLabel} ${dimension.score} / 10`}>
-                      <strong>{dimension.score}</strong>
-                      <span>/ 10</span>
-                    </div>
+                <div className="company-value-side">
+                  <div className="company-moat-summary-grid">
+                    <article className="company-moat-kicker">
+                      <span>价值类型</span>
+                      <strong>{moat.summary.type}</strong>
+                      <small>Value Type</small>
+                    </article>
+                    <article className="company-moat-kicker">
+                      <span>护城河强度</span>
+                      <strong>{moat.summary.strength}</strong>
+                      <small>Strength</small>
+                    </article>
+                    <article className="company-moat-kicker">
+                      <span>持续性</span>
+                      <strong>{moat.summary.durability}</strong>
+                      <small>Durability</small>
+                    </article>
+                    <article className="company-moat-kicker">
+                      <span>资本配置</span>
+                      <strong>{moat.summary.allocation}</strong>
+                      <small>Capital Allocation</small>
+                    </article>
                   </div>
-                  <p className="company-value-row-verdict">{dimension.verdict}</p>
-                  <p className="company-value-row-evidence">{dimension.evidence}</p>
-                </article>
-              ))}
-            </div>
+                  <p className="company-moat-thesis">{moat.summary.thesis}</p>
 
-            <div className="company-moat-notes">
-              {moat.notes.map((note) => (
-                <article key={note.label} className="company-moat-note">
-                  <h3>{note.label}</h3>
-                  <p className="company-moat-note-en">{note.enLabel}</p>
-                  <p className="company-moat-note-value">{note.value}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="company-section" data-tab-panel="management">
-            {hasManagement && managementArtifact ? (
-              <ManagementAnalysisSection artifact={managementArtifact} usFiling={Boolean(company.cik)} />
-            ) : (
-              <div className="company-placeholder-grid">
-                <article className="company-placeholder-card">
-                  <h3>管理层与董事会</h3>
-                  <p>后续可接入 CEO、CFO、董事会结构、任职履历与关键股权激励信息。</p>
-                </article>
-                <article className="company-placeholder-card">
-                  <h3>资本配置</h3>
-                  <p>后续可补充回购、并购、分红、投资回报率与管理层执行纪律的长期跟踪。</p>
-                </article>
-                <article className="company-placeholder-card">
-                  <h3>组织与文化</h3>
-                  <p>后续可接入管理层访谈、股东信、10-K 讨论区和公司治理相关证据。</p>
-                </article>
-              </div>
-            )}
-          </section>
-
-          <section className="company-section" data-tab-panel="valuation">
-            {hasValuation && valuationArtifact ? (
-              <ValuationAnalysisSection artifact={valuationArtifact} />
-            ) : (
-              <div className="company-placeholder-grid">
-                <article className="company-placeholder-card">
-                  <h3>倍数估值</h3>
-                  <p>后续可展示 PE、EV/EBIT、P/FCF、PS 等历史区间与行业对比。</p>
-                </article>
-                <article className="company-placeholder-card">
-                  <h3>现金流模型</h3>
-                  <p>后续可接入 DCF、增长假设、资本回报和安全边际区间。</p>
-                </article>
-                <article className="company-placeholder-card">
-                  <h3>估值判断</h3>
-                  <p>后续可把价格历史、财务趋势和管理分析合成一个统一的估值结论。</p>
-                </article>
-              </div>
-            )}
-          </section>
-
-          <section className="company-section" data-tab-panel="holdings">
-            <div className="company-financial-trend-head">
-              <h3>大师持仓（13F）</h3>
-            </div>
-            {holders.holders.length ? (
-              <>
-                <div className="company-holders-table-wrap">
-                  <table className="company-holders-table">
-                    <thead>
-                      <tr>
-                        <th className="holdings-th">机构<br/><span className="holdings-th-en">Holder</span></th>
-                        <th className="holdings-th">证券<br/><span className="holdings-th-en">Ticker</span></th>
-                        <th className="holdings-th holdings-th--num">仓位<br/><span className="holdings-th-en">% of Portfolio</span></th>
-                        <th className="holdings-th">近期动作<br/><span className="holdings-th-en">Recent Activity</span></th>
-                        <th className="holdings-th holdings-th--num">动作季度<br/><span className="holdings-th-en">Activity Quarter</span></th>
-                        <th className="holdings-th holdings-th--num">持股<br/><span className="holdings-th-en">Shares</span></th>
-                        <th className="holdings-th holdings-th--num">申报价<br/><span className="holdings-th-en">Reported Price*</span></th>
-                        <th className="holdings-th holdings-th--num">市值（亿）<br/><span className="holdings-th-en">Value</span></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {holders.holders.map((h, i) => {
-                        const member = h.tribeId ? tribeMemberById.get(h.tribeId) ?? null : null;
-                        const holderName = member?.nameZh ?? h.holderName;
-                        // Show holder name only on first row of the group
-                        const prevHolder = i > 0 ? holders.holders[i - 1] : null;
-                        const isFirstOfGroup = !prevHolder || prevHolder.holderName !== h.holderName;
-                        return (
-                          <tr
-                            key={`${h.id}-${h.ticker ?? "unknown"}-${h.sourceYear ?? "unknown"}-${h.sourceQuarter ?? "unknown"}-${i}`}
-                            className={h.isSoldOut ? "company-holders-row--soldout" : ""}
-                          >
-                            <td className="holdings-td holdings-td--num company-holders-holder">
-                              {isFirstOfGroup ? (
-                                h.tribeId ? (
-                                  <Link href={`/master/${h.tribeId}`} className="company-holder-link company-holder-link--name">
-                                    <strong>{holderName}</strong>
-                                  </Link>
-                                ) : (
-                                  <strong>{holderName}</strong>
-                                )
-                              ) : (
-                                <span />
-                              )}
-                            </td>
-                            <td className="holdings-td holdings-td--num company-holders-stock">
-                              <strong>{h.ticker ?? "—"}</strong>
-                            </td>
-                            <td className="holdings-td holdings-td--num">
-                              {h.percent != null ? `${h.percent.toFixed(2)}%` : "—"}
-                            </td>
-                            <td className="holdings-td holdings-td--act">
-                              {h.activity === "SoldOut" ? (
-                                <span className="holdings-activity-soldout">Sold Out</span>
-                              ) : h.activity === "New" ? (
-                                <span className="holdings-activity-new">New</span>
-                              ) : h.activity === "Added" ? (
-                                <span className="holdings-activity-delta holdings-activity-delta--up">
-                                  ↑ {formatSignedPct(h.shareDeltaPct)}
-                                </span>
-                              ) : h.activity === "Reduced" ? (
-                                <span className="holdings-activity-delta holdings-activity-delta--down">
-                                  ↓ {formatSignedPct(h.shareDeltaPct)}
-                                </span>
-                              ) : (
-                                <span className="holdings-activity-delta">—</span>
-                              )}
-                            </td>
-                            <td className="holdings-td holdings-td--num">
-                              {h.sourceYear != null && h.sourceQuarter != null
-                                ? `${h.sourceYear} Q${h.sourceQuarter}`
-                                : "—"}
-                            </td>
-                            <td className="holdings-td holdings-td--num">
-                              {formatShares(h.shares)}
-                            </td>
-                            <td className="holdings-td holdings-td--num">
-                              {formatPriceFromValueAndShares(h.valueUsd, h.shares)}
-                            </td>
-                            <td className="holdings-td holdings-td--num">
-                              {formatMoney(h.valueUsd)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                  <div className="company-value-highlights">
+                    <article className="company-value-note-block">
+                      <h3>最强三项</h3>
+                      <p>Top Strengths</p>
+                      <ul>
+                        {strongestDimensions.map((dimension) => (
+                          <li key={dimension.key}>
+                            <span>
+                              <span className="company-value-index">{circledIndex(moat.dimensions.findIndex((item) => item.key === dimension.key))}</span>
+                              {" "}
+                              {dimension.zhLabel}
+                            </span>
+                            <strong>{dimension.score}</strong>
+                          </li>
+                        ))}
+                      </ul>
+                    </article>
+                    <article className="company-value-note-block">
+                      <h3>相对短板</h3>
+                      <p>Weak Spots</p>
+                      <ul>
+                        {weakestDimensions.map((dimension) => (
+                          <li key={dimension.key}>
+                            <span>
+                              <span className="company-value-index">{circledIndex(moat.dimensions.findIndex((item) => item.key === dimension.key))}</span>
+                              {" "}
+                              {dimension.zhLabel}
+                            </span>
+                            <strong>{dimension.score}</strong>
+                          </li>
+                        ))}
+                      </ul>
+                    </article>
+                  </div>
                 </div>
-                <p className="company-holders-note">* Reported Price = 市值 ÷ 持股数，按申报日折算。Sold Out 行的仓位、持股、申报价和市值为清仓前最后一次披露的持仓数据。</p>
-              </>
-            ) : (
-              <p className="company-empty">暂无该公司的持仓记录。</p>
-            )}
-          </section>
+              </div>
 
-          <section className="company-section" data-tab-panel="references">
-            <div className="company-financial-trend-head">
-              <h3>参考资料</h3>
-            </div>
-            {referenceFilings.length ? (
-              <div className="company-reference-list">
-                {referenceFilings.map((filing) => {
-                  const meta = normalizeMeta(filing.metadata);
-                  const form = typeof meta.form === "string" && meta.form.trim() ? meta.form.trim() : filing.kind.toUpperCase();
-                  const periodLabel = filing.periodYear
-                    ? `${filing.periodYear}${filing.periodQuarter ? (filing.periodQuarter === 2 && filing.kind.includes("interim") ? " H1" : ` Q${filing.periodQuarter}`) : ""}`
-                    : "—";
-
-                  const hasReadableArtifact = filing.artifacts.some(
-                    (a) => a.kind === "primary_html" || a.kind === "primary_pdf"
-                  );
-                  const readerBadge = filing.artifacts.some((a) => a.kind === "primary_html")
-                    ? "在线阅读 (HTML)"
-                    : filing.artifacts.some((a) => a.kind === "primary_pdf")
-                      ? "在线阅读 (PDF)"
-                      : filing.url
-                        ? "查看原文 ↗"
-                        : null;
-
-                  const filingDate = filing.filedAt ? filing.filedAt.toISOString().slice(0, 10) : null;
-
-                  const cardHead = (
-                    <div className="company-reference-card-head">
+              <div className="company-value-table">
+                {moat.dimensions.map((dimension) => (
+                  <article key={dimension.key} className="company-value-row">
+                    <div className="company-value-row-head">
                       <div>
                         <h3>
-                          {periodLabel} · {form}
+                          <span className="company-value-index">{circledIndex(moat.dimensions.findIndex((item) => item.key === dimension.key))}</span>
+                          {" "}
+                          {dimension.zhLabel}
                         </h3>
-                        {filingDate ? (
-                          <span className="company-reference-card-date">{filingDate}</span>
+                        <p>{dimension.enLabel}</p>
+                      </div>
+                      <div className="company-value-row-score" aria-label={`${dimension.zhLabel} ${dimension.score} / 10`}>
+                        <strong>{dimension.score}</strong>
+                        <span>/ 10</span>
+                      </div>
+                    </div>
+                    <p className="company-value-row-verdict">{dimension.verdict}</p>
+                    <p className="company-value-row-evidence">{dimension.evidence}</p>
+                  </article>
+                ))}
+              </div>
+
+              <div className="company-moat-notes">
+                {moat.notes.map((note) => (
+                  <article key={note.label} className="company-moat-note">
+                    <h3>{note.label}</h3>
+                    <p className="company-moat-note-en">{note.enLabel}</p>
+                    <p className="company-moat-note-value">{note.value}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            {/* Tab 4: Management Analysis */}
+            <section className="company-section" data-tab-panel="management">
+              {hasManagement && managementArtifact ? (
+                <ManagementAnalysisSection artifact={managementArtifact} usFiling={Boolean(company.cik)} />
+              ) : (
+                <div className="company-placeholder-grid">
+                  <article className="company-placeholder-card">
+                    <h3>管理层与董事会</h3>
+                    <p>后续可接入 CEO、CFO、董事会结构、任职履历与关键股权激励信息。</p>
+                  </article>
+                  <article className="company-placeholder-card">
+                    <h3>资本配置</h3>
+                    <p>后续可补充回购、并购、分红、投资回报率与管理层执行纪律的长期跟踪。</p>
+                  </article>
+                  <article className="company-placeholder-card">
+                    <h3>组织与文化</h3>
+                    <p>后续可接入管理层访谈、股东信、10-K 讨论区和公司治理相关证据。</p>
+                  </article>
+                </div>
+              )}
+            </section>
+
+            {/* Tab 5: Valuation Analysis */}
+            <section className="company-section" data-tab-panel="valuation">
+              {availablePriceTickers.length > 0 ? (
+                <div className="dvl-tab-price-block" style={{ marginBottom: "2rem" }}>
+                  <div className="company-financial-trend-head">
+                    <h3>全周期行情走势</h3>
+                    <span className="dvl-section-subtitle">支持日线、周线、成交量及多档周期交互 (1M ~ Max)</span>
+                  </div>
+                  <StockPriceChartLazy tickers={availablePriceTickers} />
+                </div>
+              ) : null}
+
+              {hasValuation && valuationArtifact ? (
+                <ValuationAnalysisSection artifact={valuationArtifact} />
+              ) : (
+                <div className="company-placeholder-grid">
+                  <article className="company-placeholder-card">
+                    <h3>倍数估值</h3>
+                    <p>后续可展示 PE、EV/EBIT、P/FCF、PS 等历史区间与行业对比。</p>
+                  </article>
+                  <article className="company-placeholder-card">
+                    <h3>现金流模型</h3>
+                    <p>后续可接入 DCF、增长假设、资本回报和安全边际区间。</p>
+                  </article>
+                  <article className="company-placeholder-card">
+                    <h3>估值判断</h3>
+                    <p>后续可把价格历史、财务趋势和管理分析合成一个统一的估值结论。</p>
+                  </article>
+                </div>
+              )}
+            </section>
+
+            {/* Tab 6: Master Holdings (13F) */}
+            <section className="company-section" data-tab-panel="holdings">
+              <div className="company-financial-trend-head">
+                <h3>大师持仓（13F 全量历史明细）</h3>
+                <span className="dvl-section-subtitle">追踪顶级价值投资者建仓成本、仓位占比与季度加减仓动向</span>
+              </div>
+              {holders.holders.length ? (
+                <>
+                  <div className="company-holders-table-wrap">
+                    <table className="company-holders-table">
+                      <thead>
+                        <tr>
+                          <th className="holdings-th">机构<br/><span className="holdings-th-en">Holder</span></th>
+                          <th className="holdings-th">证券<br/><span className="holdings-th-en">Ticker</span></th>
+                          <th className="holdings-th holdings-th--num">仓位<br/><span className="holdings-th-en">% of Portfolio</span></th>
+                          <th className="holdings-th">近期动作<br/><span className="holdings-th-en">Recent Activity</span></th>
+                          <th className="holdings-th holdings-th--num">动作季度<br/><span className="holdings-th-en">Activity Quarter</span></th>
+                          <th className="holdings-th holdings-th--num">持股<br/><span className="holdings-th-en">Shares</span></th>
+                          <th className="holdings-th holdings-th--num">申报价<br/><span className="holdings-th-en">Reported Price*</span></th>
+                          <th className="holdings-th holdings-th--num">市值（亿）<br/><span className="holdings-th-en">Value</span></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {holders.holders.map((h, i) => {
+                          const member = h.tribeId ? tribeMemberById.get(h.tribeId) ?? null : null;
+                          const holderName = member?.nameZh ?? h.holderName;
+                          const prevHolder = i > 0 ? holders.holders[i - 1] : null;
+                          const isFirstOfGroup = !prevHolder || prevHolder.holderName !== h.holderName;
+                          const secRow = securities.find((s) => s.ticker?.toUpperCase() === h.ticker?.toUpperCase());
+                          const classLabel = secRow ? formatSecurityClassLabel(secRow) : null;
+                          return (
+                            <tr
+                              key={`${h.id}-${h.ticker ?? "unknown"}-${h.sourceYear ?? "unknown"}-${h.sourceQuarter ?? "unknown"}-${i}`}
+                              className={h.isSoldOut ? "company-holders-row--soldout" : ""}
+                            >
+                              <td className="holdings-td holdings-td--num company-holders-holder">
+                                {isFirstOfGroup ? (
+                                  h.tribeId ? (
+                                    <Link href={`/master/${h.tribeId}`} className="company-holder-link company-holder-link--name">
+                                      <strong>{holderName}</strong>
+                                    </Link>
+                                  ) : (
+                                    <strong>{holderName}</strong>
+                                  )
+                                ) : (
+                                  <span />
+                                )}
+                              </td>
+                              <td className="holdings-td holdings-td--num company-holders-stock">
+                                <strong>{h.ticker ?? "—"}</strong>
+                                {classLabel ? <span className="holdings-stock-class">{classLabel}</span> : null}
+                              </td>
+                              <td className="holdings-td holdings-td--num">
+                                {h.percent != null ? `${h.percent.toFixed(2)}%` : "—"}
+                              </td>
+                              <td className="holdings-td holdings-td--act">
+                                {h.activity === "SoldOut" ? (
+                                  <span className="holdings-activity-soldout">Sold Out</span>
+                                ) : h.activity === "New" ? (
+                                  <span className="holdings-activity-new">New</span>
+                                ) : h.activity === "Added" ? (
+                                  <span className="holdings-activity-delta holdings-activity-delta--up">
+                                    ↑ {formatSignedPct(h.shareDeltaPct)}
+                                  </span>
+                                ) : h.activity === "Reduced" ? (
+                                  <span className="holdings-activity-delta holdings-activity-delta--down">
+                                    ↓ {formatSignedPct(h.shareDeltaPct)}
+                                  </span>
+                                ) : (
+                                  <span className="holdings-activity-delta">—</span>
+                                )}
+                              </td>
+                              <td className="holdings-td holdings-td--num">
+                                {h.sourceYear != null && h.sourceQuarter != null
+                                  ? `${h.sourceYear} Q${h.sourceQuarter}`
+                                  : "—"}
+                              </td>
+                              <td className="holdings-td holdings-td--num">
+                                {formatShares(h.shares)}
+                              </td>
+                              <td className="holdings-td holdings-td--num">
+                                {formatPriceFromValueAndShares(h.valueUsd, h.shares)}
+                              </td>
+                              <td className="holdings-td holdings-td--num">
+                                {formatMoney(h.valueUsd == null ? null : String(h.valueUsd))}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="company-footnote">
+                    * 申报价按 SEC 13F 申报市值除以申报股数推算，供建仓成本区间参考。Sold Out 行的仓位、持股、申报价和市值为清仓前最后一次披露的持仓数据。
+                  </p>
+                </>
+              ) : (
+                <div className="company-empty">
+                  {company.market === "us" || company.cik
+                    ? "暂无部落大师 13F 重仓记录。"
+                    : "当前 13F 披露体系主要覆盖美股标的，A 股与港股大师持仓（公募/外资）后续接入中。"}
+                </div>
+              )}
+            </section>
+
+            {/* Tab 7: Reference Filings & 10-K */}
+            <section className="company-section" data-tab-panel="references">
+              <div className="company-financial-trend-head">
+                <h3>官方报告与参考资料</h3>
+              </div>
+              {referenceFilings.length ? (
+                <div className="company-reference-list">
+                  {referenceFilings.map((filing) => {
+                    const meta = normalizeMeta(filing.metadata);
+                    const form = typeof meta.form === "string" && meta.form.trim() ? meta.form.trim() : filing.kind.toUpperCase();
+                    const periodLabel = filing.periodYear
+                      ? `${filing.periodYear}${filing.periodQuarter ? (filing.periodQuarter === 2 && filing.kind.includes("interim") ? " H1" : ` Q${filing.periodQuarter}`) : ""}`
+                      : "—";
+
+                    const hasReadableArtifact = filing.artifacts.some(
+                      (a) => a.kind === "primary_html" || a.kind === "primary_pdf"
+                    );
+                    const readerBadge = filing.artifacts.some((a) => a.kind === "primary_html")
+                      ? "在线阅读 (HTML)"
+                      : filing.artifacts.some((a) => a.kind === "primary_pdf")
+                        ? "在线阅读 (PDF)"
+                        : filing.url
+                          ? "查看原文 ↗"
+                          : null;
+
+                    const filingDate = filing.filedAt ? filing.filedAt.toISOString().slice(0, 10) : null;
+
+                    const cardHead = (
+                      <div className="company-reference-card-head">
+                        <div>
+                          <h3>
+                            {periodLabel} · {form}
+                          </h3>
+                          {filingDate ? (
+                            <span className="company-reference-card-date">{filingDate}</span>
+                          ) : null}
+                        </div>
+                        {readerBadge ? (
+                          <span className={`company-reference-badge ${hasReadableArtifact ? "company-reference-badge--active" : ""}`}>
+                            {readerBadge}
+                          </span>
                         ) : null}
                       </div>
-                      {readerBadge ? (
-                        <span className={`company-reference-badge ${hasReadableArtifact ? "company-reference-badge--active" : ""}`}>
-                          {readerBadge}
-                        </span>
-                      ) : null}
-                    </div>
-                  );
-
-                  if (hasReadableArtifact) {
-                    return (
-                      <Link
-                        key={filing.id}
-                        className="company-reference-card company-reference-card--clickable"
-                        href={`${formatCompanyUrl(company) ?? "/company"}/filing/${filing.id}`}
-                      >
-                        {cardHead}
-                      </Link>
                     );
-                  }
 
-                  if (filing.url) {
+                    if (hasReadableArtifact) {
+                      return (
+                        <Link
+                          key={filing.id}
+                          className="company-reference-card company-reference-card--clickable"
+                          href={`${baseCompanyUrl}/filing/${filing.id}`}
+                        >
+                          {cardHead}
+                        </Link>
+                      );
+                    }
+
+                    if (filing.url) {
+                      return (
+                        <a
+                          key={filing.id}
+                          className="company-reference-card company-reference-card--clickable"
+                          href={filing.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {cardHead}
+                        </a>
+                      );
+                    }
+
                     return (
-                      <a
-                        key={filing.id}
-                        className="company-reference-card company-reference-card--clickable"
-                        href={filing.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
+                      <article key={filing.id} className="company-reference-card">
                         {cardHead}
-                      </a>
+                      </article>
                     );
-                  }
-
-                  return (
-                    <article key={filing.id} className="company-reference-card">
-                      {cardHead}
-                    </article>
-                  );
-                })}
-              </div>
-            ) : company.cik ? (
-              <p className="company-empty">暂无 10-K 归档资料。可先运行 `import:10k` 脚本。</p>
-            ) : (
-              <p className="company-empty">
-                {company.market === "cn"
-                  ? "A 股年报原文暂未接入，可前往"
-                  : "港股年报原文暂未接入，可前往"}{" "}
-                <a
-                  href={company.market === "cn" ? "http://www.cninfo.com.cn/" : "https://www.hkexnews.hk/index.htm"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {company.market === "cn" ? "巨潮资讯网" : "披露易 HKEXnews"}
-                </a>
-                {" "}搜索「{company.code}」查看原文。
-              </p>
-            )}
-          </section>
-
-        </CompanySectionTabs>
-        </CompanyViewContainer>
+                  })}
+                </div>
+              ) : company.cik ? (
+                <p className="company-empty">暂无 10-K 归档资料。可先运行 `import:10k` 脚本。</p>
+              ) : (
+                <p className="company-empty">
+                  {company.market === "cn"
+                    ? "A 股年报原文暂未接入，可前往"
+                    : "港股年报原文暂未接入，可前往"}{" "}
+                  <a
+                    href={company.market === "cn" ? "http://www.cninfo.com.cn/" : "https://www.hkexnews.hk/index.htm"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {company.market === "cn" ? "巨潮资讯网" : "披露易 HKEXnews"}
+                  </a>
+                  {" "}搜索「{company.code}」查看原文。
+                </p>
+              )}
+            </section>
+          </CompanySectionTabs>
+        </div>
       </div>
     </div>
   );
 }
-

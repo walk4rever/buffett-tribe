@@ -2,7 +2,7 @@
 
 # 价值部落 · Value Tribe — 产品设计文档
 
-> 最后更新：2026-09-23（v0.45.3）
+> 最后更新：2026-09-23（v0.45.4）
 
 ---
 
@@ -32,7 +32,7 @@
 6. [A股与港股覆盖扩展](#a股与港股覆盖扩展)
 7. [设计与技术基线](#设计与技术基线)
 8. [测试体系](#测试体系)
-9. [当前实现状态](#当前实现状态v0453)
+9. [当前实现状态](#当前实现状态v0454)
 10. [数据字典与工程口径](#数据字典与工程口径)
 11. [数据资产清单](#数据资产清单)
 12. [公司页财务看板](#公司页财务看板truth-of-source-设计)
@@ -699,12 +699,15 @@ NextAuth（Credentials Provider，`src/lib/auth.ts`）是现有唯一认证实�
    - 🏰 **核心护城河**：提取自深度研报的壁垒论据（品牌心智、软硬件生态高转换成本）。
    - ⚠️ **最脆弱环节 / 暗礁风险**：直指最薄弱命门，警惕资本亏损。
 
-#### 4. 路由与架构解耦范式：独立数字价值线 URL（`/dvl/[id]`）
+#### 4. 公司详情页统一收敛：全面以数字价值线（DVL）作为默认画布（`/company/[id]`）
 
+- **统一单一真理页面架构**：
+  - 彻底淘汰并删除旧版“经典视图”及视图切换组件（`CompanyViewContainer` / `.dvl-classic-switch-link`），未来全站所有公司详情页面迭代均基于统一的数字价值线（DVL）旗舰画布展开；
+  - 路由兼容：历史路由 `/dvl/[id]` 转换为轻量重定向中继，307 严格重定向至 `/company/[id]` 并保留 `?tab=...`、`?ticker=...` 等全量查询参数。
 - **三市场统一规范 Slug 体系（`formatCompanySlug`）**：
   - 核心设计原则：**公司 URL 锚定的是实体（Entity）本身，而非特定股票代码（Ticker）**；
-  - 规范 URL 格式：美股统一为 `/dvl/us-{10位标准CIK}`（例如 Alphabet `/dvl/us-0001652044`、苹果 `/dvl/us-0000320193`），A 股为 `/dvl/cn-{代码}`（如 `/dvl/cn-600519`），港股为 `/dvl/hk-{5位代码}`（如 `/dvl/hk-09992`）；
-  - 规范重定向：传入纯 Ticker（如 `/dvl/GOOG`、`/dvl/GOOGL`）或历史 CIK 时，系统执行 307 严格重定向至规范的 `us-xxxx` 实体 URL，并保留相应 `?ticker=...` 查询参数；`/company/[id]` 经典视图同步采用相同的规范 Slug。
+  - 规范 URL 格式：美股统一为 `/company/us-{10位标准CIK}`（例如 Alphabet `/company/us-0001652044`、苹果 `/company/us-0000320193`），A 股为 `/company/cn-{代码}`（如 `/company/cn-600519`），港股为 `/company/hk-{5位代码}`（如 `/company/hk-09992`）；
+  - 规范重定向：传入纯 Ticker（如 `/company/GOOG`、`/company/GOOGL`）或历史 CIK 时，系统执行 307 严格重定向至规范的 `us-xxxx` 实体 URL，并保留相应 `?ticker=...` 查询参数。
 - **多 Ticker / 分级股权（Share Class）原生交互支持**：
   - 针对美股多代码结构（如谷歌 GOOG Class C 无投票权与 GOOGL Class A 投票权；伯克希尔 BRK-A 与 BRK-B），`getValueLineData` 自动拉取该 Entity 下的所有有效证券（`availableSecurities`），并建立各自独立的现价、52 周波动区间、PE/PB 估值与 5 年价值线通道拟合；
   - `ValueLineCard` 顶部采用 Apple HIG 分段控制器（Segmented Control）交互：`[ GOOG · Class C | GOOGL · Class A ]`，支持在页面就地平滑切换，实时刷新价格与估值走势，同时通过 `window.history.replaceState` 维持当前选中的 Ticker 参数；
@@ -1091,7 +1094,14 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.45.3）
+## 当前实现状态（v0.45.4）
+
+### v0.45.4 变更（2026-09-23）
+
+- **全面归并公司详情页至数字价值线（DVL）并彻底淘汰经典视图**：
+  - **页面架构收敛**：删除旧版经典公司详情页与 `CompanyViewContainer`，`/company/[id]` 原生全面呈现 Digital Value Line（DVL）旗舰视图，不再保留双视图切换分支或“经典视图 ↺”按钮，未来全站所有公司详情页面迭代均基于统一的 DVL 画布展开。
+  - **路由兼容平滑重定向**：旧路由 `/dvl/[id]` 全面退化为轻量重定向中继，将历史外链、书签及携带的 `?tab=...`、`?ticker=...`、`?embed=...` 等查询参数通过 307 严格重定向至 `/company/[id]`。
+  - **代码与样式整洁归一**：彻底清理 `.dvl-classic-switch-link` 样式定义与死代码引用，统一 `formatDvlUrl` 指向 `/company/${slug}`，顶栏导航仅保留唯一的 `← 公司` 返回主目录链接。
 
 ### v0.45.3 变更（2026-09-23）
 

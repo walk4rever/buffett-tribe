@@ -234,7 +234,7 @@ export async function getValueLineData(
   const exchange = typeof meta.exchange === "string" ? meta.exchange : null;
   const market = (entity.market as "hk" | "cn" | null) ?? "us";
   const href = formatCompanyUrl(entity) ?? `/company/${canonicalTicker}`;
-  const dvlHref = formatDvlUrl(entity) ?? `/dvl/${canonicalTicker}`;
+  const dvlHref = formatDvlUrl(entity) ?? `/company/${canonicalTicker}`;
 
   // 1. Fetch Multi-Year Financials first to establish earnings base & benchmark PE
   const financials = await getCompanyFinancials(entity.id, 7);

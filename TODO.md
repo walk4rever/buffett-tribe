@@ -6,14 +6,14 @@
 
 ## P0 — 下一步就做（用户点名，2026-07-17）
 
-- [x] **⑬ 数字价值线（Digital Value Line）Phase 1 & Phase 2 & Phase 3：单公司旗舰页面 `/dvl/[id]`、多 Ticker 股票类别切换、大师持仓穿透与 3 市场 URL 规范化**（2026-09-23 全部完成并上线，详见 `PRODUCT.md`「规模化演进：数字价值线」）：
+- [x] **⑬ 数字价值线（Digital Value Line）Phase 1 & Phase 2 & Phase 3：公司详情页全面收敛至 DVL 画布、多 Ticker 股票类别切换、大师持仓穿透与 3 市场 URL 规范化**（2026-09-23 全部完成并上线，详见 `PRODUCT.md`「规模化演进：数字价值线」）：
   - **落地成果**：
-    1. **三市场统一规范 Slug 与严格重定向**：全站放弃散乱命名，统一规范为 `us-{10位标准CIK}`（如 `us-0001652044`）、`cn-{代码}`、`hk-{5位代码}`；所有直接 Ticker（`/dvl/GOOG`、`/dvl/GOOGL`）或旧 CIK 自动 307 重定向至标准实体 URL 并携带 `?ticker=...`。
+    1. **三市场统一规范 Slug 与严格重定向**：全站放弃散乱命名，统一规范为 `us-{10位标准CIK}`（如 `us-0001652044`）、`cn-{代码}`、`hk-{5位代码}`；所有直接 Ticker（`/company/GOOG`、`/company/GOOGL`）或旧 CIK 自动 307 重定向至标准实体 URL 并携带 `?ticker=...`。
     2. **多 Ticker / 分级股权（Share Class）原生切换**：
        - `getValueLineData` 智能探查并聚合同一 Entity 下所有可用证券（如 Alphabet `GOOG` Class C 与 `GOOGL` Class A），独立构建价格走势、52周区间、历史 PE/PB 与 5 年拟合通道；
        - `ValueLineCard` 采用 Apple HIG 分段控制器交互（`[ GOOG · Class C | GOOGL · Class A ]`），就地切换无需刷新，`window.history.replaceState` 维持当前参数；
        - 13F 大师持仓穿透聚合：大师持有同一标的多级股票（如李录、巴菲特同时持有 A/C 类）时，自动按投资人合并权重，并展现 `CL A 24.5% + CL C 23.4%` 拆解标签与 Tooltip 明细。
-    3. **双路由平行解耦**：按照用户决策，`/company/[id]` 彻底移除非必要的双视图切换胶囊，100% 保持经典视图的稳定性；创建全新的数字价值线专用路由 `/dvl/[id]`。
+    3. **单一真理详情页收拢与删除经典视图**：按照用户最终决策，`/company/[id]` 默认全面呈现数字价值线旗舰页面，彻底删除旧版经典视图组件（`CompanyViewContainer`）与 `.dvl-classic-switch-link`，不再保留切换链接，后续全站公司详情页迭代全部收拢至 DVL 页面；`/dvl/[id]` 统一作为 307 重定向中继跳转至 `/company/[id]`。
     4. **卡片结构深度重构**：
        - 移除冗余的单行「商业本质」引述框；
        - 整合为单一规范的【公司概览】卡片，讲透公司基本盘、核心业务产品与最新分部营收结构；
