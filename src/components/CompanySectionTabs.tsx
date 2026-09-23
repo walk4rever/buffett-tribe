@@ -60,20 +60,36 @@ export function CompanySectionTabs({
     };
   }, [updateScrollState]);
 
-  // Smoothly center active tab whenever it changes
+  const isFirstMountRef = useRef(true);
+
+  // Horizontally center active tab inside the nav bar container ONLY
+  const centerTabInNav = useCallback((tabId: string, smooth: boolean) => {
+    const nav = navRef.current;
+    const btn = tabButtonRefs.current[tabId];
+    if (!nav || !btn) return;
+
+    const targetLeft =
+      btn.offsetLeft - nav.clientWidth / 2 + btn.clientWidth / 2;
+
+    nav.scrollTo({
+      left: Math.max(0, targetLeft),
+      behavior: smooth ? "smooth" : "auto",
+    });
+  }, []);
+
+  // Center active tab horizontally inside the nav bar on user switch, never moving window vertical scroll
   useEffect(() => {
-    const btn = tabButtonRefs.current[activeTab];
-    if (btn) {
-      btn.scrollIntoView({
-        behavior: "smooth",
-        inline: "center",
-        block: "nearest",
-      });
+    if (isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      centerTabInNav(activeTab, false);
+      updateScrollState();
+      return;
     }
-    // Give DOM a frame to settle then update scroll masks
+
+    centerTabInNav(activeTab, true);
     const timer = setTimeout(updateScrollState, 250);
     return () => clearTimeout(timer);
-  }, [activeTab, updateScrollState]);
+  }, [activeTab, centerTabInNav, updateScrollState]);
 
   // Handle ESC and prevent body scroll when sheet is open
   useEffect(() => {

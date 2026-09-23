@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.45.6] - 2026-09-23
+
+### Fixed
+- 公司详情页初始滚动位置归零：修复 `CompanySectionTabs` 在 mount 时调用 `scrollIntoView` 导致浏览器将全局窗口滚动至页面中间锚点的缺陷，改用 `nav.scrollTo` 局部水平滚动并添加 `isFirstMountRef` 守卫，确保打开页面严格停留在页首。
+- 大师持仓股票类别标签统一（「要么不写，要写也是直接写 Ticker」）：针对单一 Ticker 的普通标的（如 Dell）彻底隐藏 `CL C` 等冗余类别标签；多类别复合标的（如 Alphabet）直接展现真实交易 Ticker 组合（`GOOG + GOOGL`）。
+
+### Added
+- 大师持仓卡片新增「最新季度动作」指标：在「仓位」与「金额」后正式加入第 3 列「动作」（新进 / 增持 ↑ +XX% / 减持 ↓ -XX% / 持平 / 清仓），真实呈现投资人在最近一个 13F 季度的实际调仓动态；并添加 `white-space: nowrap` 约束防止换行。
+
 ## [v0.45.5] - 2026-09-23
 
 ### Fixed

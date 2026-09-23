@@ -562,6 +562,7 @@ export async function getValueLineData(
     firmName?: string;
     tribeId: string | null;
     activity?: string | null;
+    shareDeltaPct?: number | null;
     quarterLabel: string | null;
     items: Array<{
       ticker: string;
@@ -573,6 +574,11 @@ export async function getValueLineData(
   };
 
   const holderGroups = new Map<string, GroupedHolder>();
+  const distinctCompanyTickers = new Set(
+    rawSecurities
+      .map((s) => s.ticker?.trim().toUpperCase())
+      .filter((t): t is string => Boolean(t))
+  );
 
   for (const h of holdersRes.holders ?? []) {
     const groupKey = h.tribeId ?? h.holderName;
@@ -594,6 +600,7 @@ export async function getValueLineData(
         firmName,
         tribeId: h.tribeId,
         activity: h.activity ?? null,
+        shareDeltaPct: h.shareDeltaPct ?? null,
         quarterLabel: h.sourceYear && h.sourceQuarter ? `${h.sourceYear}Q${h.sourceQuarter}` : null,
         items: [],
       });
@@ -625,15 +632,18 @@ export async function getValueLineData(
     let shareClassLabel: string | null = null;
     let breakdownText: string | null = null;
 
-    if (group.items.length > 1) {
-      const shortLabels = group.items.map((it) => {
-        const cl = it.classLabel?.replace(/Class\s*/i, "CL ") || it.ticker;
-        return it.weightPct != null ? `${cl} ${it.weightPct.toFixed(1)}%` : cl;
-      });
-      shareClassLabel = group.items.map((it) => it.classLabel?.replace(/Class\s*/i, "CL ") || it.ticker).join(" + ");
-      breakdownText = shortLabels.join(" + ");
-    } else if (group.items.length === 1 && group.items[0].classLabel) {
-      shareClassLabel = group.items[0].classLabel.replace(/Class\s*/i, "CL ");
+    // Only display ticker labels when company actually has multiple distinct share classes (e.g. GOOG + GOOGL)
+    if (distinctCompanyTickers.size > 1) {
+      if (group.items.length > 1) {
+        const tickers = group.items.map((it) => it.ticker).filter(Boolean);
+        shareClassLabel = tickers.join(" + ");
+        const shortLabels = group.items.map((it) => {
+          return it.weightPct != null ? `${it.ticker} ${it.weightPct.toFixed(1)}%` : it.ticker;
+        });
+        breakdownText = shortLabels.join(" + ");
+      } else if (group.items.length === 1 && group.items[0].ticker) {
+        shareClassLabel = group.items[0].ticker;
+      }
     }
 
     aggregatedHolders.push({
@@ -646,6 +656,7 @@ export async function getValueLineData(
       valueLabel: totalValue > 0 ? `$${formatMoney(totalValue)}` : null,
       quarterLabel: group.quarterLabel,
       activity: group.activity,
+      shareDeltaPct: group.shareDeltaPct,
       tribeId: group.tribeId,
       shareClassLabel,
       breakdownText,

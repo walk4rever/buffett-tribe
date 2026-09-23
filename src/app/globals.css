@@ -19248,12 +19248,15 @@ a.insight-entity-chip:hover {
   font-size: 0.68rem;
   color: #6b7280;
   font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .vl-master-metric-val {
   font-size: 0.82rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .vl-master-metric-weight {
@@ -19287,6 +19290,48 @@ a.insight-entity-chip:hover {
   width: 1px;
   height: 14px;
   background: rgba(0, 0, 0, 0.08);
+}
+
+.vl-master-act-wrap {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.vl-master-act-badge {
+  font-family: var(--font-geist-mono, ui-monospace, monospace);
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.vl-master-act-badge--new {
+  color: #0071e3;
+  background: rgba(0, 113, 227, 0.08);
+  padding: 0.06rem 0.32rem;
+  border-radius: 4px;
+}
+
+.vl-master-act-badge--soldout {
+  color: #c2410c;
+  background: rgba(245, 158, 11, 0.12);
+  padding: 0.06rem 0.32rem;
+  border-radius: 4px;
+}
+
+.vl-master-act-badge--up {
+  color: #15803d;
+}
+
+.vl-master-act-badge--down {
+  color: #dc2626;
+}
+
+.vl-master-act-badge--flat {
+  color: #64748b;
+  font-weight: 500;
 }
 
 .vl-master-firm-tag {
@@ -19967,9 +20012,13 @@ a.insight-entity-chip:hover {
   .vl-master-card-metrics {
     gap: 0.35rem;
     padding: 0.35rem 0.45rem;
+    justify-content: space-between;
   }
   .vl-master-metric-cell {
     min-width: 0;
+  }
+  .vl-master-act-badge {
+    font-size: 0.7rem;
   }
   .vl-sparkline-legend {
     flex-direction: column;

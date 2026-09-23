@@ -2,7 +2,42 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import type { ValueLineData } from "@/lib/value-line-data";
+import type { ValueLineData, ValueLineHolder } from "@/lib/value-line-data";
+
+export function renderHolderActivity(h: ValueLineHolder) {
+  if (h.activity === "SoldOut") {
+    return <span className="vl-master-act-badge vl-master-act-badge--soldout">清仓</span>;
+  }
+  if (h.activity === "New") {
+    return <span className="vl-master-act-badge vl-master-act-badge--new">新进</span>;
+  }
+  if (h.activity === "Added") {
+    const delta =
+      h.shareDeltaPct != null && Number.isFinite(h.shareDeltaPct)
+        ? `+${Math.abs(h.shareDeltaPct).toFixed(1)}%`
+        : "";
+    return (
+      <span className="vl-master-act-badge vl-master-act-badge--up" title={`增持 ${delta}`}>
+        ↑ {delta || "增持"}
+      </span>
+    );
+  }
+  if (h.activity === "Reduced") {
+    const delta =
+      h.shareDeltaPct != null && Number.isFinite(h.shareDeltaPct)
+        ? `-${Math.abs(h.shareDeltaPct).toFixed(1)}%`
+        : "";
+    return (
+      <span className="vl-master-act-badge vl-master-act-badge--down" title={`减持 ${delta}`}>
+        ↓ {delta || "减持"}
+      </span>
+    );
+  }
+  if (h.activity === "Unchanged") {
+    return <span className="vl-master-act-badge vl-master-act-badge--flat">持平</span>;
+  }
+  return <span className="vl-master-act-badge vl-master-act-badge--flat">—</span>;
+}
 
 /**
  * 根据市场返回货币符号和代码
@@ -571,6 +606,13 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
                       <span className="vl-master-metric-val vl-master-metric-value">
                         {h.valueLabel ?? "—"}
                       </span>
+                    </div>
+                    <div className="vl-master-metric-sep" />
+                    <div className="vl-master-metric-cell">
+                      <span className="vl-master-metric-label">动作</span>
+                      <div className="vl-master-act-wrap">
+                        {renderHolderActivity(h)}
+                      </div>
                     </div>
                   </div>
 
