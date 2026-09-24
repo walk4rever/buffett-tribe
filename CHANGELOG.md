@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.45.8] - 2026-09-24
+
+### Fixed
+- 公司库待完善全量展示与唯一 Key 修复：修正 `/company` 页面对待完善公司的查询过滤，彻底移除遗漏无 CIK/code 存根的硬编码条件，保证当前待完善的全部 45 家公司完整呈现于「待完善」专属分区；并增加 `row.id` 兜底保证 React Key 绝对唯一，杜绝控制台警告。
+- 全站 NULL 市场归位与防范机制根治：
+  - 数据库存量治理：编写并执行 `resolve-null-market-companies.ts`，修复 299 家已有 CIK 但遗留 `market: null` 的历史美股标的，补全 10 家在交易优质美股（如 WDC、BFB、CPRX、CEIX、CWAN、JNPR、LBRDK、OLPX、RDFN、SEGRT）的官方 CIK 与 market，对 13 家特殊标的（私募独角兽、已收购、破产、SPAC）完成类型标注，实现全站 NULL 市场彻底归零（美股 578 / A股 8 / 港股 7）；
+  - 核心导入链路防范：在 13F 持仓导入（`13f-import-core.ts`）、年报/SEC Facts 导入（`annual-report-import-core.ts`）、公司 Onboard（`onboard-company.ts`）及证券链接回填（`backfill-security-company-links.ts`）等源头强制注入 `market: 'us'`，从根本上杜绝未来自动化新增公司时再产生 NULL 市场记录。
+
 ## [v0.45.7] - 2026-09-24
 
 ### Changed

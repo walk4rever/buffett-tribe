@@ -269,6 +269,7 @@ async function main() {
           const created = await db.entity.create({
             data: {
               type: "company",
+              market: "us",
               canonicalName: secRef.title,
               ticker: resolvedTicker,
               cik: secRef.cik,

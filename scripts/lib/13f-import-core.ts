@@ -582,6 +582,7 @@ async function upsertSecurityEntity(entry: InfoTableEntry): Promise<SecuritySnap
     const company = await db.entity.create({
       data: {
         type: "company",
+        market: "us",
         canonicalName: entry.nameOfIssuer,
         ticker: resolved.ticker,
         metadata: {

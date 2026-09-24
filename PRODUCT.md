@@ -1094,7 +1094,18 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.45.7）
+## 当前实现状态（v0.45.8）
+
+### v0.45.8 变更（2026-09-24）
+
+- **公司库（/company）待完善分区与全局索引完善**：
+  - 调整 `getCompanies` 数据抓取逻辑，移除原先要求 `cik` 或 `(market && code)` 非空的限制条件，确保全站所有 593 家公司（包含待完善存根）全部纳入索引；
+  - 修复 React Key 碰撞问题，引入 `row.id` 兜底保证即使 CIK/code 暂缺也能生成全局唯一 Key；
+  - 确保「待完善」分区真实、完整展示数据库当前处于 Phase 0 的全部 45 家公司。
+- **全站 NULL 市场彻底清零与全链路源头防范机制**：
+  - **存量数据彻底治理**：编写并执行 `resolve-null-market-companies.ts`，修复了历史遗留的 299 家有 CIK 但 `market` 字段为 NULL 的美股公司，将其全部刷为 `us`；
+  - **优质在交易美股补全**：对 10 家在交易但此前缺失 CIK/market 的美股公司（包括 WDC、BFB、CPRX、CEIX、CWAN、JNPR、LBRDK、OLPX、RDFN、SEGRT）完成官方权威 CIK 与 `market: 'us'` 录入；对 13 家特殊标的（私募独角兽、已退市并购、破产、SPAC）打上分类元数据与 `market: 'us'` 标识，实现全站 NULL 市场彻底归零（美股 578 / A股 8 / 港股 7）；
+  - **全链路根治防范**：在 13F 持仓导入（`13f-import-core.ts`）、年报/SEC Facts 导入（`annual-report-import-core.ts`）、公司 Onboarding 收尾（`onboard-company.ts`）以及证券链接回填（`backfill-security-company-links.ts`）四大入口处全面强制注入 `market: 'us'`，从根本上防止未来新增公司再产生 NULL 记录。
 
 ### v0.45.7 变更（2026-09-24）
 

@@ -771,6 +771,7 @@ export async function upsertCompanyEntity(cik: string, ticker: string, title: st
           where: { id: target.id },
           data: {
             type: needsTypeUpgrade ? "company" : target.type,
+            market: target.market ?? "us",
             canonicalName: title,
             cik: canSetCik ? cik : target.cik,
             ticker,
@@ -789,6 +790,7 @@ export async function upsertCompanyEntity(cik: string, ticker: string, title: st
         return db.entity.create({
           data: {
             type: "company",
+            market: "us",
             canonicalName: title,
             cik: createCik,
             ticker,

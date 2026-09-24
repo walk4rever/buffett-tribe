@@ -608,7 +608,7 @@ async function main() {
   if (!failed) {
     const finalEntity = await prisma.entity.findFirst({
       where: { type: "company", ticker: { equals: ticker, mode: "insensitive" } },
-      select: { id: true, metadata: true },
+      select: { id: true, metadata: true, market: true },
     });
     if (finalEntity) {
       const meta = (finalEntity.metadata as Record<string, unknown>) || {};
@@ -618,6 +618,7 @@ async function main() {
       await prisma.entity.update({
         where: { id: finalEntity.id },
         data: {
+          market: finalEntity.market ?? market,
           metadata: {
             ...meta,
             onboardPhase: nextPhase,

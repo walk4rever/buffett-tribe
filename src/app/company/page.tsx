@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import { formatCompanyUrl } from "@/lib/company-data";
-import { isNonCompanySecurityKind } from "@/lib/security-kind";
 import { SiteNav } from "@/components/SiteNav";
 import { CompanyDirectory, CompanyGrid, type CompanyDirectoryItem } from "@/components/CompanyDirectory";
 import { BRAND_EN, BRAND_ZH } from "@/lib/brand";
@@ -51,15 +50,6 @@ const ENTITY_DIRECTORY_SELECT = {
 
 type EntityDirectoryRow = Awaited<ReturnType<typeof prisma.entity.findMany<{ select: typeof ENTITY_DIRECTORY_SELECT }>>>[number];
 
-// e.g. INVESCO QQQ TR shows up in 13F holdings but is an ETF/trust, not a
-// company. An entity is only excluded here if it has securities and ALL of
-// them are a non-company kind (see isNonCompanySecurityKind); an entity with
-// no Security rows (e.g. manually onboarded HK/CN companies) or a mix
-// including "equity"/"unclassified" is always kept — never hide a row on a
-// guess.
-function isNonCompanyInstrument(row: EntityDirectoryRow): boolean {
-  return row.securitiesAsCompany.length > 0 && row.securitiesAsCompany.every((s) => isNonCompanySecurityKind(s.kind));
-}
 
 function toDirectoryItem(row: EntityDirectoryRow): CompanyDirectoryItem {
   const meta = row.metadata as Record<string, unknown> | null;
@@ -77,7 +67,7 @@ function toDirectoryItem(row: EntityDirectoryRow): CompanyDirectoryItem {
   // or name mapping and remain an incomplete stub.
   const isPhase1Complete = typeof meta?.onboardPhase === "number" && meta.onboardPhase >= 1;
   return {
-    key: row.cik ?? `${row.market}-${row.code}`,
+    key: row.cik ?? (row.market && row.code ? `${row.market}-${row.code}` : row.id),
     nameZh,
     nameEn,
     tickers,
@@ -92,12 +82,11 @@ async function getCompanies(): Promise<CompanyDirectoryItem[]> {
     const rows = await prisma.entity.findMany({
       where: {
         type: "company",
-        OR: [{ cik: { not: null } }, { AND: [{ market: { not: null } }, { code: { not: null } }] }],
       },
       select: ENTITY_DIRECTORY_SELECT,
       orderBy: { canonicalName: "asc" },
     });
-    return rows.filter((row) => !isNonCompanyInstrument(row)).map(toDirectoryItem);
+    return rows.map(toDirectoryItem);
   } catch {
     return [];
   }
