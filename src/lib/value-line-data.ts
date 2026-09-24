@@ -745,7 +745,7 @@ export async function getValueLineData(
     const bValue = b.valueUsd ?? 0;
     return bValue - aValue;
   });
-  const topHolders = aggregatedHolders.slice(0, 4);
+  const topHolders = aggregatedHolders.slice(0, 6);
 
   // 4. AI Business Essence, Moat & Risk Insights
   const analysis = entity.analyses[0] ?? null;
