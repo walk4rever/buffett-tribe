@@ -19219,7 +19219,7 @@ a.insight-entity-chip:hover {
 .vl-master-quarter-badge {
   font-size: 0.68rem;
   font-weight: 600;
-  color: #9ca3af;
+  color: #4b5563;
   background: #f3f4f6;
   padding: 0.12rem 0.4rem;
   border-radius: 4px;
@@ -19337,7 +19337,8 @@ a.insight-entity-chip:hover {
 .vl-master-firm-tag {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  justify-content: space-between;
+  gap: 0.4rem;
   min-width: 0;
   padding-top: 0.35rem; /* ✓ Icon Fix: 增加上边距，强化视觉分隔 */
   border-top: 1px solid rgba(0, 0, 0, 0.06);
@@ -19348,6 +19349,10 @@ a.insight-entity-chip:hover {
   display: none;
 }
 
+.vl-master-firm-empty {
+  flex: 1;
+}
+
 .vl-master-firm-text {
   font-size: 0.75rem; /* ✓ Icon Fix: 12px - Apple Micro */
   color: rgba(0, 0, 0, 0.48); /* ✓ Icon Fix: Apple Secondary */
@@ -19356,6 +19361,18 @@ a.insight-entity-chip:hover {
   text-overflow: ellipsis;
   font-weight: 400; /* ✓ Icon Fix: 500 → 400 更符合 Apple */
   letter-spacing: -0.12px; /* ✓ Icon Fix: Apple Micro 标准字间距 */
+  min-width: 0;
+  flex: 1;
+}
+
+.vl-master-aum-text {
+  font-size: 0.72rem;
+  color: rgba(0, 0, 0, 0.52);
+  font-weight: 500;
+  white-space: nowrap;
+  letter-spacing: -0.1px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 /* 3. True Value Line Composite Chart */

@@ -472,9 +472,9 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
                       aria-selected={isSelected}
                       className={`vl-ticker-pill-btn ${isSelected ? "active" : ""}`}
                       onClick={() => handleTickerSelect(sec.ticker)}
+                      title={sec.classLabel ? `${sec.ticker} (${sec.classLabel})` : sec.ticker}
                     >
                       <span className="vl-ticker-code">{sec.ticker}</span>
-                      {sec.classLabel ? <span className="vl-ticker-class">{sec.classLabel}</span> : null}
                     </button>
                   );
                 })}
@@ -593,11 +593,6 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
                         <span className="vl-master-metric-val vl-master-metric-weight">
                           {h.weightPct != null ? `${h.weightPct}%` : "—"}
                         </span>
-                        {h.shareClassLabel ? (
-                          <span className="vl-master-class-tag" title={h.breakdownText ?? h.shareClassLabel}>
-                            {h.shareClassLabel}
-                          </span>
-                        ) : null}
                       </div>
                     </div>
                     <div className="vl-master-metric-sep" />
@@ -616,9 +611,18 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
                     </div>
                   </div>
 
-                  {hasDistinctFirm ? (
+                  {hasDistinctFirm || h.aumLabel ? (
                     <div className="vl-master-firm-tag" title={h.name}>
-                      <span className="vl-master-firm-text">{shortFirm}</span>
+                      {hasDistinctFirm ? (
+                        <span className="vl-master-firm-text">{shortFirm}</span>
+                      ) : (
+                        <span className="vl-master-firm-empty" />
+                      )}
+                      {h.aumLabel ? (
+                        <span className="vl-master-aum-text" title={`13F 申报组合市值 ${h.aumLabel}`}>
+                          {h.aumLabel}
+                        </span>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>

@@ -10,6 +10,8 @@ import {
   parseCompanyIdentifier,
 } from "@/lib/company-data";
 import { getTribeMembers } from "@/lib/tribe";
+import { getLatestPortfolioValueUsd } from "@/lib/master-data";
+import { formatUsdInYi } from "@/lib/currency";
 
 function parseNum(items: Record<string, string | number> | undefined, key: string): number | null {
   if (!items) return null;
@@ -52,9 +54,12 @@ export type ValueLineHolder = {
   valueUsd: number | null;
   valueLabel: string | null;
   quarterLabel: string | null;
+  sourceYear?: number | null;
+  sourceQuarter?: number | null;
   activity?: "New" | "Added" | "Reduced" | "Unchanged" | "SoldOut" | string | null;
   shareDeltaPct?: number | null;
   tribeId: string | null;
+  aumLabel?: string | null;
   shareClassLabel?: string | null;
   breakdownText?: string | null;
   breakdown?: ValueLineHolderBreakdownItem[];
@@ -556,6 +561,25 @@ export async function getValueLineData(
   ]);
   const tribeMap = new Map(tribeMembers.map((m) => [m.id, m]));
 
+  const distinctTribeIds = [
+    ...new Set(
+      (holdersRes.holders ?? [])
+        .map((h) => h.tribeId)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+  const aumEntries = await Promise.all(
+    distinctTribeIds.map(async (tribeId) => {
+      try {
+        const val = await getLatestPortfolioValueUsd(tribeId);
+        return [tribeId, val ? `AUM $${formatUsdInYi(val)}` : null] as const;
+      } catch {
+        return [tribeId, null] as const;
+      }
+    })
+  );
+  const aumMap = new Map(aumEntries);
+
   type GroupedHolder = {
     name: string;
     investorName: string;
@@ -564,12 +588,16 @@ export async function getValueLineData(
     activity?: string | null;
     shareDeltaPct?: number | null;
     quarterLabel: string | null;
+    sourceYear: number | null;
+    sourceQuarter: number | null;
+    isSoldOut: boolean;
     items: Array<{
       ticker: string;
       classLabel: string | null;
       shares: number | null;
       weightPct: number | null;
       valueUsd: number | null;
+      isSoldOut?: boolean;
     }>;
   };
 
@@ -592,6 +620,7 @@ export async function getValueLineData(
 
     const secRow = rawSecurities.find((s) => s.ticker?.toUpperCase() === h.ticker?.toUpperCase());
     const classLabel = secRow ? formatSecurityClassLabel(secRow) : null;
+    const isSoldOut = h.isSoldOut ?? (h.activity === "SoldOut");
 
     if (!holderGroups.has(groupKey)) {
       holderGroups.set(groupKey, {
@@ -602,8 +631,26 @@ export async function getValueLineData(
         activity: h.activity ?? null,
         shareDeltaPct: h.shareDeltaPct ?? null,
         quarterLabel: h.sourceYear && h.sourceQuarter ? `${h.sourceYear}Q${h.sourceQuarter}` : null,
+        sourceYear: h.sourceYear ?? null,
+        sourceQuarter: h.sourceQuarter ?? null,
+        isSoldOut,
         items: [],
       });
+    } else {
+      const existing = holderGroups.get(groupKey)!;
+      if (!isSoldOut) {
+        existing.isSoldOut = false;
+        if (existing.activity === "SoldOut") {
+          existing.activity = h.activity ?? null;
+        }
+      }
+      const currentScore = (h.sourceYear ?? 0) * 4 + (h.sourceQuarter ?? 0);
+      const existingScore = (existing.sourceYear ?? 0) * 4 + (existing.sourceQuarter ?? 0);
+      if (currentScore > existingScore) {
+        existing.sourceYear = h.sourceYear ?? null;
+        existing.sourceQuarter = h.sourceQuarter ?? null;
+        existing.quarterLabel = h.sourceYear && h.sourceQuarter ? `${h.sourceYear}Q${h.sourceQuarter}` : null;
+      }
     }
 
     holderGroups.get(groupKey)!.items.push({
@@ -612,6 +659,7 @@ export async function getValueLineData(
       shares: h.shares ? Number(h.shares) : null,
       weightPct: h.percent != null ? Number(h.percent.toFixed(2)) : null,
       valueUsd: effectiveValueUsd,
+      isSoldOut,
     });
   }
 
@@ -646,6 +694,8 @@ export async function getValueLineData(
       }
     }
 
+    const aumLabel = group.tribeId ? aumMap.get(group.tribeId) ?? null : null;
+
     aggregatedHolders.push({
       name: group.name,
       investorName: group.investorName,
@@ -655,16 +705,46 @@ export async function getValueLineData(
       valueUsd: totalValue > 0 ? totalValue : null,
       valueLabel: totalValue > 0 ? `$${formatMoney(totalValue)}` : null,
       quarterLabel: group.quarterLabel,
+      sourceYear: group.sourceYear,
+      sourceQuarter: group.sourceQuarter,
       activity: group.activity,
       shareDeltaPct: group.shareDeltaPct,
       tribeId: group.tribeId,
+      aumLabel,
       shareClassLabel,
       breakdownText,
       breakdown,
     });
   }
 
-  aggregatedHolders.sort((a, b) => (b.weightPct ?? 0) - (a.weightPct ?? 0));
+  // Multi-tier sorting:
+  // 1. Active holding before SoldOut
+  // 2. Most recent quarter first (sourceYear, sourceQuarter)
+  // 3. Holding weight % descending
+  // 4. Holding market value USD descending
+  aggregatedHolders.sort((a, b) => {
+    const aSoldOut = a.activity === "SoldOut";
+    const bSoldOut = b.activity === "SoldOut";
+    if (aSoldOut !== bSoldOut) {
+      return aSoldOut ? 1 : -1;
+    }
+
+    const aQuarterScore = (a.sourceYear ?? 0) * 4 + (a.sourceQuarter ?? 0);
+    const bQuarterScore = (b.sourceYear ?? 0) * 4 + (b.sourceQuarter ?? 0);
+    if (aQuarterScore !== bQuarterScore) {
+      return bQuarterScore - aQuarterScore;
+    }
+
+    const aWeight = a.weightPct ?? 0;
+    const bWeight = b.weightPct ?? 0;
+    if (Math.abs(bWeight - aWeight) > 0.001) {
+      return bWeight - aWeight;
+    }
+
+    const aValue = a.valueUsd ?? 0;
+    const bValue = b.valueUsd ?? 0;
+    return bValue - aValue;
+  });
   const topHolders = aggregatedHolders.slice(0, 4);
 
   // 4. AI Business Essence, Moat & Risk Insights

@@ -24,6 +24,7 @@
        - 视觉规范：浅灰 `#fbfbfd` 底色、纯白 `#ffffff` 表面、精密等宽数字排版与柔光漫反射；
        - 移动端全宽自适应修复：根治 CSS Grid 轨道被 540px 矩阵表撑大到 642.8px 导致的右侧 250px 截断，理顺层叠顺序与内部弹性约束；
        - 深度投研 7 大维度体验升级（方案 A）：Tab 标签点击自动平滑居中对齐，左右雾化渐隐光晕（Fade Mask）提示滑动，右侧常驻 `[ ⊞ 7 ]` 快捷入口，唤起 iOS 原生毛玻璃抽屉（Bottom Sheet）双列卡片直达。
+    6. **2026-09-24 体验优化（v0.45.7）**：DVL 左上角 Ticker 胶囊与大师卡片彻底移除多 Ticker 类名噪点（GOOG/GOOGL 纯代码化）；卡片右下角新增基金管理规模（AUM，如 `AUM $37.0亿`）；重构卡片排序为「在持优先 > 报告季度倒序 > 持仓占比降序 > 持仓金额降序」；Alpha 投资人 Jorge Paulo Lemann 命名标准化。
 - [ ] **⑭ 退市/被收购（Delisted）美股历史股价归档补录通道**（2026-09-23 讨论 CFLT Onboard 流程时提出）：
   - **背景**：已退市/被收购的美股标的（如 IBM 收购的 Confluent `CFLT`、推特 `TWTR`、动视暴雪 `ATVI` 等），Yahoo Finance 接口具有幸存者偏差，会在摘牌后清理 Ticker 行情接口并返回 404（`No data found, symbol may be delisted`）。目前 Onboard Phase 1 实现了对 delisted 的容错跳过，但退市股的 `StockPrice` 数据缺失，导致历史持仓复盘、DVL 历史估值线与分位走势图空白。
   - **目标**：建立退市标的历史日 K 归档补录机制（如 `data/stock-prices-archive/<TICKER>.csv` 静态文件导入或集成 FMP / Tiingo / EODHD 等支持 delisted 的专业数据源），将 2020 年至退市日的历史真实日 K 灌入 `StockPrice` 表，一次性永久解决退市标的的历史股价回溯。
