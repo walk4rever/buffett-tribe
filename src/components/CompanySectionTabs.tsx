@@ -18,6 +18,7 @@ export type CompanySectionTab = {
   label: string;
   note?: string;
   desc?: string;
+  disabled?: boolean;
 };
 
 type CompanySectionTabsProps = {
@@ -37,10 +38,12 @@ export function CompanySectionTabs({
   initialTicker,
   fallbackHeader,
 }: CompanySectionTabsProps) {
-  const initialActiveTab = tabs.some((tab) => tab.id === initialTabId)
-    ? initialTabId ?? tabs[0]?.id ?? ""
-    : tabs[0]?.id ?? "";
-  const [activeTab, setActiveTab] = useState(initialActiveTab);
+  const firstEnabledTabId = tabs.find((t) => !t.disabled)?.id ?? "";
+  const resolvedInitialTab =
+    initialTabId && tabs.some((t) => t.id === initialTabId && !t.disabled)
+      ? initialTabId
+      : firstEnabledTabId;
+  const [activeTab, setActiveTab] = useState(resolvedInitialTab);
   const [isMatrixOpen, setIsMatrixOpen] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -69,6 +72,8 @@ export function CompanySectionTabs({
   };
 
   const handleTabSelect = (tabId: string) => {
+    const tab = tabs.find((t) => t.id === tabId);
+    if (!tab || tab.disabled) return;
     setActiveTab(tabId);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
@@ -195,6 +200,7 @@ export function CompanySectionTabs({
           >
             {tabs.map((tab) => {
               const active = tab.id === activeTab;
+              const disabled = !!tab.disabled;
               return (
                 <button
                   key={tab.id}
@@ -204,14 +210,19 @@ export function CompanySectionTabs({
                   type="button"
                   role="tab"
                   aria-selected={active}
+                  aria-disabled={disabled || undefined}
                   aria-controls={`company-tab-${tab.id}`}
                   id={`company-tab-trigger-${tab.id}`}
-                  className={`company-tab${active ? " company-tab--active" : ""}`}
+                  className={`company-tab${active ? " company-tab--active" : ""}${disabled ? " company-tab--disabled" : ""}`}
                   onClick={() => handleTabSelect(tab.id)}
+                  tabIndex={disabled ? -1 : undefined}
                 >
                   <span className="company-tab-label">{tab.label}</span>
-                  {tab.note ? (
+                  {tab.note && !disabled ? (
                     <span className="company-tab-note">{tab.note}</span>
+                  ) : null}
+                  {disabled ? (
+                    <span className="company-tab-lock" aria-hidden="true">🔒</span>
                   ) : null}
                 </button>
               );
@@ -287,17 +298,21 @@ export function CompanySectionTabs({
             <div className="company-tabs-sheet-grid">
               {tabs.map((tab, idx) => {
                 const active = tab.id === activeTab;
+                const disabled = !!tab.disabled;
                 return (
                   <button
                     key={tab.id}
                     type="button"
                     className={`company-tabs-sheet-card${
                       active ? " company-tabs-sheet-card--active" : ""
-                    }`}
+                    }${disabled ? " company-tabs-sheet-card--disabled" : ""}`}
                     onClick={() => {
+                      if (disabled) return;
                       handleTabSelect(tab.id);
                       setIsMatrixOpen(false);
                     }}
+                    aria-disabled={disabled || undefined}
+                    tabIndex={disabled ? -1 : undefined}
                   >
                     <div className="sheet-card-top">
                       <span className="sheet-card-index">
@@ -305,6 +320,8 @@ export function CompanySectionTabs({
                       </span>
                       {active ? (
                         <span className="sheet-card-tag">当前阅读</span>
+                      ) : disabled ? (
+                        <span className="sheet-card-note">待构建</span>
                       ) : tab.note ? (
                         <span className="sheet-card-note">{tab.note}</span>
                       ) : null}

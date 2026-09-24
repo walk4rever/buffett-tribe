@@ -317,9 +317,10 @@ export default async function CompanyPage({ params, searchParams }: Props) {
       : null;
 
   const rawMoat = analysis?.moat as unknown as MoatMock | null | undefined;
+  const hasRealMoat = !!(rawMoat?.dimensions && rawMoat.dimensions.length > 0);
   const moat: MoatMock =
-    rawMoat?.dimensions && rawMoat.dimensions.length > 0
-      ? rawMoat
+    hasRealMoat
+      ? rawMoat!
       : getMoatMock(company.canonicalName, company.ticker);
 
   const strongestDimensions = [...moat.dimensions]
@@ -361,11 +362,11 @@ export default async function CompanyPage({ params, searchParams }: Props) {
         <CompanySectionTabs
           tabs={[
             { id: "valueline",  label: "价值线",  desc: "数字价值线核心全景" },
-            { id: "business",   label: "商业分析", desc: "九宫格商业模式画布" },
+            { id: "business",   label: "商业分析", desc: "九宫格商业模式画布",  ...(!businessCanvas  ? { disabled: true } : {}) },
             { id: "financial",  label: "财务分析", desc: "核心三张表与杜邦分解" },
-            { id: "value",      label: "价值分析", desc: "护城河雷达与资本回报" },
-            { id: "management", label: "管理分析", desc: "治理结构与资本配置",  ...(hasManagement ? {} : { note: "●" }) },
-            { id: "valuation",  label: "估值分析", desc: "历史分位与情景推演",  ...(hasValuation  ? {} : { note: "●" }) },
+            { id: "value",      label: "价值分析", desc: "护城河雷达与资本回报", ...(!hasRealMoat    ? { disabled: true } : {}) },
+            { id: "management", label: "管理分析", desc: "治理结构与资本配置",  ...(!hasManagement  ? { disabled: true } : {}) },
+            { id: "valuation",  label: "估值分析", desc: "历史分位与情景推演",  ...(!hasValuation   ? { disabled: true } : {}) },
             { id: "holdings",   label: "大师持仓", desc: "13F顶尖机构季度动向" },
             { id: "references", label: "参考资料", desc: "官方SEC 10-K年报原文" },
           ]}

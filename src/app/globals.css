@@ -6707,6 +6707,24 @@ body.layout-no-header {
   color: rgba(255, 255, 255, 0.6);
 }
 
+/* ── Disabled Tab: grey, no pointer, no hover ── */
+.company-tab--disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  pointer-events: none; /* block clicks at CSS level */
+}
+
+.company-tab--disabled .company-tab-label {
+  color: #94a3b8;
+}
+
+.company-tab-lock {
+  font-size: 0.6rem;
+  line-height: 1;
+  opacity: 0.6;
+  user-select: none;
+}
+
 /* ── Company Tabs: Fade scroll hint & Matrix trigger ── */
 .company-tabs-fade {
   position: absolute;
@@ -6935,6 +6953,16 @@ body.layout-no-header {
   background: rgba(0, 113, 227, 0.07);
   border-color: rgba(0, 113, 227, 0.6);
   box-shadow: 0 0 0 1px rgba(0, 113, 227, 0.5), 0 4px 12px rgba(0, 113, 227, 0.08);
+}
+
+.company-tabs-sheet-card--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.company-tabs-sheet-card--disabled .sheet-card-label {
+  color: #94a3b8;
 }
 
 .sheet-card-top {
