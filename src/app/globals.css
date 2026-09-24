@@ -6613,7 +6613,8 @@ body.layout-no-header {
   color: var(--company-text-secondary);
 }
 
-.company-tabs-shell {
+.company-tabs-shell,
+.dvl-workspace-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   width: 100%;
@@ -19930,8 +19931,9 @@ a.insight-entity-chip:hover {
   font-weight: 400;
 }
 
+/* dvl-deep-dive-section & header are no longer rendered — kept for reference / graceful fallback */
 .dvl-deep-dive-section {
-  margin-top: 1rem;
+  margin-top: 0;
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -19939,9 +19941,9 @@ a.insight-entity-chip:hover {
 }
 
 .dvl-deep-dive-header {
-  margin-bottom: 1.25rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  padding-top: 1.75rem;
+  margin-bottom: 0;
+  border-top: none;
+  padding-top: 0;
 }
 
 .dvl-deep-dive-title {

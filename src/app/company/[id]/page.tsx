@@ -31,7 +31,6 @@ import { buildCompanyFinancialDashboard } from "@/lib/company-financial-dashboar
 import { formatShares } from "@/lib/master-data";
 import { CompanyFinancialDashboardComponent } from "@/components/CompanyFinancialDashboard";
 import { computeCompanyTtmMetrics, getCompanyQuarterlyFinancials } from "@/lib/ttm-metrics";
-import { ValueLineCard } from "@/components/ValueLineCard";
 import { getValueLineData } from "@/lib/value-line-data";
 
 export const dynamic = "force-dynamic";
@@ -358,40 +357,31 @@ export default async function CompanyPage({ params, searchParams }: Props) {
           </Link>
         </nav>
 
-        {/* ── 1. Flagship Hero Card: The Digital Value Line Card ── */}
-        <section className="dvl-flagship-card-section" aria-label="数字价值线核心看板">
-          {valueLineData ? (
-            <ValueLineCard data={valueLineData} />
-          ) : (
-            <div className="company-empty">该标的暂无完整数字价值线数据</div>
-          )}
-        </section>
+        {/* ── Unified 8-Tab Workspace (价值线 + 7 Deep-Dive dimensions) ── */}
+        <CompanySectionTabs
+          tabs={[
+            { id: "valueline",  label: "价值线",  desc: "数字价值线核心全景" },
+            { id: "business",   label: "商业分析", desc: "九宫格商业模式画布" },
+            { id: "financial",  label: "财务分析", desc: "核心三张表与杜邦分解" },
+            { id: "value",      label: "价值分析", desc: "护城河雷达与资本回报" },
+            { id: "management", label: "管理分析", desc: "治理结构与资本配置",  ...(hasManagement ? {} : { note: "●" }) },
+            { id: "valuation",  label: "估值分析", desc: "历史分位与情景推演",  ...(hasValuation  ? {} : { note: "●" }) },
+            { id: "holdings",   label: "大师持仓", desc: "13F顶尖机构季度动向" },
+            { id: "references", label: "参考资料", desc: "官方SEC 10-K年报原文" },
+          ]}
+          initialTabId={initialTabId || "valueline"}
+          valueLineData={valueLineData}
+          initialTicker={rawTicker}
+        >
+          {/* Tab 1 (valueline) is rendered internally by CompanySectionTabs via <ValueLineBody /> */}
 
-        {/* ── 2. Structured Deep Dive Tabs ── */}
-        <div className="dvl-deep-dive-section" id="dvl-deep-dive">
-          <div className="dvl-deep-dive-header">
-            <h2 className="dvl-deep-dive-title">深度投研分析</h2>
-            <p className="dvl-deep-dive-sub">商业画布 · 财务全景 · 护城河雷达 · 13F大师持仓 · 官方年报查验</p>
-          </div>
+          {/* Tab 2: Business Analysis — Business Model Canvas */}
+          <section className="company-section" data-tab-panel="business">
+            <div className="company-financial-trend-head">
+              <h3>商业模式九宫格画布</h3>
+              <span className="dvl-section-subtitle">解构客户细分、核心价值主张、渠道触点与成本收入模型</span>
+            </div>
 
-          <CompanySectionTabs
-            tabs={[
-              { id: "business", label: "商业分析", desc: "九宫格商业模式画布" },
-              { id: "financial", label: "财务分析", desc: "核心三张表与杜邦分解" },
-              { id: "value", label: "价值分析", desc: "护城河雷达与资本回报" },
-              { id: "management", label: "管理分析", desc: "治理结构与资本配置", ...(hasManagement ? {} : { note: "●" }) },
-              { id: "valuation", label: "估值分析", desc: "历史分位与情景推演", ...(hasValuation ? {} : { note: "●" }) },
-              { id: "holdings", label: "大师持仓", desc: "13F顶尖机构季度动向" },
-              { id: "references", label: "参考资料", desc: "官方SEC 10-K年报原文" },
-            ]}
-            initialTabId={initialTabId}
-          >
-            {/* Tab 1: Business Analysis — Business Model Canvas ONLY (No redundant text overview) */}
-            <section className="company-section" data-tab-panel="business">
-              <div className="company-financial-trend-head">
-                <h3>商业模式九宫格画布</h3>
-                <span className="dvl-section-subtitle">解构客户细分、核心价值主张、渠道触点与成本收入模型</span>
-              </div>
               {businessCanvas ? (
                 <CompanyBusinessCanvas
                   data={businessCanvas.canvas}
@@ -837,7 +827,6 @@ export default async function CompanyPage({ params, searchParams }: Props) {
               )}
             </section>
           </CompanySectionTabs>
-        </div>
       </div>
     </div>
   );

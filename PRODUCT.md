@@ -2,7 +2,7 @@
 
 # 价值部落 · Value Tribe — 产品设计文档
 
-> 最后更新：2026-09-24（v0.45.9）
+> 最后更新：2026-09-24（v0.45.10）
 
 ---
 
@@ -1094,7 +1094,16 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.45.9）
+## 当前实现状态（v0.45.10）
+
+### v0.45.10 变更（2026-09-24）
+
+- **公司页面布局重构：价值线升级为第一 Tab，8-Tab 统一工作区**
+  - 废除旧的"数字价值线独立 Hero 区块 + 深度投研分析 7-Tab 区块"双区布局，合并为单一 `CompanySectionTabs` 统一工作区，共 8 个 Tab（价值线 → 商业分析 → 财务分析 → 价值分析 → 管理分析 → 估值分析 → 大师持仓 → 参考资料），默认激活"价值线"；
+  - `ValueLineCard.tsx` 拆分三层：`ValueLineHeader`（顶部常驻 Header，Ticker 切换 + 股价 + 市值/PE/PB）、`ValueLineBody`（主内容：公司概览、估值走势、四宫格、AI 简报、CAGR 矩阵等）、`ValueLineCard`（向后兼容封装），Header 由 `CompanySectionTabs` 常驻渲染；
+  - `CompanySectionTabs.tsx` 升级为整页 Shell：接受 `valueLineData` / `initialTicker` 新 Props，内部管理 Ticker 切换状态，Tab 1 内联渲染 `ValueLineBody`，根元素使用 `<article class="value-line-card dvl-workspace-card">`；
+  - `page.tsx` 移除对 `ValueLineCard` 的直接引用，向 `CompanySectionTabs` 传入 `valueLineData` 和 `initialTicker`，默认 Tab 切换为 `"valueline"`；
+  - `globals.css` 新增 `.dvl-workspace-card` 与 `.company-tabs-shell` 共享网格 + 卡片样式，旧 `.dvl-deep-dive-section` / `.dvl-deep-dive-header` 间距归零（标记为停用）。
 
 ### v0.45.9 变更（2026-09-24）
 

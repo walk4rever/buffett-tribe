@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import type { ValueLineData, ValueLineHolder } from "@/lib/value-line-data";
+import type { ValueLineData, ValueLineHolder, ValueLineSecurityOption } from "@/lib/value-line-data";
 
 export function renderHolderActivity(h: ValueLineHolder) {
   if (h.activity === "SoldOut") {
@@ -389,52 +389,25 @@ export function ValueLineSparkline({
   );
 }
 
-interface ValueLineCardProps {
+export interface ValueLineHeaderProps {
   data: ValueLineData;
+  selectedTicker: string;
+  activeSecurity?: ValueLineSecurityOption | null;
+  onSelectTicker: (ticker: string) => void;
 }
 
-export function ValueLineCard({ data }: ValueLineCardProps) {
-  const [selectedTicker, setSelectedTicker] = useState(data.selectedTicker || data.ticker);
-
-  const activeSecurity = useMemo(() => {
-    if (!data.availableSecurities?.length) return null;
-    return (
-      data.availableSecurities.find((s) => s.ticker.toUpperCase() === selectedTicker.toUpperCase()) ||
-      data.availableSecurities[0]
-    );
-  }, [data.availableSecurities, selectedTicker]);
-
-  const handleTickerSelect = (t: string) => {
-    setSelectedTicker(t);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.set("ticker", t);
-      window.history.replaceState(null, "", url.toString());
-    }
-  };
-
+export function ValueLineHeader({
+  data,
+  selectedTicker,
+  activeSecurity,
+  onSelectTicker,
+}: ValueLineHeaderProps) {
   const curPrice = activeSecurity ? activeSecurity.latestPrice : data.latestPrice;
   const curPe = activeSecurity ? activeSecurity.peRatio : data.peRatio;
   const curPb = activeSecurity ? activeSecurity.pbRatio : data.pbRatio;
   const curMarketCap = activeSecurity ? activeSecurity.marketCap : data.marketCap;
-  const curPricePoints = activeSecurity ? activeSecurity.pricePoints : data.pricePoints;
-  const curValueLinePoints = activeSecurity ? activeSecurity.valueLinePoints : data.valueLinePoints;
   const curValuationStatus = activeSecurity ? activeSecurity.valuationStatus : data.valuationStatus;
   const curValuationDiffPct = activeSecurity ? activeSecurity.valuationDiffPct : data.valuationDiffPct;
-
-  const roeBadgeClass =
-    data.roeStability === "stellar"
-      ? "vl-badge--stellar"
-      : data.roeStability === "solid"
-        ? "vl-badge--solid"
-        : "vl-badge--neutral";
-
-  const roeBadgeLabel =
-    data.roeStability === "stellar"
-      ? "★ 卓越护城河"
-      : data.roeStability === "solid"
-        ? "稳健盈利"
-        : "周期性波动";
 
   const valuationStatusBadge =
     curValuationStatus === "undervalued" ? (
@@ -455,82 +428,106 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
     );
 
   return (
-    <article className="value-line-card">
-      {/* ── 1. Header Area: Ticker, Name, Editorial Essence & Pricing ── */}
-      <header className="vl-card-head">
-        <div className="vl-card-identity">
-          <div className="vl-card-badges">
-            {data.availableSecurities && data.availableSecurities.length > 1 ? (
-              <div className="vl-ticker-segmented-control" role="tablist" aria-label="交易代码与类股选择">
-                {data.availableSecurities.map((sec) => {
-                  const isSelected = selectedTicker.toUpperCase() === sec.ticker.toUpperCase();
-                  return (
-                    <button
-                      key={sec.ticker}
-                      type="button"
-                      role="tab"
-                      aria-selected={isSelected}
-                      className={`vl-ticker-pill-btn ${isSelected ? "active" : ""}`}
-                      onClick={() => handleTickerSelect(sec.ticker)}
-                      title={sec.classLabel ? `${sec.ticker} (${sec.classLabel})` : sec.ticker}
-                    >
-                      <span className="vl-ticker-code">{sec.ticker}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <span className="vl-ticker-badge">{selectedTicker}</span>
-            )}
-            {data.exchange ? <span className="vl-exchange-badge">{data.exchange}</span> : null}
-            {data.sector ? <span className="vl-sector-badge">{data.sector}</span> : null}
-            {valuationStatusBadge}
-          </div>
-
-          <h2 className="vl-card-title">
-            <Link href={data.href} className="vl-title-link">
-              <span className="vl-title-zh">{data.nameZh ?? data.canonicalName}</span>
-              {data.nameZh && data.canonicalName !== data.nameZh ? (
-                <span className="vl-title-en">{data.canonicalName}</span>
-              ) : null}
-            </Link>
-          </h2>
-
-        </div>
-
-        {/* Pricing & Key Ratios */}
-        <div className="vl-card-pricing">
-          {curPrice ? (
-            <div className="vl-price-primary">
-              <span className="vl-price-currency">{getCurrencySymbol(data.market).symbol}</span>
-              <span className="vl-price-val">{curPrice.toFixed(2)}</span>
-              <span className="vl-price-sub">{getCurrencySymbol(data.market).code}</span>
+    <header className="vl-card-head">
+      <div className="vl-card-identity">
+        <div className="vl-card-badges">
+          {data.availableSecurities && data.availableSecurities.length > 1 ? (
+            <div className="vl-ticker-segmented-control" role="tablist" aria-label="交易代码与类股选择">
+              {data.availableSecurities.map((sec) => {
+                const isSelected = selectedTicker.toUpperCase() === sec.ticker.toUpperCase();
+                return (
+                  <button
+                    key={sec.ticker}
+                    type="button"
+                    role="tab"
+                    aria-selected={isSelected}
+                    className={`vl-ticker-pill-btn ${isSelected ? "active" : ""}`}
+                    onClick={() => onSelectTicker(sec.ticker)}
+                    title={sec.classLabel ? `${sec.ticker} (${sec.classLabel})` : sec.ticker}
+                  >
+                    <span className="vl-ticker-code">{sec.ticker}</span>
+                  </button>
+                );
+              })}
             </div>
           ) : (
-            <div className="vl-price-primary">
-              <span className="vl-price-val">—</span>
-            </div>
+            <span className="vl-ticker-badge">{selectedTicker || data.ticker}</span>
           )}
-          <div className="vl-price-metrics">
-            <span className="vl-price-metric-item">
-              <span className="vl-metric-k">市值</span>
-              <span className="vl-metric-v">{formatCompactNumber(curMarketCap, getCurrencySymbol(data.market).symbol)}</span>
-            </span>
-            <span className="vl-dot-divider">·</span>
-            <span className="vl-price-metric-item">
-              <span className="vl-metric-k">PE</span>
-              <span className="vl-metric-v">{curPe ? `${curPe}x` : "—"}</span>
-            </span>
-            <span className="vl-dot-divider">·</span>
-            <span className="vl-price-metric-item">
-              <span className="vl-metric-k">PB</span>
-              <span className="vl-metric-v">{curPb ? `${curPb}x` : "—"}</span>
-            </span>
-          </div>
+          {data.exchange ? <span className="vl-exchange-badge">{data.exchange}</span> : null}
+          {data.sector ? <span className="vl-sector-badge">{data.sector}</span> : null}
+          {valuationStatusBadge}
         </div>
-      </header>
 
-      {/* ── 2. Company Overview: Merged Identity, Products & Revenue Model ── */}
+        <h2 className="vl-card-title">
+          <Link href={data.href} className="vl-title-link">
+            <span className="vl-title-zh">{data.nameZh ?? data.canonicalName}</span>
+            {data.nameZh && data.canonicalName !== data.nameZh ? (
+              <span className="vl-title-en">{data.canonicalName}</span>
+            ) : null}
+          </Link>
+        </h2>
+      </div>
+
+      {/* Pricing & Key Ratios */}
+      <div className="vl-card-pricing">
+        {curPrice ? (
+          <div className="vl-price-primary">
+            <span className="vl-price-currency">{getCurrencySymbol(data.market).symbol}</span>
+            <span className="vl-price-val">{curPrice.toFixed(2)}</span>
+            <span className="vl-price-sub">{getCurrencySymbol(data.market).code}</span>
+          </div>
+        ) : (
+          <div className="vl-price-primary">
+            <span className="vl-price-val">—</span>
+          </div>
+        )}
+        <div className="vl-price-metrics">
+          <span className="vl-price-metric-item">
+            <span className="vl-metric-k">市值</span>
+            <span className="vl-metric-v">{formatCompactNumber(curMarketCap, getCurrencySymbol(data.market).symbol)}</span>
+          </span>
+          <span className="vl-dot-divider">·</span>
+          <span className="vl-price-metric-item">
+            <span className="vl-metric-k">PE</span>
+            <span className="vl-metric-v">{curPe ? `${curPe}x` : "—"}</span>
+          </span>
+          <span className="vl-dot-divider">·</span>
+          <span className="vl-price-metric-item">
+            <span className="vl-metric-k">PB</span>
+            <span className="vl-metric-v">{curPb ? `${curPb}x` : "—"}</span>
+          </span>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+export interface ValueLineBodyProps {
+  data: ValueLineData;
+  activeSecurity?: ValueLineSecurityOption | null;
+}
+
+export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
+  const curPricePoints = activeSecurity ? activeSecurity.pricePoints : data.pricePoints;
+  const curValueLinePoints = activeSecurity ? activeSecurity.valueLinePoints : data.valueLinePoints;
+
+  const roeBadgeClass =
+    data.roeStability === "stellar"
+      ? "vl-badge--stellar"
+      : data.roeStability === "solid"
+        ? "vl-badge--solid"
+        : "vl-badge--neutral";
+
+  const roeBadgeLabel =
+    data.roeStability === "stellar"
+      ? "★ 卓越护城河"
+      : data.roeStability === "solid"
+        ? "稳健盈利"
+        : "周期性波动";
+
+  return (
+    <div className="vl-body-container">
+      {/* ── 1. Company Overview: Merged Identity, Products & Revenue Model ── */}
       {data.overview || data.businessSummary ? (
         <section className="vl-company-overview-pane" aria-label="公司概览">
           <div className="vl-overview-head">
@@ -545,7 +542,7 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
         </section>
       ) : null}
 
-      {/* ── 2.2. Tribe Superinvestor Holdings Cards (Mini Cards with Investor, Weight, Value & Handled Fund Name) ── */}
+      {/* ── 2. Tribe Superinvestor Holdings Cards (Top 6) ── */}
       {data.topHolders.length > 0 ? (
         <section className="vl-master-holdings-section" aria-label="大师持仓">
           <div className="vl-master-section-head">
@@ -817,6 +814,43 @@ export function ValueLineCard({ data }: ValueLineCardProps) {
           </table>
         </section>
       ) : null}
+    </div>
+  );
+}
+
+export interface ValueLineCardProps {
+  data: ValueLineData;
+}
+
+export function ValueLineCard({ data }: ValueLineCardProps) {
+  const [selectedTicker, setSelectedTicker] = useState(data.selectedTicker || data.ticker);
+
+  const activeSecurity = useMemo(() => {
+    if (!data.availableSecurities?.length) return null;
+    return (
+      data.availableSecurities.find((s) => s.ticker.toUpperCase() === selectedTicker.toUpperCase()) ||
+      data.availableSecurities[0]
+    );
+  }, [data.availableSecurities, selectedTicker]);
+
+  const handleTickerSelect = (t: string) => {
+    setSelectedTicker(t);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("ticker", t);
+      window.history.replaceState(null, "", url.toString());
+    }
+  };
+
+  return (
+    <article className="value-line-card">
+      <ValueLineHeader
+        data={data}
+        selectedTicker={selectedTicker}
+        activeSecurity={activeSecurity}
+        onSelectTicker={handleTickerSelect}
+      />
+      <ValueLineBody data={data} activeSecurity={activeSecurity} />
     </article>
   );
 }

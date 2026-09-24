@@ -4,7 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [v0.45.9] - 2026-09-24
+## [v0.45.10] - 2026-09-24
+
+### Changed
+- **公司页面布局重构：价值线升级为第一 Tab，8-Tab 统一工作区**
+  - 原"数字价值线卡片（独立 Hero 区块）+ 深度投研分析（7 Tab 区块）"的双区结构，合并为单一 `CompanySectionTabs` 统一工作区，共 8 个 Tab：价值线 → 商业分析 → 财务分析 → 价值分析 → 管理分析 → 估值分析 → 大师持仓 → 参考资料。
+  - `ValueLineCard.tsx` 拆分为三层：`ValueLineHeader`（常驻顶部 Header，含 Ticker 切换、股价、市值/PE/PB）、`ValueLineBody`（核心内容区）、`ValueLineCard`（向后兼容封装）。
+  - `CompanySectionTabs.tsx` 升级为"整页 Shell"：接受 `valueLineData` / `initialTicker` 新 props，内部管理 Ticker 切换状态，Tab 1 渲染 `ValueLineBody`，其余 Tab 渲染原有 children panels；根元素升级为 `<article>` 并添加 `.dvl-workspace-card` 样式类。
+  - `page.tsx` 移除 `ValueLineCard` 直接引用，改为向 `CompanySectionTabs` 传入 `valueLineData` 与 `initialTicker`；默认激活 Tab 从 `business` 改为 `valueline`。
+  - `globals.css` 新增 `.dvl-workspace-card` 选择器（与 `.company-tabs-shell` 共享网格布局样式），`dvl-deep-dive-section` / `dvl-deep-dive-header` 旧区块间距归零（标记为已停用）。
+
+
 
 ### Added
 - 次新股与招股书级联降级 Onboard 管线（10-K → 10-Q → S-1/424B4）：

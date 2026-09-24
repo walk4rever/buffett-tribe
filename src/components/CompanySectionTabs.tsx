@@ -7,8 +7,11 @@ import {
   useRef,
   useEffect,
   useCallback,
+  useMemo,
 } from "react";
 import type { ReactElement, ReactNode } from "react";
+import type { ValueLineData } from "@/lib/value-line-data";
+import { ValueLineHeader, ValueLineBody } from "@/components/ValueLineCard";
 
 export type CompanySectionTab = {
   id: string;
@@ -21,12 +24,18 @@ type CompanySectionTabsProps = {
   tabs: CompanySectionTab[];
   children: ReactNode;
   initialTabId?: string;
+  valueLineData?: ValueLineData | null;
+  initialTicker?: string;
+  fallbackHeader?: ReactNode;
 };
 
 export function CompanySectionTabs({
   tabs,
   children,
   initialTabId,
+  valueLineData,
+  initialTicker,
+  fallbackHeader,
 }: CompanySectionTabsProps) {
   const initialActiveTab = tabs.some((tab) => tab.id === initialTabId)
     ? initialTabId ?? tabs[0]?.id ?? ""
@@ -35,6 +44,42 @@ export function CompanySectionTabs({
   const [isMatrixOpen, setIsMatrixOpen] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const [selectedTicker, setSelectedTicker] = useState<string>(
+    initialTicker || valueLineData?.selectedTicker || valueLineData?.ticker || ""
+  );
+
+  const activeSecurity = useMemo(() => {
+    const secs = valueLineData?.availableSecurities ?? [];
+    if (secs.length === 0) return null;
+    return (
+      secs.find(
+        (s) => s.ticker.toUpperCase() === selectedTicker.toUpperCase()
+      ) ?? secs[0]
+    );
+  }, [valueLineData?.availableSecurities, selectedTicker]);
+
+  const handleTickerSelect = (t: string) => {
+    setSelectedTicker(t);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("ticker", t);
+      window.history.replaceState(null, "", url.toString());
+    }
+  };
+
+  const handleTabSelect = (tabId: string) => {
+    setActiveTab(tabId);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (tabId === "valueline") {
+        url.searchParams.delete("tab");
+      } else {
+        url.searchParams.set("tab", tabId);
+      }
+      window.history.replaceState(null, "", url.toString());
+    }
+  };
 
   const navRef = useRef<HTMLDivElement | null>(null);
   const tabButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -117,7 +162,20 @@ export function CompanySectionTabs({
     null;
 
   return (
-    <div className="company-tabs-shell">
+    <article className="value-line-card dvl-workspace-card">
+      {/* ── 1. Master Company Header (Brand Identity, Live Price, Ticker Switcher) ── */}
+      {valueLineData ? (
+        <ValueLineHeader
+          data={valueLineData}
+          selectedTicker={selectedTicker}
+          activeSecurity={activeSecurity}
+          onSelectTicker={handleTickerSelect}
+        />
+      ) : fallbackHeader ? (
+        fallbackHeader
+      ) : null}
+
+      {/* ── 2. Unified 8-Tab Navigation Bar ── */}
       <div className="company-tabs-head">
         <div className="company-tabs-bar-wrap">
           {/* Left edge fade hint */}
@@ -149,7 +207,7 @@ export function CompanySectionTabs({
                   aria-controls={`company-tab-${tab.id}`}
                   id={`company-tab-trigger-${tab.id}`}
                   className={`company-tab${active ? " company-tab--active" : ""}`}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabSelect(tab.id)}
                 >
                   <span className="company-tab-label">{tab.label}</span>
                   {tab.note ? (
@@ -174,7 +232,7 @@ export function CompanySectionTabs({
             className="company-tabs-matrix-trigger"
             onClick={() => setIsMatrixOpen(true)}
             aria-label={`查看全部 ${tabs.length} 大投研分析维度`}
-            title="全部投研维度"
+            title={`全部 ${tabs.length} 大投研维度`}
           >
             <svg
               className="company-tabs-matrix-icon"
@@ -194,7 +252,7 @@ export function CompanySectionTabs({
         </div>
       </div>
 
-      {/* Drawer / Bottom Sheet Modal for 7 Dimensions */}
+      {/* Drawer / Bottom Sheet Modal for Dimensions */}
       {isMatrixOpen ? (
         <div
           className="company-tabs-sheet-backdrop"
@@ -237,7 +295,7 @@ export function CompanySectionTabs({
                       active ? " company-tabs-sheet-card--active" : ""
                     }`}
                     onClick={() => {
-                      setActiveTab(tab.id);
+                      handleTabSelect(tab.id);
                       setIsMatrixOpen(false);
                     }}
                   >
@@ -265,8 +323,22 @@ export function CompanySectionTabs({
         </div>
       ) : null}
 
+      {/* ── 3. Tab Body / Panels Area ── */}
       <div className="company-tabs-body">
-        {activePanel ? (
+        {activeTab === "valueline" ? (
+          <div
+            id="company-tab-valueline"
+            role="tabpanel"
+            aria-labelledby="company-tab-trigger-valueline"
+            className="company-tabs-panel"
+          >
+            {valueLineData ? (
+              <ValueLineBody data={valueLineData} activeSecurity={activeSecurity} />
+            ) : (
+              <div className="company-empty">该标的暂无完整数字价值线数据</div>
+            )}
+          </div>
+        ) : activePanel ? (
           <div
             id={`company-tab-${activeTab}`}
             role="tabpanel"
@@ -277,6 +349,6 @@ export function CompanySectionTabs({
           </div>
         ) : null}
       </div>
-    </div>
+    </article>
   );
 }
