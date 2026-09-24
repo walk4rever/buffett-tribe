@@ -2,7 +2,7 @@
 
 # 价值部落 · Value Tribe — 产品设计文档
 
-> 最后更新：2026-09-24（v0.45.10）
+> 最后更新：2026-09-24（v0.45.11）
 
 ---
 
@@ -1094,7 +1094,15 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.45.10）
+## 当前实现状态（v0.45.11）
+
+### v0.45.11 变更（2026-09-24）
+
+- **LLM 待构建 Tab 灰态禁用机制**：
+  - 商业分析（`businessCanvas` 为空）、价值分析（`rawMoat` 无真实维度数据）、管理分析（`analysis.management` 为空）、估值分析（`analysis.valuation` 为空）4 个强 LLM 依赖 Tab，在无真实 AI 生成内容时自动 disabled；
+  - 禁用效果：Tab 按钮 opacity 0.45 + pointer-events: none + `tabIndex=-1` + 右上角 🔒 图标；Bottom Sheet 维度卡片显示"待构建"标签并同步禁用；
+  - `handleTabSelect` 和初始 Tab 选择均跳过 disabled Tab，确保 URL `?tab=xxx` 参数不会落在灰态 Tab 上；
+  - 禁用逻辑完全数据驱动，无需手动维护 `onboardPhase` 字段，LLM 数据生成后自动解锁。
 
 ### v0.45.10 变更（2026-09-24）
 

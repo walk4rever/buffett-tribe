@@ -4,7 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [v0.45.10] - 2026-09-24
+## [v0.45.11] - 2026-09-24
+
+### Added
+- **LLM 待构建 Tab 灰态禁用机制**：商业分析、价值分析、管理分析、估值分析 4 个强 LLM 依赖维度，在无真实 AI 生成数据时自动变灰（opacity 0.45）+ 不可点击（pointer-events: none）+ 右上角 🔒 图标提示；Bottom Sheet 维度网格同步显示"待构建"标签并禁用。禁用逻辑完全数据驱动（`!businessCanvas` / `!hasRealMoat` / `!hasManagement` / `!hasValuation`），无需手动维护 phase 字段，LLM 数据一旦生成即自动解锁对应 Tab。
+
+
 
 ### Changed
 - **公司页面布局重构：价值线升级为第一 Tab，8-Tab 统一工作区**
