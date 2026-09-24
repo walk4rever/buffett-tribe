@@ -143,13 +143,13 @@ def dataframe_to_chart_json(ticker: str, df: pd.DataFrame) -> dict[str, Any]:
     }
 
 
-def write_outputs(out_dir: Path, ticker: str, df: pd.DataFrame, payload: dict[str, Any]) -> tuple[Path, Path]:
+def write_outputs(out_dir: Path, ticker: str, df: pd.DataFrame, payload: dict[str, Any], download_symbol: str = "") -> tuple[Path, Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     base = out_dir / ticker.upper()
     json_path = base.with_suffix(".json")
     csv_path = base.with_suffix(".csv")
     json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    normalize_frame(df, ticker).to_csv(csv_path)
+    normalize_frame(df, download_symbol or ticker).to_csv(csv_path)
     return json_path, csv_path
 
 
@@ -238,10 +238,18 @@ def main() -> int:
             summary.append({"ticker": ticker, "status": "skipped"})
             continue
 
-        print(f"Downloading {ticker} from yfinance...", flush=True)
+        YF_SYMBOL_ALIAS = {
+            "BFB": "BF-B",
+            "BF.B": "BF-B",
+            "HHC": "HHH",
+            "SATS": "ECHO",
+            "SEGRT": "SEG",
+        }
+        yf_symbol = YF_SYMBOL_ALIAS.get(ticker.upper(), ticker)
+        print(f"Downloading {ticker} from yfinance (symbol: {yf_symbol})...", flush=True)
         try:
             df = yf.download(
-                ticker,
+                yf_symbol,
                 start=args.start,
                 end=end,
                 interval="1d",
@@ -252,10 +260,10 @@ def main() -> int:
             )
 
             if df.empty:
-                raise ValueError(f"No data returned for {ticker}")
+                raise ValueError(f"No data returned for {ticker} ({yf_symbol})")
 
-            payload = dataframe_to_chart_json(ticker, df)
-            json_path, csv_path = write_outputs(out_dir, ticker, df, payload)
+            payload = dataframe_to_chart_json(yf_symbol, df)
+            json_path, csv_path = write_outputs(out_dir, ticker, df, payload, download_symbol=yf_symbol)
             print(f"  wrote {json_path}", flush=True)
             print(f"  wrote {csv_path}", flush=True)
 

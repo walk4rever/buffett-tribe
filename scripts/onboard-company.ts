@@ -231,6 +231,28 @@ function resolveCnHkCode(ticker: string, market: "cn" | "hk"): string {
   return deriveCnHkCode(ticker, market);
 }
 
+async function fetchSecCikByTicker(ticker: string): Promise<{ cik: string; title: string } | null> {
+  try {
+    const res = await fetch("https://www.sec.gov/files/company_tickers.json", {
+      headers: { "User-Agent": "buffett-tribe research walkklaw@gmail.com" },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as Record<string, { cik_str: number; ticker: string; title: string }>;
+    const upper = ticker.toUpperCase();
+    for (const entry of Object.values(data)) {
+      if (entry.ticker.toUpperCase() === upper) {
+        return {
+          cik: String(entry.cik_str).padStart(10, "0"),
+          title: entry.title,
+        };
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // No @@unique([market, code]) constraint exists on Entity (only @@index), so
 // both the manual-override and auto-lookup paths upsert by hand rather than
 // via Prisma's where-unique upsert().
@@ -363,7 +385,16 @@ async function main() {
   });
   const entityMeta = existingEntity?.metadata as Record<string, unknown> | null;
   const isDelisted = Boolean(entityMeta?.delisted);
-  const resolvedCik = cikArg ?? existingEntity?.cik ?? (typeof entityMeta?.cik === "string" ? entityMeta.cik : undefined);
+  let resolvedCik = cikArg ?? existingEntity?.cik ?? (typeof entityMeta?.cik === "string" ? entityMeta.cik : undefined);
+
+  if (!resolvedCik && market === "us") {
+    console.log(`[onboard-company] 未指定 CIK，正在向 SEC 官方 EDGAR 查询 ${ticker} 的挂牌状态与 CIK...`);
+    const secInfo = await fetchSecCikByTicker(ticker);
+    if (secInfo) {
+      console.log(`[onboard-company] ✓ SEC 官方确认已挂牌: ${secInfo.title} (CIK: ${secInfo.cik})`);
+      resolvedCik = secInfo.cik;
+    }
+  }
 
   if (resolvedCik && existingEntity && existingEntity.cik !== resolvedCik) {
     await prisma.entity.update({
@@ -447,11 +478,27 @@ async function main() {
 
   const importFinancialsFastStep: Step = {
     id: "import_financials_fast",
-    label: "导入财务数据（SEC 结构化 Facts → Financial，快模式）",
-    run: () => {
+    label: "导入财务数据（10-K 年度财报 → 10-Q 季度降级兜底）",
+    run: async () => {
       const args = ["--ticker", ticker, "--from", fromYear, "--to", toYear, "--fast", "--filing-concurrency", "6"];
       if (resolvedCik) args.push("--cik", resolvedCik);
-      return runNpmScript("import:10k", args);
+      try {
+        await runNpmScript("import:10k", args);
+      } catch {
+        console.log(`[onboard-company] import:10k annual facts exited, checking for 10-Q quarterly fallback for ${ticker}...`);
+      }
+
+      // 降级检查：对于次新上市无 10-K 的公司（如 SpaceX），自动从 10-Q 季报抽取财务数据
+      const existingEntityId = await findEntityId(ticker);
+      const finCount = existingEntityId ? await prisma.financial.count({ where: { entityId: existingEntityId } }) : 0;
+      if (finCount === 0) {
+        console.log(`[onboard-company] 10-K 暂无数据，触发次新股降级：从 10-Q 季度报表提取财务数据 (${ticker})...`);
+        try {
+          await runNpmScript("import:us-quarterly-financials", ["--ticker", ticker]);
+        } catch (err) {
+          console.warn(`[onboard-company] 10-Q 导入退出:`, err);
+        }
+      }
     },
     verify: async (entityId) => {
       const financialCount = await prisma.financial.count({ where: { entityId } });
@@ -461,17 +508,35 @@ async function main() {
 
   const import10kFullStep: Step = {
     id: "import_10k",
-    label: "导入 10-K/20-F/40-F 全文切片（FilingSection + R2 归档）",
-    run: () => {
+    label: "导入年报/招股书全文切片（10-K/20-F/40-F → S-1/424B4 降级兜底）",
+    run: async () => {
       const args = ["--ticker", ticker, "--from", fromYear, "--to", toYear];
       if (resolvedCik) args.push("--cik", resolvedCik);
-      return runNpmScript("import:10k", args);
+      try {
+        await runNpmScript("import:10k", args);
+      } catch {
+        console.log(`[onboard-company] import:10k full exited, checking prospectus fallback for ${ticker}...`);
+      }
+
+      // 降级检查：如果无 10-K/20-F 年报全文切片，自动从 IPO 招股书（424B4 / S-1）提取 FilingSection 研报证据
+      const existingEntityId = await findEntityId(ticker);
+      const sectionCount = existingEntityId
+        ? await prisma.filingSection.count({ where: { entityId: existingEntityId } })
+        : 0;
+      if (sectionCount === 0) {
+        console.log(`[onboard-company] 暂无 10-K 年报切片，触发次新股降级：从 S-1/424B4 招股书提取切片证据 (${ticker})...`);
+        try {
+          await runNpmScript("import:us-prospectus", ["--ticker", ticker]);
+        } catch (err) {
+          console.warn(`[onboard-company] 招股书导入退出:`, err);
+        }
+      }
     },
     verify: async (entityId) => {
       const financialCount = await prisma.financial.count({ where: { entityId } });
       if (financialCount === 0) return false;
 
-      const filingKindFilter = { in: ["10k", "20f", "40f"] };
+      const filingKindFilter = { in: ["10k", "20f", "40f", "us-prospectus"] };
       const [totalFilings, filingsWithoutSections] = await Promise.all([
         prisma.extSource.count({
           where: { filerEntityId: entityId, kind: filingKindFilter },

@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.45.9] - 2026-09-24
+
+### Added
+- 次新股与招股书级联降级 Onboard 管线（10-K → 10-Q → S-1/424B4）：
+  - 自动向 SEC EDGAR（`company_tickers.json`）检索最新挂牌状态与 CIK，实现未填 CIK 美股自动识别补齐；
+  - 针对刚上市尚无 10-K 年报的次新公司，自动降级至 10-Q 季度报表提取财务数据（`import:us-quarterly-financials`）；
+  - 若年报切片缺失，自动降级至 S-1 / 424B4 招股书全文提取 FilingSection 切片（`import:us-prospectus`），并将 `verify` 准入规则扩充支持 `us-prospectus`。
+- yfinance 行情同步代码别名（Ticker Alias）映射：
+  - 在 `scripts/fetch-stock-prices-yf.py` 中引入 `YF_SYMBOL_ALIAS`，支持非标代码与更名标的（如 `BFB` -> `BF-B`、`HHC` -> `HHH`、`SATS` -> `ECHO`、`SEGRT` -> `SEG`）下载与入库解耦，确保图表与历史量价正常写入。
+
+### Changed
+- 全量存量待完善公司审计与 Phase 1 大规模推进：
+  - 深入排查原 42 家待完善公司，订正 10 家被 CIK 混淆的知名标的（ANSS、FL、ARCH、MASI、SATS、DAY、CYBR、HHC、ESMT、UNVR），合并物理清理 3 家历史重复实体存根；
+  - 成功将 25 家成熟期、近期上市（INIO、QNT、BTGO、USDEW）及近两年退市并购企业（ANSS、FL、CYBR、MASI、CWAN、OLPX、CPRX、LBRDK、RDFN、JNPR、DAY 等）推入 Phase 1，补全财报历史与业务画像；
+  - 全站 Phase 1 达成率跃升至 97.6%（576 / 590 家），仅余 14 家均为非经营性特殊标的（破产清算 4 家、历史 De-SPAC 5 家、基金及停牌标的 5 家）。
+
 ## [v0.45.8] - 2026-09-24
 
 ### Fixed

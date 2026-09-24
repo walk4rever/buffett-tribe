@@ -29,22 +29,12 @@
   - **背景**：已退市/被收购的美股标的（如 IBM 收购的 Confluent `CFLT`、推特 `TWTR`、动视暴雪 `ATVI` 等），Yahoo Finance 接口具有幸存者偏差，会在摘牌后清理 Ticker 行情接口并返回 404（`No data found, symbol may be delisted`）。目前 Onboard Phase 1 实现了对 delisted 的容错跳过，但退市股的 `StockPrice` 数据缺失，导致历史持仓复盘、DVL 历史估值线与分位走势图空白。
   - **目标**：建立退市标的历史日 K 归档补录机制（如 `data/stock-prices-archive/<TICKER>.csv` 静态文件导入或集成 FMP / Tiingo / EODHD 等支持 delisted 的专业数据源），将 2020 年至退市日的历史真实日 K 灌入 `StockPrice` 表，一次性永久解决退市标的的历史股价回溯。
 
-- [ ] **⑮ 批量 Onboard 存量失败标的（10 家）针对性修复与补录**（2026-09-23 mini 批处理跑完 223/233 家后归档，详见 `PRODUCT.md`）：
-  - **背景**：2026-09-23 mini 批处理（`onboard:pending`）全量跑完 233 家候选池，成功 223 家（成功率 95.7%），将拥有财务报表的公司数推至 544 家。剩余 10 家公司触发隔离未入库。
-  - **前台展示口径修正**：修复此前 `src/app/company/page.tsx` 误用 `|| row._count.financials > 0` 将概览超时的标的（`NSC`/`PURR`/`GBTC`）错误提升至已完成区的漏洞，统一严格以 `metadata.onboardPhase >= 1` 为准；同时已从数据库物理清理 0 关联的历史冗余空壳实体 `GRABW`（CIK 0001855612）。修复后目录页「待完善」列表精准展现为 11 家（10 家批处理未完成 + 1 家无财报事实的 BTGO）。
-  - **分类诊断与后续执行方案**：
-    1. **类别 A（5 家）：因 DeepSeek API 偶发超时/503 失败，已具备基础数据，直接单独重跑即愈**：
-       - `NSC`（Norfolk Southern Corp，诺福克南方铁路）：66 条财务数据已全部写入，仅概览生成超时，执行 `npm run onboard:company -- --ticker NSC`；
-       - `YOU`（Clear Secure Inc）：中文名翻译遇 503，执行 `npm run onboard:company -- --ticker YOU`；
-       - `TONX`（TON Strategy Co）：中文名翻译遇 503，执行 `npm run onboard:company -- --ticker TONX`；
-       - `PURR`（Hyperliquid Strategies Inc）：财务与股价已入库，概览生成遇 503，执行 `npm run onboard:company -- --ticker PURR`；
-       - `GBTC`（Grayscale Bitcoin Trust ETF）：财务与股价已入库，概览生成遇 503，执行 `npm run onboard:company -- --ticker GBTC`。
-    2. **类别 B（5 家）：特殊标的 / 非 10-K 报表结构，需针对性处置**：
-       - `CNI`（Canadian National Railway，加拿大国家铁路）：加拿大 40-F 申报人，US-GAAP facts 为空，需走 40-F 报表解析或手工事实映射；
-       - `SPCX`（SpaceX）：非公开上市运营公司，SEC 无 10-K（需走招股书/估值补录通道，或标记 `unmatchedReason: "unlisted"`）；
-       - `FRVO`（Fervo Energy Co）：未上市地热新能源公司，SEC 无 10-K 报表，同上；
-       - `PSUS`（Pershing Square USA, Ltd.）：潘兴广场封闭式基金，SEC 暂无常规 10-K 报表，需评估是否归入 ETF/基金类标的排除；
-       - `GL`（Globe Life Inc）：人寿保险类金融科目，财务数据已抓取，需单独核准财报验证断言。
+- [x] **⑮ 批量 Onboard 存量待完善标的全面审计、管线升级与 Phase 1 达成**（2026-09-24 完成并归档，详见 `PRODUCT.md`）：
+  - **落地成果**：
+    1. **Onboard 降级管线落地**：`scripts/onboard-company.ts` 新增 SEC EDGAR 挂牌与 CIK 自动探查、10-Q 季报财务数据降级（`import:us-quarterly-financials`）及 S-1/424B4 招股书全文切片降级（`import:us-prospectus`），使近期 IPO 次新股顺利完成 Phase 1 Onboarding；
+    2. **行情同步别名机制**：`scripts/fetch-stock-prices-yf.py` 引入 `YF_SYMBOL_ALIAS`，解决 `BFB` -> `BF-B`、`HHC` -> `HHH`、`SATS` -> `ECHO`、`SEGRT` -> `SEG` 等非标与更名标的代码映射；
+    3. **存量 42 家全面审计与修复**：校正 10 家被 CIK 混淆的知名公司（ANSS、FL、ARCH、MASI、SATS、DAY、CYBR、HHC、ESMT、UNVR），清理 3 家重复实体，将 25 家推进至 Phase 1；全库 Phase 1 达成率达 97.6%（576 / 590 家）；
+    4. **剩余 14 家待完善标的分类定性**：破产清算 4 家（SOND/SONDQ/BRDS/STRYQ）、历史 SPAC 5 家（AGCUU/DGNR/RSVA/TBA/MEKA）、基金及停牌标的 5 家（PSUS/AKRE/ETHM/OZON/CNI），均为非经营性特殊标的。
 
 - [ ] **⑩ 回填缺失的 `section_text` artifact：645 份 filing / 4,780 个 section / 110 家公司**（2026-08-30 发现，详细复盘见 `handoff.md` 第二次会话追加）：早期那版「三种 kind 全删」的 `cleanup-section-artifacts.ts` 删掉了 `section_text` artifact，而 `FilingSection.textArtifact` 外键是 `onDelete: SetNull`，链接随之全部变 NULL；上次只回填了 BN/SU 两家。后果是 `search_filings` 对这 110 家公司**平均只能看到 27.4% 的正文**（`FilingSection.content` 只是导入时截断的预览），走 `primary_html` 现场重解析的兜底路径又常因大文件超时。P3 加的降级警告保证了它不会静默撒谎，但能力缺口是真的。
   - **判据**：`textArtifactId is null AND length(content) < contentTextLength`。按 `extractionVersion` 分：v2 全部 10,857 个 section text artifact 数为 0（那一代没这机制），v3 的 16,181 个里缺 1,839 个。8/29–8/30 两批重导的 10,082 个则 100% 完整——**当前写入路径是对的，这是历史存量问题**。

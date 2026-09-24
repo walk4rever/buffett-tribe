@@ -2,7 +2,7 @@
 
 # 价值部落 · Value Tribe — 产品设计文档
 
-> 最后更新：2026-09-24（v0.45.7）
+> 最后更新：2026-09-24（v0.45.9）
 
 ---
 
@@ -32,7 +32,7 @@
 6. [A股与港股覆盖扩展](#a股与港股覆盖扩展)
 7. [设计与技术基线](#设计与技术基线)
 8. [测试体系](#测试体系)
-9. [当前实现状态](#当前实现状态v0457)
+9. [当前实现状态](#当前实现状态v0459)
 10. [数据字典与工程口径](#数据字典与工程口径)
 11. [数据资产清单](#数据资产清单)
 12. [公司页财务看板](#公司页财务看板truth-of-source-设计)
@@ -1094,7 +1094,21 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.45.8）
+## 当前实现状态（v0.45.9）
+
+### v0.45.9 变更（2026-09-24）
+
+- **Onboard 自动化接入管线升级（次新股/招股书级联降级兜底）**：
+  - **SEC EDGAR 挂牌状态与 CIK 自动侦测**：新增 `fetchSecCikByTicker()`，当新增或 onboarding 美股且未显式指定 CIK 时，自动联网向 SEC `company_tickers.json` 检索最新官方代码，自动发现刚上市/更名新标的并补充 CIK；
+  - **财务数据级联降级（10-K → 10-Q）**：次新上市或近期 IPO 公司若尚未发布过 10-K 年度财报，自动降级触发 `import:us-quarterly-financials` 从 10-Q 季度报表提取财务数据（如 SpaceX / 次新股）；
+  - **全文研报切片级联降级（10-K/20-F/40-F → S-1/424B4 招股书）**：若年报切片为空，自动触发 `import:us-prospectus` 从 IPO 招股书（424B4 / S-1）切片提取业务模式、风险提示等结构化章节，并更新 `verify` 校验规则支持 `us-prospectus`，使次新公司顺利完成 Phase 1 Onboarding。
+- **yfinance 股票价格同步代码别名机制**：
+  - 在 `scripts/fetch-stock-prices-yf.py` 中引入 `YF_SYMBOL_ALIAS` 代码映射表，完美支持美股非标代码及公司更名重组：`BFB` -> `BF-B`（布朗霍曼）、`HHC` -> `HHH`（霍华德休斯）、`SATS` -> `ECHO`（回声星通信）、`SEGRT` -> `SEG`；
+  - 支持下载别名与本地 ticker 存储解耦，确保图表 JSON 与历史量价 CSV 正确写入并与数据库实体关联。
+- **数据库全量存量待完善公司审计与 Phase 1 达成**：
+  - 彻底梳理审计原 42 家待完善公司：校正 10 家被 CIK 混淆的知名标的（ANSS、FL、ARCH、MASI、SATS、DAY、CYBR、HHC、ESMT、UNVR），合并物理清理 3 家历史重复实体存根；
+  - 成功将 25 家成熟期、近期上市（INIO、QNT、BTGO、USDEW）及近两年退市并购企业（ANSS、FL、CYBR、MASI、CWAN、OLPX、CPRX、LBRDK、RDFN、JNPR、DAY 等）成功推入 Phase 1，补全财报历史与基础资料；
+  - 全库 Phase 1 达标率跃升至 **97.6% (576 / 590 家)**，仅余 14 家均为非经营性特殊标的（破产清算破产股 4 家如 SOND/BRDS/STRYQ、已解散或清算历史 SPAC 5 家如 AGCUU/DGNR/RSVA/TBA/MEKA、封闭式/公募基金及制裁停牌 5 家如 PSUS/AKRE/ETHM/OZON/CNI）。
 
 ### v0.45.8 变更（2026-09-24）
 
