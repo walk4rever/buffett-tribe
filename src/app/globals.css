@@ -11732,18 +11732,6 @@ body {
   padding: clamp(1.5rem, 4vw, 2.5rem) 1.25rem 4rem;
 }
 
-.punch-detail-back {
-  display: inline-block;
-  margin-bottom: 1.25rem;
-  color: rgba(0, 0, 0, 0.45);
-  font-size: 0.82rem;
-  text-decoration: none;
-}
-
-.punch-detail-back:hover {
-  color: var(--accent);
-}
-
 .punch-detail-head {
   margin-bottom: 1.5rem;
 }
@@ -11893,7 +11881,7 @@ body {
 }
 
 .insight-detail-head {
-  margin: 0 0 0.75rem;
+  margin: 0 0 1.5rem;
 }
 
 .insight-detail-head h1 {
@@ -12026,69 +12014,6 @@ body {
 
 .insight-share-trigger:active {
   opacity: 0.72;
-}
-
-/* ── Reader bar ── */
-
-.insight-reader-bar {
-  position: sticky;
-  top: var(--site-nav-height);
-  z-index: 80;
-  min-height: 36px;
-  margin: 0 0 0.75rem;
-  padding: 0 0.65rem;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.65rem;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: saturate(180%) blur(14px);
-  -webkit-backdrop-filter: saturate(180%) blur(14px);
-}
-
-.insight-reader-back {
-  color: var(--apple-blue);
-  font-size: 0.75rem;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.insight-reader-bar-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: rgba(0, 0, 0, 0.5);
-  font-size: 0.75rem;
-  opacity: 0;
-  transform: translateY(3px);
-  transition: opacity 0.18s ease, transform 0.18s ease;
-}
-
-.insight-reader-bar--title-visible .insight-reader-bar-title {
-  opacity: 1;
-  transform: none;
-}
-
-.insight-reader-bar-actions {
-  display: inline-flex;
-  align-items: center;
-  justify-self: end;
-}
-
-.insight-reader-progress {
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: 100%;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--accent);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.1s linear;
-  pointer-events: none;
 }
 
 /* ── Reader body ── */
@@ -12622,16 +12547,6 @@ body {
   padding-bottom: 1.5rem;
 }
 
-/* .insight-reader-bar's sticky offset (top: var(--site-nav-height)) assumes
-   its scroll container starts right at the page top, below the fixed
-   SiteNav — true for .site-main, but .insight-chat-article is a nested
-   scroll box that already sits below SiteNav in the flex column, so that
-   offset would push the bar an extra site-nav-height down, stranding it
-   mid-content instead of flush against the top of the panel. */
-.insight-chat-article .insight-reader-bar {
-  top: 0;
-}
-
 @media (max-width: 760px) {
   .insights-shell,
   .insight-detail-shell {
@@ -12642,12 +12557,6 @@ body {
   .insight-share-download {
     width: 100%;
     justify-content: center;
-  }
-
-  .insight-reader-bar {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 0.45rem;
-    padding: 0 0.5rem;
   }
 
   .insight-share-trigger {
@@ -19864,32 +19773,6 @@ a.insight-entity-chip:hover {
   gap: 1rem;
 }
 
-.dvl-top-nav-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-}
-
-.dvl-back-link {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--apple-blue);
-  text-decoration: none;
-  transition: opacity 0.16s ease;
-}
-
-.dvl-back-link:hover {
-  opacity: 0.8;
-}
-
 .dvl-brand-pill {
   display: inline-flex;
   align-items: center;
@@ -20006,10 +19889,6 @@ a.insight-entity-chip:hover {
 @media (max-width: 640px) {
   .dvl-wrap {
     padding: 1rem 0.85rem 4rem;
-  }
-  .dvl-top-nav-bar {
-    margin-bottom: 1.15rem;
-    gap: 0.6rem;
   }
   .value-line-card {
     padding: 1.15rem 1rem;

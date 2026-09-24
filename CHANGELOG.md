@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.45.12] - 2026-09-24
+
+### Changed
+- **UI 精简：移除洞见详情页吸顶分享栏、公司详情页返回按钮与打孔详情页返回按钮**
+  - **洞见文章页**：移除吸顶条 `insight-reader-bar`（包含 `← 洞见` 返回链接、文章标题、概览卡片分享按钮以及阅读进度条），文章头部与正文直接自然衔接，划词「AI解读」与「高光分享」以及页面底部「← 返回洞见列表」保持完整。
+  - **公司详情页**：移除数字价值线工作区上方的独立导航行 `dvl-top-nav-bar`（`← 公司` 返回按钮），全局由 `SiteNav` 统一导航，工作区头部更加紧凑整洁。
+  - **打孔详情页**：移除页面顶部独立返回链接 `punch-detail-back`（`← 打孔`），依托全局 `SiteNav` 导航。
+  - **样式清理**：清理 `globals.css` 中已废弃的 `.insight-reader-bar`、`.dvl-top-nav-bar` / `.dvl-back-link` 以及 `.punch-detail-back` 样式规则及响应式媒体查询。
+
 ## [v0.45.11] - 2026-09-24
 
 ### Added

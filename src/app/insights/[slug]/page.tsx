@@ -4,11 +4,10 @@ import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { SiteNav } from "@/components/SiteNav";
 import { InsightReader } from "@/components/InsightReader";
-import { InsightOverviewShareButton } from "@/components/InsightOverviewShareButton";
 import { InsightChatShell } from "@/components/InsightChatShell";
 import { InsightToc } from "@/components/InsightToc";
 import { InsightBackToTop } from "@/components/InsightBackToTop";
-import { extractInsightOverviewShareContent, isInsightFormat } from "@/lib/insights";
+import { isInsightFormat } from "@/lib/insights";
 import { extractHeadings } from "@/lib/extract-headings";
 import { addHeadingIds } from "@/lib/add-heading-ids";
 import { markdownToHtml } from "@/lib/markdown-to-html";
@@ -28,7 +27,6 @@ export default async function InsightDetailPage({ params }: Props) {
 
   const format = isInsightFormat(post.format) ? post.format : "markdown";
   const dateLabel = post.publishedAt ? formatDate(post.publishedAt) : formatDate(post.updatedAt);
-  const overview = extractInsightOverviewShareContent(post.contentRaw, post.description ?? undefined);
 
   // Extract headings for TOC - convert markdown to HTML first, then add IDs
   let baseContent: string;
@@ -73,15 +71,6 @@ export default async function InsightDetailPage({ params }: Props) {
             title={post.title}
             content={post.contentRaw}
             format={format}
-            actions={(
-              <InsightOverviewShareButton
-                title={post.title}
-                source={post.source}
-                dateLabel={dateLabel}
-                overviewTitle={overview.title}
-                overviewMarkdown={overview.markdown}
-              />
-            )}
           />
 
           {relatedEntities.length > 0 && (

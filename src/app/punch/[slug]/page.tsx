@@ -44,10 +44,6 @@ export default async function PunchDetailPage({ params }: Props) {
     <div className="home-v2 punch-detail-page">
       <SiteNav />
       <main className="punch-detail-shell">
-        <Link href="/punch" className="punch-detail-back">
-          ← 打孔
-        </Link>
-
         <header className="punch-detail-head">
           <div className="punch-detail-who">
             {punch.masterInitials && (

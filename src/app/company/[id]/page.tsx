@@ -351,13 +351,6 @@ export default async function CompanyPage({ params, searchParams }: Props) {
       <CompanyAgentDialog companyName={zhName} ticker={company.ticker} />
 
       <div className="company-wrap dvl-wrap">
-        {/* ── Top Navigation ── */}
-        <nav className="dvl-top-nav-bar" aria-label="公司导航">
-          <Link href="/company" className="dvl-back-link">
-            ← 公司
-          </Link>
-        </nav>
-
         {/* ── Unified 8-Tab Workspace (价值线 + 7 Deep-Dive dimensions) ── */}
         <CompanySectionTabs
           tabs={[
