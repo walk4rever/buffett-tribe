@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   LogOut,
   User,
+  Building2,
 } from "lucide-react";
 import { BtLogoMark } from "@/components/BtLogoMark";
 import { BRAND_EN } from "@/lib/brand";
@@ -23,6 +24,7 @@ interface NavItem {
 
 const NAV_ITEMS: ReadonlyArray<NavItem> = [
   { href: "/admin", label: "数据总览", icon: LayoutDashboard },
+  { href: "/admin/universe", label: "公司大盘", icon: Building2 },
   { href: "/admin/users", label: "用户与额度", icon: Users },
   { href: "/admin/announcements", label: "发布与邮件", icon: Megaphone },
 ];

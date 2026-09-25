@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { formatCompanyUrl } from "@/lib/company-data";
 import type { CompanyDirectoryItem, CompanyMarket } from "@/components/CompanyDirectory";
+import { Prisma } from "@prisma/client";
 
 function uniqueTickers(values: Array<string | null | undefined>): string[] {
   const seen = new Set<string>();
@@ -18,8 +19,11 @@ function uniqueTickers(values: Array<string | null | undefined>): string[] {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim() ?? "";
+  const market = searchParams.get("market")?.trim().toLowerCase() ?? "";
+  const phaseStr = searchParams.get("phase")?.trim() ?? "";
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "60", 10)));
 
-  if (!q) {
+  if (!q && !market && !phaseStr) {
     return NextResponse.json({ items: [] });
   }
 
@@ -27,6 +31,31 @@ export async function GET(request: NextRequest) {
   const pattern = `%${query}%`;
   const upper = query.toUpperCase();
   const upperPattern = `%${upper}%`;
+
+  const conditions: Prisma.Sql[] = [Prisma.sql`e.type = 'company'`];
+
+  if (q) {
+    conditions.push(Prisma.sql`(
+      e.ticker ILIKE ${upperPattern}
+      OR e.code ILIKE ${upperPattern}
+      OR e."canonicalName" ILIKE ${pattern}
+      OR (e.metadata->>'nameZh') ILIKE ${pattern}
+      OR (e.metadata->>'nameEnShort') ILIKE ${upperPattern}
+    )`);
+  }
+
+  if (market && market !== "all" && (market === "us" || market === "hk" || market === "cn")) {
+    conditions.push(Prisma.sql`e.market = ${market}`);
+  }
+
+  if (phaseStr && phaseStr !== "all") {
+    const phaseNum = parseInt(phaseStr, 10);
+    if (!Number.isNaN(phaseNum)) {
+      conditions.push(Prisma.sql`e."onboardPhase" = ${phaseNum}`);
+    }
+  }
+
+  const whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
 
   try {
     const rows = await prisma.$queryRaw<
@@ -38,6 +67,7 @@ export async function GET(request: NextRequest) {
         code: string | null;
         ticker: string | null;
         onboardPhase: number;
+        updatedAt: Date;
         metadata: Record<string, unknown> | null;
       }>
     >`
@@ -49,29 +79,28 @@ export async function GET(request: NextRequest) {
         e.code, 
         e.ticker, 
         e."onboardPhase", 
+        e."updatedAt",
         e.metadata
       FROM "Entity" e
-      WHERE e.type = 'company'
-        AND (
-          e.ticker ILIKE ${upperPattern}
-          OR e.code ILIKE ${upperPattern}
-          OR e."canonicalName" ILIKE ${pattern}
-          OR (e.metadata->>'nameZh') ILIKE ${pattern}
-          OR (e.metadata->>'nameEnShort') ILIKE ${upperPattern}
-        )
+      ${whereClause}
       ORDER BY 
-        CASE 
-          WHEN e.ticker = ${upper} OR e.code = ${upper} THEN 0
-          WHEN e.ticker ILIKE ${upper + '%'} OR e.code ILIKE ${upper + '%'} THEN 1
-          WHEN e."canonicalName" ILIKE ${query + '%'} OR (e.metadata->>'nameZh') ILIKE ${query + '%'} THEN 2
-          ELSE 3
-        END ASC,
+        ${
+          q
+            ? Prisma.sql`
+          CASE 
+            WHEN e.ticker = ${upper} OR e.code = ${upper} THEN 0
+            WHEN e.ticker ILIKE ${upper + "%"} OR e.code ILIKE ${upper + "%"} THEN 1
+            WHEN e."canonicalName" ILIKE ${query + "%"} OR (e.metadata->>'nameZh') ILIKE ${query + "%"} THEN 2
+            ELSE 3
+          END ASC,`
+            : Prisma.empty
+        }
         e."onboardPhase" DESC,
         e."canonicalName" ASC
-      LIMIT 90;
+      LIMIT ${limit};
     `;
 
-    const items: CompanyDirectoryItem[] = rows.map((row) => {
+    const items: Array<CompanyDirectoryItem & { updatedAt?: string; error?: string }> = rows.map((row) => {
       const meta = row.metadata as Record<string, unknown> | null;
       const nameZh =
         (typeof meta?.nameZh === "string" && meta.nameZh.trim()) || row.canonicalName;
@@ -79,7 +108,7 @@ export async function GET(request: NextRequest) {
         (typeof meta?.nameEnShort === "string" && meta.nameEnShort.trim()) ||
         row.canonicalName;
       const tickers = uniqueTickers([row.ticker, row.code]);
-      const market: CompanyMarket = (row.market as CompanyMarket) ?? "us";
+      const marketVal: CompanyMarket = (row.market as CompanyMarket) ?? "us";
       const onboardPhase = typeof row.onboardPhase === "number" ? row.onboardPhase : 0;
       const isPhase1OrHigher = onboardPhase >= 1;
 
@@ -88,11 +117,12 @@ export async function GET(request: NextRequest) {
         nameZh,
         nameEn,
         tickers,
-        // Phase 0 is grey & unclickable (href is null); Phase >= 1 is normal & clickable
         href: isPhase1OrHigher ? formatCompanyUrl(row) : null,
-        market,
+        market: marketVal,
         isComplete: isPhase1OrHigher,
         onboardPhase,
+        updatedAt: row.updatedAt?.toISOString(),
+        error: typeof meta?.onboardPhase1LastError === "string" ? meta.onboardPhase1LastError : undefined,
       };
     });
 
@@ -100,7 +130,7 @@ export async function GET(request: NextRequest) {
       { items },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
         },
       }
     );
