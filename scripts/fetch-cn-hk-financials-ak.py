@@ -100,17 +100,22 @@ CN_COLUMN_MAP: dict[str, str] = {
     "营业收入": "Revenue",
     "营业利润": "OperatingIncome",
     "归属于母公司所有者的净利润": "NetIncome",
-    "归属于母公司的净利润": "NetIncome",  # bank template
+    "归属于母公司的净利润": "NetIncome",  # bank & insurance template
     "基本每股收益": "EPSBasic",
     "稀释每股收益": "EPSDiluted",
     # 资产负债表 (balance sheet)
     "资产总计": "TotalAssets",
     "负债合计": "TotalLiabilities",
     "所有者权益(或股东权益)合计": "ShareholdersEquity",
+    "所有者权益合计": "ShareholdersEquity",  # insurance & industrial variant
+    "归属于母公司股东权益合计": "ShareholdersEquity",
+    "归属于母公司的股东权益合计": "ShareholdersEquity",  # insurance variant
+    "归属于母公司所有者权益合计": "ShareholdersEquity",
     "归属于母公司股东的权益": "ShareholdersEquity",  # bank template
     # 现金流量表 (cash flow statement)
     "经营活动产生的现金流量净额": "OperatingCashFlow",
     "购建固定资产、无形资产和其他长期资产所支付的现金": "CapEx",
+    "购建固定资产、无形资产和其他长期资产支付的现金": "CapEx",
 }
 
 CN_STATEMENTS = ["资产负债表", "利润表", "现金流量表"]

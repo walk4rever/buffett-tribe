@@ -22,26 +22,51 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+export type OnboardBatchOptions = {
+  market?: "us" | "cn" | "hk";
+  phase?: "1" | "2" | "all";
+  extraArgs?: string[];
+  delayMs?: number;
+  onSuccess?: (ticker: string) => Promise<void> | void;
+};
+
 export async function onboardTickersWithFailureIsolation(
   tickers: string[],
-  onSuccess?: (ticker: string) => Promise<void> | void,
+  optionsOrOnSuccess?: OnboardBatchOptions | ((ticker: string) => Promise<void> | void),
+  legacyOnSuccess?: (ticker: string) => Promise<void> | void,
 ): Promise<OnboardBatchResult> {
+  const options: OnboardBatchOptions =
+    typeof optionsOrOnSuccess === "function"
+      ? { onSuccess: optionsOrOnSuccess }
+      : { ...optionsOrOnSuccess, onSuccess: optionsOrOnSuccess?.onSuccess ?? legacyOnSuccess };
+
   const succeeded: string[] = [];
   const failed: Array<{ ticker: string; error: string }> = [];
 
-  for (const ticker of tickers) {
-    console.log(`\n  Onboarding ${ticker}...`);
+  for (let i = 0; i < tickers.length; i++) {
+    const ticker = tickers[i];
+    console.log(`\n  [${i + 1}/${tickers.length}] Onboarding ${ticker}...`);
     try {
-      const code = await runCommand("npm", ["run", "onboard:company", "--", "--ticker", ticker]);
+      const args = ["run", "onboard:company", "--", "--ticker", ticker];
+      if (options.market) args.push("--market", options.market);
+      if (options.phase) args.push("--phase", options.phase);
+      if (options.extraArgs) args.push(...options.extraArgs);
+
+      const code = await runCommand("npm", args);
       if (code !== 0) throw new Error(`npm run onboard:company exited with code ${code}`);
       succeeded.push(ticker);
-      if (onSuccess) await onSuccess(ticker);
+      if (options.onSuccess) await options.onSuccess(ticker);
     } catch (error: unknown) {
       const message = errorMessage(error);
       console.error(`  FAILED ${ticker}: ${message}`);
       failed.push({ ticker, error: message });
     }
+
+    if (options.delayMs && i < tickers.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, options.delayMs));
+    }
   }
 
   return { succeeded, failed };
 }
+
