@@ -1774,6 +1774,14 @@ body.layout-no-header {
 .msg-markdown h3,
 .msg-markdown h4 { font-size: 0.95em; color: rgba(0,0,0,0.7); }
 
+.msg-markdown img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0.5em 0;
+  border-radius: 6px;
+}
+
 .msg-images {
   display: flex;
   flex-wrap: wrap;
