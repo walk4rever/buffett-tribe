@@ -66,7 +66,7 @@ export function PortfolioPanel() {
 
   return (
     <CollapsibleSection
-      title="资产组合"
+      title="资产"
       defaultOpen
       align="right"
       action={

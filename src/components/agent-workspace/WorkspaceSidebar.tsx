@@ -2,7 +2,6 @@
 
 import { CollapsibleSection } from "@/components/agent-workspace/CollapsibleSection";
 import { NotesSidebar } from "@/components/agent-workspace/NotesSidebar";
-import { RepositorySection } from "@/components/agent-workspace/RepositorySection";
 import { PortfolioPanel } from "@/components/agent-workspace/PortfolioPanel";
 import { WatchlistSection } from "@/components/agent-workspace/WatchlistSection";
 import type { Note } from "@/hooks/useNotes";
@@ -23,7 +22,7 @@ export function WorkspaceSidebar({
   return (
     <div className="agent-workspace-sections">
       <CollapsibleSection
-        title="笔记本"
+        title="资料"
         defaultOpen
         action={
           <button
@@ -39,13 +38,9 @@ export function WorkspaceSidebar({
         <NotesSidebar notes={notes} activeNoteId={activeNoteId} onOpenNote={onOpenNote} />
       </CollapsibleSection>
 
-      <CollapsibleSection title="资料库">
-        <RepositorySection />
-      </CollapsibleSection>
-
       <PortfolioPanel />
 
-      <CollapsibleSection title="关注列表">
+      <CollapsibleSection title="关注">
         <WatchlistSection />
       </CollapsibleSection>
     </div>
