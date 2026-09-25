@@ -14,7 +14,7 @@
  * (vt.air7.fun since 2026-08-30).
  */
 export const BRAND_ZH = "价值部落";
-export const BRAND_EN = "Value Tribe";
+export const BRAND_EN = "Value-Tribe";
 export const BRAND_FULL = `${BRAND_ZH} · ${BRAND_EN}`;
 
 /**

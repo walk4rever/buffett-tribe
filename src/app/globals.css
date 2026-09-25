@@ -4134,23 +4134,24 @@ body.layout-no-header {
   align-items: center;
 }
 
+/* Logo - prominent brand identity per Apple nav standards */
 .home-nav-logo {
   grid-area: logo;
   justify-self: start;
-  font-size: 0.75rem;
-  font-weight: 400;
+  font-size: 1.0625rem;
+  font-weight: 600;
   color: var(--apple-white);
-  letter-spacing: -0.12px;
+  letter-spacing: -0.374px;
   text-decoration: none;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  opacity: 0.8;
+  gap: 0.625rem;
+  opacity: 1;
   transition: opacity 0.15s;
 }
 
 .home-nav-logo:hover {
-  opacity: 1;
+  opacity: 0.85;
 }
 
 .home-nav-logo-img {
