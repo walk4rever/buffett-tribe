@@ -41,12 +41,6 @@ const ENTITY_DIRECTORY_SELECT = {
     select: { ticker: true, kind: true },
     orderBy: { ticker: "asc" as const },
   },
-  // Onboarding writes Financial/CompanyAnalysis/BusinessCanvas together
-  // as one unit — a company either has all of them or none, so
-  // Financial alone is a reliable "fully onboarded" signal. Without
-  // it, the row is a bare stub auto-created by 13F import the moment
-  // some investor's holdings first mentioned the ticker.
-  _count: { select: { financials: true } },
 };
 
 type EntityDirectoryRow = Awaited<ReturnType<typeof prisma.entity.findMany<{ select: typeof ENTITY_DIRECTORY_SELECT }>>>[number];
@@ -169,7 +163,7 @@ export default async function CompaniesPage() {
         <header className="companies-head">
           <h1>公司库</h1>
           <p className="companies-lede">
-            买股票就是买公司 · 覆盖 A股 / 港股 / 美股三大市场共 {universe.total.toLocaleString()} 家上市公司（美股 {universe.us.toLocaleString()} · A股 {universe.cn.toLocaleString()} · 港股 {universe.hk.toLocaleString()}）— 部落成员持有或研究过的 {companies.length} 家公司。
+            买股票就是买公司 · 覆盖 A股 / 港股 / 美股三大市场共 {universe.total.toLocaleString()} 家上市公司（美股 {universe.us.toLocaleString()} · A股 {universe.cn.toLocaleString()} · 港股 {universe.hk.toLocaleString()}）。
           </p>
         </header>
         {recentlyUpdated.length > 0 ? (
