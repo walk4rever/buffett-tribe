@@ -18122,92 +18122,99 @@ a.insight-entity-chip:hover {
 
 /* ── Section Background Differentiation (Scheme B: Dark Immersive Masters) ── */
 /* 1. Core Masters Section: Dark graphite immersive band */
+/* P1 Fix: Masters section - pure Apple black background, remove borders */
 .home-masters-section {
-  background: #0b1120;
-  border-top: 1px solid #1e293b;
-  border-bottom: 1px solid #1e293b;
+  background: var(--apple-black);
+  border-top: none;
+  border-bottom: none;
 }
 
 .home-masters-section .home-section-head {
-  border-bottom-color: #1e293b;
+  border-bottom-color: rgba(255, 255, 255, 0.1);
 }
 
 .home-masters-section .home-section-badge {
-  color: #38bdf8;
+  color: var(--apple-link-dark);
 }
 
 .home-masters-section .home-section-title {
-  color: #f8fafc;
+  color: var(--apple-white);
+  letter-spacing: -0.28px;
 }
 
 .home-masters-section .home-section-subtitle {
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: -0.374px;
 }
 
 .home-masters-section .home-section-more {
   background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.16);
-  color: #e2e8f0;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: -0.224px;
 }
 
 .home-masters-section .home-section-more:hover {
   background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.32);
-  color: #ffffff;
+  color: var(--apple-white);
 }
 
 .home-masters-section .home-master-card {
-  background: #131d2e;
-  border: 1px solid #243248;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  background: var(--apple-dark-surface);
+  border: none;
+  box-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0px;
 }
 
 .home-masters-section .home-master-card:hover {
-  transform: translateY(-4px);
-  border-color: #38bdf8;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+  transform: translateY(-2px);
+  box-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0px;
 }
 
 .home-masters-section .home-master-name {
-  color: #f8fafc;
+  color: var(--apple-white);
+  letter-spacing: -0.28px;
 }
 
 .home-masters-section .home-master-name-en,
 .home-masters-section .home-master-firm {
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: -0.224px;
 }
 
 .home-masters-section .home-master-aum {
   background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.14);
-  color: #f8fafc;
+  border: none;
+  color: var(--apple-white);
+  letter-spacing: -0.12px;
 }
 
 .home-masters-section .home-master-quarter-bar {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
 }
 
 .home-masters-section .home-master-quarter-text {
-  color: #34d399;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: -0.12px;
 }
 
 .home-masters-section .home-master-link {
   background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.1);
+  border: none;
 }
 
 .home-masters-section .home-master-link:hover {
-  background: rgba(56, 189, 248, 0.14);
-  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .home-masters-section .home-master-link-title {
-  color: #f1f5f9;
+  color: var(--apple-white);
+  letter-spacing: -0.224px;
 }
 
 .home-masters-section .home-master-link-sub {
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.48);
+  letter-spacing: -0.224px;
 }
 
 /* Alpha Tribe Quick-Access Bar inside Core Masters Section (Single-line) */
@@ -18289,20 +18296,20 @@ a.insight-entity-chip:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
-/* 2. Latest Insights Section: Soft graphite canvas with crisp white cards */
+/* P1 Fix: Insights section - remove borders, Apple shadow only */
 .home-insights-section {
-  background: transparent;
+  background: var(--apple-light-gray);
 }
 
 .home-insights-section .home-insight-card {
-  background: #ffffff;
-  border: 1px solid var(--graphite-border);
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.03);
+  background: var(--apple-white);
+  border: none;
+  box-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0px;
 }
 
 .home-insights-section .home-insight-card:hover {
-  border-color: var(--graphite-accent);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+  box-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0px;
+  transform: translateY(-2px);
 }
 
 .home-section-head {
@@ -18312,7 +18319,7 @@ a.insight-entity-chip:hover {
   gap: 1.5rem;
   margin-bottom: 2rem;
   padding-bottom: 0.85rem;
-  border-bottom: 1px solid var(--graphite-border-soft);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .home-section-head-main {
@@ -18328,23 +18335,24 @@ a.insight-entity-chip:hover {
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--graphite-accent);
+  color: var(--apple-blue);
 }
 
 .home-section-title {
   font-size: clamp(1.4rem, 2.5vw, 1.85rem);
   font-weight: 700;
-  letter-spacing: -0.025em;
-  color: var(--graphite-text);
+  letter-spacing: -0.28px;
+  color: var(--apple-near-black);
   margin: 0;
   line-height: 1.2;
 }
 
 .home-section-subtitle {
   font-size: 0.875rem;
-  color: var(--graphite-text-secondary);
+  color: var(--apple-body);
   margin: 0;
   line-height: 1.5;
+  letter-spacing: -0.224px;
 }
 
 .home-section-more {
@@ -18353,20 +18361,21 @@ a.insight-entity-chip:hover {
   gap: 0.4rem;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--graphite-accent);
+  color: var(--apple-link-light);
   text-decoration: none;
   white-space: nowrap;
   padding: 0.45rem 0.95rem;
   border-radius: 980px;
-  background: var(--graphite-surface);
-  border: 1px solid var(--graphite-border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  background: var(--apple-white);
+  border: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
   transition: all 0.2s cubic-bezier(.22,1,.36,1);
+  letter-spacing: -0.224px;
 }
 
 .home-section-more:hover {
   background: rgba(0, 113, 227, 0.08);
-  border-color: var(--graphite-accent);
+  box-shadow: 0 0 0 2px var(--apple-blue);
   transform: translateX(2px);
 }
 
@@ -18377,9 +18386,10 @@ a.insight-entity-chip:hover {
   gap: 1.25rem;
 }
 
+/* P1 Fix: Master cards - remove borders, Apple shadow, letter-spacing */
 .home-master-card {
-  background: var(--graphite-surface);
-  border: 1px solid var(--graphite-border);
+  background: var(--apple-white);
+  border: none;
   border-radius: 16px;
   padding: 1.5rem 1.4rem;
   display: flex;
@@ -18387,14 +18397,13 @@ a.insight-entity-chip:hover {
   justify-content: space-between;
   height: 100%;
   box-sizing: border-box;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
-  transition: transform 240ms cubic-bezier(.22,1,.36,1), border-color 240ms ease, box-shadow 240ms ease;
+  box-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0px;
+  transition: transform 240ms cubic-bezier(.22,1,.36,1), box-shadow 240ms ease;
 }
 
 .home-master-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--graphite-accent);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+  box-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0px;
 }
 
 .home-master-main {
@@ -18446,8 +18455,8 @@ a.insight-entity-chip:hover {
 .home-master-name {
   font-size: 1.12rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--graphite-text);
+  letter-spacing: -0.224px;
+  color: var(--apple-near-black);
   line-height: 1.2;
   white-space: nowrap;
   flex-shrink: 0;
@@ -18456,25 +18465,26 @@ a.insight-entity-chip:hover {
 .home-master-aum {
   font-size: 0.725rem;
   font-weight: 700;
-  color: var(--graphite-text);
-  background: var(--graphite-surface-soft);
-  border: 1px solid var(--graphite-border);
+  color: var(--apple-near-black);
+  background: rgba(0, 113, 227, 0.08);
+  border: none;
   border-radius: 6px;
   padding: 0.2rem 0.55rem;
   white-space: nowrap;
   flex-shrink: 0;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.12px;
   line-height: 1.2;
 }
 
 .home-master-firm {
   font-size: 0.75rem;
-  color: var(--graphite-text-secondary);
+  color: var(--apple-body);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
   line-height: 1.25;
+  letter-spacing: -0.12px;
 }
 
 .home-master-quarter-bar {
@@ -18483,8 +18493,8 @@ a.insight-entity-chip:hover {
   gap: 0.45rem;
   padding: 0.45rem 0.75rem;
   border-radius: 8px;
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  background: rgba(0, 113, 227, 0.08);
+  border: none;
   margin-top: 1.15rem;
   margin-bottom: 0.85rem;
   min-height: 30px;
@@ -18495,15 +18505,15 @@ a.insight-entity-chip:hover {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #10b981;
+  background: var(--apple-blue);
   flex-shrink: 0;
 }
 
 .home-master-quarter-text {
   font-size: 0.725rem;
   font-weight: 600;
-  color: #047857;
-  letter-spacing: -0.01em;
+  color: var(--apple-blue);
+  letter-spacing: -0.12px;
 }
 
 .home-master-links {
@@ -18521,8 +18531,8 @@ a.insight-entity-chip:hover {
   min-height: 52px;
   box-sizing: border-box;
   border-radius: 10px;
-  background: var(--graphite-surface-soft);
-  border: 1px solid var(--graphite-border);
+  background: var(--apple-light-gray);
+  border: none;
   text-decoration: none;
   transition: all 0.16s ease;
   min-width: 0;
@@ -18534,8 +18544,8 @@ a.insight-entity-chip:hover {
 }
 
 .home-master-link-icon {
-  font-size: 1rem;
   flex-shrink: 0;
+  color: var(--apple-blue);
 }
 
 .home-master-link-meta {
@@ -18547,17 +18557,19 @@ a.insight-entity-chip:hover {
 .home-master-link-title {
   font-size: 0.775rem;
   font-weight: 600;
-  color: var(--graphite-text);
+  color: var(--apple-near-black);
   line-height: 1.25;
+  letter-spacing: -0.12px;
 }
 
 .home-master-link-sub {
   font-size: 0.65rem;
-  color: var(--graphite-text-secondary);
+  color: var(--apple-body);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   margin-top: 0.1rem;
+  letter-spacing: -0.08px;
 }
 
 /* Home Insight Cards */
@@ -18567,9 +18579,10 @@ a.insight-entity-chip:hover {
   gap: 1.25rem;
 }
 
+/* P1 Fix: Insight cards - remove borders, Apple shadow, letter-spacing */
 .home-insight-card {
-  background: var(--graphite-surface);
-  border: 1px solid var(--graphite-border);
+  background: var(--apple-white);
+  border: none;
   border-radius: 16px;
   padding: 1.45rem;
   display: flex;
@@ -18577,14 +18590,13 @@ a.insight-entity-chip:hover {
   gap: 0.85rem;
   text-decoration: none;
   color: inherit;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
-  transition: transform 240ms cubic-bezier(.22,1,.36,1), border-color 240ms ease, box-shadow 240ms ease;
+  box-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0px;
+  transition: transform 240ms cubic-bezier(.22,1,.36,1), box-shadow 240ms ease;
 }
 
 .home-insight-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--graphite-accent);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+  box-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0px;
 }
 
 .home-insight-card-head {
@@ -18597,24 +18609,25 @@ a.insight-entity-chip:hover {
 .home-insight-source {
   font-size: 0.7rem;
   font-weight: 600;
-  color: var(--graphite-accent);
+  color: var(--apple-blue);
   background: rgba(0, 113, 227, 0.08);
   padding: 0.22rem 0.55rem;
   border-radius: 6px;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.12px;
 }
 
 .home-insight-date {
   font-size: 0.7rem;
-  color: var(--graphite-text-secondary);
+  color: var(--apple-body);
+  letter-spacing: -0.12px;
 }
 
 .home-insight-title {
   font-size: 1.02rem;
   font-weight: 700;
   line-height: 1.45;
-  letter-spacing: -0.02em;
-  color: var(--graphite-text);
+  letter-spacing: -0.224px;
+  color: var(--apple-near-black);
   margin: 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -18624,12 +18637,12 @@ a.insight-entity-chip:hover {
 }
 
 .home-insight-card:hover .home-insight-title {
-  color: var(--graphite-accent);
+  color: var(--apple-blue);
 }
 
 .home-insight-desc {
   font-size: 0.825rem;
-  color: var(--graphite-text-secondary);
+  color: var(--apple-body);
   line-height: 1.6;
   margin: 0;
   display: -webkit-box;
@@ -18637,6 +18650,7 @@ a.insight-entity-chip:hover {
   -webkit-box-orient: vertical;
   overflow: hidden;
   flex: 1;
+  letter-spacing: -0.224px;
 }
 
 .home-insight-tags {
@@ -18645,7 +18659,7 @@ a.insight-entity-chip:hover {
   gap: 0.35rem;
   margin-top: auto;
   padding-top: 0.65rem;
-  border-top: 1px solid var(--graphite-border-soft);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .home-insight-tag {

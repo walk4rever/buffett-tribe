@@ -8,6 +8,7 @@ import { getCoreTribeMembers, getAlphaTribeMembers, getTribeMemberColor } from "
 import { getAvailableQuarters, getLatestPortfolioValueUsd } from "@/lib/master-data";
 import { formatUsdInYi } from "@/lib/currency";
 import { BRAND_EN } from "@/lib/brand";
+import { BookOpen, BarChart3 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -207,14 +208,14 @@ export default async function Home() {
 
                   <div className="home-master-links">
                     <Link href={m.materialHref} className="home-master-link">
-                      <span className="home-master-link-icon">🧠</span>
+                      <BookOpen className="home-master-link-icon" size={18} strokeWidth={2} />
                       <div className="home-master-link-meta">
                         <span className="home-master-link-title">资料库</span>
                         <span className="home-master-link-sub">{m.materialSub}</span>
                       </div>
                     </Link>
                     <Link href={m.holdingsHref} className="home-master-link">
-                      <span className="home-master-link-icon">📊</span>
+                      <BarChart3 className="home-master-link-icon" size={18} strokeWidth={2} />
                       <div className="home-master-link-meta">
                         <span className="home-master-link-title">持仓明细</span>
                         <span className="home-master-link-sub">
