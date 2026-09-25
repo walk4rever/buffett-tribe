@@ -83,7 +83,7 @@ async function main() {
       }
     }
   } else {
-    candidates = allConstituents.slice(offset, limit ? offset + limit : undefined);
+    candidates = allConstituents.slice(offset);
   }
 
   // Check DB status for candidates
@@ -110,7 +110,7 @@ async function main() {
     }
   }
 
-  const toRun: Constituent[] = [];
+  const unOnboarded: Constituent[] = [];
   const alreadyOnboarded: Constituent[] = [];
 
   for (const cand of candidates) {
@@ -118,14 +118,16 @@ async function main() {
     if (!force && existing && existing.financialCount > 0) {
       alreadyOnboarded.push(cand);
     } else {
-      toRun.push(cand);
+      unOnboarded.push(cand);
     }
   }
 
+  const toRun = limit ? unOnboarded.slice(0, limit) : unOnboarded;
+
   console.log("\n=== CSI 300 Batch Plan ===");
-  console.log(`Total candidates: ${candidates.length}`);
+  console.log(`Total constituents scanned: ${candidates.length}`);
   console.log(`Already onboarded (has financials): ${alreadyOnboarded.length}`);
-  console.log(`To run: ${toRun.length} (Phase ${phaseArg}, Delay ${delayMs}ms)`);
+  console.log(`To run: ${toRun.length}${limit ? ` (capped by --limit ${limit})` : ""} (Phase ${phaseArg}, Delay ${delayMs}ms)`);
 
   if (alreadyOnboarded.length > 0) {
     console.log("\nSkipping already onboarded:");
