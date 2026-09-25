@@ -15913,6 +15913,8 @@ a.insight-entity-chip:hover {
 
   .agent-workspace-note-pane {
     width: 100vw;
+    left: 0;
+    right: 0;
   }
 
   .agent-note-top-bar {
