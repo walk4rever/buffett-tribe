@@ -690,6 +690,7 @@ async function main() {
         where: { id: finalEntity.id },
         data: {
           market: finalEntity.market ?? market,
+          onboardPhase: nextPhase,
           metadata: {
             ...meta,
             onboardPhase: nextPhase,

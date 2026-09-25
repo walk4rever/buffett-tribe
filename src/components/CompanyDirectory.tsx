@@ -13,6 +13,7 @@ export type CompanyDirectoryItem = {
   href: string | null;
   market: CompanyMarket;
   isComplete: boolean;
+  onboardPhase?: number;
 };
 
 const MARKET_SECTIONS: Array<{ market: CompanyMarket; label: string }> = [
@@ -54,7 +55,13 @@ export function CompanyGrid({ items }: { items: CompanyDirectoryItem[] }) {
   );
 }
 
-export function CompanyDirectory({ companies }: { companies: CompanyDirectoryItem[] }) {
+export function CompanyDirectory({
+  companies,
+  totalCount,
+}: {
+  companies: CompanyDirectoryItem[];
+  totalCount?: number;
+}) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -69,16 +76,19 @@ export function CompanyDirectory({ companies }: { companies: CompanyDirectoryIte
   }, [companies, query]);
 
   const sections = useMemo(() => {
-    const complete = filtered.filter((c) => c.isComplete);
-    const incomplete = filtered.filter((c) => !c.isComplete);
+    // Only display companies with onboardPhase >= 2 across the 3 markets
+    const phase2Items = filtered.filter((c) => (c.onboardPhase ?? 0) >= 2);
     const marketSections = MARKET_SECTIONS.map((section) => ({
       ...section,
       key: section.market as string,
-      items: complete.filter((c) => c.market === section.market),
+      items: phase2Items.filter((c) => c.market === section.market),
     }));
-    const pendingSection = { market: "pending" as const, key: "pending", label: "待完善", items: incomplete };
-    return [...marketSections, pendingSection].filter((section) => section.items.length > 0);
+    return marketSections.filter((section) => section.items.length > 0);
   }, [filtered]);
+
+  const total = totalCount ?? companies.length;
+  const phase2Count = useMemo(() => filtered.filter((c) => (c.onboardPhase ?? 0) >= 2).length, [filtered]);
+  const countLabel = query.trim() ? `${phase2Count} / ${total} 家` : `${total} 家`;
 
   return (
     <>
@@ -91,7 +101,7 @@ export function CompanyDirectory({ companies }: { companies: CompanyDirectoryIte
           onChange={(e) => setQuery(e.target.value)}
           aria-label="搜索公司名称或代码"
         />
-        <span className="companies-search-count">{filtered.length} 家</span>
+        <span className="companies-search-count">{countLabel}</span>
       </div>
       {sections.length === 0 ? (
         <div className="companies-empty">没有匹配“{query.trim()}”的公司</div>

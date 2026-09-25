@@ -35,6 +35,7 @@ const ENTITY_DIRECTORY_SELECT = {
   market: true,
   code: true,
   ticker: true,
+  onboardPhase: true,
   metadata: true,
   securitiesAsCompany: {
     select: { ticker: true, kind: true },
@@ -62,10 +63,10 @@ function toDirectoryItem(row: EntityDirectoryRow): CompanyDirectoryItem {
   const tickers = uniqueTickers([row.ticker, ...row.securitiesAsCompany.map((s) => s.ticker)]);
   // Guaranteed non-null: the query requires cik OR (market AND code).
   const market = (row.market as "hk" | "cn" | null) ?? "us";
-  // Phase 1 completeness signal: strictly requires explicit metadata.onboardPhase >= 1.
-  // Financial rows alone is NOT sufficient because a company could fail overview generation
-  // or name mapping and remain an incomplete stub.
-  const isPhase1Complete = typeof meta?.onboardPhase === "number" && meta.onboardPhase >= 1;
+  const onboardPhase = typeof row.onboardPhase === "number"
+    ? row.onboardPhase
+    : (typeof meta?.onboardPhase === "number" ? meta.onboardPhase : 0);
+  const isPhase1Complete = onboardPhase >= 1;
   return {
     key: row.cik ?? (row.market && row.code ? `${row.market}-${row.code}` : row.id),
     nameZh,
@@ -74,15 +75,20 @@ function toDirectoryItem(row: EntityDirectoryRow): CompanyDirectoryItem {
     href: formatCompanyUrl(row),
     market,
     isComplete: isPhase1Complete,
+    onboardPhase,
   };
 }
 
 async function getCompanies(): Promise<CompanyDirectoryItem[]> {
   try {
+    const rawIds = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM "Entity"
+      WHERE type = 'company' AND ("onboardPhase" >= 1 OR NOT ("metadata" ? 'isMasterUniverse'))
+      ORDER BY "canonicalName" ASC;
+    `;
+    const ids = rawIds.map((r) => r.id);
     const rows = await prisma.entity.findMany({
-      where: {
-        type: "company",
-      },
+      where: { id: { in: ids } },
       select: ENTITY_DIRECTORY_SELECT,
       orderBy: { canonicalName: "asc" },
     });
@@ -129,13 +135,19 @@ async function getRecentlyUpdatedCompanies(limit = 18): Promise<CompanyDirectory
 export default async function CompaniesPage() {
   const [companies, recentlyUpdated] = await Promise.all([getCompanies(), getRecentlyUpdatedCompanies()]);
 
+  const usCount = companies.filter((c) => c.market === "us").length;
+  const cnCount = companies.filter((c) => c.market === "cn").length;
+  const hkCount = companies.filter((c) => c.market === "hk").length;
+
   return (
     <div className="home-v2 companies-page">
       <SiteNav />
       <main className="companies-shell">
         <header className="companies-head">
           <h1>公司库</h1>
-          <p className="companies-lede">买股票就是买公司 · 部落成员持有或研究过的 {companies.length} 家公司。</p>
+          <p className="companies-lede">
+            买股票就是买公司 · 部落成员持有或研究过的 {companies.length} 家公司（美股 {usCount} 家 · A股 {cnCount} 家 · 港股 {hkCount} 家）。
+          </p>
         </header>
         {recentlyUpdated.length > 0 ? (
           <section className="companies-section">
@@ -146,7 +158,7 @@ export default async function CompaniesPage() {
             <CompanyGrid items={recentlyUpdated} />
           </section>
         ) : null}
-        <CompanyDirectory companies={companies} />
+        <CompanyDirectory companies={companies} totalCount={companies.length} />
       </main>
     </div>
   );

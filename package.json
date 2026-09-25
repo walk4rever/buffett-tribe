@@ -35,6 +35,7 @@
     "onboard:phase2": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/onboard-company.ts --phase 2",
     "onboard:csi300": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/batch-onboard-csi300.ts",
     "onboard:hk": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/batch-onboard-hk.ts",
+    "seed:master-universe": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/seed-master-universe.ts",
     "import:10k:fast": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-10k-edgartools.ts --fast",
     "onboard:alpha-investor": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/onboard-alpha-investor.ts",
     "onboard:pending": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/onboard-pending-companies.ts",
