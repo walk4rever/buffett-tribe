@@ -15216,6 +15216,7 @@ a.insight-entity-chip:hover {
   background: var(--apple-light-gray);
 }
 
+/* Chat pane - default flexible when note is closed */
 .agent-workspace-chat-pane {
   flex: 1;
   min-width: 0;
@@ -15224,6 +15225,7 @@ a.insight-entity-chip:hover {
   flex-direction: column;
 }
 
+/* Note pane - when open, it grows to fill left sidebar space */
 .agent-workspace-note-pane {
   width: 440px;
   flex-shrink: 0;
@@ -15235,6 +15237,21 @@ a.insight-entity-chip:hover {
   flex-direction: column;
   z-index: 10;
   overflow: hidden;
+}
+
+/* When note is open: note expands, chat stays fixed width */
+.agent-workspace-main:has(.agent-workspace-note-pane) .agent-workspace-note-pane {
+  flex: 1;
+  min-width: 440px;
+  max-width: 700px;
+  width: auto;
+}
+
+.agent-workspace-main:has(.agent-workspace-note-pane) .agent-workspace-chat-pane {
+  flex: 0 0 auto;
+  width: 680px;
+  min-width: 480px;
+}
 }
 
 /* ── Note Editor ── */
