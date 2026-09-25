@@ -4551,11 +4551,53 @@ body.layout-no-header {
   background: rgba(0, 113, 227, 0.06);
 }
 
-/* ── Tribe members — dark section ── */
+/* ── Tribe members — dark section on homepage, light on /master standalone page ── */
 .home-members {
   background: var(--apple-black);
   width: 100%;
   box-sizing: border-box;
+}
+
+/* Fix: /master standalone page should use light background */
+.master-page .home-members {
+  background: var(--apple-light-gray);
+}
+
+/* Fix: Cards on /master page should be white (light bg), not dark surface */
+.master-page .home-member-card {
+  background: var(--apple-white);
+}
+
+/* Fix: Text colors on /master page should be dark (on light bg) */
+.master-page .home-members-hd {
+  color: var(--apple-body);
+}
+
+.master-page .home-member-name {
+  color: var(--apple-near-black);
+}
+
+.master-page .home-member-firm {
+  color: var(--apple-body);
+}
+
+.master-page .home-member-aum {
+  color: var(--apple-near-black);
+  background: rgba(0, 113, 227, 0.08);
+}
+
+.master-page .home-member-link {
+  color: var(--apple-link-light);
+  background: var(--apple-light-gray);
+}
+
+.master-page .home-member-link:hover {
+  background: rgba(0, 113, 227, 0.08);
+  color: var(--apple-blue);
+}
+
+.master-page .home-member-link-icon {
+  color: var(--apple-blue);
 }
 
 .home-members-in {
