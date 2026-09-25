@@ -81,14 +81,11 @@ function toDirectoryItem(row: EntityDirectoryRow): CompanyDirectoryItem {
 
 async function getCompanies(): Promise<CompanyDirectoryItem[]> {
   try {
-    const rawIds = await prisma.$queryRaw<Array<{ id: string }>>`
-      SELECT id FROM "Entity"
-      WHERE type = 'company' AND ("onboardPhase" >= 1 OR NOT ("metadata" ? 'isMasterUniverse'))
-      ORDER BY "canonicalName" ASC;
-    `;
-    const ids = rawIds.map((r) => r.id);
     const rows = await prisma.entity.findMany({
-      where: { id: { in: ids } },
+      where: {
+        type: "company",
+        onboardPhase: { gte: 1 },
+      },
       select: ENTITY_DIRECTORY_SELECT,
       orderBy: { canonicalName: "asc" },
     });
