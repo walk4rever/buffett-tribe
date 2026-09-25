@@ -15914,6 +15914,18 @@ a.insight-entity-chip:hover {
   .agent-workspace-note-pane {
     width: 100vw;
   }
+
+  .agent-note-top-bar {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .agent-note-title-row {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .agent-note-body {
+    padding: 0.75rem;
+  }
 }
 
 
