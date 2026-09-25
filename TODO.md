@@ -42,6 +42,14 @@
     2. **高性能模糊检索 API**：新增 `/api/company/search`，结合 Supabase Postgres `pg_trgm` GIN 索引，在 16,435 家大盘中实现 300~500ms 极速中英文及代码匹配；
     3. **公司库交互升级**：三大市场网格默认隐藏，保留 16,435 总数与最近更新（18家深度标的）；支持回车触发搜索；Phase 0 显示为半透明灰色不可点击，>= Phase 1 正常交互可点直达详情页。
 
+- [x] **⑰ 自动化 Hourly Phase 1 批处理管线、mini 机器常驻运行与 Admin 公司大盘控制台（/admin/universe）**（2026-09-25 完成上线，详见 `PRODUCT.md`「v0.45.17 变更」）：
+  - **落地成果**：
+    1. **分布式自动化批处理 Worker**：`scripts/pipeline-phase1-worker.ts` 实现三市场轮巡调度（US -> HK -> CN 均衡推进）、主板标的高优先级调度（ST/权证/退市降权）、PID 防重入排他锁与 25~35 分钟超时熔断，失败 3 次死信池隔离（Phase -1）；
+    2. **Remote mini 机器 Crontab 常驻**：每小时 15 分定时执行批处理脚本 `scripts/cron/hourly-phase1-worker.sh`，每批 20 家，全天自动推进全量大盘标的 Phase 1 进程；
+    3. **Admin 公司大盘与管线控制台（/admin/universe）**：新增公司大盘页面与导航入口，展示全市场 Phase 0/1/2 宏观进度条、各市场分部卡片、最近建档动态流、死信预警池以及交互式表格检索器 `AdminUniverseExplorer`；
+    4. **大盘检索表格与徽章视觉规范**：完成 Apple 风格全套表格样式、多色徽章规范（绿/蓝/紫/橙/灰/红）以及自适应卡片封装，提供专业直观的大盘标的探查能力。
+
+
 - [ ] **⑩ 回填缺失的 `section_text` artifact：645 份 filing / 4,780 个 section / 110 家公司**（2026-08-30 发现，详细复盘见 `handoff.md` 第二次会话追加）：早期那版「三种 kind 全删」的 `cleanup-section-artifacts.ts` 删掉了 `section_text` artifact，而 `FilingSection.textArtifact` 外键是 `onDelete: SetNull`，链接随之全部变 NULL；上次只回填了 BN/SU 两家。后果是 `search_filings` 对这 110 家公司**平均只能看到 27.4% 的正文**（`FilingSection.content` 只是导入时截断的预览），走 `primary_html` 现场重解析的兜底路径又常因大文件超时。P3 加的降级警告保证了它不会静默撒谎，但能力缺口是真的。
   - **判据**：`textArtifactId is null AND length(content) < contentTextLength`。按 `extractionVersion` 分：v2 全部 10,857 个 section text artifact 数为 0（那一代没这机制），v3 的 16,181 个里缺 1,839 个。8/29–8/30 两批重导的 10,082 个则 100% 完整——**当前写入路径是对的，这是历史存量问题**。
   - **受影响最多**：BABA(85/8)、LUV(70/7)、TM(69/6)、JOYY(67/6)、TSM(65/6)、NETTF(65/6)、RH(65/7)、GOTU(65/6)、AAL(63/6)、LBTYK(63/12)、TSLA(62/10)。

@@ -2,7 +2,7 @@
 
 # 价值部落 · Value Tribe — 产品设计文档
 
-> 最后更新：2026-09-24（v0.45.11）
+> 最后更新：2026-09-25（v0.45.17）
 
 ---
 
@@ -1112,6 +1112,27 @@ Apple HIG 精简风格：
   - `CompanySectionTabs.tsx` 升级为整页 Shell：接受 `valueLineData` / `initialTicker` 新 Props，内部管理 Ticker 切换状态，Tab 1 内联渲染 `ValueLineBody`，根元素使用 `<article class="value-line-card dvl-workspace-card">`；
   - `page.tsx` 移除对 `ValueLineCard` 的直接引用，向 `CompanySectionTabs` 传入 `valueLineData` 和 `initialTicker`，默认 Tab 切换为 `"valueline"`；
   - `globals.css` 新增 `.dvl-workspace-card` 与 `.company-tabs-shell` 共享网格 + 卡片样式，旧 `.dvl-deep-dive-section` / `.dvl-deep-dive-header` 间距归零（标记为停用）。
+
+### v0.45.17 变更（2026-09-25）
+
+- **Admin 公司大盘与自动化管线监控面板（/admin/universe）**：
+  - 新增管理员路由 `/admin/universe` 与侧边栏「公司大盘」直达入口；
+  - **大盘进度看板**：全市场 Phase 0/1/2 宏观进度条、各阶段占比与数量；
+  - **三大市场分布矩阵**：分别展示美股（US 8,060）、港股（HK 2,806）、A股（CN 5,569）的 P0 / P1 / P2 分布卡片与微型进度条；
+  - **最近建档动态流**：实时展示最新建档入库（Phase 1）的公司名称、代码、市场及建档耗时；
+  - **管线健康度与死信预警池**：自动监控多次重试失败熔断移入死信池（`onboardPhase = -1`）的标的，直观呈现错误原因；
+  - **全市场交互式检索探查器（AdminUniverseExplorer）**：支持在 16,435 家标的中按代码/名称检索、市场筛选（美股/港股/A股）、建档阶段筛选（Phase -1/0/1/2）并快速探查状态。
+- **后台自动化 Hourly Phase 1 批处理管线（mini 机器常驻运行）**：
+  - 核心批处理调度器 `scripts/pipeline-phase1-worker.ts`，基于数据库队列拉取待处理 Phase 0 标的；
+  - 具备三市场轮巡均衡机制（US -> HK -> CN 交替推进），兼顾各市场生态覆盖；
+  - 引入标的质量优先策略（优先处理主板主流标的，降权 ST/权证/退市风险标的）；
+  - 具备进程级 PID 防重入排他锁与 25~35 分钟超时自愈熔断机制；
+  - 失败容错与死信隔离：网络波动自动重试，连续失败 3 次自动隔离至死信池并在控制台预警；
+  - 自动化 Cron 包装脚本 `scripts/cron/hourly-phase1-worker.sh` 与控制台实时状态探针 `npm run status:universe`。
+- **大盘检索表格与徽章视觉规范**：
+  - 统一 `.admin-table` 与 `.admin-users-table` 样式规范，完善表头与单元格间距、底边框与悬停高亮；
+  - 补全全套微标配色方案（绿、蓝、紫、橙、灰、红），支持规范的圆形圆角药丸徽章；
+  - 规范公司名称中文（加粗）与英文（浅灰副标）分行排版，并新增带有外部跳转图标的蓝调胶囊按钮。
 
 ### v0.45.16 变更（2026-09-25）
 
