@@ -3,6 +3,8 @@
 import { CollapsibleSection } from "@/components/agent-workspace/CollapsibleSection";
 import { NotesSidebar } from "@/components/agent-workspace/NotesSidebar";
 import { RepositorySection } from "@/components/agent-workspace/RepositorySection";
+import { PortfolioPanel } from "@/components/agent-workspace/PortfolioPanel";
+import { WatchlistSection } from "@/components/agent-workspace/WatchlistSection";
 import type { Note } from "@/hooks/useNotes";
 
 interface WorkspaceSidebarProps {
@@ -39,6 +41,12 @@ export function WorkspaceSidebar({
 
       <CollapsibleSection title="资料库">
         <RepositorySection />
+      </CollapsibleSection>
+
+      <PortfolioPanel />
+
+      <CollapsibleSection title="关注列表">
+        <WatchlistSection />
       </CollapsibleSection>
     </div>
   );
