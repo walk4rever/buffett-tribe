@@ -1,0 +1,9 @@
+{
+  "name": "vt-redirect",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloudflare Worker to 301 redirect vt.air7fun.com to vt.air7.fun",
+  "scripts": {
+    "deploy": "wrangler deploy"
+  }
+}

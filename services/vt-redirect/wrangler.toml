@@ -1,0 +1,7 @@
+name = "vt-redirect"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+routes = [
+  { pattern = "vt.air7fun.com", custom_domain = true }
+]
