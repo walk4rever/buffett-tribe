@@ -10,7 +10,11 @@ interface ExplorerItem extends CompanyDirectoryItem {
   error?: string;
 }
 
-export function AdminUniverseExplorer() {
+export function AdminUniverseExplorer({
+  initialFastTrackCount = 0,
+}: {
+  initialFastTrackCount?: number;
+}) {
   const [query, setQuery] = useState("");
   const [market, setMarket] = useState("all");
   const [phase, setPhase] = useState("all");
@@ -56,8 +60,25 @@ export function AdminUniverseExplorer() {
     cn: "admin-badge--orange",
   };
 
-  const phaseBadge = (phaseNum?: number) => {
-    switch (phaseNum) {
+  const phaseBadge = (item: ExplorerItem) => {
+    if (item.onboardPhase === 0 && (item.isFastTrack || (item.priority && item.priority > 0))) {
+      return (
+        <span
+          className="admin-badge admin-badge--blue"
+          style={{
+            background: "rgba(0, 113, 227, 0.1)",
+            color: "#0071e3",
+            border: "1px solid rgba(0, 113, 227, 0.28)",
+            fontWeight: 500,
+          }}
+          title={`快速通道插队优先分: ${item.priority || 100}`}
+        >
+          ⚡ 快速通道 (分值 {item.priority || 100})
+        </span>
+      );
+    }
+
+    switch (item.onboardPhase) {
       case 2:
         return <span className="admin-badge admin-badge--green">Phase 2 · 深度分析</span>;
       case 1:
@@ -94,6 +115,20 @@ export function AdminUniverseExplorer() {
         </div>
 
         <div className="admin-universe-select-group">
+          <button
+            type="button"
+            onClick={() => setPhase(phase === "fasttrack" ? "all" : "fasttrack")}
+            className={`admin-fasttrack-quickfilter ${
+              phase === "fasttrack" ? "admin-fasttrack-quickfilter--active" : ""
+            }`}
+            title="仅查看快速通道排队中的标的"
+          >
+            <span>⚡ 快速通道</span>
+            {initialFastTrackCount > 0 && (
+              <span className="admin-fasttrack-count">{initialFastTrackCount}</span>
+            )}
+          </button>
+
           <select
             value={market}
             onChange={(e) => setMarket(e.target.value)}
@@ -113,6 +148,7 @@ export function AdminUniverseExplorer() {
             aria-label="筛选建档阶段"
           >
             <option value="all">全部阶段</option>
+            <option value="fasttrack">⚡ 快速通道排队中</option>
             <option value="2">Phase 2 (深度分析)</option>
             <option value="1">Phase 1 (基础建档)</option>
             <option value="0">Phase 0 (待处理底座)</option>
@@ -139,7 +175,7 @@ export function AdminUniverseExplorer() {
               <th style={{ width: "70px" }}>市场</th>
               <th style={{ width: "160px" }}>证券代码</th>
               <th>公司名称</th>
-              <th style={{ width: "160px" }}>当前建档阶段</th>
+              <th style={{ width: "180px" }}>当前建档阶段</th>
               <th style={{ width: "120px" }}>更新时间</th>
               <th className="admin-table-right" style={{ width: "110px" }}>操作</th>
             </tr>
@@ -188,7 +224,7 @@ export function AdminUniverseExplorer() {
                         )}
                       </div>
                     </td>
-                    <td>{phaseBadge(item.onboardPhase)}</td>
+                    <td>{phaseBadge(item)}</td>
                     <td className="admin-table-time">{formattedDate}</td>
                     <td className="admin-table-right">
                       {item.href ? (

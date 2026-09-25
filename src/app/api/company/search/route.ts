@@ -48,7 +48,10 @@ export async function GET(request: NextRequest) {
     conditions.push(Prisma.sql`e.market = ${market}`);
   }
 
-  if (phaseStr && phaseStr !== "all") {
+  const isFastTrackQuery = phaseStr === "fasttrack" || searchParams.get("fastTrack") === "1";
+  if (isFastTrackQuery) {
+    conditions.push(Prisma.sql`e."onboardPhase" = 0 AND COALESCE(e.priority, 0) > 0`);
+  } else if (phaseStr && phaseStr !== "all") {
     const phaseNum = parseInt(phaseStr, 10);
     if (!Number.isNaN(phaseNum)) {
       conditions.push(Prisma.sql`e."onboardPhase" = ${phaseNum}`);
@@ -67,6 +70,7 @@ export async function GET(request: NextRequest) {
         code: string | null;
         ticker: string | null;
         onboardPhase: number;
+        priority: number | null;
         updatedAt: Date;
         metadata: Record<string, unknown> | null;
       }>
@@ -79,6 +83,7 @@ export async function GET(request: NextRequest) {
         e.code, 
         e.ticker, 
         e."onboardPhase", 
+        COALESCE(e.priority, 0) as priority,
         e."updatedAt",
         e.metadata
       FROM "Entity" e
@@ -95,12 +100,14 @@ export async function GET(request: NextRequest) {
           END ASC,`
             : Prisma.empty
         }
+        ${isFastTrackQuery ? Prisma.sql`e.priority DESC,` : Prisma.empty}
         e."onboardPhase" DESC,
+        e.priority DESC,
         e."canonicalName" ASC
       LIMIT ${limit};
     `;
 
-    const items: Array<CompanyDirectoryItem & { updatedAt?: string; error?: string }> = rows.map((row) => {
+    const items: Array<CompanyDirectoryItem & { id?: string; priority?: number; isFastTrack?: boolean; updatedAt?: string; error?: string }> = rows.map((row) => {
       const meta = row.metadata as Record<string, unknown> | null;
       const nameZh =
         (typeof meta?.nameZh === "string" && meta.nameZh.trim()) || row.canonicalName;
@@ -111,8 +118,11 @@ export async function GET(request: NextRequest) {
       const marketVal: CompanyMarket = (row.market as CompanyMarket) ?? "us";
       const onboardPhase = typeof row.onboardPhase === "number" ? row.onboardPhase : 0;
       const isPhase1OrHigher = onboardPhase >= 1;
+      const priorityVal = typeof row.priority === "number" ? row.priority : 0;
+      const isFastTrack = priorityVal > 0 || Boolean(meta?.fastTrack);
 
       return {
+        id: row.id,
         key: row.cik ?? (row.market && row.code ? `${row.market}-${row.code}` : row.id),
         nameZh,
         nameEn,
@@ -121,6 +131,8 @@ export async function GET(request: NextRequest) {
         market: marketVal,
         isComplete: isPhase1OrHigher,
         onboardPhase,
+        priority: priorityVal,
+        isFastTrack,
         updatedAt: row.updatedAt?.toISOString(),
         error: typeof meta?.onboardPhase1LastError === "string" ? meta.onboardPhase1LastError : undefined,
       };

@@ -244,10 +244,12 @@ model Entity {
   market        String? // 'us' | 'hk' | 'cn' — exchange market; cik is us-only
   code          String? // exchange-specific code: 'AAPL' (us), '00700' (hk), '600519' (cn)
   sector        String?
-  onboardPhase  Int      @default(0) // 0: Stub/Phase0, 1: Phase1, 2: Phase2
-  metadata      Json?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  onboardPhase        Int       @default(0) // 0: Stub/Phase0, 1: Phase1, 2: Phase2
+  priority            Int       @default(0) // Fast-track priority score (0 = default, >0 = expedited)
+  priorityRequestedAt DateTime? // When fast-track priority was requested
+  metadata            Json?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   financials                  Financial[]
   filingSections              FilingSection[]
@@ -269,6 +271,7 @@ model Entity {
   @@index([market, code])
   @@index([market, onboardPhase])
   @@index([onboardPhase])
+  @@index([onboardPhase, priority])
 }
 
 // Punch ("打孔") = a curated, forward-looking record of a master's proven big-bet

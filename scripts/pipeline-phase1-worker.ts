@@ -38,6 +38,7 @@ interface CandidateCompany {
   canonicalName: string;
   nameZh?: string;
   priorityScore: number;
+  isFastTrack?: boolean;
 }
 
 const PID_FILE = path.join(process.cwd(), ".cache", "pipeline-phase1-worker.pid");
@@ -134,7 +135,74 @@ function formatDuration(ms: number): string {
   return `${mins}m ${secs}s`;
 }
 
-async function fetchCandidatesForMarket(market: Market, limit: number): Promise<CandidateCompany[]> {
+async function fetchFastTrackCandidates(limit: number, marketFilter?: Market): Promise<CandidateCompany[]> {
+  const rows = await prisma.entity.findMany({
+    where: {
+      type: "company",
+      onboardPhase: 0,
+      priority: { gt: 0 },
+      ...(marketFilter ? { market: marketFilter } : {}),
+    },
+    select: {
+      id: true,
+      market: true,
+      ticker: true,
+      code: true,
+      canonicalName: true,
+      priority: true,
+      metadata: true,
+    },
+    orderBy: [
+      { priority: "desc" },
+      { priorityRequestedAt: "asc" },
+      { createdAt: "asc" },
+    ],
+    take: limit,
+  });
+
+  const candidates: CandidateCompany[] = [];
+
+  for (const r of rows) {
+    const meta = (r.metadata as Record<string, unknown>) || {};
+    const attempts = typeof meta.onboardPhase1Attempts === "number" ? meta.onboardPhase1Attempts : 0;
+    if (attempts >= 3) continue; // Skip persistent failures
+
+    let ticker = r.ticker?.trim() ?? "";
+    const m = (r.market?.toLowerCase() ?? "us") as Market;
+
+    if (!ticker) {
+      if (m === "hk" && r.code) {
+        ticker = `${r.code.padStart(4, "0")}.HK`;
+      } else if (m === "cn" && r.code) {
+        ticker = r.code.startsWith("6") || r.code.startsWith("9") ? `${r.code}.SS` : `${r.code}.SZ`;
+      } else if (r.code) {
+        ticker = r.code;
+      }
+    }
+    if (!ticker) continue;
+
+    candidates.push({
+      id: r.id,
+      market: m,
+      ticker,
+      code: r.code,
+      canonicalName: r.canonicalName,
+      nameZh: typeof meta.nameZh === "string" ? meta.nameZh : undefined,
+      priorityScore: 1000 + (r.priority ?? 0),
+      isFastTrack: true,
+    });
+  }
+
+  return candidates;
+}
+
+async function fetchCandidatesForMarket(
+  market: Market,
+  limit: number,
+  excludeIds: Set<string> = new Set()
+): Promise<CandidateCompany[]> {
+  if (limit <= 0) return [];
+
   const rows = await prisma.entity.findMany({
     where: {
       type: "company",
@@ -149,12 +217,14 @@ async function fetchCandidatesForMarket(market: Market, limit: number): Promise<
       canonicalName: true,
       metadata: true,
     },
-    take: limit * 4, // Fetch extra for smart priority sorting
+    take: Math.max(limit * 4, 30), // Fetch extra for smart priority sorting
   });
 
   const candidates: CandidateCompany[] = [];
 
   for (const r of rows) {
+    if (excludeIds.has(r.id)) continue;
+
     const meta = (r.metadata as Record<string, unknown>) || {};
     const attempts = typeof meta.onboardPhase1Attempts === "number" ? meta.onboardPhase1Attempts : 0;
     if (attempts >= 3) continue; // Skip persistent failures
@@ -200,6 +270,7 @@ async function fetchCandidatesForMarket(market: Market, limit: number): Promise<
       canonicalName: r.canonicalName,
       nameZh: typeof meta.nameZh === "string" ? meta.nameZh : undefined,
       priorityScore,
+      isFastTrack: false,
     });
   }
 
@@ -235,33 +306,48 @@ async function main() {
   try {
     let candidateList: CandidateCompany[] = [];
 
-    if (targetMarket === "all") {
-      const perMarket = Math.ceil(batchSize / 3);
-      const [usList, hkList, cnList] = await Promise.all([
-        fetchCandidatesForMarket("us", perMarket),
-        fetchCandidatesForMarket("hk", perMarket),
-        fetchCandidatesForMarket("cn", perMarket),
-      ]);
+    // 1. Fetch Fast-Track expedited companies first
+    const fastTrackList = await fetchFastTrackCandidates(
+      batchSize,
+      targetMarket === "all" ? undefined : (targetMarket as Market)
+    );
+    const excludeIds = new Set(fastTrackList.map((c) => c.id));
+    const remainingSlots = Math.max(0, batchSize - fastTrackList.length);
 
-      // Interleave results (round-robin)
-      const maxLen = Math.max(usList.length, hkList.length, cnList.length);
-      for (let i = 0; i < maxLen; i++) {
-        if (usList[i]) candidateList.push(usList[i]);
-        if (hkList[i]) candidateList.push(hkList[i]);
-        if (cnList[i]) candidateList.push(cnList[i]);
+    let regularList: CandidateCompany[] = [];
+
+    if (remainingSlots > 0) {
+      if (targetMarket === "all") {
+        const perMarket = Math.ceil(remainingSlots / 3);
+        const [usList, hkList, cnList] = await Promise.all([
+          fetchCandidatesForMarket("us", perMarket, excludeIds),
+          fetchCandidatesForMarket("hk", perMarket, excludeIds),
+          fetchCandidatesForMarket("cn", perMarket, excludeIds),
+        ]);
+
+        // Interleave results (round-robin)
+        const maxLen = Math.max(usList.length, hkList.length, cnList.length);
+        for (let i = 0; i < maxLen; i++) {
+          if (usList[i]) regularList.push(usList[i]);
+          if (hkList[i]) regularList.push(hkList[i]);
+          if (cnList[i]) regularList.push(cnList[i]);
+        }
+        regularList = regularList.slice(0, remainingSlots);
+      } else if (targetMarket === "us" || targetMarket === "hk" || targetMarket === "cn") {
+        regularList = await fetchCandidatesForMarket(targetMarket as Market, remainingSlots, excludeIds);
+      } else {
+        throw new Error(`Invalid --market "${targetMarket}". Expected all, us, hk, or cn.`);
       }
-      candidateList = candidateList.slice(0, batchSize);
-    } else if (targetMarket === "us" || targetMarket === "hk" || targetMarket === "cn") {
-      candidateList = await fetchCandidatesForMarket(targetMarket as Market, batchSize);
-    } else {
-      throw new Error(`Invalid --market "${targetMarket}". Expected all, us, hk, or cn.`);
     }
 
-    logMessage(`Found ${candidateList.length} candidate companies to onboard to Phase 1:`);
+    candidateList = [...fastTrackList, ...regularList];
+
+    logMessage(`Found ${candidateList.length} candidate companies to onboard to Phase 1 (${fastTrackList.length} fast-track expedited):`);
     for (let i = 0; i < candidateList.length; i++) {
       const c = candidateList[i];
       const displayName = c.nameZh ? `${c.canonicalName} (${c.nameZh})` : c.canonicalName;
-      logMessage(`  [${(i + 1).toString().padStart(2, " ")}] [${c.market.toUpperCase()}] ${c.ticker.padEnd(10)} - ${displayName}`);
+      const tag = c.isFastTrack ? "[⚡ FAST-TRACK]" : "[STANDARD]   ";
+      logMessage(`  [${(i + 1).toString().padStart(2, " ")}] ${tag} [${c.market.toUpperCase()}] ${c.ticker.padEnd(10)} - ${displayName}`);
     }
 
     if (dryRun) {

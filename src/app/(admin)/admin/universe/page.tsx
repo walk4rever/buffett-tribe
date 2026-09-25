@@ -15,7 +15,7 @@ import { AdminUniverseExplorer } from "@/components/admin/AdminUniverseExplorer"
 export const dynamic = "force-dynamic";
 
 export default async function AdminUniversePage() {
-  const [totalCompanies, phaseCounts, marketPhaseCounts, recentPhase1, failedCompanies] =
+  const [totalCompanies, phaseCounts, marketPhaseCounts, recentPhase1, failedCompanies, fastTrackCount] =
     await Promise.all([
       prisma.entity.count({ where: { type: "company" } }),
       prisma.$queryRaw<Array<{ onboardPhase: number; count: bigint }>>`
@@ -67,6 +67,13 @@ export default async function AdminUniversePage() {
         orderBy: { updatedAt: "desc" },
         take: 6,
       }),
+      prisma.entity.count({
+        where: {
+          type: "company",
+          onboardPhase: 0,
+          priority: { gt: 0 },
+        },
+      }),
     ]);
 
   const phaseMap: Record<number, number> = {};
@@ -108,6 +115,7 @@ export default async function AdminUniversePage() {
           <h1 className="admin-page-title">公司大盘与建档管线</h1>
           <p className="admin-page-desc">
             全市场 {totalCompanies.toLocaleString()} 家上市公司建档阶段监控、三大市场推进与最新数据库入库流水
+            {fastTrackCount > 0 ? `（当前 ${fastTrackCount} 家快速通道加急插队中）` : ""}
           </p>
         </div>
       </div>
@@ -136,7 +144,14 @@ export default async function AdminUniversePage() {
           </div>
           <div className="admin-stat-value">{p0.toLocaleString()}</div>
           <div className="admin-stat-bottom">
-            <span className="admin-stat-hint">{p0Pct}% 等待逐批 Onboard</span>
+            <span className="admin-stat-hint">
+              {p0Pct}% 等待逐批
+              {fastTrackCount > 0 ? (
+                <> · <strong style={{ color: "var(--apple-blue, #0071e3)" }}>⚡ {fastTrackCount} 家快速排队</strong></>
+              ) : (
+                " Onboard"
+              )}
+            </span>
           </div>
         </div>
 
@@ -373,7 +388,7 @@ export default async function AdminUniversePage() {
       </div>
 
       {/* Interactive Explorer / Search Table */}
-      <AdminUniverseExplorer />
+      <AdminUniverseExplorer initialFastTrackCount={fastTrackCount} />
     </div>
   );
 }
