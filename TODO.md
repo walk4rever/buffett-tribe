@@ -49,6 +49,15 @@
     3. **Admin 公司大盘与管线控制台（/admin/universe）**：新增公司大盘页面与导航入口，展示全市场 Phase 0/1/2 宏观进度条、各市场分部卡片、最近建档动态流、死信预警池以及交互式表格检索器 `AdminUniverseExplorer`；
     4. **大盘检索表格与徽章视觉规范**：完成 Apple 风格全套表格样式、多色徽章规范（绿/蓝/紫/橙/灰/红）以及自适应卡片封装，提供专业直观的大盘标的探查能力。
 
+- [x] **⑱ 快速通道（优先建档）全链路、Apple 风格交互与 mini VIP 插队调度**（2026-09-25 完成上线，详见 `PRODUCT.md`「v0.45.18 变更」）：
+  - **落地成果**：
+    1. **前台微交互与即时反馈**：`/company` 搜索结果的未建档（灰色 Phase 0）卡片右下角新增 Apple HIG 风格胶囊按钮 `[ ⚡ 优先建档 ]`，防抖即时提交并切换为 `[ ✓ 已排队 ]`，配合底部悬浮毛玻璃 Toast；
+    2. **加急 API 与检索服务扩展**：新增 `/api/company/fast-track`，更新 `/api/company/search` 支持 `phase=fasttrack` 精确过滤；
+    3. **mini Worker VIP 插队队列**：`scripts/pipeline-phase1-worker.ts` 优先消费全部加急标的，置顶推进后再由常规轮巡补齐配额；
+    4. **Admin 大盘看板联动**：`/admin/universe` 顶部卡片实时展示快速通道排队中家数，探查器增加快捷筛选药丸按钮与专属优先分徽章；
+    5. **数据清洗与环境修复**：修复 `mini` 原生 Python 3.11 软链接环境；清洗合并 `C`、`GS`、`JPM` 美股重复实体（规范 10 位 CIK），重复 Ticker 清零并补全中文名。
+
+
 
 - [ ] **⑩ 回填缺失的 `section_text` artifact：645 份 filing / 4,780 个 section / 110 家公司**（2026-08-30 发现，详细复盘见 `handoff.md` 第二次会话追加）：早期那版「三种 kind 全删」的 `cleanup-section-artifacts.ts` 删掉了 `section_text` artifact，而 `FilingSection.textArtifact` 外键是 `onDelete: SetNull`，链接随之全部变 NULL；上次只回填了 BN/SU 两家。后果是 `search_filings` 对这 110 家公司**平均只能看到 27.4% 的正文**（`FilingSection.content` 只是导入时截断的预览），走 `primary_html` 现场重解析的兜底路径又常因大文件超时。P3 加的降级警告保证了它不会静默撒谎，但能力缺口是真的。
   - **判据**：`textArtifactId is null AND length(content) < contentTextLength`。按 `extractionVersion` 分：v2 全部 10,857 个 section text artifact 数为 0（那一代没这机制），v3 的 16,181 个里缺 1,839 个。8/29–8/30 两批重导的 10,082 个则 100% 完整——**当前写入路径是对的，这是历史存量问题**。

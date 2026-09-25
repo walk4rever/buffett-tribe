@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.45.18] - 2026-09-25
+
+### Added
+- **未建档标的 Apple 风格快速通道（优先建档）全链路落地**：
+  - **前台微交互与即时反馈**：在 `/company` 搜索结果中所有未深度建档的灰色 Phase 0 卡片右下角，增设 Apple HIG 风格胶囊按钮。未排队展示 `[ ⚡ 优先建档 ]`（支持防抖即时提交），请求中展示 `[ 排队中… ]`（微型 Spinner），已排队展示柔光绿 `[ ✓ 已排队 ]`；点击成功后弹出底部悬浮毛玻璃微提示（Apple-style Toast）；
+  - **快速通道加急接口（/api/company/fast-track）**：接收标的 `id` 或 `key`，为 Phase 0 标的设置优先级分数（首提 +100，后续累加权值），记录申请时间戳与请求计数；
+  - **检索接口加急状态支持（/api/company/search）**：返回标的的 `priority` 与 `isFastTrack` 状态；支持 `phase=fasttrack` 精准过滤加急标的池并按优先分倒序排列；
+  - **mini 机器 Hourly Worker VIP 优先插队调度**：改造 `scripts/pipeline-phase1-worker.ts`，每批次调度前优先拉取 `onboardPhase = 0 AND priority > 0` 的加急公司置顶执行（日志标注 `[⚡ FAST-TRACK]`），剩余名额按美股/港股/A股三大市场轮巡均衡补齐；
+  - **Admin 控制台实时看板联动（/admin/universe）**：
+    - Phase 0 待处理底座卡片实时展示当前快速通道排队中家数（如 `⚡ 1 家快速排队`）；
+    - 交互式探查器 `AdminUniverseExplorer` 新增 `[ ⚡ 快速通道 (X) ]` 一键快捷筛选药丸按钮与下拉选项；
+    - 标的表格对排队标的渲染专属微标 `⚡ 快速通道 (分值 X)`。
+
+### Fixed
+- **数据清洗与环境修复**：
+  - 修复 `mini` 机器上 Apple Silicon 原生 Python 3.11 软链接环境，确保 `akshare`、`yfinance`、`edgar` 正常加载运行；
+  - 统一清洗合并历史未补零 CIK 导致的 `C`（花旗）、`GS`（高盛）、`JPM`（摩根大通）美股重复实体，实现全库美股重复 Ticker 清零；
+  - 补全花旗、思科、礼来、高盛、摩根大通等多家核心美股/港股标的的中文标准名称映射。
+
 ## [v0.45.17] - 2026-09-25
 
 ### Added
