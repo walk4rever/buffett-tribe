@@ -59,7 +59,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import prisma from "@/lib/prisma";
 import { CN_HK_SEEDS } from "./lib/cn-hk-company-seeds";
-import { resolveCnCurrency, resolveHkCurrencyFromAnnualReport } from "./lib/cn-hk-currency-resolve";
+import { resolveCnCurrency, resolveHkCurrencyFromAnnualReport, resolveHkCurrencyViaYfinance } from "./lib/cn-hk-currency-resolve";
 
 type Market = "us" | "cn" | "hk";
 
@@ -314,7 +314,13 @@ async function resolveCnHkCurrency(ticker: string, market: "cn" | "hk"): Promise
   if (market === "cn") return resolveCnCurrency();
   const entityId = await findEntityId(ticker);
   if (!entityId) throw new Error(`No Entity found for ticker ${ticker} — seed_entity must run first.`);
-  return resolveHkCurrencyFromAnnualReport(entityId);
+  try {
+    return await resolveHkCurrencyFromAnnualReport(entityId);
+  } catch (err) {
+    const yfCurrency = resolveHkCurrencyViaYfinance(ticker);
+    if (yfCurrency) return yfCurrency;
+    throw err;
+  }
 }
 
 function buildImportFinancialsStep(ticker: string, market: "cn" | "hk", code: string): Step {

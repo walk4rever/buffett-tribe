@@ -15,6 +15,7 @@
 // pipeline order is only available after import_annual_report runs (see
 // onboard-company.ts's HK step reordering) — this can't run at seed_entity
 // time like the CN case.
+import { execSync } from "node:child_process";
 import db from "@/lib/prisma";
 
 export function resolveCnCurrency(): "CNY" {
@@ -134,3 +135,21 @@ export async function resolveHkCurrencyFromAnnualReport(entityId: string): Promi
     `Could not resolve HK reporting currency for entity ${entityId} from annual report text (regex counts: ${JSON.stringify(counts)}, LLM fallback also failed). Needs manual investigation.`,
   );
 }
+
+export function resolveHkCurrencyViaYfinance(ticker: string): CurrencyGuess | null {
+  try {
+    const pyCmd = process.env.VIRTUAL_ENV
+      ? `${process.env.VIRTUAL_ENV}/bin/python`
+      : ".venv/bin/python";
+    const cmd = `[ -x ${pyCmd} ] && ${pyCmd} -c 'import yfinance as yf; print(yf.Ticker("${ticker}").info.get("financialCurrency", ""))' || python3 -c 'import yfinance as yf; print(yf.Ticker("${ticker}").info.get("financialCurrency", ""))'`;
+    const out = execSync(cmd, { encoding: "utf-8", timeout: 20000 }).trim().toUpperCase();
+    if (out === "CNY" || out === "HKD" || out === "USD") {
+      return out as CurrencyGuess;
+    }
+    return null;
+  } catch (e) {
+    console.error("[resolveHkCurrencyViaYfinance] failed:", e);
+    return null;
+  }
+}
+

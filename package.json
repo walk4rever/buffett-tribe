@@ -34,6 +34,7 @@
     "onboard:phase1": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/onboard-company.ts --phase 1",
     "onboard:phase2": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/onboard-company.ts --phase 2",
     "onboard:csi300": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/batch-onboard-csi300.ts",
+    "onboard:hk": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/batch-onboard-hk.ts",
     "import:10k:fast": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-10k-edgartools.ts --fast",
     "onboard:alpha-investor": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/onboard-alpha-investor.ts",
     "onboard:pending": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/onboard-pending-companies.ts",
