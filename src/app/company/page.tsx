@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import { formatCompanyUrl } from "@/lib/company-data";
 import { SiteNav } from "@/components/SiteNav";
-import { CompanyDirectory, CompanyGrid, type CompanyDirectoryItem } from "@/components/CompanyDirectory";
+import { CompanyDirectory, type CompanyDirectoryItem } from "@/components/CompanyDirectory";
 import { BRAND_EN, BRAND_ZH } from "@/lib/brand";
 
 // Company directory changes in slow batches (manual onboarding runs), not
-// per-request — ISR caches the ~1.5-2s query result instead of re-running
+// per-request — ISR caches the query result instead of re-running
 // it on every visit. 60s revalidation gives near-instant updates after an
 // onboarding run while still serving cached responses to visitors.
 export const revalidate = 60;
@@ -45,17 +45,11 @@ const ENTITY_DIRECTORY_SELECT = {
 
 type EntityDirectoryRow = Awaited<ReturnType<typeof prisma.entity.findMany<{ select: typeof ENTITY_DIRECTORY_SELECT }>>>[number];
 
-
 function toDirectoryItem(row: EntityDirectoryRow): CompanyDirectoryItem {
   const meta = row.metadata as Record<string, unknown> | null;
   const nameZh = (typeof meta?.nameZh === "string" && meta.nameZh.trim()) || row.canonicalName;
   const nameEn = (typeof meta?.nameEnShort === "string" && meta.nameEnShort.trim()) || row.canonicalName;
-  // Entity.ticker is the display-primary ticker; a company can also have
-  // multiple tradeable share classes (e.g. Berkshire BRK-A/BRK-B, Alphabet
-  // GOOG/GOOGL) recorded as separate Security rows under the same
-  // companyEntityId — merge both sources so search matches any of them.
   const tickers = uniqueTickers([row.ticker, ...row.securitiesAsCompany.map((s) => s.ticker)]);
-  // Guaranteed non-null: the query requires cik OR (market AND code).
   const market = (row.market as "hk" | "cn" | null) ?? "us";
   const onboardPhase = typeof row.onboardPhase === "number"
     ? row.onboardPhase
@@ -66,7 +60,7 @@ function toDirectoryItem(row: EntityDirectoryRow): CompanyDirectoryItem {
     nameZh,
     nameEn,
     tickers,
-    href: formatCompanyUrl(row),
+    href: isPhase1Complete ? formatCompanyUrl(row) : null,
     market,
     isComplete: isPhase1Complete,
     onboardPhase,
@@ -96,33 +90,10 @@ async function getMarketUniverseCounts() {
   }
 }
 
-async function getCompanies(): Promise<CompanyDirectoryItem[]> {
-  try {
-    const rawIds = await prisma.$queryRaw<Array<{ id: string }>>`
-      SELECT id FROM "Entity"
-      WHERE type = 'company' AND ("onboardPhase" >= 1 OR NOT ("metadata" ? 'isMasterUniverse'))
-      ORDER BY "canonicalName" ASC;
-    `;
-    const ids = rawIds.map((r) => r.id);
-    const rows = await prisma.entity.findMany({
-      where: { id: { in: ids } },
-      select: ENTITY_DIRECTORY_SELECT,
-      orderBy: { canonicalName: "asc" },
-    });
-    return rows.map(toDirectoryItem);
-  } catch {
-    return [];
-  }
-}
-
 // "最近更新" = most recently generated LLM content (profile/business/moat/
 // management/valuation), not "most recently created" (misses refreshed old
 // companies) or "any DB write" (StockPrice updates daily, which would just
 // permanently pin every actively-priced company here and defeat the point).
-// CompanyAnalysis is one row per entity with all 5 fields, so its updatedAt
-// is already the "when did this company's analysis last change" signal —
-// no groupBy needed (unlike the old GeneratedContentVersion-per-artifact
-// scheme, where the max had to be computed across 5 separate rows).
 async function getRecentlyUpdatedCompanies(limit = 18): Promise<CompanyDirectoryItem[]> {
   try {
     const latest = await prisma.companyAnalysis.findMany({
@@ -138,8 +109,6 @@ async function getRecentlyUpdatedCompanies(limit = 18): Promise<CompanyDirectory
       select: ENTITY_DIRECTORY_SELECT,
     });
     const byId = new Map(rows.map((row) => [row.id, row]));
-    // findMany doesn't preserve `in` order — reapply the updatedAt-desc order
-    // explicitly.
     return entityIds
       .map((id) => byId.get(id))
       .filter((row): row is EntityDirectoryRow => row != null)
@@ -150,8 +119,7 @@ async function getRecentlyUpdatedCompanies(limit = 18): Promise<CompanyDirectory
 }
 
 export default async function CompaniesPage() {
-  const [companies, recentlyUpdated, universe] = await Promise.all([
-    getCompanies(),
+  const [recentlyUpdated, universe] = await Promise.all([
     getRecentlyUpdatedCompanies(),
     getMarketUniverseCounts(),
   ]);
@@ -166,16 +134,7 @@ export default async function CompaniesPage() {
             买股票就是买公司 · 覆盖 A股 / 港股 / 美股三大市场共 {universe.total.toLocaleString()} 家上市公司（美股 {universe.us.toLocaleString()} · A股 {universe.cn.toLocaleString()} · 港股 {universe.hk.toLocaleString()}）。
           </p>
         </header>
-        {recentlyUpdated.length > 0 ? (
-          <section className="companies-section">
-            <h2 className="companies-section-title">
-              最近更新
-              <span className="companies-section-count">({recentlyUpdated.length})</span>
-            </h2>
-            <CompanyGrid items={recentlyUpdated} />
-          </section>
-        ) : null}
-        <CompanyDirectory companies={companies} totalCount={companies.length} />
+        <CompanyDirectory recentlyUpdated={recentlyUpdated} totalCount={universe.total} />
       </main>
     </div>
   );
