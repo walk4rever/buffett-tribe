@@ -15383,6 +15383,7 @@ a.insight-entity-chip:hover {
 
 .agent-note-textarea {
   flex: 1;
+  width: 100%;
   min-height: 200px;
   border: none;
   outline: none;
@@ -15393,6 +15394,7 @@ a.insight-entity-chip:hover {
   color: var(--apple-near-black);
   resize: none;
   padding: 0;
+  box-sizing: border-box;
 }
 
 .agent-note-textarea::placeholder {
