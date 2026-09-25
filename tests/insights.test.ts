@@ -671,7 +671,7 @@ date: "2026-06-09"
         "",
         "🔗 原文链接：https://vt.air7.fun/insights/berkshire-shareholder-letter",
         "",
-        "【Value Tribe · 价值部落】买股票就是买公司。用投资大师的框架深度理解一家公司。",
+        "【Value-Tribe · 价值部落】买股票就是买公司。用投资大师的框架深度理解一家公司。",
       ].join("\n"));
     });
 
@@ -691,11 +691,11 @@ date: "2026-06-09"
         title: "商业模式与资本配置",
         slug: "business-capital-allocation",
         quoteText: "自由现金流是一切估值的锚点。",
-        source: "Value Tribe",
+        source: "Value-Tribe",
       });
 
       expect(text).toContain("—— 摘自《商业模式与资本配置》");
-      expect(text).not.toContain("· Value Tribe");
+      expect(text).not.toContain("· Value-Tribe");
     });
 
     it("does not double-wrap title with brackets if title already has them", () => {
