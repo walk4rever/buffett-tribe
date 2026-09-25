@@ -24,7 +24,9 @@ export function HeroSearch() {
       </div>
       <div className="hero-examples">
         {EXAMPLE_QUESTIONS.map((q) => (
-          <span key={q} className="hero-example">{q}</span>
+          <span key={q} className="hero-example">
+            {q}
+          </span>
         ))}
       </div>
     </div>

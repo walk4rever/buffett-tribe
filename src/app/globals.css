@@ -4240,7 +4240,8 @@ body.layout-no-header {
   color: var(--apple-white);
   border: none;
   border-radius: 980px;
-  padding: 5px 14px;
+  padding: 8px 16px;
+  min-height: 36px;
   cursor: pointer;
   letter-spacing: -0.12px;
   transition: background 0.15s;
@@ -4534,12 +4535,15 @@ body.layout-no-header {
   color: var(--apple-link-light);
   border: 1px solid #d1d1d6;
   border-radius: 980px;
-  padding: 0.3125rem 0.875rem;
+  padding: 0.5rem 1rem;
+  min-height: 36px;
   background: var(--apple-white);
   cursor: pointer;
   letter-spacing: -0.12px;
   transition: border-color 0.15s, background 0.15s;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
 }
 
 .hero-example:hover {
@@ -5024,6 +5028,158 @@ body.layout-no-header {
   color: rgba(255, 255, 255, 0.3);
   line-height: 1.47;
   letter-spacing: -0.12px;
+}
+
+/* ── P0 Fix 2/4: Complete mobile breakpoint system per Apple spec ── */
+
+/* 360px — Small Mobile (minimum supported) */
+@media (max-width: 360px) {
+  .home-signals-in {
+    padding: 1.25rem 1rem;
+  }
+
+  .home-hero {
+    padding: 2.5rem 1rem 2.5rem;
+  }
+
+  .home-hero-brand {
+    font-size: 2rem;
+  }
+
+  .hero-examples {
+    display: none;
+  }
+
+  .home-nav-in {
+    padding: 0.55rem 1rem 0.5rem;
+  }
+
+  .home-nav-center {
+    gap: 0.75rem;
+  }
+
+  .home-nav-center .home-nav-link {
+    font-size: 0.7rem;
+  }
+}
+
+/* 480px — Mobile Large */
+@media (min-width: 481px) and (max-width: 640px) {
+  .home-signals-in {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-examples {
+    max-width: 100%;
+  }
+
+  .hero-example:nth-child(n+3) {
+    display: none;
+  }
+}
+
+/* 640px — Tablet Small (existing, enhanced) */
+@media (max-width: 640px) {
+  .home-signals-in {
+    grid-template-columns: 1fr;
+    padding: 1.5rem 1.25rem;
+    gap: 0.5rem;
+  }
+
+  .home-members-in {
+    padding: 2rem 1rem 3.5rem;
+  }
+
+  .home-member-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.65rem;
+  }
+
+  .home-member-card {
+    padding: 1.1rem 1rem;
+    gap: 0.85rem;
+  }
+
+  .home-member-top {
+    gap: 0.75rem;
+  }
+
+  .home-hero {
+    padding: 3.5rem 1.25rem 3rem;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .hero-input-wrap {
+    border-radius: 12px;
+  }
+
+  .hero-input {
+    padding: 0.9rem 3.25rem 0.9rem 1rem;
+    font-size: 0.92rem;
+  }
+
+  .hero-input-btn {
+    right: 0.3rem;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+
+  .home-hero-brand {
+    font-size: 2.5rem;
+  }
+
+  .hero-examples {
+    gap: 0.375rem;
+  }
+
+  /* P0 Fix 3/4: Hide extra example questions on mobile to save vertical space */
+  .hero-example:nth-child(n+3) {
+    display: none;
+  }
+}
+
+/* 834px — Tablet (iPad portrait) */
+@media (min-width: 641px) and (max-width: 834px) {
+  .home-signals-in {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .home-masters-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .home-insights-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .home-hero {
+    padding: 4rem 1.5rem 3.5rem;
+  }
+}
+
+/* 1024px — Tablet Large (iPad landscape) */
+@media (min-width: 835px) and (max-width: 1024px) {
+  .home-signals-in {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .home-masters-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .home-insights-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 1070px+ — Desktop (existing layout) */
+@media (min-width: 1025px) {
+  .home-insights-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 /* ── Responsive ── */
@@ -9478,7 +9634,11 @@ body {
   color: var(--graphite-text);
 }
 
-.home-v2,
+/* ── P0 Fix 1/4: Remove Graphite gradients, restore Apple pure color backgrounds ── */
+.home-v2 {
+  background: var(--apple-light-gray);
+}
+
 .person-page,
 .holdings-page,
 .letter-page,
@@ -9490,42 +9650,40 @@ body {
 }
 
 .home-nav {
-  background: rgba(17, 24, 39, 0.9);
-  border-bottom: 1px solid rgba(205, 211, 220, 0.22);
+  background: rgba(0, 0, 0, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .home-nav-logo,
 .home-nav-link {
-  color: rgba(248, 250, 252, 0.88);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .home-nav-login {
-  background: var(--graphite-accent);
-  color: #fff;
+  background: var(--apple-blue);
+  color: var(--apple-white);
 }
 
 .home-signals,
 .home-footer-v2 {
-  background: #101827;
+  background: var(--apple-black);
 }
 
-/* /master (member listing) reuses these classes but is a standalone light
-   content page now, not a dark accent band inside the homepage — match the
-   light graphite-surface card treatment used by /master/[id], /company. */
+/* Masters section on homepage uses pure black background per Apple alternating rhythm */
 .home-members {
-  background: transparent;
+  background: var(--apple-black);
 }
 
 .home-sig {
-  background: #182233;
-  border: 1px solid #2a374d;
+  background: var(--apple-dark-surface);
+  border: none;
   box-shadow: none;
 }
 
 .home-member-card {
-  background: var(--graphite-surface);
-  border: 1px solid var(--graphite-border);
-  box-shadow: 0 10px 32px rgba(15, 23, 42, 0.08);
+  background: var(--apple-dark-surface);
+  border: none;
+  box-shadow: none;
 }
 
 .home-member-link {
