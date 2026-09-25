@@ -4,6 +4,7 @@ import { getTribeMemberColor, getTribeMembers, type TribeMember } from "@/lib/tr
 import { getAvailableQuarters, getLatestPortfolioValueUsd } from "@/lib/master-data";
 import { formatUsdInYi } from "@/lib/currency";
 import { BRAND_ZH } from "@/lib/brand";
+import { BookOpen, BarChart3 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +81,7 @@ export default async function MasterIndexPage() {
                   </Link>
                   <div className="home-member-links">
                     <Link href={`/master/${m.id}#library`} className="home-member-link">
-                      <span className="home-member-link-icon">🧠</span>
+                      <BookOpen className="home-member-link-icon" size={16} strokeWidth={2} />
                       <span className="home-member-link-text">
                         资料库
                         <em>{m.materialSub}</em>
@@ -88,7 +89,7 @@ export default async function MasterIndexPage() {
                     </Link>
                     {state.latestQuarter ? (
                       <Link href={`/master/${m.id}#holdings`} className="home-member-link">
-                        <span className="home-member-link-icon">📊</span>
+                        <BarChart3 className="home-member-link-icon" size={16} strokeWidth={2} />
                         <span className="home-member-link-text">
                           最新持仓
                           <em>{state.latestQuarter.year} Q{state.latestQuarter.quarter}</em>
@@ -96,7 +97,7 @@ export default async function MasterIndexPage() {
                       </Link>
                     ) : (
                       <span className="home-member-link home-member-link--disabled">
-                        <span className="home-member-link-icon">📊</span>
+                        <BarChart3 className="home-member-link-icon" size={16} strokeWidth={2} />
                         <span className="home-member-link-text">
                           最新持仓
                           <em>暂无数据</em>
@@ -133,7 +134,7 @@ export default async function MasterIndexPage() {
                       </Link>
                       <div className="home-member-links">
                         <Link href={`/master/${m.id}#library`} className="home-member-link">
-                          <span className="home-member-link-icon">🧠</span>
+                          <BookOpen className="home-member-link-icon" size={16} strokeWidth={2} />
                           <span className="home-member-link-text">
                             资料库
                             <em>{m.materialSub}</em>
@@ -141,7 +142,7 @@ export default async function MasterIndexPage() {
                         </Link>
                         {state?.latestQuarter ? (
                           <Link href={`/master/${m.id}#holdings`} className="home-member-link">
-                            <span className="home-member-link-icon">📊</span>
+                            <BarChart3 className="home-member-link-icon" size={16} strokeWidth={2} />
                             <span className="home-member-link-text">
                               最新持仓
                               <em>{state.latestQuarter.year} Q{state.latestQuarter.quarter}</em>
@@ -149,7 +150,7 @@ export default async function MasterIndexPage() {
                           </Link>
                         ) : (
                           <span className="home-member-link home-member-link--disabled">
-                            <span className="home-member-link-icon">📊</span>
+                            <BarChart3 className="home-member-link-icon" size={16} strokeWidth={2} />
                             <span className="home-member-link-text">
                               最新持仓
                               <em>暂无数据</em>

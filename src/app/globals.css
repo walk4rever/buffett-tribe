@@ -4599,8 +4599,9 @@ body.layout-no-header {
   /* Inherits 3-column grid from .home-member-list on desktop */
 }
 
+/* Fix: Remove Alpha card border per Apple spec */
 .home-member-card--alpha {
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: none;
 }
 
 .home-member-card {
@@ -4736,8 +4737,8 @@ body.layout-no-header {
 }
 
 .home-member-link-icon {
-  font-size: 0.9375rem;
   flex-shrink: 0;
+  color: var(--apple-link-dark);
 }
 
 .home-member-link-text {
@@ -5031,6 +5032,85 @@ body.layout-no-header {
 }
 
 /* ── P0 Fix 2/4: Complete mobile breakpoint system per Apple spec ── */
+
+/* 360px — Small Mobile (minimum supported) */
+@media (max-width: 360px) {
+  .home-signals-in {
+    padding: 1.25rem 1rem;
+  }
+
+  .home-hero {
+    padding: 2.5rem 1rem 2.5rem;
+  }
+
+  .home-hero-brand {
+    font-size: 2rem;
+  }
+
+  .hero-examples {
+    display: none;
+  }
+
+  .home-nav-in {
+    padding: 0.55rem 1rem 0.5rem;
+  }
+
+  .home-nav-center {
+    gap: 0.75rem;
+  }
+
+  .home-nav-center .home-nav-link {
+    font-size: 0.7rem;
+  }
+
+  .home-members-in {
+    padding: 1.5rem 1rem 2.5rem;
+  }
+
+  .home-member-list {
+    gap: 0.5rem;
+  }
+
+  .home-member-card {
+    padding: 1rem 0.875rem;
+  }
+}
+
+/* 480px — Mobile Large */
+@media (min-width: 481px) and (max-width: 640px) {
+  .home-signals-in {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-examples {
+    max-width: 100%;
+  }
+
+  .hero-example:nth-child(n+3) {
+    display: none;
+  }
+
+  .home-member-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 834px — Tablet (iPad portrait) */
+@media (min-width: 641px) and (max-width: 834px) {
+  .home-member-list {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+}
+
+/* 1024px — Tablet Large (iPad landscape) */
+@media (min-width: 835px) and (max-width: 1024px) {
+  .home-member-list {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 640px — Tablet Small (existing, enhanced) */
 
 /* 360px — Small Mobile (minimum supported) */
 @media (max-width: 360px) {
