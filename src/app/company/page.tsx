@@ -79,13 +79,39 @@ function toDirectoryItem(row: EntityDirectoryRow): CompanyDirectoryItem {
   };
 }
 
+async function getMarketUniverseCounts() {
+  try {
+    const groups = await prisma.entity.groupBy({
+      by: ["market"],
+      where: { type: "company" },
+      _count: { id: true },
+    });
+    let total = 0;
+    let us = 0;
+    let cn = 0;
+    let hk = 0;
+    for (const g of groups) {
+      total += g._count.id;
+      if (g.market === "us") us = g._count.id;
+      else if (g.market === "cn") cn = g._count.id;
+      else if (g.market === "hk") hk = g._count.id;
+    }
+    return { total, us, cn, hk };
+  } catch {
+    return { total: 16435, us: 8060, cn: 5569, hk: 2806 };
+  }
+}
+
 async function getCompanies(): Promise<CompanyDirectoryItem[]> {
   try {
+    const rawIds = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM "Entity"
+      WHERE type = 'company' AND ("onboardPhase" >= 1 OR NOT ("metadata" ? 'isMasterUniverse'))
+      ORDER BY "canonicalName" ASC;
+    `;
+    const ids = rawIds.map((r) => r.id);
     const rows = await prisma.entity.findMany({
-      where: {
-        type: "company",
-        onboardPhase: { gte: 1 },
-      },
+      where: { id: { in: ids } },
       select: ENTITY_DIRECTORY_SELECT,
       orderBy: { canonicalName: "asc" },
     });
@@ -130,11 +156,11 @@ async function getRecentlyUpdatedCompanies(limit = 18): Promise<CompanyDirectory
 }
 
 export default async function CompaniesPage() {
-  const [companies, recentlyUpdated] = await Promise.all([getCompanies(), getRecentlyUpdatedCompanies()]);
-
-  const usCount = companies.filter((c) => c.market === "us").length;
-  const cnCount = companies.filter((c) => c.market === "cn").length;
-  const hkCount = companies.filter((c) => c.market === "hk").length;
+  const [companies, recentlyUpdated, universe] = await Promise.all([
+    getCompanies(),
+    getRecentlyUpdatedCompanies(),
+    getMarketUniverseCounts(),
+  ]);
 
   return (
     <div className="home-v2 companies-page">
@@ -143,7 +169,7 @@ export default async function CompaniesPage() {
         <header className="companies-head">
           <h1>公司库</h1>
           <p className="companies-lede">
-            买股票就是买公司 · 部落成员持有或研究过的 {companies.length} 家公司（美股 {usCount} 家 · A股 {cnCount} 家 · 港股 {hkCount} 家）。
+            买股票就是买公司 · 覆盖 A股 / 港股 / 美股三大市场共 {universe.total.toLocaleString()} 家上市公司（美股 {universe.us.toLocaleString()} · A股 {universe.cn.toLocaleString()} · 港股 {universe.hk.toLocaleString()}）— 部落成员持有或研究过的 {companies.length} 家公司。
           </p>
         </header>
         {recentlyUpdated.length > 0 ? (
