@@ -22,6 +22,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import prisma from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 type AShareItem = {
   code: string;
@@ -114,7 +115,7 @@ function loadHkStocks(): HkShareItem[] {
   return data;
 }
 
-async function chunkedCreateMany(items: any[], chunkSize = 500) {
+async function chunkedCreateMany(items: Prisma.EntityCreateManyInput[], chunkSize = 500) {
   let inserted = 0;
   for (let i = 0; i < items.length; i += chunkSize) {
     const chunk = items.slice(i, i + chunkSize);

@@ -36,6 +36,12 @@
     3. **存量 42 家全面审计与修复**：校正 10 家被 CIK 混淆的知名公司（ANSS、FL、ARCH、MASI、SATS、DAY、CYBR、HHC、ESMT、UNVR），清理 3 家重复实体，将 25 家推进至 Phase 1；全库 Phase 1 达成率达 97.6%（576 / 590 家）；
     4. **剩余 14 家待完善标的分类定性**：破产清算 4 家（SOND/SONDQ/BRDS/STRYQ）、历史 SPAC 5 家（AGCUU/DGNR/RSVA/TBA/MEKA）、基金及停牌标的 5 家（PSUS/AKRE/ETHM/OZON/CNI），均为非经营性特殊标的。
 
+- [x] **⑯ 全市场上市公司全量建册（Phase 0）、状态机任务调度与公司库回车模糊检索**（2026-09-25 完成上线，详见 `PRODUCT.md`「v0.45.16 变更」）：
+  - **落地成果**：
+    1. **全量建册入库（16,435 家底座）**：`Entity` 引入物理字段 `onboardPhase Int @default(0)` 与复合索引，一次性建册全市场 A股（5,569）、港股（2,806）、美股（8,060）共 16,435 家上市公司，存量 643 家无损绑定状态；
+    2. **高性能模糊检索 API**：新增 `/api/company/search`，结合 Supabase Postgres `pg_trgm` GIN 索引，在 16,435 家大盘中实现 300~500ms 极速中英文及代码匹配；
+    3. **公司库交互升级**：三大市场网格默认隐藏，保留 16,435 总数与最近更新（18家深度标的）；支持回车触发搜索；Phase 0 显示为半透明灰色不可点击，>= Phase 1 正常交互可点直达详情页。
+
 - [ ] **⑩ 回填缺失的 `section_text` artifact：645 份 filing / 4,780 个 section / 110 家公司**（2026-08-30 发现，详细复盘见 `handoff.md` 第二次会话追加）：早期那版「三种 kind 全删」的 `cleanup-section-artifacts.ts` 删掉了 `section_text` artifact，而 `FilingSection.textArtifact` 外键是 `onDelete: SetNull`，链接随之全部变 NULL；上次只回填了 BN/SU 两家。后果是 `search_filings` 对这 110 家公司**平均只能看到 27.4% 的正文**（`FilingSection.content` 只是导入时截断的预览），走 `primary_html` 现场重解析的兜底路径又常因大文件超时。P3 加的降级警告保证了它不会静默撒谎，但能力缺口是真的。
   - **判据**：`textArtifactId is null AND length(content) < contentTextLength`。按 `extractionVersion` 分：v2 全部 10,857 个 section text artifact 数为 0（那一代没这机制），v3 的 16,181 个里缺 1,839 个。8/29–8/30 两批重导的 10,082 个则 100% 完整——**当前写入路径是对的，这是历史存量问题**。
   - **受影响最多**：BABA(85/8)、LUV(70/7)、TM(69/6)、JOYY(67/6)、TSM(65/6)、NETTF(65/6)、RH(65/7)、GOTU(65/6)、AAL(63/6)、LBTYK(63/12)、TSLA(62/10)。

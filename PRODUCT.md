@@ -1045,7 +1045,7 @@ Apple HIG 精简风格：
 /master/[id]        大师主页（资料库卡片 + 持仓）
 /master/[id]/library  资料阅读（左侧年份/文章列表，右侧正文）
 /master/[id]/holdings 持仓快照
-/company            公司库（全部有 CIK 的公司，中英文名搜索过滤）
+/company            公司库（覆盖 A/港/美三大市场共 16,435 家上市公司，支持回车模糊搜索与分阶段状态呈现）
 /company/[cik]      公司研究画布（当前仅美股 CIK；cn-/hk- 路由为规划，见「A股与港股覆盖扩展」）
 /company/[cik]/annual-report  年度报告默认入口（跳转到最新可读年份）
 /company/[cik]/annual-report/[year]  年度报告阅读
@@ -1112,6 +1112,22 @@ Apple HIG 精简风格：
   - `CompanySectionTabs.tsx` 升级为整页 Shell：接受 `valueLineData` / `initialTicker` 新 Props，内部管理 Ticker 切换状态，Tab 1 内联渲染 `ValueLineBody`，根元素使用 `<article class="value-line-card dvl-workspace-card">`；
   - `page.tsx` 移除对 `ValueLineCard` 的直接引用，向 `CompanySectionTabs` 传入 `valueLineData` 和 `initialTicker`，默认 Tab 切换为 `"valueline"`；
   - `globals.css` 新增 `.dvl-workspace-card` 与 `.company-tabs-shell` 共享网格 + 卡片样式，旧 `.dvl-deep-dive-section` / `.dvl-deep-dive-header` 间距归零（标记为停用）。
+
+### v0.45.16 变更（2026-09-25）
+
+- **全市场上市公司全量建册入库（Master Universe Phase 0）与状态机架构**：
+  - `Entity` 表引入物理独立状态字段 `onboardPhase`（0: 大盘底座, 1: 基础建档, 2: 深度建档）及复合索引 `@@index([market, onboardPhase])` 和 `@@index([onboardPhase])`，作为状态机驱动的任务调度队列；
+  - 整理并一次性入库 A股、港股、美股全量上市公司基础目录 15,792 家，全库底座规模达到 **16,435 家**（美股 8,060 · A股 5,569 · 港股 2,806）；
+  - 存量历史 643 家已研究公司完成无损回填与状态绑定（Phase 1: 467 家, Phase 2: 162 家, Stubs: 14 家）。
+- **全量 16,435 家公司模糊检索与接口性能优化**：
+  - 新增 `/api/company/search` 接口，支持按中文名、英文名、拼音简称、证券代码（如 `600519` / `00700` / `AAPL`）在 16,435 家全量标的中进行模糊检索；
+  - 在 Supabase Postgres 建立 `pg_trgm` GIN 索引，保障万级标的模糊查询在 300~500ms 内高效响应；
+  - 搜索结果按精确度与建档优先级（`Phase 2` > `Phase 1` > `Phase 0`）排序。
+- **公司库（/company）页面交互体验重构**：
+  - **默认极简展示**：下方三大市场区域默认完全隐藏，首屏仅保留页头总数（16,435 家）及「最近更新」（18 家深度建档公司）精选卡片，首屏加载速度从 ~20 秒大幅提升至 ~1 秒；
+  - **回车触发搜索**：搜索框支持回车触发搜索，输入框清空后自动无缝还原默认视图；
+  - **三大市场分栏与 Phase 状态分级呈现**：搜索结果按 A股、港股、美股经典卡片网格分栏展示；`Phase 0`（大盘底座未建档）显示为半透明灰色且不可点击；`>= Phase 1`（已建档标的）高亮交互并可点击直达公司详情页；
+  - 页头标语更新为精准表达全量大盘总数：`买股票就是买公司 · 覆盖 A股 / 港股 / 美股三大市场共 16,435 家上市公司（美股 8,060 · A股 5,569 · 港股 2,806）。`。
 
 ### v0.45.9 变更（2026-09-24）
 
