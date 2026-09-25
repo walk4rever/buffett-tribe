@@ -70,7 +70,7 @@ export function AdminUniverseExplorer() {
   };
 
   return (
-    <section className="admin-card">
+    <section className="admin-card admin-card--table">
       <div className="admin-card-header">
         <div className="admin-card-title-group">
           <h2>全市场标的检索与状态探查 (16,435 家)</h2>
@@ -136,12 +136,12 @@ export function AdminUniverseExplorer() {
         <table className="admin-table">
           <thead>
             <tr>
-              <th>市场</th>
-              <th>证券代码</th>
+              <th style={{ width: "70px" }}>市场</th>
+              <th style={{ width: "160px" }}>证券代码</th>
               <th>公司名称</th>
-              <th>当前建档阶段</th>
-              <th>更新时间</th>
-              <th className="admin-table-right">操作</th>
+              <th style={{ width: "160px" }}>当前建档阶段</th>
+              <th style={{ width: "120px" }}>更新时间</th>
+              <th className="admin-table-right" style={{ width: "110px" }}>操作</th>
             </tr>
           </thead>
           <tbody>

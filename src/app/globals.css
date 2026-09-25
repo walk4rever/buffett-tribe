@@ -17201,6 +17201,7 @@ a.insight-entity-chip:hover {
   -webkit-overflow-scrolling: touch;
 }
 
+.admin-table,
 .admin-users-table {
   width: 100%;
   border-collapse: collapse;
@@ -17208,6 +17209,7 @@ a.insight-entity-chip:hover {
   text-align: left;
 }
 
+.admin-table th,
 .admin-users-table th {
   padding: 0.85rem 1.25rem;
   font-size: 0.75rem;
@@ -17219,14 +17221,20 @@ a.insight-entity-chip:hover {
   background: #fafafc;
 }
 
+.admin-table td,
 .admin-users-table td {
-  padding: 0.9rem 1.25rem;
+  padding: 0.85rem 1.25rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   vertical-align: middle;
 }
 
+.admin-table tr:hover td,
 .admin-users-table tr:hover td {
   background: rgba(0, 0, 0, 0.015);
+}
+
+.admin-table tr:last-child td {
+  border-bottom: none;
 }
 
 .admin-table-user-cell {
@@ -17290,10 +17298,80 @@ a.insight-entity-chip:hover {
   color: rgba(0, 0, 0, 0.6);
 }
 
+.admin-badge--green {
+  background: rgba(52, 199, 89, 0.12);
+  color: #1b8738;
+  font-weight: 600;
+}
+
+.admin-badge--blue {
+  background: rgba(0, 113, 227, 0.1);
+  color: var(--apple-blue);
+  font-weight: 600;
+}
+
+.admin-badge--purple {
+  background: rgba(175, 82, 222, 0.12);
+  color: #8944ab;
+  font-weight: 600;
+}
+
+.admin-badge--orange {
+  background: rgba(255, 149, 0, 0.12);
+  color: #c96b00;
+  font-weight: 600;
+}
+
+.admin-badge--gray {
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.admin-badge--red {
+  background: rgba(255, 59, 48, 0.1);
+  color: #ff3b30;
+  font-weight: 600;
+}
+
 .admin-table-date {
   font-size: 0.8rem;
   color: rgba(0, 0, 0, 0.5);
   font-variant-numeric: tabular-nums;
+}
+
+.admin-table-right {
+  text-align: right;
+}
+
+.admin-table-center {
+  text-align: center;
+}
+
+.admin-table-time {
+  font-size: 0.8rem;
+  color: rgba(0, 0, 0, 0.5);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.admin-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 6px;
+  background: rgba(0, 113, 227, 0.08);
+  color: var(--apple-blue);
+  font-size: 0.76rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.admin-link-btn:hover {
+  background: var(--apple-blue);
+  color: #ffffff;
 }
 
 .admin-table-balance {
@@ -20683,20 +20761,34 @@ a.insight-entity-chip:hover {
   color: var(--apple-near-black);
 }
 
+.admin-card--table {
+  padding: 0;
+  overflow: hidden;
+}
+
+.admin-card--table .admin-card-header {
+  padding: 1.15rem 1.4rem 0.9rem;
+  margin-bottom: 0;
+}
+
 .admin-company-cell {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
+  min-width: 0;
 }
 
 .admin-company-zh {
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 0.88rem;
   color: var(--apple-near-black);
+  line-height: 1.3;
 }
 
 .admin-company-en {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   color: rgba(0, 0, 0, 0.45);
+  line-height: 1.2;
 }
 
 .admin-company-error {
@@ -20710,23 +20802,16 @@ a.insight-entity-chip:hover {
 
 .admin-code-cell {
   font-family: var(--font-mono);
-  font-size: 0.78rem;
-  color: rgba(0, 0, 0, 0.7);
-}
-
-.admin-badge--gray {
-  background: rgba(0, 0, 0, 0.06);
-  color: rgba(0, 0, 0, 0.55);
-}
-
-.admin-badge--red {
-  background: rgba(255, 59, 48, 0.1);
-  color: #ff3b30;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.75);
+  white-space: nowrap;
 }
 
 .admin-disabled-text {
   font-size: 0.75rem;
   color: rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
 }
 
 @keyframes spin {
