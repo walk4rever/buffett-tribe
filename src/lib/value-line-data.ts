@@ -86,6 +86,104 @@ export type ValueLineSecurityOption = {
   valuationDiffPct: number | null;
 };
 
+export type SectorModelType =
+  | "general"
+  | "bank_insurance"
+  | "real_estate"
+  | "utilities"
+  | "cyclical";
+
+export function detectSectorModel(
+  sectorRaw?: string | null,
+  industryRaw?: string | null,
+  nameRaw?: string | null,
+): {
+  type: SectorModelType;
+  label: string;
+} {
+  const text = `${sectorRaw ?? ""} ${industryRaw ?? ""} ${nameRaw ?? ""}`.toLowerCase();
+
+  // 1. 房地产优先于普通金融 (如香港 GICS 经常将地产归在 Financials)
+  if (
+    text.includes("real estate") ||
+    text.includes("reit") ||
+    text.includes("property") ||
+    text.includes("地产") ||
+    text.includes("房地") ||
+    text.includes("物业")
+  ) {
+    return { type: "real_estate", label: "房地产模型" };
+  }
+
+  // 2. 银行与保险 / 金融中介
+  if (
+    text.includes("bank") ||
+    text.includes("insurance") ||
+    text.includes("life insurance") ||
+    text.includes("credit") ||
+    text.includes("financial") ||
+    text.includes("capital market") ||
+    text.includes("securities") ||
+    text.includes("asset management") ||
+    text.includes("银行") ||
+    text.includes("保险") ||
+    text.includes("寿险") ||
+    text.includes("券商") ||
+    text.includes("证券") ||
+    text.includes("信托") ||
+    text.includes("金融")
+  ) {
+    return { type: "bank_insurance", label: "银行与保险模型" };
+  }
+
+  // 3. 公用事业与特许基建
+  if (
+    text.includes("utilities") ||
+    text.includes("utility") ||
+    text.includes("electric") ||
+    text.includes("water supply") ||
+    text.includes("gas utility") ||
+    text.includes("hydropower") ||
+    text.includes("公用事业") ||
+    text.includes("电力") ||
+    text.includes("水务") ||
+    text.includes("燃气") ||
+    text.includes("热力") ||
+    text.includes("水电") ||
+    text.includes("电网")
+  ) {
+    return { type: "utilities", label: "公用事业特许模型" };
+  }
+
+  // 4. 强周期资源 (能源/矿产/大宗商品材料/航运)
+  if (
+    text.includes("energy") ||
+    text.includes("materials") ||
+    text.includes("mining") ||
+    text.includes("metals") ||
+    text.includes("oil & gas") ||
+    text.includes("petroleum") ||
+    text.includes("coal") ||
+    text.includes("steel") ||
+    text.includes("chemical") ||
+    text.includes("shipping") ||
+    text.includes("能源") ||
+    text.includes("采掘") ||
+    text.includes("石油") ||
+    text.includes("天然气") ||
+    text.includes("煤炭") ||
+    text.includes("钢铁") ||
+    text.includes("有色") ||
+    text.includes("化工") ||
+    text.includes("航运") ||
+    text.includes("海运")
+  ) {
+    return { type: "cyclical", label: "强周期资源模型" };
+  }
+
+  return { type: "general", label: "标准工商业模型" };
+}
+
 export type ValueLineData = {
   entityId: string;
   ticker: string;
@@ -101,6 +199,11 @@ export type ValueLineData = {
   // Multi-ticker / Security options
   availableSecurities: ValueLineSecurityOption[];
   selectedTicker: string;
+
+  // Sector Adaptive Model
+  sectorModelType: SectorModelType;
+  sectorModelLabel: string;
+  cyclicalWarning: { title: string; message: string } | null;
 
   // Market & Pricing (Active Security)
   latestPrice: number | null;
@@ -140,15 +243,37 @@ export type ValueLineData = {
   debtToAssetsRatio: number | null;   // Liabilities / Assets (latest)
   isNetCash: boolean;
 
+  // Adaptive Quadrant Metrics
+  metric1Title?: string;
+  metric1Badge?: string;
+  metric1BadgeClass?: string;
+  metric1SubText?: string;
+
+  metric2Title: string;
+  metric2Badge: string;
+  metric2BadgeClass: string;
+  metric2MainNum: string;
+  metric2SubText: string;
+
+  metric4Title: string;
+  metric4Badge: string;
+  metric4BadgeClass: string;
+  metric4MainNum: string;
+  metric4SubText: string;
+
   // Capital Allocation specifics
   shareCountChangePct5Y: number | null; // e.g. -14.2%
   buybackLabel: string | null;          // "🔥 5年回购 -14.2%" or "⚠️ 5年稀释 +8.5%"
-  totalBuyback5YUsd: number | null;     // Total cash spent on share repurchase
+  totalBuyback5YUsd: number | null;     // Total cash spent on share repurchase (backward compat)
+  totalBuyback5Y: number | null;
+  buybackAmountLabel: string | null;    // e.g. "5年累计回购 ¥89.9亿"
   safetyLabel: string;                  // "手握净现金 / 低负债" | "负债适度受控" | "高杠杆警惕"
 
   // 5-Year CAGR
   revenueCagr5Y: number | null;
+  revenueCagrLabel?: string | null;
   netIncomeCagr5Y: number | null;
+  netIncomeCagrLabel?: string | null;
 
   // Deep Dive Status & Company Narrative Profile
   hasDeepDive: boolean;
@@ -238,6 +363,7 @@ export async function getValueLineData(
   const industry = typeof meta.industry === "string" ? meta.industry : null;
   const exchange = typeof meta.exchange === "string" ? meta.exchange : null;
   const market = (entity.market as "hk" | "cn" | null) ?? "us";
+  const currency = typeof meta.currency === "string" ? meta.currency : market === "cn" ? "CNY" : market === "hk" ? "HKD" : "USD";
   const href = formatCompanyUrl(entity) ?? `/company/${canonicalTicker}`;
   const dvlHref = formatDvlUrl(entity) ?? `/company/${canonicalTicker}`;
 
@@ -259,7 +385,13 @@ export async function getValueLineData(
         parseNum(f.items, "CommonStockSharesOutstanding") ??
         parseNum(f.items, "WeightedAverageNumberOfDilutedSharesOutstanding");
 
-      const shares = rawShs ?? (net != null && epsRaw != null && epsRaw > 0 ? net / epsRaw : null);
+      // Robust shares estimation: if raw shares are unavailable (common in CN/HK),
+      // deduce from NetIncome / EPS. Works even if both net and epsRaw are negative (loss).
+      let shares: number | null = rawShs;
+      if (shares == null && net != null && epsRaw != null && Math.abs(epsRaw) > 0.0001 && Math.abs(net) > 0) {
+        shares = Math.round(Math.abs(net / epsRaw));
+      }
+
       const eps =
         epsRaw ?? (net != null && shares != null && shares > 0 ? Number((net / shares).toFixed(2)) : null);
 
@@ -316,16 +448,149 @@ export async function getValueLineData(
 
   const isNetCash = debtToAssetsRatio != null ? debtToAssetsRatio < 40 : false;
 
-  let safetyLabel = "负债稳健可控";
-  if (debtToAssetsRatio != null) {
-    if (debtToAssetsRatio < 35 || isNetCash) {
-      safetyLabel = "手握净现金 / 低负债";
-    } else if (debtToAssetsRatio > 65) {
-      safetyLabel = "高杠杆警惕";
+  // Sector Model Adaptive Framework (Banking/Insurance vs Real Estate vs Utilities vs Cyclical vs General)
+  const sectorModel = detectSectorModel(entity.sector, industry, nameZh ?? entity.canonicalName);
+  const sectorModelType = sectorModel.type;
+  const sectorModelLabel = sectorModel.label;
+
+  // ── Metric 1: 5-Year ROE ──
+  const metric1Title = "5年 ROE 均值";
+  let metric1Badge =
+    roeStability === "stellar"
+      ? "★ 卓越护城河"
+      : roeStability === "solid"
+        ? "稳健盈利"
+        : "周期性波动";
+  let metric1BadgeClass =
+    roeStability === "stellar"
+      ? "vl-badge--stellar"
+      : roeStability === "solid"
+        ? "vl-badge--solid"
+        : "vl-badge--neutral";
+  let metric1SubText =
+    roeMin5Y != null ? `5年最低 ${roeMin5Y}%` : "年化资本回报";
+
+  if (sectorModelType === "bank_insurance") {
+    if (roeAvg5Y != null && roeAvg5Y >= 11) {
+      metric1Badge = "稳健利差回报";
+      metric1BadgeClass = "vl-badge--cash";
+    }
+    metric1SubText = "加杠杆资本回报率 · 资产质量第一";
+  } else if (sectorModelType === "utilities") {
+    metric1Badge = "特许稳健回报";
+    metric1BadgeClass = "vl-badge--cash";
+    metric1SubText = "受监管核准资产回报 · 刚需抗周期";
+  } else if (sectorModelType === "cyclical") {
+    if (roeAvg5Y != null && roeAvg5Y >= 18) {
+      metric1Badge = "景气高点回报";
+      metric1BadgeClass = "vl-badge--alert";
+      metric1SubText = "处于大宗周期景气高位 · 警惕周期均值回归";
     } else {
-      safetyLabel = "负债比例稳健适度";
+      metric1Badge = "周期起伏回报";
+      metric1BadgeClass = "vl-badge--neutral";
+      metric1SubText = "随行业供需景气周期大幅波动";
     }
   }
+
+  // ── Metric 2: Cash Conversion ──
+  let metric2Title = "真金白银造血力";
+  let metric2Badge =
+    cashConversionRatio && cashConversionRatio >= 1 ? "纯正造血" : "稳健现金";
+  let metric2BadgeClass = "vl-badge--cash";
+  let metric2MainNum =
+    cashConversionRatio != null ? `${cashConversionRatio}x` : "—";
+  let metric2SubText = "经营现金流 / 净利润";
+
+  if (sectorModelType === "bank_insurance") {
+    metric2Title = "资金营运与息差";
+    metric2Badge = "特许资金运作";
+    metric2BadgeClass = "vl-badge--neutral";
+    metric2MainNum =
+      cashConversionRatio != null && cashConversionRatio > 0 && cashConversionRatio <= 3.5
+        ? `${cashConversionRatio}x`
+        : "息差驱动";
+    metric2SubText = "存贷投放与保单准备金驱动 (不适用工业OCF模型)";
+  } else if (sectorModelType === "utilities") {
+    metric2Title = "特许现金造血";
+    metric2Badge = "特许现金奶牛";
+    metric2BadgeClass = "vl-badge--cash";
+    metric2MainNum =
+      cashConversionRatio != null ? `${cashConversionRatio}x` : "—";
+    metric2SubText = "特许权持续现金流入 · 高折旧充沛现金流";
+  } else if (sectorModelType === "real_estate") {
+    metric2Title = "销售回款与现金流";
+    metric2Badge =
+      cashConversionRatio && cashConversionRatio >= 1 ? "回款良性" : "在建存货沉淀";
+    metric2BadgeClass =
+      cashConversionRatio && cashConversionRatio >= 1 ? "vl-badge--cash" : "vl-badge--neutral";
+    metric2MainNum =
+      cashConversionRatio != null ? `${cashConversionRatio}x` : "—";
+    metric2SubText = "经营现金流 / 净利润 (拿地与交房周期影响)";
+  } else if (sectorModelType === "cyclical") {
+    metric2Title = "周期现金造血";
+    metric2Badge =
+      cashConversionRatio && cashConversionRatio >= 1 ? "高景气现金回流" : "资本开支吸收";
+    metric2BadgeClass =
+      cashConversionRatio && cashConversionRatio >= 1 ? "vl-badge--cash" : "vl-badge--neutral";
+    metric2MainNum =
+      cashConversionRatio != null ? `${cashConversionRatio}x` : "—";
+    metric2SubText = "经营现金流 / 净利润 (随大宗商品价格剧烈联动)";
+  }
+
+  // ── Metric 4: Balance Sheet & Safety ──
+  let metric4Title = "资产负债与安全性";
+  let metric4Badge = isNetCash ? "净现金充沛" : "适度杠杆";
+  let metric4BadgeClass = isNetCash ? "vl-badge--cash" : "vl-badge--neutral";
+  const metric4MainNum = debtToAssetsRatio != null ? `${debtToAssetsRatio}%` : "—";
+  let metric4SubText = "负债稳健可控";
+
+  if (sectorModelType === "bank_insurance") {
+    metric4Title = "资本结构与偿付准备";
+    metric4Badge = "特许资金杠杆";
+    metric4BadgeClass = "vl-badge--neutral";
+    metric4SubText = "负债主体为客户存款/保单准备金 · 核心看流动性与资本充足率";
+  } else if (sectorModelType === "real_estate") {
+    metric4Title = "负债结构与去化偿债";
+    metric4Badge =
+      debtToAssetsRatio && debtToAssetsRatio > 75 ? "高周转杠杆" : "适度杠杆";
+    metric4BadgeClass =
+      debtToAssetsRatio && debtToAssetsRatio > 75 ? "vl-badge--alert" : "vl-badge--neutral";
+    metric4SubText = "包含大量预收购房款(合同负债) · 重点关注真实现金短债比";
+  } else if (sectorModelType === "utilities") {
+    metric4Title = "资本结构与项目债";
+    metric4Badge = "长期特许项目债";
+    metric4BadgeClass = "vl-badge--neutral";
+    metric4SubText = "特许基础设施长期贷款 · 充沛现金流全额覆盖利息支出";
+  } else if (sectorModelType === "cyclical") {
+    metric4Title = "资产负债与周期防御";
+    metric4Badge = isNetCash
+      ? "手握充沛现金"
+      : debtToAssetsRatio && debtToAssetsRatio > 60
+        ? "警惕下行期负债"
+        : "周期防守稳健";
+    metric4BadgeClass = isNetCash
+      ? "vl-badge--cash"
+      : debtToAssetsRatio && debtToAssetsRatio > 60
+        ? "vl-badge--alert"
+        : "vl-badge--neutral";
+    metric4SubText = "需具备穿越大宗商品低谷期的充沛偿债与现金安全垫";
+  } else if (debtToAssetsRatio != null) {
+    if (debtToAssetsRatio < 35 || isNetCash) {
+      metric4Badge = "净现金充沛";
+      metric4BadgeClass = "vl-badge--cash";
+      metric4SubText = "手握净现金 / 低负债安全边际";
+    } else if (debtToAssetsRatio > 65) {
+      metric4Badge = "高杠杆警惕";
+      metric4BadgeClass = "vl-badge--alert";
+      metric4SubText = "总负债率偏高，警惕宏观加息周期与再融资偿债压力";
+    } else {
+      metric4Badge = "适度杠杆";
+      metric4BadgeClass = "vl-badge--neutral";
+      metric4SubText = "负债比例稳健适度，经营偿债风险可控";
+    }
+  }
+
+  const safetyLabel = metric4SubText;
 
   const annualsWithShares = recentAnnuals.filter((a) => a.shares != null && a.shares > 0);
   let shareCountChangePct5Y: number | null = null;
@@ -343,27 +608,53 @@ export async function getValueLineData(
     }
   }
 
-  const totalBuyback5YUsd =
+  const totalBuyback5Y =
     recentAnnuals.reduce((acc, a) => acc + (a.repurchaseAmt ?? 0), 0) || null;
+  const totalBuyback5YUsd = totalBuyback5Y;
+  const sym = currency === "USD" ? "$" : currency === "HKD" ? "HK$" : "¥";
+  const buybackAmountLabel =
+    totalBuyback5Y != null && totalBuyback5Y > 0
+      ? `5年累计回购 ${sym}${formatUsdInYi(totalBuyback5Y)}`
+      : null;
 
   let revenueCagr5Y: number | null = null;
+  let revenueCagrLabel: string | null = null;
   let netIncomeCagr5Y: number | null = null;
+  let netIncomeCagrLabel: string | null = null;
+
   if (recentAnnuals.length >= 2) {
     const firstA = recentAnnuals[0];
     const lastA = recentAnnuals[recentAnnuals.length - 1];
     const span = Math.max(1, lastA.year - firstA.year);
+
     if (firstA.revenue && lastA.revenue && firstA.revenue > 0 && lastA.revenue > 0) {
       revenueCagr5Y = Number((((lastA.revenue / firstA.revenue) ** (1 / span) - 1) * 100).toFixed(1));
+      if (revenueCagr5Y < -20 && sectorModelType === "bank_insurance") {
+        revenueCagrLabel = "会计准则口径调整 (IFRS 17)";
+      }
     }
-    if (firstA.netIncome && lastA.netIncome && firstA.netIncome > 0 && lastA.netIncome > 0) {
-      netIncomeCagr5Y = Number((((lastA.netIncome / firstA.netIncome) ** (1 / span) - 1) * 100).toFixed(1));
+
+    if (firstA.netIncome != null && lastA.netIncome != null) {
+      if (firstA.netIncome > 0 && lastA.netIncome > 0) {
+        netIncomeCagr5Y = Number((((lastA.netIncome / firstA.netIncome) ** (1 / span) - 1) * 100).toFixed(1));
+      } else if (firstA.netIncome <= 0 && lastA.netIncome > 0) {
+        netIncomeCagrLabel = "扭亏为盈";
+      } else if (firstA.netIncome > 0 && lastA.netIncome <= 0) {
+        netIncomeCagrLabel = "由盈转亏";
+      } else if (firstA.netIncome < 0 && lastA.netIncome < 0) {
+        netIncomeCagrLabel = lastA.netIncome > firstA.netIncome ? "持续减亏" : "持续亏损";
+      }
     }
   }
 
   const latestNetIncome = latestAnnual?.netIncome ?? null;
   const latestEquity = latestAnnual?.shareholdersEquity ?? null;
   const latestEps = latestAnnual?.eps ?? null;
-  const sharesOutstanding = latestAnnual?.shares ?? null;
+
+  // Fallback to most recent known shares if latest annual has null shares
+  const lastKnownShares =
+    [...annuals].reverse().find((a) => a.shares != null && a.shares > 0)?.shares ?? null;
+  const sharesOutstanding = latestAnnual?.shares ?? lastKnownShares;
 
   // EPS by year map for corridor
   const epsByYear = new Map<number, number>();
@@ -407,32 +698,66 @@ export async function getValueLineData(
 
   // Calculate benchmark PE across company's primary prices
   const primaryRows = priceRowsByTicker.get(canonicalTicker) ?? allPriceRows;
-  let benchmarkPe = 18.0;
   const canonicalLatestClose = primaryRows.length ? Number(primaryRows[primaryRows.length - 1].close) : null;
-  const primaryPe =
-    canonicalLatestClose != null && latestEps != null && latestEps > 0
-      ? canonicalLatestClose / latestEps
-      : null;
 
-  if (primaryPe != null && primaryPe >= 10 && primaryPe <= 45) {
-    benchmarkPe = Number(primaryPe.toFixed(1));
-  } else {
-    const historicalPes: number[] = [];
-    for (const a of recentAnnuals) {
-      if (a.eps != null && a.eps > 0) {
-        const pNear = primaryRows.find((p) => p.date.toISOString().startsWith(`${a.year}`));
-        if (pNear) {
-          const pe = Number(pNear.close) / a.eps;
-          if (pe >= 8 && pe <= 50) historicalPes.push(pe);
+  // Find which security's price scale aligns with latestEps (e.g. for Berkshire, BRK-A aligns with 10-K EPS ~$46k)
+  let epsAnchorPrice = canonicalLatestClose;
+  if (latestEps != null && latestEps > 0 && validTickers.length > 1) {
+    for (const t of validTickers) {
+      const pRows = priceRowsByTicker.get(t) ?? [];
+      const close = pRows.length ? Number(pRows[pRows.length - 1].close) : null;
+      if (close != null && close > 0) {
+        const testPe = close / latestEps;
+        if (testPe >= 3 && testPe <= 150) {
+          epsAnchorPrice = close;
+          break;
         }
       }
     }
-    if (historicalPes.length > 0) {
-      historicalPes.sort((a, b) => a - b);
-      benchmarkPe = Number(historicalPes[Math.floor(historicalPes.length / 2)].toFixed(1));
+  }
+
+  // Find price rows that align with the EPS anchor price for historical PE calculation
+  let anchorRows = primaryRows;
+  if (epsAnchorPrice != null) {
+    const matchedTicker = validTickers.find((t) => {
+      const p = priceRowsByTicker.get(t);
+      const lastClose = p?.length ? Number(p[p.length - 1].close) : 0;
+      return Math.abs(lastClose - epsAnchorPrice) < 1;
+    });
+    if (matchedTicker && priceRowsByTicker.has(matchedTicker)) {
+      anchorRows = priceRowsByTicker.get(matchedTicker)!;
     }
   }
-  benchmarkPe = Math.max(12, Math.min(35, benchmarkPe));
+
+  // Calculate historical median PE across past fiscal years (no circular reasoning!)
+  const historicalPes: number[] = [];
+  for (const a of recentAnnuals) {
+    if (a.eps != null && a.eps > 0) {
+      const pNear = anchorRows.find((p) => p.date.toISOString().startsWith(`${a.year}`));
+      if (pNear && Number(pNear.close) > 0) {
+        const pe = Number(pNear.close) / a.eps;
+        if (pe >= 6 && pe <= 60) {
+          historicalPes.push(pe);
+        }
+      }
+    }
+  }
+
+  let benchmarkPe = 18.0;
+  if (historicalPes.length >= 2) {
+    historicalPes.sort((a, b) => a - b);
+    const mid = Math.floor(historicalPes.length / 2);
+    const median =
+      historicalPes.length % 2 === 0
+        ? (historicalPes[mid - 1] + historicalPes[mid]) / 2
+        : historicalPes[mid];
+    benchmarkPe = Number(median.toFixed(1));
+  } else if (roeAvg5Y != null && roeAvg5Y > 15) {
+    benchmarkPe = 22.0;
+  } else if (roeAvg5Y != null && roeAvg5Y < 8) {
+    benchmarkPe = 14.0;
+  }
+  benchmarkPe = Math.max(10, Math.min(38, benchmarkPe));
 
   // Build security options
   const oneYearAgo = new Date();
@@ -456,6 +781,17 @@ export async function getValueLineData(
       ? Math.min(...pastYearPrices.map((p) => Number(p.low ?? p.close)))
       : null;
 
+    // Detect share class price scale relative to the EPS anchor price (e.g. BRK-B vs BRK-A)
+    let secEps = latestEps;
+    let secShares = sharesOutstanding;
+    if (epsAnchorPrice != null && epsAnchorPrice > 0 && latestPrice != null && latestPrice > 0) {
+      const priceScale = latestPrice / epsAnchorPrice;
+      if (priceScale > 1.8 || priceScale < 0.55) {
+        secEps = latestEps != null ? Number((latestEps * priceScale).toFixed(2)) : null;
+        secShares = sharesOutstanding != null ? Math.round(sharesOutstanding / priceScale) : null;
+      }
+    }
+
     const step = Math.max(1, Math.floor(pRows.length / 45));
     const pricePoints = pRows
       .filter((_, idx) => idx % step === 0 || idx === pRows.length - 1)
@@ -467,10 +803,15 @@ export async function getValueLineData(
     const valueLinePoints = pricePoints.map((p) => {
       const pointYear = parseInt(p.date.slice(0, 4), 10);
       const clampedYear = Math.max(minAvailableYear, Math.min(maxAvailableYear, pointYear));
-      const epsVal =
+      const rawEpsVal =
         epsByYear.get(clampedYear) ??
         epsByYear.get(maxAvailableYear) ??
         (latestPrice != null ? latestPrice / benchmarkPe : 1);
+      
+      const epsVal = secEps != null && latestEps != null && latestEps > 0
+        ? rawEpsVal * (secEps / latestEps)
+        : rawEpsVal;
+
       const val = Number((epsVal * benchmarkPe).toFixed(2));
       return {
         date: p.date,
@@ -478,10 +819,42 @@ export async function getValueLineData(
       };
     });
 
+    const marketCap =
+      latestPrice != null && secShares != null && secShares > 0
+        ? latestPrice * secShares
+        : null;
+
+    let peRatio: number | null = null;
+    if (latestPrice != null && secEps != null && secEps > 0) {
+      peRatio = Number((latestPrice / secEps).toFixed(1));
+    } else if (marketCap != null && latestNetIncome != null && latestNetIncome > 0) {
+      peRatio = Number((marketCap / latestNetIncome).toFixed(1));
+    }
+    if (peRatio != null && (peRatio <= 0 || peRatio > 1000)) {
+      peRatio = null;
+    }
+
+    let pbRatio: number | null = null;
+    if (marketCap != null && latestEquity != null && latestEquity > 0) {
+      const rawPb = marketCap / latestEquity;
+      if (rawPb > 0 && rawPb <= 500) {
+        pbRatio = rawPb < 0.2 ? Number(rawPb.toFixed(2)) : Number(rawPb.toFixed(1));
+      }
+    }
+
     let valuationStatus: ValueLineData["valuationStatus"] = "insufficient";
     let valuationDiffPct: number | null = null;
     const latestValPoint = valueLinePoints[valueLinePoints.length - 1];
-    if (latestPrice != null && latestValPoint && latestValPoint.value > 0) {
+
+    if (
+      latestPrice != null &&
+      latestValPoint &&
+      latestValPoint.value > 0 &&
+      secEps != null &&
+      secEps > 0 &&
+      peRatio != null &&
+      peRatio >= 2
+    ) {
       const ratio = latestPrice / latestValPoint.value;
       valuationDiffPct = Number(((ratio - 1) * 100).toFixed(0));
       if (valuationDiffPct <= -15) {
@@ -492,23 +865,6 @@ export async function getValueLineData(
         valuationStatus = "fair";
       }
     }
-
-    const marketCap =
-      latestPrice != null && sharesOutstanding != null && sharesOutstanding > 0
-        ? latestPrice * sharesOutstanding
-        : null;
-
-    const peRatio =
-      latestPrice != null && latestEps != null && latestEps > 0
-        ? Number((latestPrice / latestEps).toFixed(1))
-        : marketCap != null && latestNetIncome != null && latestNetIncome > 0
-          ? Number((marketCap / latestNetIncome).toFixed(1))
-          : null;
-
-    const pbRatio =
-      marketCap != null && latestEquity != null && latestEquity > 0
-        ? Number((marketCap / latestEquity).toFixed(1))
-        : null;
 
     return {
       ticker: t,
@@ -553,6 +909,21 @@ export async function getValueLineData(
   const valueLinePoints = activeSec?.valueLinePoints ?? [];
   const valuationStatus = activeSec?.valuationStatus ?? "insufficient";
   const valuationDiffPct = activeSec?.valuationDiffPct ?? null;
+
+  // Cyclical Peak Alert Banner: warn against low PE trap at peak earnings
+  let cyclicalWarning: ValueLineData["cyclicalWarning"] = null;
+  if (
+    sectorModelType === "cyclical" &&
+    peRatio != null &&
+    peRatio > 0 &&
+    peRatio <= 9 &&
+    ((roeAvg5Y != null && roeAvg5Y >= 18) || (latestAnnual?.netIncome != null && annuals.length >= 3))
+  ) {
+    cyclicalWarning = {
+      title: "强周期景气高位预警",
+      message: `该公司处于强周期资源/材料行业，当前看似极低的市盈率（${peRatio}x）常由大宗商品历史景气高峰驱动。周期股在盈利爆发期低 PE 往往预示景气见顶，下行期利润可能剧烈滑落，切忌机械当做击球区抄底。`,
+    };
+  }
 
   // 3. Tribe Superinvestor Holders (aggregated with multi-ticker class breakdown)
   const [holdersRes, tribeMembers] = await Promise.all([
@@ -776,20 +1147,36 @@ export async function getValueLineData(
   const coreMoatNote = moatJson?.notes?.find(
     (n) => n.label.includes("护城河") || n.enLabel === "Core Moat"
   );
-  const aiMoat =
-    coreMoatNote?.value ??
-    (roeStability === "stellar"
-      ? "长期卓越 ROE 构筑深厚经济特许权与稳定定价权"
-      : "具备行业壁垒与客户转换成本优势");
+  const defaultMoat =
+    sectorModelType === "bank_insurance"
+      ? "稳固的特许经营牌照壁垒、低成本资金沉淀与风控承保能力"
+      : sectorModelType === "utilities"
+        ? "区域独占特许经营权、自然垄断与刚性抗周期护城河"
+        : sectorModelType === "real_estate"
+          ? "核心土储区位优势、稳健财务信用与高质交付运营能力"
+          : sectorModelType === "cyclical"
+            ? "核心资源区位禀赋、极低开采/冶炼边际成本曲线优势"
+            : roeStability === "stellar"
+              ? "长期卓越 ROE 构筑深厚经济特许权与稳定定价权"
+              : "具备行业壁垒与客户转换成本优势";
+  const aiMoat = coreMoatNote?.value ?? defaultMoat;
 
   const coreRiskNote = moatJson?.notes?.find(
     (n) => n.label.includes("最脆弱") || n.label.includes("风险") || n.enLabel === "Weakest Link"
   );
-  const aiRisk =
-    coreRiskNote?.value ??
-    (debtToAssetsRatio && debtToAssetsRatio > 65
-      ? "总负债率偏高，需警惕再融资与宏观加息周期"
-      : "需密切关注行业竞争格局重塑与再投资资本回报率");
+  const defaultRisk =
+    sectorModelType === "bank_insurance"
+      ? "需关注利差变动、信用资产质量及宏观流动性环境"
+      : sectorModelType === "utilities"
+        ? "需关注电价/公用事业费率核定、来水及燃料成本、大额资本开支周期"
+        : sectorModelType === "real_estate"
+          ? "需关注地产销售去化周期、再融资偿债压力及行业政策调控"
+          : sectorModelType === "cyclical"
+            ? "警惕大宗商品高位回落、行业产能过剩扩张及宏观需求下行冲击"
+            : debtToAssetsRatio && debtToAssetsRatio > 65
+              ? "总负债率偏高，需警惕再融资与宏观加息周期"
+              : "需密切关注行业竞争格局重塑与再投资资本回报率";
+  const aiRisk = coreRiskNote?.value ?? defaultRisk;
 
   const moatStrength = moatJson?.summary?.strength ?? (roeStability === "stellar" ? "强" : "中");
 
@@ -817,6 +1204,10 @@ export async function getValueLineData(
 
     availableSecurities,
     selectedTicker: currentTicker,
+
+    sectorModelType,
+    sectorModelLabel,
+    cyclicalWarning,
 
     latestPrice,
     latestPriceDate,
@@ -847,13 +1238,34 @@ export async function getValueLineData(
     debtToAssetsRatio,
     isNetCash,
 
+    metric1Title,
+    metric1Badge,
+    metric1BadgeClass,
+    metric1SubText,
+
+    metric2Title,
+    metric2Badge,
+    metric2BadgeClass,
+    metric2MainNum,
+    metric2SubText,
+
+    metric4Title,
+    metric4Badge,
+    metric4BadgeClass,
+    metric4MainNum,
+    metric4SubText,
+
     shareCountChangePct5Y,
     buybackLabel,
     totalBuyback5YUsd,
+    totalBuyback5Y,
+    buybackAmountLabel,
     safetyLabel,
 
     revenueCagr5Y,
+    revenueCagrLabel,
     netIncomeCagr5Y,
+    netIncomeCagrLabel,
 
     hasDeepDive,
     overview,

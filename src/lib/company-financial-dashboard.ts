@@ -210,6 +210,15 @@ const generalMetrics: MetricDef[] = [
     hint: "Total Liabilities / Total Assets",
     compute: (year, ctx) => ratio(value(ctx, year, "TotalLiabilities"), value(ctx, year, "TotalAssets")),
   },
+  {
+    key: "ShareRepurchaseAmt",
+    zhLabel: "股票回购",
+    enLabel: "Share Repurchase",
+    kind: "money",
+    sourceType: "reported",
+    hint: "Cash spent repurchasing common stock",
+    compute: (year, ctx) => value(ctx, year, "ShareRepurchaseAmt"),
+  },
 ];
 
 const financialMetrics: MetricDef[] = [

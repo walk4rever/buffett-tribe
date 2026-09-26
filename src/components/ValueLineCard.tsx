@@ -455,6 +455,11 @@ export function ValueLineHeader({
           )}
           {data.exchange ? <span className="vl-exchange-badge">{data.exchange}</span> : null}
           {data.sector ? <span className="vl-sector-badge">{data.sector}</span> : null}
+          {data.sectorModelType !== "general" ? (
+            <span className="vl-sector-model-badge" title={`已适配${data.sectorModelLabel}专属评估口径`}>
+              {data.sectorModelLabel}
+            </span>
+          ) : null}
           {valuationStatusBadge}
         </div>
 
@@ -632,6 +637,15 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
       {/* ── 3. True Value Line Composite Chart (Price vs Earnings Value Line) ── */}
       <section className="vl-card-chart-block">
         <ValueLineSparkline points={curPricePoints} valuePoints={curValueLinePoints} />
+        {data.cyclicalWarning ? (
+          <aside className="vl-cyclical-alert-banner" role="alert" aria-label="强周期景气高位预警">
+            <div className="vl-cyclical-alert-icon">⚠️</div>
+            <div className="vl-cyclical-alert-text">
+              <span className="vl-cyclical-alert-title">{data.cyclicalWarning.title}</span>
+              <p className="vl-cyclical-alert-desc">{data.cyclicalWarning.message}</p>
+            </div>
+          </aside>
+        ) : null}
       </section>
 
       {/* ── 4. The Buffett Quadrant: 巴菲特价值体检精密四宫格 ── */}
@@ -639,15 +653,17 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
         {/* Metric 1: ROE */}
         <div className="vl-triad-box">
           <div className="vl-triad-head">
-            <span className="vl-triad-title">5年 ROE 均值</span>
-            <span className={`vl-triad-badge ${roeBadgeClass}`}>{roeBadgeLabel}</span>
+            <span className="vl-triad-title">{data.metric1Title ?? "5年 ROE 均值"}</span>
+            <span className={`vl-triad-badge ${data.metric1BadgeClass ?? roeBadgeClass}`}>
+              {data.metric1Badge ?? roeBadgeLabel}
+            </span>
           </div>
           <div className="vl-triad-body">
             <span className="vl-triad-main-num">
               {data.roeAvg5Y != null ? `${data.roeAvg5Y}%` : "—"}
             </span>
             <span className="vl-triad-sub-text">
-              {data.roeMin5Y != null ? `5年最低 ${data.roeMin5Y}%` : "年化资本回报"}
+              {data.metric1SubText ?? (data.roeMin5Y != null ? `5年最低 ${data.roeMin5Y}%` : "年化资本回报")}
             </span>
           </div>
         </div>
@@ -655,16 +671,16 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
         {/* Metric 2: Cash Conversion */}
         <div className="vl-triad-box">
           <div className="vl-triad-head">
-            <span className="vl-triad-title">真金白银造血力</span>
-            <span className="vl-triad-badge vl-badge--cash">
-              {data.cashConversionRatio && data.cashConversionRatio >= 1 ? "纯正造血" : "稳健现金"}
+            <span className="vl-triad-title">{data.metric2Title ?? "真金白银造血力"}</span>
+            <span className={`vl-triad-badge ${data.metric2BadgeClass ?? "vl-badge--cash"}`}>
+              {data.metric2Badge ?? (data.cashConversionRatio && data.cashConversionRatio >= 1 ? "纯正造血" : "稳健现金")}
             </span>
           </div>
           <div className="vl-triad-body">
             <span className="vl-triad-main-num">
-              {data.cashConversionRatio != null ? `${data.cashConversionRatio}x` : "—"}
+              {data.metric2MainNum ?? (data.cashConversionRatio != null ? `${data.cashConversionRatio}x` : "—")}
             </span>
-            <span className="vl-triad-sub-text">经营现金流 / 净利润</span>
+            <span className="vl-triad-sub-text">{data.metric2SubText ?? "经营现金流 / 净利润"}</span>
           </div>
         </div>
 
@@ -678,14 +694,18 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
                   ? "vl-badge--cash"
                   : data.shareCountChangePct5Y != null && data.shareCountChangePct5Y >= 5
                     ? "vl-badge--alert"
-                    : "vl-badge--neutral"
+                    : data.totalBuyback5Y && data.totalBuyback5Y > 0
+                      ? "vl-badge--cash"
+                      : "vl-badge--neutral"
               }`}
             >
               {data.shareCountChangePct5Y != null && data.shareCountChangePct5Y <= -3
                 ? "注销回购"
                 : data.shareCountChangePct5Y != null && data.shareCountChangePct5Y >= 5
                   ? "稀释预警"
-                  : "股本平稳"}
+                  : data.totalBuyback5Y && data.totalBuyback5Y > 0
+                    ? "持续回购"
+                    : "股本平稳"}
             </span>
           </div>
           <div className="vl-triad-body">
@@ -695,7 +715,9 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
                 : "—"}
             </span>
             <span className="vl-triad-sub-text">
-              {data.buybackLabel ?? "5年总股本变化"}
+              {data.buybackAmountLabel
+                ? `${data.buybackAmountLabel} · 5年总股本变化`
+                : data.buybackLabel ?? "5年总股本变化"}
             </span>
           </div>
         </div>
@@ -703,16 +725,16 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
         {/* Metric 4: Balance Sheet & Safety */}
         <div className="vl-triad-box">
           <div className="vl-triad-head">
-            <span className="vl-triad-title">资产负债与安全性</span>
-            <span className={`vl-triad-badge ${data.isNetCash ? "vl-badge--cash" : "vl-badge--neutral"}`}>
-              {data.isNetCash ? "净现金充沛" : "适度杠杆"}
+            <span className="vl-triad-title">{data.metric4Title ?? "资产负债与安全性"}</span>
+            <span className={`vl-triad-badge ${data.metric4BadgeClass ?? (data.isNetCash ? "vl-badge--cash" : "vl-badge--neutral")}`}>
+              {data.metric4Badge ?? (data.isNetCash ? "净现金充沛" : "适度杠杆")}
             </span>
           </div>
           <div className="vl-triad-body">
             <span className="vl-triad-main-num">
-              {data.debtToAssetsRatio != null ? `${data.debtToAssetsRatio}%` : "—"}
+              {data.metric4MainNum ?? (data.debtToAssetsRatio != null ? `${data.debtToAssetsRatio}%` : "—")}
             </span>
-            <span className="vl-triad-sub-text">{data.safetyLabel}</span>
+            <span className="vl-triad-sub-text">{data.metric4SubText ?? data.safetyLabel}</span>
           </div>
         </div>
       </section>
@@ -746,14 +768,14 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
           <div className="vl-cagr-item">
             <span className="vl-cagr-label">5年营收复合增速 (CAGR)</span>
             <strong className="vl-cagr-val">
-              {data.revenueCagr5Y != null ? `${data.revenueCagr5Y > 0 ? "+" : ""}${data.revenueCagr5Y}%` : "—"}
+              {data.revenueCagrLabel ?? (data.revenueCagr5Y != null ? `${data.revenueCagr5Y > 0 ? "+" : ""}${data.revenueCagr5Y}%` : "—")}
             </strong>
           </div>
           <span className="vl-dot-divider">·</span>
           <div className="vl-cagr-item">
             <span className="vl-cagr-label">5年净利复合增速 (CAGR)</span>
             <strong className="vl-cagr-val">
-              {data.netIncomeCagr5Y != null ? `${data.netIncomeCagr5Y > 0 ? "+" : ""}${data.netIncomeCagr5Y}%` : "—"}
+              {data.netIncomeCagrLabel ?? (data.netIncomeCagr5Y != null ? `${data.netIncomeCagr5Y > 0 ? "+" : ""}${data.netIncomeCagr5Y}%` : "—")}
             </strong>
           </div>
         </div>

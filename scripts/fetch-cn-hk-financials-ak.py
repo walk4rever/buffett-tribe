@@ -106,6 +106,9 @@ CN_COLUMN_MAP: dict[str, str] = {
     # 资产负债表 (balance sheet)
     "资产总计": "TotalAssets",
     "负债合计": "TotalLiabilities",
+    "实收资本(或股本)": "CommonStockSharesOutstanding",
+    "股本": "CommonStockSharesOutstanding",
+    "实收资本": "CommonStockSharesOutstanding",
     "所有者权益(或股东权益)合计": "ShareholdersEquity",
     "所有者权益合计": "ShareholdersEquity",  # insurance & industrial variant
     "归属于母公司股东权益合计": "ShareholdersEquity",
@@ -119,6 +122,13 @@ CN_COLUMN_MAP: dict[str, str] = {
 }
 
 CN_STATEMENTS = ["资产负债表", "利润表", "现金流量表"]
+
+BALANCE_LINE_ITEMS = {
+    "TotalAssets",
+    "TotalLiabilities",
+    "ShareholdersEquity",
+    "CommonStockSharesOutstanding",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -163,11 +173,6 @@ FLOW_LINE_ITEMS = {
     "ShareRepurchaseAmt",
 }
 
-BALANCE_LINE_ITEMS = {
-    "TotalAssets",
-    "TotalLiabilities",
-    "ShareholdersEquity",
-}
 
 
 def fetch_hk_records(code: str, from_year: int = 2020) -> list[dict[str, object]]:
@@ -304,6 +309,20 @@ def fetch_hk_records(code: str, from_year: int = 2020) -> list[dict[str, object]
                         if cum_h1 is not None:
                             add_rec(fy_date, "H2", item, cum_fy - cum_h1)
 
+    # Fetch latest issued shares (CommonStockSharesOutstanding) via HK financial indicator
+    try:
+        ind_df = ak.stock_hk_financial_indicator_em(symbol=code)
+        if ind_df is not None and not ind_df.empty and "已发行股本(股)" in ind_df.columns:
+            raw_shs = to_scalar(ind_df["已发行股本(股)"].iloc[0])
+            if raw_shs is not None and raw_shs > 0:
+                fy_years = [y for y, p in by_year_periods.items() if "001" in p]
+                if fy_years:
+                    max_fy_year = max(fy_years)
+                    fy_date = by_year_periods[max_fy_year]["001"][0]
+                    add_rec(fy_date, "FY", "CommonStockSharesOutstanding", raw_shs)
+    except Exception as e:
+        print(f"  warning: failed to fetch HK financial indicator for {code}: {e}", file=sys.stderr)
+
     return records
 
 
@@ -333,6 +352,30 @@ def check_completeness(records: list[dict[str, object]], code: str) -> None:
         missing = [item for item in REQUIRED_LINE_ITEMS if item not in by_year[year]]
         if missing:
             print(f"  warning: {code} FY{year} missing {missing}", file=sys.stderr)
+
+
+REPURCHASE_CACHE_PATH = Path("/tmp/ak_stock_repurchase_cache.json")
+
+
+def get_cn_repurchases_df() -> pd.DataFrame:
+    """Fetch all A-share repurchase records from East Money with local 24h caching."""
+    import time
+    if REPURCHASE_CACHE_PATH.exists():
+        try:
+            mtime = REPURCHASE_CACHE_PATH.stat().st_mtime
+            if time.time() - mtime < 86400:
+                return pd.read_json(REPURCHASE_CACHE_PATH)
+        except Exception:
+            pass
+
+    try:
+        df = ak.stock_repurchase_em()
+        if df is not None and not df.empty:
+            df.to_json(REPURCHASE_CACHE_PATH, orient="records", date_format="iso")
+            return df
+    except Exception as e:
+        print(f"  warning: failed to fetch ak.stock_repurchase_em(): {e}", file=sys.stderr)
+    return pd.DataFrame()
 
 
 def fetch_cn_records(code: str, from_year: int) -> list[dict[str, object]]:
@@ -438,6 +481,30 @@ def fetch_cn_records(code: str, from_year: int) -> list[dict[str, object]]:
                     cum_prev = raw_by_date.get(d_q3, {}).get(item) or raw_by_date.get(d_q2, {}).get(item)
                     if cum_prev is not None:
                         add_rec(d_fy, "Q4", item, cum_fy - cum_prev)
+
+    # Incorporate share repurchases (ShareRepurchaseAmt) from East Money repurchase disclosures
+    completed_fy_years = sorted({int(d[:4]) for d in raw_by_date.keys() if d.endswith("-12-31")})
+    try:
+        rep_df = get_cn_repurchases_df()
+        if not rep_df.empty and "股票代码" in rep_df.columns:
+            matched_rep = rep_df[rep_df["股票代码"].astype(str).str.zfill(6) == code.zfill(6)]
+            rep_by_year: dict[int, float] = {}
+            for _, rrow in matched_rep.iterrows():
+                amt = to_scalar(rrow.get("已回购金额"))
+                if amt is not None and amt > 0:
+                    pub_date = rrow.get("最新公告日期") or rrow.get("回购起始时间")
+                    if pub_date is not None and not pd.isna(pub_date):
+                        p_ts = pd.Timestamp(pub_date)
+                        r_year = p_ts.year
+                        if r_year >= from_year and completed_fy_years:
+                            target_year = min(r_year, max(completed_fy_years))
+                            rep_by_year[target_year] = rep_by_year.get(target_year, 0.0) + amt
+
+            for r_year, total_amt in rep_by_year.items():
+                fy_date = f"{r_year}-12-31"
+                add_rec(fy_date, "FY", "ShareRepurchaseAmt", total_amt)
+    except Exception as e:
+        print(f"  warning: error processing CN share repurchases for {code}: {e}", file=sys.stderr)
 
     return records
 

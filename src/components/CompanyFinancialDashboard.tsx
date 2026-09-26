@@ -38,6 +38,7 @@ const QUARTERLY_METRIC_ROWS = [
   { key: "TotalAssets", zhLabel: "资产总计", enLabel: "Total Assets", isMoney: true },
   { key: "TotalLiabilities", zhLabel: "负债合计", enLabel: "Total Liabilities", isMoney: true },
   { key: "ShareholdersEquity", zhLabel: "股东权益", enLabel: "Shareholders Equity", isMoney: true },
+  { key: "ShareRepurchaseAmt", zhLabel: "股份回购", enLabel: "Share Repurchase", isMoney: true },
 ];
 
 export function CompanyFinancialDashboardComponent({

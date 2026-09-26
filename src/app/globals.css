@@ -19588,6 +19588,58 @@ a.insight-entity-chip:hover {
   border-radius: 6px;
 }
 
+.vl-sector-model-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #4f46e5;
+  background: rgba(79, 70, 229, 0.07);
+  border: 1px solid rgba(79, 70, 229, 0.2);
+  padding: 0.18rem 0.55rem;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.vl-cyclical-alert-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+  padding: 0.75rem 1rem;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 10px;
+}
+
+.vl-cyclical-alert-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.vl-cyclical-alert-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.vl-cyclical-alert-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #b45309;
+}
+
+.vl-cyclical-alert-desc {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #78350f;
+  opacity: 0.95;
+}
+
 .vl-status-chip {
   font-size: 0.72rem;
   font-weight: 600;
