@@ -8,18 +8,24 @@ import { BRAND_EN } from "@/lib/brand";
 export const dynamic = "force-dynamic";
 
 interface Props {
-  searchParams: Promise<{ source?: string }>;
+  searchParams: Promise<{ source?: string; page?: string }>;
 }
 
 export default async function InsightsPage({ searchParams }: Props) {
   const sp = await searchParams;
   const selectedSource = sp.source?.trim() || null;
+  const page = Math.max(1, Number(sp.page) || 1);
+  const perPage = 30;
 
   const [posts, sources, total] = await Promise.all([
-    getInsightPosts(selectedSource),
+    getInsightPosts(selectedSource, page, perPage),
     getInsightSources(),
     getInsightPostCount(selectedSource),
   ]);
+
+  const totalPages = Math.ceil(total / perPage);
+  const hasNextPage = page < totalPages;
+  const hasPrevPage = page > 1;
 
   return (
     <div className="home-v2 insights-page">
@@ -56,6 +62,7 @@ export default async function InsightsPage({ searchParams }: Props) {
           ) : (
             posts.map((post) => {
               const sourceLabel = post.source || BRAND_EN;
+              const formattedDate = formatDate(post.publishedAt ?? post.updatedAt);
 
               return (
                 <Link
@@ -63,23 +70,23 @@ export default async function InsightsPage({ searchParams }: Props) {
                   href={`/insights/${post.slug}`}
                   className="insight-row"
                 >
-                  <span className="insight-row-num">
-                    {formatDateTwoLine(post.publishedAt ?? post.updatedAt)}
-                  </span>
-                  <div className="insight-row-body">
-                    <div className="insight-row-title-line">
-                      <h2>{post.title}</h2>
-                      <span className="insight-row-source-pill">{sourceLabel}</span>
-                    </div>
-                    {post.description ? <p>{post.description}</p> : null}
-                    {post.tags.length > 0 ? (
-                      <div className="insight-row-tags">
-                        {post.tags.slice(0, 4).map((postTag) => (
-                          <span key={postTag}>{postTag}</span>
-                        ))}
-                      </div>
-                    ) : null}
+                  <div className="insight-row-head">
+                    <span className="insight-row-source">{sourceLabel}</span>
+                    <span className="insight-row-date">{formattedDate}</span>
                   </div>
+                  <h2 className="insight-row-title">{post.title}</h2>
+                  {post.description && (
+                    <p className="insight-row-desc">{post.description}</p>
+                  )}
+                  {post.tags.length > 0 && (
+                    <div className="insight-row-tags">
+                      {post.tags.slice(0, 4).map((postTag) => (
+                        <span key={postTag} className="insight-row-tag">
+                          {postTag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </Link>
               );
             })
@@ -87,13 +94,57 @@ export default async function InsightsPage({ searchParams }: Props) {
         </section>
 
         {posts.length > 0 && (
-          <p className="insights-list-end">
-            共 {total} 篇{posts.length < total ? `，当前显示最近 ${posts.length} 篇` : " · 已显示全部"}
-          </p>
+          <>
+            <p className="insights-list-end">
+              共 {total} 篇 · 第 {page} / {totalPages} 页
+            </p>
+
+            {totalPages > 1 && (
+              <div className="insights-pagination">
+                {hasPrevPage ? (
+                  <Link
+                    href={buildPageUrl(selectedSource, page - 1)}
+                    className="insights-pagination-btn"
+                  >
+                    ← 上一页
+                  </Link>
+                ) : (
+                  <span className="insights-pagination-btn insights-pagination-btn--disabled">
+                    ← 上一页
+                  </span>
+                )}
+
+                <span className="insights-pagination-info">
+                  {page} / {totalPages}
+                </span>
+
+                {hasNextPage ? (
+                  <Link
+                    href={buildPageUrl(selectedSource, page + 1)}
+                    className="insights-pagination-btn"
+                  >
+                    下一页 →
+                  </Link>
+                ) : (
+                  <span className="insights-pagination-btn insights-pagination-btn--disabled">
+                    下一页 →
+                  </span>
+                )}
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
   );
+}
+
+function buildPageUrl(source: string | null, page: number): string {
+  const params = new URLSearchParams();
+  if (source) params.set("source", source);
+  if (page > 1) params.set("page", String(page));
+  const query = params.toString();
+  return query ? `/insights?${query}` : "/insights";
 }
 
 async function getInsightPostCount(source: string | null): Promise<number> {
@@ -129,8 +180,9 @@ async function getInsightSources(): Promise<string[]> {
   }
 }
 
-async function getInsightPosts(source: string | null) {
+async function getInsightPosts(source: string | null, page: number, perPage: number) {
   try {
+    const skip = (page - 1) * perPage;
     return await prisma.insightPost.findMany({
       where: {
         status: "published",
@@ -147,7 +199,8 @@ async function getInsightPosts(source: string | null) {
         updatedAt: true,
       },
       orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
-      take: 80,
+      take: perPage,
+      skip: skip,
     });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2021") {
@@ -158,13 +211,9 @@ async function getInsightPosts(source: string | null) {
   }
 }
 
-function formatDateTwoLine(date: Date): React.ReactNode {
-  const monthDay = `${date.getMonth() + 1}月${date.getDate()}日`;
+function formatDate(date: Date): string {
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
   const year = date.getFullYear();
-  return (
-    <>
-      <span className="insight-row-num-md">{monthDay}</span>
-      <span className="insight-row-num-yr">{year}</span>
-    </>
-  );
+  return `${year}年${month}月${day}日`;
 }

@@ -11749,15 +11749,65 @@ body {
   font-size: 0.75rem;
 }
 
-.insight-row {
+/* Pagination */
+.insights-pagination {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 1rem;
-  padding: 1rem 1.15rem;
+  margin: 1.5rem 0 2rem;
+  padding: 0 1rem;
+}
+
+.insights-pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  color: var(--apple-near-black);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  min-width: 90px;
+}
+
+.insights-pagination-btn:hover:not(.insights-pagination-btn--disabled) {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.insights-pagination-btn--disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.insights-pagination-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--apple-near-black);
+  min-width: 60px;
+}
+
+.insight-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem 1.15rem;
   background: #fff;
   color: inherit;
   text-decoration: none;
-  transition: background 0.12s ease;
+  transition: all 0.15s ease;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
@@ -11766,88 +11816,75 @@ body {
 }
 
 .insight-row:hover {
-  background: #f8f9fb;
+  background: rgba(0, 0, 0, 0.02);
+  transform: translateY(-1px);
 }
 
-.insight-row h2 {
-  transition: none; /* Removed color transition - cards are static per Apple Design */
-}
-
-.insight-row:hover h2 {
-  color: inherit; /* No blue color change on hover */
-}
-
-.insight-row-num {
-  flex-shrink: 0;
-  width: 4.2rem;
+/* Head: Source (left) + Date (right) */
+.insight-row-head {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.18rem;
-  color: rgba(0, 0, 0, 0.28);
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-  line-height: 1;
-}
-
-.insight-row-num-md {
-  font-size: 0.88rem; /* 14px - Caption per Apple Design */
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.5);
-}
-
-.insight-row-num-yr {
-  font-size: 0.75rem; /* 12px - Micro per Apple Design */
-  font-weight: 400;
-  color: rgba(0, 0, 0, 0.28);
-  letter-spacing: -0.12px;
-}
-
-.insight-row-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.insight-row-top {
-  display: flex;
-  align-items: flex-start;
   justify-content: space-between;
-  gap: 0.8rem;
+  gap: 0.5rem;
 }
 
-.insight-row-meta,
-.insight-detail-meta {
+.insight-row-source {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--apple-blue);
+  background: rgba(0, 113, 227, 0.08);
+  padding: 0.22rem 0.55rem;
+  border-radius: 6px;
+  letter-spacing: -0.12px;
+  white-space: nowrap;
+}
+
+.insight-row-date {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.4);
+  letter-spacing: -0.12px;
+  white-space: nowrap;
+}
+
+/* Title */
+.insight-row-title {
+  margin: 0;
+  font-size: 1.06rem;
+  font-weight: 600;
+  line-height: 1.47;
+  letter-spacing: -0.374px;
+  color: var(--apple-near-black);
+}
+
+/* Description */
+.insight-row-desc {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  letter-spacing: -0.224px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Tags */
+.insight-row-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem 0.65rem;
-  color: rgba(0, 0, 0, 0.42);
-  font-size: 0.72rem;
-  letter-spacing: 0;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
 }
 
-.insight-row-source-pill {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  max-width: min(30%, 180px);
-  padding: 0 0.65rem;
-  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--secondary));
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 8%, #fff);
-  color: var(--accent);
-  font-size: 0.68rem;
-  font-weight: 600;
-  line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.insight-row-title-line {
-  display: flex;
-  align-items: baseline;
-  gap: 0.65rem;
+.insight-row-tag {
+  font-size: 0.6875rem;
+  color: rgba(0, 0, 0, 0.52);
+  background: rgba(0, 0, 0, 0.04);
+  padding: 0.15rem 0.45rem;
+  border-radius: 5px;
+  letter-spacing: -0.01em;
 }
 
 .insight-row-title-line h2 {
@@ -11860,44 +11897,30 @@ body {
   letter-spacing: -0.374px;
 }
 
-.insight-row h2 {
-  margin: 0;
-  font-size: 1.06rem; /* 17px - Body emphasis per Apple Design */
-  font-weight: 600;
-  line-height: 1.47;
-  letter-spacing: -0.374px;
-}
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .insight-row {
+    padding: 1rem 0.85rem;
+  }
 
-.insight-row p {
-  margin: 0.3rem 0 0;
-  color: rgba(0, 0, 0, 0.55);
-  font-size: 0.88rem; /* 14px - Caption per Apple Design */
-  line-height: 1.43;
-  letter-spacing: -0.224px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+  .insight-row-source {
+    font-size: 0.65rem;
+    padding: 0.2rem 0.5rem;
+  }
 
-.insight-row-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  margin-top: 0.5rem;
-}
+  .insight-row-date {
+    font-size: 0.7rem;
+  }
 
-.insight-row-tags span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 20px;
-  padding: 0 0.45rem;
-  border-radius: 5px; /* Micro - link tags per Apple Design */
-  background: rgba(0, 0, 0, 0.04);
-  color: rgba(0, 0, 0, 0.52);
-  font-size: 0.75rem; /* 12px - Micro per Apple Design */
-  letter-spacing: -0.12px;
-  text-decoration: none;
+  .insight-row-title {
+    font-size: 1rem;
+    line-height: 1.4;
+  }
+
+  .insight-row-desc {
+    font-size: 0.85rem;
+    -webkit-line-clamp: 3;
+  }
 }
 
 @media (max-width: 640px) {
