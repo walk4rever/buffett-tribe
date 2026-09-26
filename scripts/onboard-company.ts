@@ -484,7 +484,7 @@ async function main() {
 
   const importFinancialsFastStep: Step = {
     id: "import_financials_fast",
-    label: "导入财务数据（10-K 年度财报 → 10-Q 季度降级兜底）",
+    label: "导入财务数据（10-K 年度财报 → 10-Q 季度 → yfinance 降级兜底）",
     run: async () => {
       const args = ["--ticker", ticker, "--from", fromYear, "--to", toYear, "--fast", "--filing-concurrency", "6"];
       if (resolvedCik) args.push("--cik", resolvedCik);
@@ -494,15 +494,39 @@ async function main() {
         console.log(`[onboard-company] import:10k annual facts exited, checking for 10-Q quarterly fallback for ${ticker}...`);
       }
 
-      // 降级检查：对于次新上市无 10-K 的公司（如 SpaceX），自动从 10-Q 季报抽取财务数据
+      // 降级检查 1：对于次新上市无 10-K 的公司（如 SpaceX），自动从 10-Q 季报抽取财务数据
       const existingEntityId = await findEntityId(ticker);
-      const finCount = existingEntityId ? await prisma.financial.count({ where: { entityId: existingEntityId } }) : 0;
+      let finCount = existingEntityId ? await prisma.financial.count({ where: { entityId: existingEntityId } }) : 0;
       if (finCount === 0) {
         console.log(`[onboard-company] 10-K 暂无数据，触发次新股降级：从 10-Q 季度报表提取财务数据 (${ticker})...`);
         try {
           await runNpmScript("import:us-quarterly-financials", ["--ticker", ticker]);
         } catch (err) {
           console.warn(`[onboard-company] 10-Q 导入退出:`, err);
+        }
+      }
+
+      // 降级检查 2：对于无 10-K 且无 10-Q 的次新股/外国发行人（如 BSP / Bending Spoons），自动从 yfinance 获取财报
+      finCount = existingEntityId ? await prisma.financial.count({ where: { entityId: existingEntityId } }) : 0;
+      if (finCount === 0) {
+        console.log(`[onboard-company] SEC CompanyFacts 暂无财务数据，触发次新股/外国发行人降级：从 yfinance 提取财务数据 (${ticker})...`);
+        try {
+          await runNpmScript("import:us-financials-yf", ["--ticker", ticker]);
+        } catch (err) {
+          console.warn(`[onboard-company] yfinance 财务数据导入退出:`, err);
+        }
+      }
+
+      // 预先检查是否有年报/招股书切片证据：若尚无切片证据，预先拉取次新股招股书切片以支撑 Phase 1 概览生成
+      const sectionCount = existingEntityId
+        ? await prisma.filingSection.count({ where: { entityId: existingEntityId } })
+        : 0;
+      if (sectionCount === 0) {
+        console.log(`[onboard-company] 暂无年报全文切片，预先拉取次新股招股书切片 (${ticker})...`);
+        try {
+          await runNpmScript("import:us-prospectus", ["--ticker", ticker]);
+        } catch (err) {
+          console.warn(`[onboard-company] 招股书导入退出:`, err);
         }
       }
     },

@@ -25,6 +25,7 @@
     "import:10k": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-10k-edgartools.ts",
     "import:us-quarterly-financials": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-us-quarterly-financials.ts",
     "import:us-prospectus": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-us-prospectus.ts",
+    "import:us-financials-yf": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-us-financials-yf.ts",
     "verify:10k:edgartools": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/verify-10k-edgartools.ts",
     "import:10k:all": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-all-10k-edgartools.ts",
     "import:10k:from13f": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-10k-from-13f.ts",
