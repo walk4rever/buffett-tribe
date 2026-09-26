@@ -107,8 +107,10 @@ CN_COLUMN_MAP: dict[str, str] = {
     "资产总计": "TotalAssets",
     "负债合计": "TotalLiabilities",
     "实收资本(或股本)": "CommonStockSharesOutstanding",
+    "实收资本（或股本）": "CommonStockSharesOutstanding",
     "股本": "CommonStockSharesOutstanding",
     "实收资本": "CommonStockSharesOutstanding",
+    "实收资本净额": "CommonStockSharesOutstanding",
     "所有者权益(或股东权益)合计": "ShareholdersEquity",
     "所有者权益合计": "ShareholdersEquity",  # insurance & industrial variant
     "归属于母公司股东权益合计": "ShareholdersEquity",

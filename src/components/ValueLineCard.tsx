@@ -99,12 +99,13 @@ export function ValueLineSparkline({
   valuePoints = [],
   width = 620,
   height = 156,
+  currencySymbol = "$",
 }: {
   points: Array<{ date: string; close: number }>;
   valuePoints?: Array<{ date: string; value: number }>;
-  annuals?: ValueLineData["annuals"];
   width?: number;
   height?: number;
+  currencySymbol?: string;
 }) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
@@ -180,7 +181,7 @@ export function ValueLineSparkline({
     const yTicks = [0.25, 0.5, 0.75].map((pct) => {
       const val = min + range * pct;
       const y = paddingTop + chartH - pct * chartH;
-      return { y, label: `$${val >= 100 ? val.toFixed(0) : val.toFixed(1)}` };
+      return { y, label: `${currencySymbol}${val >= 100 ? val.toFixed(0) : val.toFixed(1)}` };
     });
 
     // Calculate X-axis year markers
@@ -205,7 +206,7 @@ export function ValueLineSparkline({
       yTicks,
       yearTicks,
     };
-  }, [points, valuePoints, width, height]);
+  }, [points, valuePoints, width, height, currencySymbol]);
 
   if (!points.length) {
     return (
@@ -243,14 +244,14 @@ export function ValueLineSparkline({
           <div className="vl-legend-chip vl-legend-chip--price">
             <span className="vl-legend-dot vl-legend-dot--blue" />
             <span className="vl-legend-name">真实股价:</span>
-            <span className="vl-sparkline-cur-price">${activePricePoint?.close.toFixed(2)}</span>
+            <span className="vl-sparkline-cur-price">{currencySymbol}{activePricePoint?.close.toFixed(2)}</span>
           </div>
 
           {activeValuePoint ? (
             <div className="vl-legend-chip vl-legend-chip--val">
               <span className="vl-legend-dot vl-legend-dot--amber" />
               <span className="vl-legend-name">价值参考线:</span>
-              <span className="vl-sparkline-val-num">${activeValuePoint.value.toFixed(2)}</span>
+              <span className="vl-sparkline-val-num">{currencySymbol}{activeValuePoint.value.toFixed(2)}</span>
             </div>
           ) : null}
 
@@ -262,9 +263,9 @@ export function ValueLineSparkline({
         </div>
 
         <div className="vl-sparkline-range">
-          <span>5年低 ${minPrice.toFixed(1)}</span>
+          <span>5年低 {currencySymbol}{minPrice.toFixed(1)}</span>
           <span className="vl-dot-divider">·</span>
-          <span>5年高 ${maxPrice.toFixed(1)}</span>
+          <span>5年高 {currencySymbol}{maxPrice.toFixed(1)}</span>
         </div>
       </div>
 
@@ -513,6 +514,7 @@ export interface ValueLineBodyProps {
 }
 
 export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
+  const currencySymbol = getCurrencySymbol(data.market).symbol;
   const curPricePoints = activeSecurity ? activeSecurity.pricePoints : data.pricePoints;
   const curValueLinePoints = activeSecurity ? activeSecurity.valueLinePoints : data.valueLinePoints;
 
@@ -636,7 +638,11 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
 
       {/* ── 3. True Value Line Composite Chart (Price vs Earnings Value Line) ── */}
       <section className="vl-card-chart-block">
-        <ValueLineSparkline points={curPricePoints} valuePoints={curValueLinePoints} />
+        <ValueLineSparkline
+          points={curPricePoints}
+          valuePoints={curValueLinePoints}
+          currencySymbol={currencySymbol}
+        />
         {data.cyclicalWarning ? (
           <aside className="vl-cyclical-alert-banner" role="alert" aria-label="强周期景气高位预警">
             <div className="vl-cyclical-alert-icon">⚠️</div>

@@ -20192,8 +20192,8 @@ a.insight-entity-chip:hover {
 }
 
 .vl-legend-dot--amber {
-  background: #0071e3; /* ✓ P0 Fix: 琥珀色 → Apple Blue */
-  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.2);
+  background: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.22);
 }
 
 .vl-legend-name {
@@ -20212,7 +20212,7 @@ a.insight-entity-chip:hover {
 .vl-sparkline-val-num {
   font-size: 1.3125rem; /* ✓ P1 Fix: 1.1rem → 1.3125rem (21px) Apple Card Title */
   font-weight: 700;
-  color: #0071e3; /* ✓ P0 Fix: 琥珀色 → Apple Blue */
+  color: #b45309; /* 琥珀金深色 (WCAG AA 5.9:1)，与图表琥珀虚线精准对应 */
   font-variant-numeric: tabular-nums;
   line-height: 1.19; /* ✓ P1 Fix: 添加 Apple Card Title 标准行高 */
   letter-spacing: 0.231px; /* ✓ P1 Fix: 添加标准字间距 */
