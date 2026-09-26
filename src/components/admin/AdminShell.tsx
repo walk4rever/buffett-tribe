@@ -8,9 +8,7 @@ import {
   LayoutDashboard,
   Users,
   Megaphone,
-  ArrowLeft,
   LogOut,
-  User,
   Building2,
 } from "lucide-react";
 import { BtLogoMark } from "@/components/BtLogoMark";
@@ -23,10 +21,10 @@ interface NavItem {
 }
 
 const NAV_ITEMS: ReadonlyArray<NavItem> = [
-  { href: "/admin", label: "数据总览", icon: LayoutDashboard },
-  { href: "/admin/universe", label: "公司大盘", icon: Building2 },
-  { href: "/admin/users", label: "用户与额度", icon: Users },
-  { href: "/admin/announcements", label: "发布与邮件", icon: Megaphone },
+  { href: "/admin", label: "总览", icon: LayoutDashboard },
+  { href: "/admin/universe", label: "公司", icon: Building2 },
+  { href: "/admin/users", label: "用户", icon: Users },
+  { href: "/admin/announcements", label: "发布", icon: Megaphone },
 ];
 
 function isActive(pathname: string | null, href: string) {
@@ -42,23 +40,14 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <header className="admin-shell-header">
         <div className="admin-shell-header-in">
           <div className="admin-shell-brand-wrap">
-            <Link href="/" className="admin-shell-brand">
+            <Link href="/" className="admin-shell-brand" title="返回主站">
               <BtLogoMark />
               <span className="admin-shell-brand-text">{BRAND_EN}</span>
             </Link>
             <span className="admin-shell-badge">管理后台</span>
-            <span className="admin-shell-divider">/</span>
-            <Link href="/" className="admin-shell-back-link">
-              <ArrowLeft size={13} />
-              <span>返回主站</span>
-            </Link>
           </div>
 
           <div className="admin-shell-actions">
-            <Link href="/dashboard" className="admin-shell-btn">
-              <User size={14} />
-              <span>个人控制台</span>
-            </Link>
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
               className="admin-shell-btn admin-shell-btn--ghost"

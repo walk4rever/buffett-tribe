@@ -11670,18 +11670,18 @@ body {
 
 .insights-head h1 {
   margin: 0;
-  font-size: clamp(1.6rem, 4vw, 2.2rem);
-  line-height: 1.1;
-  letter-spacing: -0.01em;
-  font-weight: 700;
+  font-size: 2.5rem; /* 40px - Section Heading per Apple Design */
+  line-height: 1.10;
+  letter-spacing: normal;
+  font-weight: 600;
 }
 
 .insights-lede {
   margin: 0.35rem 0 0;
   color: rgba(0, 0, 0, 0.5);
-  font-size: 0.88rem;
-  line-height: 1.55;
-  letter-spacing: 0;
+  font-size: 0.88rem; /* 14px - Caption - correct */
+  line-height: 1.43;
+  letter-spacing: -0.224px;
 }
 
 .insights-filter-bar {
@@ -11696,9 +11696,9 @@ body {
   align-items: center;
   height: 28px;
   padding: 0 0.85rem;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 999px;
-  background: #f4f5f7;
+  background: #fafafc; /* Apple standard filter button background */
   color: rgba(0, 0, 0, 0.55);
   font-size: 0.75rem;
   font-weight: 500;
@@ -11708,7 +11708,7 @@ body {
 }
 
 .insights-filter-pill:hover {
-  background: #eaedf2;
+  background: #f5f5f7; /* Apple light gray on hover */
   color: rgba(0, 0, 0, 0.75);
 }
 
@@ -11726,10 +11726,11 @@ body {
 .insights-list {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  background: rgba(0, 0, 0, 0.06);
-  border-radius: 10px;
+  gap: 0;
+  background: transparent;
+  border-radius: 12px; /* Large - feature panels per Apple Design */
   overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .insights-empty {
@@ -11757,6 +11758,11 @@ body {
   color: inherit;
   text-decoration: none;
   transition: background 0.12s ease;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.insight-row:last-child {
+  border-bottom: none;
 }
 
 .insight-row:hover {
@@ -11764,11 +11770,11 @@ body {
 }
 
 .insight-row h2 {
-  transition: color 0.12s ease;
+  transition: none; /* Removed color transition - cards are static per Apple Design */
 }
 
 .insight-row:hover h2 {
-  color: var(--accent);
+  color: inherit; /* No blue color change on hover */
 }
 
 .insight-row-num {
@@ -11785,15 +11791,16 @@ body {
 }
 
 .insight-row-num-md {
-  font-size: 0.8rem;
+  font-size: 0.88rem; /* 14px - Caption per Apple Design */
   font-weight: 600;
   color: rgba(0, 0, 0, 0.5);
 }
 
 .insight-row-num-yr {
-  font-size: 0.68rem;
+  font-size: 0.75rem; /* 12px - Micro per Apple Design */
   font-weight: 400;
   color: rgba(0, 0, 0, 0.28);
+  letter-spacing: -0.12px;
 }
 
 .insight-row-body {
@@ -11847,26 +11854,26 @@ body {
   flex: 1;
   min-width: 0;
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1.06rem; /* 17px - Body emphasis per Apple Design */
   font-weight: 600;
-  line-height: 1.35;
-  letter-spacing: 0;
+  line-height: 1.47;
+  letter-spacing: -0.374px;
 }
 
 .insight-row h2 {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1.06rem; /* 17px - Body emphasis per Apple Design */
   font-weight: 600;
-  line-height: 1.35;
-  letter-spacing: 0;
+  line-height: 1.47;
+  letter-spacing: -0.374px;
 }
 
 .insight-row p {
   margin: 0.3rem 0 0;
   color: rgba(0, 0, 0, 0.55);
-  font-size: 0.82rem;
-  line-height: 1.55;
-  letter-spacing: 0;
+  font-size: 0.88rem; /* 14px - Caption per Apple Design */
+  line-height: 1.43;
+  letter-spacing: -0.224px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -11885,10 +11892,11 @@ body {
   align-items: center;
   min-height: 20px;
   padding: 0 0.45rem;
-  border-radius: 4px;
+  border-radius: 5px; /* Micro - link tags per Apple Design */
   background: rgba(0, 0, 0, 0.04);
   color: rgba(0, 0, 0, 0.52);
-  font-size: 0.67rem;
+  font-size: 0.75rem; /* 12px - Micro per Apple Design */
+  letter-spacing: -0.12px;
   text-decoration: none;
 }
 
@@ -11913,6 +11921,20 @@ body {
 
   .insight-row-source-pill {
     max-width: 100%;
+  }
+
+  /* Mobile typography adjustments for insights */
+  .insights-head h1 {
+    font-size: 1.75rem; /* 28px on mobile - Tile Heading */
+  }
+
+  .insight-row {
+    padding: 0.85rem 1rem;
+    gap: 0.75rem;
+  }
+
+  .insight-row-num {
+    width: 3.5rem;
   }
 }
 
@@ -12305,10 +12327,10 @@ body {
 
 .insight-detail-head h1 {
   margin: 0;
-  font-size: clamp(1.4rem, 3.5vw, 1.9rem);
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-  font-weight: 700;
+  font-size: clamp(1.75rem, 4vw, 2.5rem); /* 28-40px - Tile Heading to Section Heading per Apple Design */
+  line-height: 1.14;
+  letter-spacing: 0.196px;
+  font-weight: 600;
 }
 
 .insight-detail-meta {
@@ -12328,9 +12350,9 @@ body {
 .insight-detail-desc {
   margin: 0.5rem 0 0;
   color: rgba(0, 0, 0, 0.55);
-  font-size: 0.85rem;
-  line-height: 1.6;
-  letter-spacing: 0;
+  font-size: 0.88rem; /* 14px - Caption per Apple Design */
+  line-height: 1.43;
+  letter-spacing: -0.224px;
 }
 
 .insight-detail-tags {
@@ -12351,7 +12373,7 @@ body {
   min-width: 0;
   padding: 0.85rem 1rem;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 10px;
+  border-radius: 12px; /* Large - feature panels per Apple Design */
   background: #fff;
   color: inherit;
   text-decoration: none;
@@ -12368,8 +12390,9 @@ body {
 }
 
 .insight-detail-nav-label {
-  font-size: 0.68rem;
+  font-size: 0.75rem; /* 12px - Micro per Apple Design */
   color: rgba(0, 0, 0, 0.4);
+  letter-spacing: -0.12px;
 }
 
 .insight-detail-nav-title {
@@ -12378,14 +12401,15 @@ body {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   color: rgba(0, 0, 0, 0.8);
-  font-size: 0.85rem;
+  font-size: 0.88rem; /* 14px - Caption per Apple Design */
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.43;
+  letter-spacing: -0.224px;
   transition: color 0.12s ease;
 }
 
 .insight-detail-nav-link:hover .insight-detail-nav-title {
-  color: var(--accent);
+  color: rgba(0, 0, 0, 0.9); /* Slightly darken, don't change to blue per Apple Design */
 }
 
 .insight-detail-back {
@@ -16045,18 +16069,47 @@ a.insight-entity-chip:hover {
     width: 100vw;
     left: 0;
     right: 0;
+    max-width: 100vw; /* Ensure it doesn't exceed viewport */
+    box-sizing: border-box; /* Include padding/border in width */
+  }
+
+  /* Reset min-width from desktop styles */
+  .agent-workspace-main:has(.agent-workspace-note-pane) .agent-workspace-note-pane {
+    min-width: 0; /* Remove 440px min-width on mobile */
+    max-width: 100vw;
   }
 
   .agent-note-top-bar {
     padding: 0.5rem 0.75rem;
+    box-sizing: border-box;
+    overflow-x: hidden; /* Prevent toolbar overflow */
   }
 
   .agent-note-title-row {
     padding: 0.5rem 0.75rem;
+    box-sizing: border-box;
+  }
+
+  .agent-note-title-input {
+    max-width: 100%; /* Prevent input overflow */
+    box-sizing: border-box;
   }
 
   .agent-note-body {
     padding: 0.75rem;
+    box-sizing: border-box;
+    overflow-x: hidden; /* Prevent body overflow */
+  }
+
+  .agent-note-textarea {
+    max-width: 100%; /* Prevent textarea overflow */
+    box-sizing: border-box;
+  }
+
+  .agent-note-preview {
+    max-width: 100%; /* Prevent preview overflow */
+    overflow-x: auto; /* Allow horizontal scroll for wide content */
+    word-wrap: break-word;
   }
 }
 
@@ -16799,6 +16852,7 @@ a.insight-entity-chip:hover {
   background: var(--apple-light-gray);
   display: flex;
   flex-direction: column;
+  overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 .admin-shell-header {
@@ -16809,6 +16863,7 @@ a.insight-entity-chip:hover {
   position: sticky;
   top: 0;
   z-index: 40;
+  overflow-x: hidden; /* Prevent header overflow */
 }
 
 .admin-shell-header-in {
@@ -16818,12 +16873,13 @@ a.insight-entity-chip:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-width: 0; /* Allow flex children to shrink */
 }
 
 .admin-shell-brand-wrap {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.65rem; /* Reduced gap for simplified header */
 }
 
 .admin-shell-brand {
@@ -16834,6 +16890,11 @@ a.insight-entity-chip:hover {
   color: var(--apple-near-black);
   font-weight: 600;
   font-size: 0.95rem;
+  transition: opacity 0.15s ease;
+}
+
+.admin-shell-brand:hover {
+  opacity: 0.7;
 }
 
 .admin-shell-badge {
@@ -16910,11 +16971,20 @@ a.insight-entity-chip:hover {
   grid-template-columns: 200px 1fr;
   gap: 2rem;
   align-items: start;
+  min-width: 0; /* Allow grid to shrink */
+  box-sizing: border-box; /* Include padding in width calculation */
 }
 
 .admin-shell-sidebar {
   position: sticky;
   top: 72px;
+  min-width: 0; /* Allow sidebar to shrink if needed */
+}
+
+.admin-shell-content {
+  min-width: 0; /* Critical: allow content to shrink below intrinsic size */
+  width: 100%; /* Take full available width */
+  overflow-x: hidden; /* Prevent horizontal scroll in content */
 }
 
 .admin-shell-nav {
@@ -16952,6 +17022,8 @@ a.insight-entity-chip:hover {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-width: 0; /* Allow flex children to shrink below content size */
+  max-width: 100%; /* Prevent overflow */
 }
 
 .admin-page-heading {
@@ -16980,6 +17052,8 @@ a.insight-entity-chip:hover {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1.25rem;
+  width: 100%; /* Ensure it respects parent width */
+  min-width: 0; /* Allow grid items to shrink */
 }
 
 .admin-stat-card {
@@ -16994,6 +17068,8 @@ a.insight-entity-chip:hover {
   flex-direction: column;
   justify-content: space-between;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+  min-width: 0; /* Allow card to shrink */
+  overflow: hidden; /* Prevent content overflow */
 }
 
 .admin-stat-card:hover {
@@ -18221,9 +18297,55 @@ a.insight-entity-chip:hover {
     overflow-x: auto;
     padding-bottom: 0.5rem;
     gap: 0.5rem;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    scrollbar-width: thin; /* Firefox */
   }
+
+  /* Hide scrollbar but keep functionality */
+  .admin-shell-nav::-webkit-scrollbar {
+    height: 3px;
+  }
+
+  .admin-shell-nav::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .admin-shell-nav::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+
   .admin-shell-nav-item {
     white-space: nowrap;
+    flex-shrink: 0; /* Prevent items from shrinking */
+    min-width: fit-content; /* Ensure full button is visible */
+  }
+
+  /* Admin header responsive fixes for tablet */
+  .admin-shell-header-in {
+    padding: 0.65rem 1rem;
+  }
+
+  .admin-shell-brand-wrap {
+    gap: 0.5rem;
+  }
+
+  .admin-shell-divider {
+    display: none; /* Hide divider on smaller screens */
+  }
+
+  .admin-shell-back-link {
+    font-size: 0.78rem;
+    gap: 0.25rem;
+  }
+
+  .admin-shell-actions {
+    gap: 0.4rem;
+  }
+
+  .admin-shell-btn {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.78rem;
   }
 }
 
@@ -18342,6 +18464,86 @@ a.insight-entity-chip:hover {
   .dashboard-inline-action-btn {
     padding: 0.22rem 0.5rem;
     font-size: 0.72rem;
+  }
+
+  /* Admin shell extreme mobile fixes - Critical for preventing overflow */
+  .admin-shell-body {
+    padding: 1rem 0.75rem 2.5rem !important; /* Symmetrical padding: 12px left and right */
+    gap: 1rem;
+  }
+
+  .admin-page-container {
+    gap: 1rem; /* Reduce gap between sections */
+  }
+
+  .admin-page-title {
+    font-size: 1.25rem; /* Smaller title on mobile */
+  }
+
+  .admin-stat-grid {
+    gap: 0.75rem; /* Reduce gap between stat cards */
+  }
+
+  .admin-stat-card {
+    padding: 1rem 1rem; /* Reduce card padding */
+  }
+
+  .admin-card {
+    padding: 1rem; /* Reduce card padding */
+  }
+
+  /* Admin header extreme mobile fixes */
+  .admin-shell-header-in {
+    padding: 0.6rem 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .admin-shell-brand-wrap {
+    gap: 0.35rem;
+    min-width: 0;
+    flex-shrink: 1;
+    overflow: hidden;
+  }
+
+  .admin-shell-brand {
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    min-width: 0;
+  }
+
+  .admin-shell-brand-text {
+    display: none; /* Hide brand text on very small screens */
+  }
+
+  .admin-shell-badge {
+    font-size: 0.65rem;
+    padding: 0.12rem 0.3rem;
+    white-space: nowrap;
+  }
+
+  .admin-shell-divider,
+  .admin-shell-back-link {
+    display: none; /* Hide to save space */
+  }
+
+  .admin-shell-actions {
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  .admin-shell-btn {
+    padding: 0.28rem 0.45rem;
+    font-size: 0;
+    min-width: 32px;
+    justify-content: center;
+  }
+
+  .admin-shell-btn svg {
+    margin: 0;
+  }
+
+  .admin-shell-btn span {
+    display: none; /* Hide button text, show icons only */
   }
 }
 
