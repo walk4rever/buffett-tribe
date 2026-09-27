@@ -355,11 +355,13 @@ function buildImportAnnualReportStep(ticker: string, market: "cn" | "hk", fromYe
     verify: async (entityId) => {
       // Per-filing, not per-entity — same lesson as the US 10-K path: an
       // entity-level count > 0 stays green even when one year's PDF extracts
-      // zero chunks.
-      const kind = `${market}-annual-report`;
+      // zero chunks. CN accepts the IPO prospectus kind as well: newly listed
+      // companies (e.g. 688825) have no annual report yet and
+      // fetch-cn-annual-report.py falls back to 招股说明书.
+      const kinds = market === "cn" ? ["cn-annual-report", "cn-prospectus"] : [`${market}-annual-report`];
       const [totalFilings, filingsWithoutSections] = await Promise.all([
-        prisma.extSource.count({ where: { filerEntityId: entityId, kind } }),
-        prisma.extSource.count({ where: { filerEntityId: entityId, kind, sections: { none: {} } } }),
+        prisma.extSource.count({ where: { filerEntityId: entityId, kind: { in: kinds } } }),
+        prisma.extSource.count({ where: { filerEntityId: entityId, kind: { in: kinds }, sections: { none: {} } } }),
       ]);
       return totalFilings > 0 && filingsWithoutSections === 0;
     },

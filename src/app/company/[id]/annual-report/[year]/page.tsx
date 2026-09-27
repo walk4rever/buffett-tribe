@@ -41,7 +41,7 @@ export default async function AnnualReportPage({ params }: Props) {
   // 大师资料库 documents, with the same AI 解读 panel as FilingReader — the
   // PDF-extracted text was already written to FilingSection at import time,
   // so search_filings already covers these companies.
-  if (filing.kind === "hk-annual-report" || filing.kind === "cn-annual-report") {
+  if (filing.kind === "hk-annual-report" || filing.kind === "cn-annual-report" || filing.kind === "cn-prospectus") {
     const pdfArtifact = filing.artifacts.find((artifact) => artifact.kind === "primary_pdf");
     if (!pdfArtifact?.objectKey) notFound();
 
@@ -49,13 +49,14 @@ export default async function AnnualReportPage({ params }: Props) {
     // R2's public bucket has no CORS headers, which breaks pdfjs's cross-origin fetch.
     const pdfUrl = `/api/filing-pdf/${pdfArtifact.objectKey}`;
     const zhName = getCompanyNameZh(company.metadata);
+    const docLabel = filing.kind === "cn-prospectus" ? "招股说明书" : "年报";
     return (
       <div className="pdf-reader-page">
         <SiteNav />
         <main className="pdf-reader-shell">
           <PdfFilingReader
             pdfUrl={pdfUrl}
-            title={`${zhName ?? company.canonicalName} ${year} 年报`}
+            title={`${zhName ?? company.canonicalName} ${year} ${docLabel}`}
             backHref={`${canonicalUrl}?tab=references`}
             companyName={zhName ?? company.canonicalName}
             ticker={company.ticker ?? company.code ?? null}

@@ -826,6 +826,7 @@ export const COMPANY_REFERENCE_FILING_KINDS = [
   "hk-interim-report",
   "hk-quarterly-report",
   "cn-annual-report",
+  "cn-prospectus",
   "cn-interim-report",
   "cn-quarterly-report",
   "us-prospectus",
@@ -1025,7 +1026,7 @@ export async function getCompanyAnnualFilings(entityId: string, limit = 12) {
     const rows = await db.extSource.findMany({
       where: {
         filerEntityId: entityId,
-        kind: { in: ["10k", "20f", "40f", "hk-annual-report", "cn-annual-report", "us-prospectus"] },
+        kind: { in: ["10k", "20f", "40f", "hk-annual-report", "cn-annual-report", "cn-prospectus", "us-prospectus"] },
       },
       orderBy: [{ periodYear: "desc" }, { periodQuarter: "desc" }, { ts: "desc" }],
       take: limit,
@@ -1060,7 +1061,7 @@ export async function getCompanyAnnualFiling(entityId: string, year?: number | n
         const filings = await db.extSource.findMany({
           where: {
             filerEntityId: entityId,
-            kind: { in: ["10k", "20f", "40f", "hk-annual-report", "cn-annual-report", "us-prospectus"] },
+            kind: { in: ["10k", "20f", "40f", "hk-annual-report", "cn-annual-report", "cn-prospectus", "us-prospectus"] },
             periodYear: year,
           },
           orderBy: [{ periodQuarter: "desc" }, { ts: "desc" }, { filedAt: "asc" }],
@@ -1073,7 +1074,7 @@ export async function getCompanyAnnualFiling(entityId: string, year?: number | n
       const latestRows = await db.extSource.findMany({
         where: {
           filerEntityId: entityId,
-          kind: { in: ["10k", "20f", "40f", "hk-annual-report", "cn-annual-report", "us-prospectus"] },
+          kind: { in: ["10k", "20f", "40f", "hk-annual-report", "cn-annual-report", "cn-prospectus", "us-prospectus"] },
         },
         orderBy: [{ periodYear: "desc" }, { periodQuarter: "desc" }, { ts: "desc" }],
         take: 8,

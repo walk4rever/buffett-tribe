@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { computeFcf, computeScenarios } from "../src/lib/valuation-metrics";
+import { computeFcf, computeScenarios, isInsufficientValuation } from "../src/lib/valuation-metrics";
 
 describe("computeFcf", () => {
   it("subtracts capex magnitude from OCF", () => {
@@ -77,5 +77,26 @@ describe("computeScenarios", () => {
       scenarios: [{ name: "坏数据", growthPct: NaN, exitPe: 25, rationale: "" }],
     });
     expect(results[0].impliedPrice).toBeNull();
+  });
+});
+
+describe("isInsufficientValuation", () => {
+  it("recognizes the insufficient-data sentinel", () => {
+    expect(
+      isInsufficientValuation({
+        status: "insufficient_data",
+        reason: "insufficient data (need FY financials + stock prices)",
+        missing: ["fy_financials"],
+        checkedAt: "2026-09-27T04:30:00.000Z",
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects real payloads and other shapes", () => {
+    expect(isInsufficientValuation(null)).toBe(false);
+    expect(isInsufficientValuation(undefined)).toBe(false);
+    expect(isInsufficientValuation("insufficient_data")).toBe(false);
+    expect(isInsufficientValuation({ status: "ok" })).toBe(false);
+    expect(isInsufficientValuation({ metrics: {}, position: {}, quality: {}, scenarios: {}, conclusion: {} })).toBe(false);
   });
 });

@@ -372,13 +372,14 @@ function classify40FAttachment(text: string, file: Awaited<ReturnType<typeof fet
   const haystack = `${fileLabel} ${lead}`;
   const sections = new Set<string>();
 
-  if (/\baif\b/i.test(file.documentName) || startsWithAny(lead, [/^(ex-\d+\.\d+\s+)?\d*\s*.*annual information form\b/])) {
+  if (/\baif\b/i.test(file.documentName) || /^EX-1\.1/i.test(file.documentType) || startsWithAny(lead, [/^(ex-\d+\.\d+\s+)?\d*\s*.*annual information form\b/])) {
     sections.add("annual_information_form");
   }
 
   if (
     /\bmd&a\b/i.test(file.documentName) ||
     /\bmd&a\b/i.test(file.description) ||
+    /^EX-1\.3/i.test(file.documentType) ||
     startsWithAny(lead, [/^(ex-\d+\.\d+\s+)?\d*\s*.*management'?s discussion and analysis\b/])
   ) {
     sections.add("management_discussion_and_analysis");
@@ -386,12 +387,13 @@ function classify40FAttachment(text: string, file: Awaited<ReturnType<typeof fet
 
   if (
     !haystack.includes("consent of independent registered public accounting firm") &&
-    startsWithAny(lead, [
-      /^(ex-\d+\.\d+\s+)?\d*\s*.*management'?s statement of responsibility for financial reporting\b/,
-      /^(ex-\d+\.\d+\s+)?\d*\s*.*audited annual financial statements\b/,
-      /^(ex-\d+\.\d+\s+)?\d*\s*.*consolidated financial statements\b/,
-      /^(ex-\d+\.\d+\s+)?\d*\s*.*report of independent registered public accounting firm\b/,
-    ])
+    (/^EX-1\.2/i.test(file.documentType) ||
+      startsWithAny(lead, [
+        /^(ex-\d+\.\d+\s+)?\d*\s*.*management'?s statement of responsibility for financial reporting\b/,
+        /^(ex-\d+\.\d+\s+)?\d*\s*.*audited annual financial statements\b/,
+        /^(ex-\d+\.\d+\s+)?\d*\s*.*consolidated financial statements\b/,
+        /^(ex-\d+\.\d+\s+)?\d*\s*.*report of independent registered public accounting firm\b/,
+      ]))
   ) {
     sections.add("audited_annual_financial_statements");
   }
@@ -412,7 +414,13 @@ export async function upsert40FAttachmentSections(
 ) {
   const htmlAttachments = files.filter((file) => {
     if (file.category !== "attachment") return false;
-    if (!/^EX-99/i.test(file.documentType)) return false;
+    // 40-F exhibits are usually EX-99.*, but Form 40-F's own exhibit
+    // instructions define EX-1.1 (AIF) / EX-1.2 (audited annual FS) /
+    // EX-1.3 (MD&A), and some Canadian filers use exactly those — e.g.
+    // Shopify files every 40-F with exhibit11annualinformation.htm typed
+    // EX-1.1 and exhibit13mda*.htm typed EX-1.3 (verified against EDGAR
+    // accession 0001594805-23-000011).
+    if (!/^EX-(99|1)\./i.test(file.documentType)) return false;
     return /\.(html?|xhtml)$/i.test(file.documentName);
   });
 

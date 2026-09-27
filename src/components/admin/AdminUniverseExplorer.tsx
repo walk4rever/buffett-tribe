@@ -61,7 +61,11 @@ export function AdminUniverseExplorer({
   };
 
   const phaseBadge = (item: ExplorerItem) => {
-    if (item.onboardPhase === 0 && (item.isFastTrack || (item.priority && item.priority > 0))) {
+    const inFastTrack =
+      (item.onboardPhase === 0 || item.onboardPhase === 1) &&
+      (item.isFastTrack || (item.priority && item.priority > 0));
+    if (inFastTrack) {
+      const leg = item.onboardPhase === 0 ? "P0→P1 基础建档" : "P1→P2 深度分析";
       return (
         <span
           className="admin-badge admin-badge--blue"
@@ -71,9 +75,9 @@ export function AdminUniverseExplorer({
             border: "1px solid rgba(0, 113, 227, 0.28)",
             fontWeight: 500,
           }}
-          title={`快速通道插队优先分: ${item.priority || 100}`}
+          title={`快速通道插队优先分: ${item.priority || 100}，下次执行: ${leg}`}
         >
-          ⚡ 快速通道 (分值 {item.priority || 100})
+          ⚡ 快速通道 · {leg} (分值 {item.priority || 100})
         </span>
       );
     }

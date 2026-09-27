@@ -40,6 +40,32 @@ export type ScenarioResult = ScenarioInput & {
   impliedAnnualReturnPct: number | null;
 };
 
+/**
+ * Sentinel stored in CompanyAnalysis.valuation when a company legitimately
+ * cannot be valued (no FY financials / no stock prices / no ticker) — e.g. a
+ * recent IPO whose only financials are one prospectus quarter. A stored
+ * sentinel means "checked, data insufficient", not "generation failed":
+ * onboard-company's field-existence verify passes, and the generator treats a
+ * sentinel as absent so every run re-checks — the real analysis fills in
+ * automatically once FY data arrives.
+ */
+export const VALUATION_INSUFFICIENT_STATUS = "insufficient_data";
+
+export type InsufficientValuation = {
+  status: typeof VALUATION_INSUFFICIENT_STATUS;
+  reason: string;
+  missing: string[]; // e.g. ["fy_financials", "stock_prices"]
+  checkedAt: string; // ISO timestamp
+};
+
+export function isInsufficientValuation(payload: unknown): payload is InsufficientValuation {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    (payload as Record<string, unknown>).status === VALUATION_INSUFFICIENT_STATUS
+  );
+}
+
 export type ValuationMetrics = {
   ticker: string;
   asOfDate: string;

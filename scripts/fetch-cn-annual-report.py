@@ -55,7 +55,6 @@ TITLE_RE = re.compile(r"^.*?(\d{4})年?年度报告$")
 LINK_RE = re.compile(r"announcementId=(\d+).*?announcementTime=([\d-]+)")
 CHUNK_COUNT = 4
 
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fetch A-share annual report PDFs from cninfo.")
     parser.add_argument("--code", required=True, help="Exchange code, e.g. 600519")
@@ -100,6 +99,44 @@ def find_annual_reports(code: str, from_year: int) -> list[dict]:
 
     found.sort(key=lambda r: r["periodYear"])
     return found
+
+
+def find_prospectus(code: str) -> dict | None:
+    """IPO prospectus (招股说明书) fallback for companies too newly listed to
+    have published any annual report — e.g. 688825 (listed 2026-07, first
+    annual report would be FY2026 published in 2027). Title filter keeps only
+    the final prospectus: "...招股说明书" exactly at the end — this excludes
+    the 提示性公告 notice (ends with 公告), the 招股意向书, and draft versions
+    like 招股说明书（注册稿）/（上会稿）(end with ）). Verified against cninfo's
+    real results for 688825. Picks the latest by announcementTime."""
+    df = ak.stock_zh_a_disclosure_report_cninfo(
+        symbol=code,
+        market="沪深京",
+        keyword="招股说明书",
+        category="",
+        start_date="20150101",
+        end_date=time.strftime("%Y%m%d"),
+    )
+
+    best: dict | None = None
+    for _, row in df.iterrows():
+        title = re.sub(r"</?em>", "", str(row.get("公告标题", "")))
+        if not title.endswith("招股说明书"):
+            continue
+        link_match = LINK_RE.search(str(row.get("公告链接", "")))
+        if not link_match:
+            continue
+        announcement_id, announcement_time = link_match.group(1), link_match.group(2)
+        if best is None or announcement_time > best["announcementTime"]:
+            best = {"announcementId": announcement_id, "announcementTime": announcement_time, "title": title}
+
+    if best is None:
+        return None
+    return {
+        "periodYear": int(best["announcementTime"][:4]),
+        "title": best["title"],
+        "url": f"{STATIC_BASE}/{best['announcementTime']}/{best['announcementId']}.PDF",
+    }
 
 
 def download_pdf(url: str, dest: Path) -> str:
@@ -148,12 +185,175 @@ def extract_chunks_from_pages(page_texts: list[str], chunk_count: int) -> list[s
     return [c for c in chunks if c]
 
 
+def _find_chapter_range(page_texts: list[str], toc: list, target_keywords: list[str], next_chapter_keywords: list[str], require_chapter_heading: bool = False):
+    total_pages = len(page_texts)
+    start_page = None
+    end_page = None
+    strategy = None
+
+    # Tier 1: PDF outline
+    chapter_items = []
+    for item in toc:
+        lvl, title, page = item[0], item[1].strip(), item[2]
+        if CHAPTER_RE.match(title) or any(k in title for k in target_keywords):
+            chapter_items.append((lvl, title, page))
+
+    for i, (lvl, title, page) in enumerate(chapter_items):
+        # require_chapter_heading: only accept outline entries that are real
+        # chapter headings (第X节/第X章 ...) — a prospectus's front-matter
+        # overview section (第二节 概览) contains subsections that mention the
+        # target keywords (e.g. "（四）完善公司治理…") and would otherwise win
+        # over the actual chapter (第八节 公司治理与独立性).
+        if require_chapter_heading and not CHAPTER_RE.match(title):
+            continue
+        if any(k in title for k in target_keywords):
+            start_page = page
+            for j in range(i + 1, len(chapter_items)):
+                next_title = chapter_items[j][1]
+                next_page = chapter_items[j][2]
+                if CHAPTER_RE.match(next_title) and next_page > start_page:
+                    end_page = next_page
+                    break
+            strategy = "pdf_outline"
+            break
+
+    # Tier 2: Text TOC in first 12 pages
+    if not start_page:
+        for pno in range(min(12, total_pages)):
+            txt = page_texts[pno]
+            if "目录" in txt and any(k in txt for k in target_keywords):
+                lines = [l.strip() for l in txt.split("\n") if l.strip()]
+                for l_idx, line in enumerate(lines):
+                    if any(k in line for k in target_keywords):
+                        m = re.search(r"[\.·…\s]{2,}\s*(\d+)", line)
+                        if m:
+                            start_page = int(m.group(1))
+                        else:
+                            for offset in range(1, 4):
+                                if l_idx + offset < len(lines) and lines[l_idx + offset].isdigit():
+                                    start_page = int(lines[l_idx + offset])
+                                    break
+                    if start_page and any(k in line for k in next_chapter_keywords):
+                        m = re.search(r"[\.·…\s]{2,}\s*(\d+)", line)
+                        if m:
+                            end_page = int(m.group(1))
+                            break
+                        else:
+                            for offset in range(1, 4):
+                                if l_idx + offset < len(lines) and lines[l_idx + offset].isdigit():
+                                    end_page = int(lines[l_idx + offset])
+                                    break
+                if start_page:
+                    strategy = "text_toc"
+                    break
+
+    # Tier 3: Body page heading scan
+    if not start_page:
+        for pno in range(min(60, total_pages)):
+            txt = page_texts[pno]
+            if "目录" not in txt[:100] and not re.search(r"[\.·…]{3,}", txt):
+                if any(re.search(rf"第[一二三四五六七八九十\d]+[节章]\s*{re.escape(k)}", txt) for k in target_keywords):
+                    start_page = pno + 1
+                    strategy = "page_scan"
+                    break
+
+    if not start_page:
+        return None
+
+    # Calibration: ensure start_page is not the TOC page and actually matches heading
+    actual_start = max(0, start_page - 1)
+    if not any(k in page_texts[actual_start] for k in target_keywords):
+        for delta in [-2, -1, 1, 2, 3]:
+            cand = actual_start + delta
+            if 0 <= cand < total_pages:
+                c_txt = page_texts[cand]
+                if "目录" not in c_txt[:100] and any(k in c_txt for k in target_keywords):
+                    actual_start = cand
+                    break
+
+    # Calibration for end page
+    if end_page:
+        actual_end = end_page - 1
+        if not any(k in page_texts[actual_end] for k in next_chapter_keywords):
+            for delta in [-2, -1, 1, 2, 3]:
+                cand = actual_end + delta
+                if actual_start < cand < total_pages:
+                    c_txt = page_texts[cand]
+                    if any(k in c_txt for k in next_chapter_keywords):
+                        actual_end = cand
+                        break
+    else:
+        actual_end = min(total_pages, actual_start + 40)
+
+    if actual_end <= actual_start:
+        actual_end = min(total_pages, actual_start + 35)
+
+    return (actual_start, actual_end, strategy)
+
+
+def extract_prospectus_sections(page_texts: list[str], toc: list) -> tuple[dict[str, str], dict]:
+    """STAR-market IPO prospectus (招股说明书) chapter map. Section keys reuse
+    the annual-report cn_* family so every downstream reader (evidence pickup,
+    search_filings, generate steps) works unchanged. STAR prospectus structure:
+    第三节 风险因素 / 第四节 发行人基本情况 / 第五节 业务与技术 /
+    第六节 财务会计信息与管理层分析 / 第七节 募集资金运用 / 第八节 公司治理."""
+    if not page_texts:
+        return {}, {}
+
+    sections: dict[str, str] = {}
+    metadata: dict = {}
+
+    mda_range = _find_chapter_range(
+        page_texts, toc,
+        ["财务会计信息与管理层分析", "管理层讨论与分析"],
+        ["募集资金", "公司治理", "重大事项", "投资者保护"],
+        require_chapter_heading=True,
+    )
+    if mda_range:
+        sections["cn_mda"] = "\n\n".join(page_texts[p] for p in range(mda_range[0], mda_range[1]))
+        metadata["mda_strategy"] = mda_range[2]
+        metadata["mda_chars"] = len(sections["cn_mda"])
+
+    biz_range = _find_chapter_range(
+        page_texts, toc,
+        ["业务与技术"],
+        ["财务会计信息", "募集资金", "公司治理"],
+        require_chapter_heading=True,
+    )
+    if biz_range:
+        biz_text = "\n\n".join(page_texts[p] for p in range(biz_range[0], biz_range[1]))
+        sections["cn_mda_business"] = biz_text
+        # The moat discussion (核心竞争力/竞争优势) usually lives inside 业务与技术
+        for part in re.split(r"\n(?=[一二三四五六七八九十]+、|\d+\.\d+\s+)", biz_text):
+            h_line = part.strip().split("\n")[0]
+            if "核心竞争力" in h_line or "竞争优势" in h_line:
+                sections["cn_mda_moat"] = part.strip()
+                break
+
+    profile_range = _find_chapter_range(
+        page_texts, toc,
+        ["发行人基本情况"],
+        ["业务与技术", "财务会计信息"],
+        require_chapter_heading=True,
+    )
+    if profile_range:
+        sections["cn_company_profile"] = "\n\n".join(page_texts[p] for p in range(profile_range[0], profile_range[1]))
+
+    gov_range = _find_chapter_range(
+        page_texts, toc,
+        ["公司治理"],
+        ["重大事项", "投资者保护", "其他重要事项", "募集资金"],
+        require_chapter_heading=True,
+    )
+    if gov_range:
+        sections["cn_governance"] = "\n\n".join(page_texts[p] for p in range(gov_range[0], gov_range[1]))
+
+    return sections, metadata
+
+
 def extract_semantic_sections(page_texts: list[str], toc: list) -> tuple[dict[str, str], dict]:
     """Extracts structured sections from an A-share annual report PDF using
-    a 3-tier fallback algorithm:
-    1. PDF outline/bookmarks (doc.get_toc())
-    2. Textual TOC search within the first 12 pages
-    3. Body page scan for chapter heading patterns
+    a 3-tier fallback algorithm (see _find_chapter_range).
 
     Returns (sections_dict, metadata_dict).
     """
@@ -162,101 +362,7 @@ def extract_semantic_sections(page_texts: list[str], toc: list) -> tuple[dict[st
         return {}, {}
 
     def find_chapter_range(target_keywords: list[str], next_chapter_keywords: list[str]):
-        start_page = None
-        end_page = None
-        strategy = None
-
-        # Tier 1: PDF outline
-        chapter_items = []
-        for item in toc:
-            lvl, title, page = item[0], item[1].strip(), item[2]
-            if CHAPTER_RE.match(title) or any(k in title for k in target_keywords):
-                chapter_items.append((lvl, title, page))
-
-        for i, (lvl, title, page) in enumerate(chapter_items):
-            if any(k in title for k in target_keywords):
-                start_page = page
-                for j in range(i + 1, len(chapter_items)):
-                    next_title = chapter_items[j][1]
-                    next_page = chapter_items[j][2]
-                    if CHAPTER_RE.match(next_title) and next_page > start_page:
-                        end_page = next_page
-                        break
-                strategy = "pdf_outline"
-                break
-
-        # Tier 2: Text TOC in first 12 pages
-        if not start_page:
-            for pno in range(min(12, total_pages)):
-                txt = page_texts[pno]
-                if "目录" in txt and any(k in txt for k in target_keywords):
-                    lines = [l.strip() for l in txt.split("\n") if l.strip()]
-                    for l_idx, line in enumerate(lines):
-                        if any(k in line for k in target_keywords):
-                            m = re.search(r"[\.·…\s]{2,}\s*(\d+)", line)
-                            if m:
-                                start_page = int(m.group(1))
-                            else:
-                                for offset in range(1, 4):
-                                    if l_idx + offset < len(lines) and lines[l_idx + offset].isdigit():
-                                        start_page = int(lines[l_idx + offset])
-                                        break
-                        if start_page and any(k in line for k in next_chapter_keywords):
-                            m = re.search(r"[\.·…\s]{2,}\s*(\d+)", line)
-                            if m:
-                                end_page = int(m.group(1))
-                                break
-                            else:
-                                for offset in range(1, 4):
-                                    if l_idx + offset < len(lines) and lines[l_idx + offset].isdigit():
-                                        end_page = int(lines[l_idx + offset])
-                                        break
-                    if start_page:
-                        strategy = "text_toc"
-                        break
-
-        # Tier 3: Body page heading scan
-        if not start_page:
-            for pno in range(min(60, total_pages)):
-                txt = page_texts[pno]
-                if "目录" not in txt[:100] and not re.search(r"[\.·…]{3,}", txt):
-                    if any(re.search(rf"第[一二三四五六七八九十\d]+[节章]\s*{re.escape(k)}", txt) for k in target_keywords):
-                        start_page = pno + 1
-                        strategy = "page_scan"
-                        break
-
-        if not start_page:
-            return None
-
-        # Calibration: ensure start_page is not the TOC page and actually matches heading
-        actual_start = max(0, start_page - 1)
-        if not any(k in page_texts[actual_start] for k in target_keywords):
-            for delta in [-2, -1, 1, 2, 3]:
-                cand = actual_start + delta
-                if 0 <= cand < total_pages:
-                    c_txt = page_texts[cand]
-                    if "目录" not in c_txt[:100] and any(k in c_txt for k in target_keywords):
-                        actual_start = cand
-                        break
-
-        # Calibration for end page
-        if end_page:
-            actual_end = end_page - 1
-            if not any(k in page_texts[actual_end] for k in next_chapter_keywords):
-                for delta in [-2, -1, 1, 2, 3]:
-                    cand = actual_end + delta
-                    if actual_start < cand < total_pages:
-                        c_txt = page_texts[cand]
-                        if any(k in c_txt for k in next_chapter_keywords):
-                            actual_end = cand
-                            break
-        else:
-            actual_end = min(total_pages, actual_start + 40)
-
-        if actual_end <= actual_start:
-            actual_end = min(total_pages, actual_start + 35)
-
-        return (actual_start, actual_end, strategy)
+        return _find_chapter_range(page_texts, toc, target_keywords, next_chapter_keywords)
 
     # 1. Extract MD&A (Management Discussion & Analysis)
     mda_range = find_chapter_range(
@@ -343,22 +449,36 @@ def main() -> int:
 
     print(f"Searching cninfo for {args.code} annual reports since {args.from_year}...")
     reports = find_annual_reports(args.code, args.from_year)
+    filing_kind = "cn-annual-report"
     if not reports:
-        print(f"No annual reports found for {args.code}", file=sys.stderr)
-        return 1
-    print(f"Found {len(reports)} annual report(s): {[r['periodYear'] for r in reports]}")
+        # Newly listed companies (e.g. 688825, listed 2026-07) have no annual
+        # report yet — their first one would be published the year after
+        # listing. Fall back to the IPO prospectus, same role as the US
+        # pipeline's S-1/424B4 fallback.
+        print(f"No annual reports found for {args.code} — falling back to IPO prospectus (招股说明书)...", file=sys.stderr)
+        prospectus = find_prospectus(args.code)
+        if not prospectus:
+            print(f"No annual reports or prospectus found for {args.code}", file=sys.stderr)
+            return 1
+        reports = [prospectus]
+        filing_kind = "cn-prospectus"
+    print(f"Found {len(reports)} {filing_kind} filing(s): {[r['periodYear'] for r in reports]}")
 
     results = []
     pdf_paths: list[Path] = []
     for report in reports:
-        pdf_path = out_dir / f"{args.code}_{report['periodYear']}.pdf"
+        name_suffix = "_prospectus" if filing_kind == "cn-prospectus" else ""
+        pdf_path = out_dir / f"{args.code}_{report['periodYear']}{name_suffix}.pdf"
         pdf_paths.append(pdf_path)
         print(f"Downloading FY{report['periodYear']}: {report['url']}")
         actual_url = download_pdf(report["url"], pdf_path)
 
         print(f"  extracting semantic sections & fallback chunks...")
         page_texts, toc = extract_page_texts(pdf_path)
-        sections, metadata = extract_semantic_sections(page_texts, toc)
+        if filing_kind == "cn-prospectus":
+            sections, metadata = extract_prospectus_sections(page_texts, toc)
+        else:
+            sections, metadata = extract_semantic_sections(page_texts, toc)
         chunks = extract_chunks_from_pages(page_texts, CHUNK_COUNT)
 
         print(f"  extracted semantic sections: {list(sections.keys())} (MD&A {metadata.get('mda_chars', 0)} chars via {metadata.get('mda_strategy')})")
@@ -366,6 +486,7 @@ def main() -> int:
 
         results.append({
             "periodYear": report["periodYear"],
+            "filingKind": filing_kind,
             "url": actual_url,
             "pdfPath": str(pdf_path),
             "chunks": chunks,

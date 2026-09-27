@@ -6,6 +6,7 @@ import { archiveFilingArtifact } from "./lib/filing-archive";
 
 type ReportRecord = {
   periodYear: number;
+  filingKind?: "cn-annual-report" | "cn-prospectus";
   url: string;
   pdfPath: string;
   chunks?: string[];
@@ -46,10 +47,13 @@ async function main() {
 
   let totalSections = 0;
   for (const report of reports) {
+    // fetch-cn-annual-report.py writes "cn-prospectus" when it fell back to
+    // the IPO prospectus (newly listed company, no annual report yet).
+    const filingKind = report.filingKind ?? "cn-annual-report";
     // Stable accessionNumber per year so reruns reuse the same ExtSource row
     // instead of accumulating duplicates — same idempotency pattern as the
     // HK annual report importer's "hk-annual-report-{year}" key.
-    const accessionNumber = `cn-annual-report-${report.periodYear}`;
+    const accessionNumber = `${filingKind}-${report.periodYear}`;
     // form: "Annual Report" so the company page's reference card shows a
     // real label instead of falling back to the raw kind string
     // ("CN-ANNUAL-REPORT") — see src/app/company/[id]/page.tsx's card head.
@@ -57,13 +61,13 @@ async function main() {
       ticker,
       market,
       code,
-      form: "Annual Report",
+      form: filingKind === "cn-prospectus" ? "Prospectus" : "Annual Report",
       ...(report.metadata ? { extraction: report.metadata } : {}),
     };
     const extSource = await db.extSource.upsert({
       where: { ExtSource_filer_accession_unique: { filerEntityId: entity.id, accessionNumber } },
       create: {
-        kind: "cn-annual-report",
+        kind: filingKind,
         filerEntityId: entity.id,
         accessionNumber,
         periodYear: report.periodYear,
@@ -82,7 +86,7 @@ async function main() {
       kind: "primary_pdf",
       cik: entity.cik ?? entity.id,
       accession: accessionNumber,
-      originalName: `${code}_${report.periodYear}.pdf`,
+      originalName: `${code}_${report.periodYear}${filingKind === "cn-prospectus" ? "_prospectus" : ""}.pdf`,
       contentType: "application/pdf",
       body: pdfBuffer,
       sourceUrl: report.url,

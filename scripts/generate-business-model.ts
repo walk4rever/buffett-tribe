@@ -1,5 +1,9 @@
 /**
- * Generate and upsert business overview plus Business Model Canvas for companies.
+ * Generate and upsert the Business Model Canvas for companies.
+ * The canvas is written to the top-level CompanyAnalysis.canvas column.
+ * (The legacy business JSON — { narrative, canvas } — is no longer written;
+ * the LLM still produces a narrative, but per the schema note it is deprecated
+ * and only the canvas is persisted.)
  *
  * Usage:
  *   tsx scripts/generate-business-model.ts --company AAPL [--dry-run] [--force]
@@ -222,11 +226,16 @@ async function main() {
 
     const existingAnalysis = await prisma.companyAnalysis.findUnique({
       where: { entityId: company.id },
-      select: { business: true, source: true, version: true, updatedAt: true },
+      select: { canvas: true, business: true, source: true, version: true, updatedAt: true },
     });
+    // New writes go to the top-level `canvas` column; rows predating the
+    // migration hold the canvas in the legacy `business` JSON instead.
     const existingBusiness = jsonObject(existingAnalysis?.business);
     const existingNarrative = jsonObject(existingBusiness?.narrative);
-    if (existingBusiness && normalizeText(existingNarrative?.content) && !force) {
+    const hasExisting =
+      existingAnalysis?.canvas != null ||
+      (existingBusiness && normalizeText(existingNarrative?.content));
+    if (hasExisting && !force) {
       console.log(`  SKIP: already has business model (V${existingAnalysis?.version}, updatedAt: ${existingAnalysis?.updatedAt.toISOString()}), use --force to overwrite`);
       continue;
     }
@@ -267,25 +276,24 @@ async function main() {
       lastModelResponse = content;
       const parsed = parseBusinessModel(content);
       const source = AI_MODEL ?? "unknown";
-      const business = { narrative: parsed.businessNarrative, canvas: parsed.canvas };
 
       const saved = await prisma.companyAnalysis.upsert({
         where: { entityId: company.id },
         create: {
           entityId: company.id,
-          business: toJsonValue(business),
+          canvas: toJsonValue(parsed.canvas),
           source,
           version: 1,
         },
         update: {
-          business: toJsonValue(business),
+          canvas: toJsonValue(parsed.canvas),
           source,
           version: { increment: 1 },
         },
         select: { version: true },
       });
 
-      console.log(`  Saved business overview and business canvas V${saved.version} (${CANVAS_KEYS.length} sections)`);
+      console.log(`  Saved business canvas V${saved.version} (${CANVAS_KEYS.length} sections)`);
     } catch (err) {
       if (err instanceof Error && err.message.includes("JSON")) {
         try {

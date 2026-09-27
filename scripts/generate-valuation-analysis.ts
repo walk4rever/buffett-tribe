@@ -27,11 +27,31 @@ import {
 import {
   computeScenarios,
   computeValuationMetrics,
+  isInsufficientValuation,
+  VALUATION_INSUFFICIENT_STATUS,
+  type InsufficientValuation,
   type ScenarioInput,
   type ValuationMetrics,
 } from "@/lib/valuation-metrics";
 
 const ARTIFACT_TYPE = "valuation_analysis";
+
+// Record "checked, data insufficient" as a first-class state instead of
+// leaving valuation null — a null field makes onboard-company's verify treat
+// this legitimate skip as a step failure (exit 1, endless worker retries).
+async function writeInsufficientValuation(entityId: string, reason: string, missing: string[]) {
+  const sentinel: InsufficientValuation = {
+    status: VALUATION_INSUFFICIENT_STATUS,
+    reason,
+    missing,
+    checkedAt: new Date().toISOString(),
+  };
+  await prisma.companyAnalysis.upsert({
+    where: { entityId },
+    create: { entityId, valuation: toJsonValue(sentinel), source: "system", version: 1 },
+    update: { valuation: toJsonValue(sentinel), source: "system" },
+  });
+}
 
 const SYSTEM_PROMPT = `You are a professional value investment analyst. Generate a Chinese valuation analysis in JSON format.
 
@@ -166,6 +186,9 @@ async function main() {
 
     if (!company.ticker) {
       console.log("  SKIP: no ticker, cannot compute price-based metrics");
+      if (!dryRun) {
+        await writeInsufficientValuation(company.id, "no ticker, cannot compute price-based metrics", ["ticker"]);
+      }
       continue;
     }
 
@@ -173,7 +196,9 @@ async function main() {
       where: { entityId: company.id },
       select: { valuation: true, version: true, updatedAt: true },
     });
-    if (existing?.valuation != null && !force) {
+    // A sentinel is not real content: re-attempt on every run (no --force
+    // needed) so the analysis fills in automatically once FY data arrives.
+    if (existing?.valuation != null && !isInsufficientValuation(existing.valuation) && !force) {
       console.log(`  SKIP: already has ${ARTIFACT_TYPE} v${existing.version} (${existing.updatedAt.toISOString()}), use --force`);
       continue;
     }
@@ -191,7 +216,19 @@ async function main() {
         metrics.priceToFcf != null ||
         metrics.revenueCagrPct != null);
     if (!hasUsableMetric) {
-      console.log("  SKIP: insufficient data (need FY financials + stock prices)");
+      const [fyCount, priceCount] = await Promise.all([
+        prisma.financial.count({ where: { entityId: company.id, periodType: "FY" } }),
+        prisma.stockPrice.count({ where: { ticker: company.ticker } }),
+      ]);
+      const missing = [
+        ...(fyCount === 0 ? ["fy_financials"] : []),
+        ...(priceCount === 0 ? ["stock_prices"] : []),
+      ];
+      console.log(`  INSUFFICIENT: no usable valuation metric (missing: ${missing.join(", ") || "none — data present but no computable metric"})`);
+      if (!dryRun) {
+        await writeInsufficientValuation(company.id, "insufficient data (need FY financials + stock prices)", missing);
+        console.log("  Recorded insufficient-data sentinel");
+      }
       continue;
     }
 

@@ -109,6 +109,16 @@
   - **做法**：按 filing 逐个重跑 `npm run import:10k -- --ticker X --from Y --to Y`（DIS 2020 已用此法验证：21 个 section 全部补齐，`search-filings` 测试耗时从 101s 降到 9.25s）。**应在 mini 上跑**（CLAUDE.md 的既定分工），注意 mini 到 R2 延迟约为 air7 的 4 倍，645 份 filing 是个长活，建议分批 + 失败隔离。
   - **相关未决**：`FULL_TEXT_FETCH_TIMEOUT_MS`（45s × 2）相对实测 R2 延迟偏小，回填做完后这条兜底路径的压力会大幅下降，可再评估是否仍需调整。
 
+- [x] **㉒ 统一优先队列生产加固：估值哨兵、CN 招股书兜底、40-F EX-1.x 附件与快速通道筛选修正**（2026-09-27 完成上线，详见 `PRODUCT.md`「v0.45.24 变更」）：
+  - **落地成果**：
+    1. **估值分析「数据不足」哨兵**：新上市/未上市公司（SPCX 仅招股书单季数据）此前陷入「生成脚本正确跳过 → onboard 校验判失败 → 每小时重试再失败」死循环并霸占快速通道队首；现写入显式哨兵（`status: "insufficient_data"` + 缺失项清单），校验通过、Phase 推进、优先级清零，FY 数据补齐后自动重查产出正式估值；
+    2. **A 股招股说明书兜底（`cn-prospectus`）**：长鑫科技（688825，上市当年无年报）等次新股不再硬失败，自动回退 cninfo 招股说明书检索 + 章节化抽取（章节定位新增 `require_chapter_heading` 防概览小节误匹配），证据链/参考资料/阅读页全链路打通，长鑫 2 分钟完成 Phase 2 含正式估值；
+    3. **40-F EX-1.x 附件支持**：Shopify 等加拿大发行人按 40-F 官方 exhibit 体系（EX-1.1 AIF / EX-1.3 MD&A）归档而非 EX-99.*，抽取器过滤器与分类器均已支持，SHOP 四个 40-F 年份补齐切片并在 cron 批次直接跑通 Phase 2；
+    4. **Admin 快速通道筛选语义修正**：`/admin/universe` 筛选/计数/徽章三处旧语义（仅 Phase 0）改为与 Worker 一致的 `onboardPhase IN (0,1) AND priority > 0`；
+    5. **商业画布写顶层 `canvas` 列**：DEPRECATED `business` JSON 停止写入，历史 7 行已回填（`scripts/migrate-canvas-field.ts`）；
+    6. **Hourly priority worker cron 在 mini 正式启用**（每小时 15 分，batch 15 = 快速通道优先 + standard P0 轮巡补齐，前两批消化 ~20 家 P0 全部成功）。
+  - **遗留已知问题**：VOD 等巨型 20-F 发行人重导时 edgartools helper 480s 默认超时不够（`--extract-timeout-ms` 可配但 onboard 未传），实测接线中；SPAC（CSTAF）估值门槛过宽（信托利息 PE 无意义）待收。
+
 - [ ] **① 年报阅读页重新设计 — 仅剩"一键切换中文"未做**（2026-07-21，v0.39.12 已发布左侧目录/附件删除 + 字体行距控件 + AI 解读分栏，结论见 `PRODUCT.md`「年报阅读」「v0.39.12 变更」）：
   - **2) 一键切换中文**（保留年报原样式结构，只译文字）——两个方案未拍板，讨论中倾向认为该做小样本效果对比再定：
     - 方案 A：iframe 加载后遍历文本节点原地替换，CSS/表格/排版原样不动，最贴合"保留原样式"的字面要求；风险是 SEC inline XBRL HTML 极度碎片化（Ferrari 那份文件顶层就有 4814 个 div，一句话常被拆成多个 `<span>`），逐节点翻译缺上下文，译文质量堪忧，金额/代码等不该翻译的内容也需要小心跳过。

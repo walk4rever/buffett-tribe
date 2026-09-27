@@ -1,536 +1,114 @@
-# Handoff — 批量公司 Onboarding（2026-08-29 ~ 08-30）
+# Handoff — Value Tribe 运维与管线状态（2026-09-27 清理重写）
 
-## 这是什么
+> 本文件是跨会话交接的单一入口。只保留「当前状态 + 未解决问题 + 仍需引用的背景」；
+> 已完成事项压缩到文末归档。每次会话结束时更新并重写本节日期。
 
-清理 `/company` 页面"待完善"分组的存量——DB 里有 13F 持仓提到但从未 onboard 的公司桩（`Financial` 行数为 0）。开始时 259 家，全部美股。目标是批量跑 `onboard:company` 补全 Financial + 五段 LLM 生成内容（profile/business/moat/management/valuation）。
+## 一、当前状态快照
 
-## 执行地点：从 air7 迁移到 mini
+### 部署三处（版本对齐情况）
 
-**air7（阿里云新加坡）跑批次 1（50 家）时触发了硬重启**——3.4G 内存的机器上除了 buffett-tribe 的 pi-gateway/gbrain，还挤着一个完全无关的项目 **pi-matrix**（docker-compose，6 个容器：litellm + 5 个 uvicorn + orchestrator，常驻吃掉 ~820MB），叠加批量任务处理大文件（诺基亚 18MB 的 10-K）瞬时内存飙升，触发 OOM，进而系统级 panic 重启（不是单进程被 kill 那么轻）。
-
-**处理**：
-- pi-matrix 全部停止+移除（`docker compose down` + 单独 `docker rm` 两个动态起的 executor 容器，都是 `restart: always`，必须删除不能只 stop）
-- air7 加了 2G swap 兜底
-- 最终决定：**批量 onboard + 两条股价周更 cron 全部迁移到 mini**（Mac mini M4，32G 内存，ssh 别名 `mini`）。air7 上只留 `pi-gateway-buffett-tribe`（`/agent` 实时聊天网关，必须留在云主机）
-- air7 上的 `/root/cron-job-buffett-tribe` checkout 已删除，crontab 已清空 buffett-tribe 条目
-- mini 上环境：`~/buffett-tribe`（repo + node_modules + `.venv`），`.env.local` 手动放置（DB/AI/R2 共 10 个变量），crontab 复用 air7 同款两条（周六 01:00 cn,hk / 周日 01:00 us，mini 系统时区已是北京时间）——两条 cron 都用跟 crontab 一致的受限 PATH 手动模拟触发验证过，全部成功
-
-**已知代价**：mini 到 Cloudflare R2 的网络延迟比 air7 高约 4 倍（实测 TLS 握手：air7 ~55ms vs mini ~210-230ms）。10-K 导入每个 section 要归档 2 份文件到 R2（文本+区块 JSON），一份 filing 20+ 个 section、6 年份 filing，全部串行，单公司这一步能到 3-12+ 分钟，比在 air7 上明显慢。见下方「效率问题」一节——**这个描述本身不准确，两份文件里有一份根本不该写，已在 P1 停写（见下）**。
-
-## 本轮修复的真 bug（均已本地 typecheck/lint 过，部分已在 mini 上跑通验证）
-
-1. **批量循环无容错**——`onboard-alpha-investor.ts --onboard-holdings` 原来一个 ticker 失败就拖垮整批。抽成共享helper `scripts/lib/onboard-batch-runner.ts`（`onboardTickersWithFailureIsolation`），catch+log+continue+汇总失败列表。
-2. **`generate-valuation-analysis.ts` 的 P/E 门槛误杀亏损公司**——原来 `pe.current == null` 就整篇跳过；改成只要 `pe.current`/`priceToOcf`/`priceToFcf`/`revenueCagrPct` 任一可用就生成，P/E 缺失时 prompt 明确告诉 LLM 用 P/OCF、P/FCF、营收增速代替，不许编造 PE 数字。
-3. **情景测算对负 EPS 公司算出荒谬的负股价**——`src/lib/valuation-metrics.ts` 的 `computeScenarios()` 原来只判空不判负；ACVA 这类全亏损年公司放宽 P/E 门槛后暴露：情景算出 `impliedPrice: -9.42` 这种负数股价。已加 `latestEps <= 0` 判空，补了单测（`tests/valuation-metrics.test.ts`）。
-4. **`onboard:pending` 批量脚本没装 edgartools**——`scripts/deploy-cron-job.sh` 原来只在部署时装 yfinance，没装 edgartools，第一次在 air7 上试跑直接 `ModuleNotFoundError`。已加 `-r requirements-edgartools.txt`。**mini 上没走这个脚本，是手动装的，装了 edgartools+yfinance+akshare+pypdf+pymupdf 全套**。
-5. **AVAV（AeroVironment）10-K 导入选中了同一财年的原始 filing + 10-K/A 修正案两份**——`scripts/edgartools_annual_report_extract.py` 原来按年份范围选 filing 时没去重，修正案通常只改一部分内容、抽不出完整 section，触发 per-filing 零 section 校验失败。已按 `report_date` 去重，同财年优先保留非 `/A` 版本。**这个 bug 会影响任何历史上发过 10-K/A 的公司，不只 AVAV**，已验证修复且清理了 AVAV 之前写入的那条 0-section 脏数据（`ExtSource` 表）。
-6. **股价周更 checkpoint 会永久冻结**——最严重的一个，**独立于本轮批量任务，影响所有未来的周更 cron**。`fetch-stock-prices-yf.py` 的 skip 判断只比对"参数签名"，而 `--start` 是从当前 `StockPrice` 最大日期反推的；一旦某个 ticker 被跳过一次，它自己的最大日期就不再前进，下一次（哪怕一周后）算出的签名完全相同，于是又被跳过——自锁循环，一旦触发就永远不会再更新。已加 20 小时过期窗口（保留同批次崩溃重跑不必重下的本意，同时保证跨周一定会重新检查）。**这个是 2026-08-30 用户怀疑"美股那次周更没成功"顺藤摸瓜挖出来的，如果没有这次排查，价格数据会在 2026-08-28 那天永久卡住**。
-7. **`onboard-company.ts` 断点丢失后重跑，会把"合法跳过"误判成"失败"**——`verifyCompanyAnalysisField()`（原名 `wasCompanyAnalysisFieldUpdatedSince`）原来只认"这一步是不是刚写入的"，不认"这个字段本来就有值"。迁移到 mini 后本地 checkpoint 全部丢失（`.cache/onboard-company/` 没跟着 rsync），重跑已经成功过的公司时，`generate:*` 脚本正确跳过（"already has X, use --force"），但校验逻辑仍判定失败——VEEV 撞上过。已改成：无 `--force` 时字段非空即算成功；有 `--force` 时保留原来的"必须是这一步写入的"严格校验（防止 `--force` 重跑时 LLM 静默超时却误报成功）。
-
-## 已知但故意不修的两个缺口
-
-- **INTC（Intel）**：10-K 导入财务数据成功，但 6 份 filing 全部抽取出 0 个 section。查到根因是 Intel 的 TOC 表格结构被 `collectRenderableBlocks()` 整个折叠成一个巨大 table block（"Item Number | Item Part I Item 1. | Business: ..." 这种表头+多行拼一起），`isLikelyItemHeadingTable()` 的正则匹配不上开头。这是抽取器的深层结构问题，TODO.md 里已经记过同类故障好几次（RACE 页脚锚点、INTU 连字符标题），需要专项时间做回归测试，本轮没有动手改。
-- **BTGO（BitGo）**：section 抽取正常（23 个），但 `parse inline facts: facts=0` ——它的 10-K 主文档没有 `ix:` inline XBRL 标签（用 SEC 官方 API 核实过，`xmlns:ix` 命名空间根本没声明）。大概率是刚上市公司还在传统 XBRL（非 inline）豁免期内，我们的财务推导逻辑只认 inline XBRL。这是能力缺口，不是 bug，跟当年"CN/HK 需要独立抽取路径"是同一类问题。
-
-## 当前进度
-
-- 起始待处理：259 家（全美股）
-- 已排除 1 家非公司 ticker（QQQ，ETF，`onboard:pending` 现在会自动过滤）
-- **批次 1（air7，50 家）**：42 成功，8 失败（VEEV/VECO/AVAV/NOK/JOBY/AMBQ/INTC/BTGO）——除 INTC/BTGO 外全部已在后续处理中解决或确认为合理跳过
-- **批次 2（mini，50 家，跑了 6.5 小时后用户手动叫停）**：27 成功，4 失败尝试（BTGO/GEMI/VOYG/NKE）+ 1 家被中断（GRAB）——NKE 已续跑成功，GRAB 续跑中，GEMI/VOYG 确认合理跳过
-- **当前剩余待处理：约 175 家**
-
-## 效率问题：根因已查清，方案 P0-P3 已落地为代码（2026-08-30，未 commit/未部署/清理脚本未跑——见文末「当前状态与部署清单」）
-
-**先说结论：之前记的「需要把 section 级 R2 归档改成并发批量上传」方向是错的。真正的问题是这两份 section 文件里有一份根本不该写——写入路径还在跑，读取路径 2026-06-13 就被删干净了，中间隔了两个半月没人发现。**
-
-### 时间线
-
-- **`9722cc8a`（2026-06-13）** 年报阅读器从「分章节懒加载」改成 **iframe 直接指向 `primary_html`**。commit message 原话：*"section_text / section_html / section_blocks FilingArtifacts are now unused"*，并写了 `scripts/cleanup-section-artifacts.ts` 一次性删掉 **3 万行** R2 对象 + DB 行。
-- **写入端（`scripts/lib/filing-section-storage.ts`）漏删了**——它最后一次改动是 06-09，清理 commit 是 06-13，压根没被碰过。
-- 于是此后每一次 onboarding 都在原地重新造一遍垃圾。生产库现状（2026-08-30 查）：
-
-```
-kind             行数      总大小     创建时间
-section_blocks   13,986   2,546 MB   100% 在 2026-06-14 之后
-section_text     14,303     324 MB   100% 在 2026-06-14 之后
-primary_html      1,337   5,538 MB
-```
-
-### 前提：FilingSection 只有一个生产读者
-
-做任何取舍之前先确认消费方，`grep` 结果很干净：
-
-- 年报阅读器读的是 `primary_html`（美股 iframe，`FilingReader`）或 `primary_pdf`（CN/HK，`PdfFilingReader`）——见 `src/app/company/[id]/annual-report/[year]/page.tsx:44` 起，**全程不碰 FilingSection**
-- `/api/filing-section` 是全站唯一读 FilingSection 的 app 代码，且**零调用方**
-- 唯一真实消费方是 pi-gateway 的 `search_filings`（裸 SQL）
-
-**所以 section artifact 的所有决策，只需要对着 `search_filings` 一个消费者判断。**
-
-### 三个市场的实测真相表（2026-08-30 生产库）
-
-| filing kind | 公司 | sections | 有 text artifact | 有 primary_html | 当前的全文路径 | 状态 |
-|---|---|---|---|---|---|---|
-| `10k` | 208 | 23,690 | 12,693（**54%**） | ✅ | 重解析 primary_html | 能用，慢 |
-| `20f` | 23 | 2,992 | 1,293（**43%**） | ✅ | 重解析 primary_html | 能用，慢 |
-| `40f` | 2（BN/SU） | 31 | **0** | ✅ 但是错的文档 | **两条路都断** | 🔴 静默降级 |
-| `cn-annual-report` | 7 | 168 | 168（100%） | ❌ | 只有 text artifact | 能用，唯一副本 |
-| `hk-annual-report` | 7 | 142 | 142（100%） | ❌ | 只有 text artifact | 能用，唯一副本 |
-| `us-prospectus` | 1 | 4 | 4 | ✅ 但 kind 不可解析 | 只有 text artifact | 能用 |
-
-两条之前没抓到的：
-
-**① 美股有近一半 section 根本没有 text artifact**（10-K 缺 10,997 条、20-F 缺 1,699 条），是 6 月一刀切删掉的存量。这直接决定了下面 P3 不能是简单"翻转优先级"——翻转后仍有 46% 落回重解析。
-
-**② 40-F 的全文在 `/agent` 上是坏的，而且不报错。**
-
-```
-BN 2025 management_discussion_and_analysis   真实 721,959 字符
-                                             search_filings 实际返回 ~1,869 字符（0.26%）
-```
-
-两条路同时踩空：40-F 的 section 从 EX-99 附件抽取（`upsert40FAttachmentSections`），key 是 `management_discussion_and_analysis` / `annual_information_form`；而 `fetchFullSectionContent()`（`services/pi-gateway/src/tools/search-filings.ts:155`）拿 40-F 封面表的 `primary_html` 去跑 10-K item 解析器，永远产不出这些 key；接着 `row.text_artifact_url` 又是 NULL（6 月删的）。两条都 null 之后，`search-filings.ts:259` **静默回退到 `row.content`**——被截断的预览。Agent 在用 0.26% 的 MD&A 回答 Brookfield 的问题，没有任何异常信号。
-
-### 单公司 onboard 的 R2 账（美股，6 份 filing × 平均 19.9 章）
-
-| 写什么 | 次数 | 体积 | 谁在读 |
-|---|---|---|---|
-| `primary_html` | 6 | ~25 MB | **刚需**：阅读器 iframe（`/api/filing-html`）+ `search_filings` 全文（现场重解析） |
-| `index_html` | 6 | ~0.1 MB | 无人读（但只有 6 次、每次 16KB，可忽略） |
-| `section_text` | ~120 | ~2.8 MB | US 上是 `search_filings` 的回退路径；HK/CN/40-F 上是**唯一**全文来源 |
-| `section_blocks` | ~120 | **~22 MB** | **零生产消费方** |
-
-**成本模型修正**：之前记的「210ms TLS 握手 × 840 次」不成立——`@smithy/node-http-handler` 里 `keepAlive = true` 是硬编码默认、`maxSockets` 默认 50，连接是复用的。真正的串行成本是**每个 artifact 三次往返**（`scripts/lib/filing-archive.ts:200 / 216 / 220`）：
-
-```
-Prisma findUnique  →  R2 PutObject  →  Prisma upsert
-```
-
-252 个 artifact × 3 ≈ **756 次串行往返，其中三分之二打的是 Supabase 不是 R2**。这个修正的意义：砍掉 `section_blocks` 只消掉一半，剩下一半仍是延迟绑定的，**并发才是承重的那一刀**——而且 socket 池（50）本来就够用，不需要额外配置。
-
-`section_blocks` 比之前记的更冤：`buildStoredFilingSectionData()` 在 `filing-section-storage.ts:109` 深拷贝每一个 block，只为了 `:126` 读一次 `.length`；而 `.map()` 恒等保长，`lightBlocks.length` 永远等于 `extracted.blocks.length`——**整个计算可证明是 no-op**，不只是"结果只用了长度"。上传的仍是没剥 html 的 `extracted.blocks`，那 2.5GB 绝大部分是每章 HTML 的第二份拷贝，第一份就在同一 filing 的 `primary_html` 里。
-
-### 为什么不能一刀切把两份都停掉、并跑 `cleanup-section-artifacts.ts` 清库
-
-**`section_text` 是 HK/CN 年报的唯一全文来源，删掉不可恢复。**
-
-```
-kind                sections  有text artifact  DB存的长度  真实长度  父级有primary_html
-cn-annual-report      168         168           8,000     60,063        0
-hk-annual-report      142         142           7,787     81,586        0
-us-prospectus           4           4           8,000    365,197     4（但 FilingKind 不含此 kind，解析器不支持）
-10k / 20f          26,682      13,986           2,266     20,850    26,672
-```
-
-HK/CN 走 PDF → pypdf 抽文本，**没有 `primary_html` 可重解析**，而 DB 里的 `content` 已被 `vacuum-bloated-tables.ts` 截到 8000 字符（真实 6-8 万字）。删 artifact = 87% 正文永久消失，只能重下 PDF 重抽。`a10942b8`（2026-07-27「search_filings now covers HK companies」）加的 `text_artifact_url` 回退分支就是为这条路存在的。
-
-**6 月那次一刀切已经造成过一次丢失**，就是上面那条 40-F 静默降级的来源。**`cleanup-section-artifacts.ts` 不能再原样跑第二次**——`scripts/cleanup-section-artifacts.ts:46` 是 `kind IN ('section_text','section_html','section_blocks')` 一把删，不区分来源。
-
-**另外，`section_text` 对美股 agent 其实是更便宜的路，只是没在用。** `search_filings` 每次带 section 的查询取 3 行，并行对每行执行 `fetchFullSectionContent()`：下载 4MB `primary_html` → 跑完整 10-K 的 cheerio 解析。**单次提问 = 12MB 下载 + 3 次全文解析**（代码注释自己承认 R2 读延迟 "sub-second to 2+ minutes" 大幅波动，所以加了重试）。而 `section_text` 只有 23KB、直接读、不用解析。它现在排在后面，只是因为 `15df715d`（2026-07-08）写这段时 section artifact 刚被 6 月删光、不可用。
-
-### 方案与落地状态（按必要性排序，2026-08-30 P0-P3 已完成，未 commit）
-
-**P0 — 修 40-F 全文（正确性问题，跟性能无关）—— ✅ 已完成**
-1. 对 BN / SU 在 mini 上重跑 `import:10k --from 2020 --to 2026`，`buildStoredTextOnlyFilingSectionData` 把 42 条 40-F section 的 text artifact 全部补回（此前 0/31 有 artifact；`code_of_ethics`/`audit_committee_financial_expert` 等此前从未提取过的 section 这次也一并写入）。已验证：BN 2025 `management_discussion_and_analysis` 的 `contentTextLength` 从 1,869（0.26%）恢复到 722,594（100%）。
-2. `services/pi-gateway/src/tools/search-filings.ts`：`fetchFullSectionContent()` 两条路都失败、只能回退到截断预览时，不再静默——在 excerpt 前拼一句可见警告（"⚠️ 完整正文暂不可用...请勿据此得出结论"），带真实长度对比。已过 L3 golden test（`search-filings.test.ts`）+ pi-gateway tsc + 根目录 lint/typecheck/vitest 全绿。**尚未部署到 air7**（改动在 `services/pi-gateway/` 下，需要 `deploy.sh` 才能生效，见下方"提交状态"）。
-
-**P1 — 停写 + 清理 `section_blocks`** —— ✅ 代码已改，清理脚本尚未执行
-- `scripts/lib/filing-section-storage.ts`：删掉 `archiveSectionBlocksArtifact()`，`buildStoredFilingSectionData()` 不再上传 blocks artifact，`blocksArtifactId` 恒为 `null`，`blockCount` 直接读 `extracted.blocks.length`（不再算无用的 `stripBlocksHtml()`，但保留该函数导出——`migrate-filing-sections-to-artifacts.ts`仍在用，那是另一个历史一次性脚本，不动它）。
-- `scripts/cleanup-section-artifacts.ts`：`kind` 过滤收窄为只删 `'section_blocks'`，并在文件头写清楚**为什么不能再把 `section_text`/`section_html` 加回这个 IN 列表**（6 月那次一刀切删过一次，40-F 那 31 条就是那次事故的产物，P0 刚修好）。
-- **清理脚本本身还没跑**——现在跑 `tsx scripts/cleanup-section-artifacts.ts --dry-run` 应该只报 13,986 个 `section_blocks`；确认后去掉 `--dry-run` 执行，删掉存量 2.5GB。
-
-**P2 — 把 `sectionConcurrency` 传进去** —— ✅ 已完成
-`scripts/import-10k-edgartools.ts`：新增 `SECTION_CONCURRENCY = 6` 常量，`upsertFilingSectionsFromHtml()` 调用点补上第 9 个参数。之前是默认值 1（`mapLimit` 写好了形同虚设）。
-
-| | 上传次数 | 上传字节 | 串行往返 |
-|---|---|---|---|
-| 改动前 | 252 | ~50 MB | ~756 |
-| P1+P2 之后 | 132 | ~28 MB | **~66** |
-
-**P3 — `search_filings` 优先读 text artifact，缺失时回退 primary_html** —— ✅ 窄范围版本已完成
-`fetchFullSectionContent()` 里两个分支顺序对调：先试 `text_artifact_url`（几十 KB，免解析），失败/缺失再回退 `primary_html` 重解析（几 MB + 完整 cheerio 解析）。**没有做的部分**：缺失的 12,696 条 text artifact（46% 的美股 10-K/20-F section）仍然是缺失状态，不会因为这次改动被补上——那是一个单独的、量级更大的 backfill 任务，本次只是让"已有的时候优先用",不改变"没有就还是重解析"这一半的行为，所以没有覆盖率回归。
-
-L3 golden test 结果（`tests/agent-tools/search-filings.test.ts`，连续跑 3 次）：HK（泡泡玛特）、CN（贵州茅台）、"list available sections"（AAPL）三个用例稳定通过——其中 HK/CN 两个用例正是验证"text artifact 优先"路径的用例。第 4 个用例（DIS 2020 10-K "Aspire"）连续 3 次失败，**确认与本次改动无关**：该 section 的 `textArtifactId` 本身是 `null`（我方改动的代码分支对它是纯 no-op），直接对其 `primary_html`（6.1MB）计时得到单次 fetch 75.5 秒，超过工具自身 `FULL_TEXT_FETCH_TIMEOUT_MS`（45秒/次 × 2 次重试 = 90秒预算）——是当前 R2 到本机的网络延迟处在代码注释早就承认的"2+ 分钟"区间的高位，命中了一个**预算不够用的既有问题**，不是本次四项改动引入的回归。**建议单独立项**：要么把 `FULL_TEXT_FETCH_TIMEOUT_MS`/重试次数调大，要么把这类大文件全文重解析的兜底也做成"先返回预览+警告，后台异步补全"，而不是让工具调用同步等 90 秒。
-
-**不要动**：`buildStoredTextOnlyFilingSectionData` 及 CN/HK/prospectus/40-F 的写入路径，一行别碰——这次全程没碰。
-
-**只提不删（CLAUDE.md §3）**：`/api/filing-section` 死路由、`index_html` 归档无消费方；另外 SPCX 那 4 条 `us_prospectus_1..4` 长度分别是 365,198 / 365,198 / 365,197 / 365,196，看起来是同一份文档的四份近似重复，不是真的分了 4 章。
-
-按当前未优化的速度，剩下 175 家还要 30-40 小时；P1+P2 落地后这个数字会大幅下降（清理脚本还没跑，P2 的并发已经在代码里，下次 onboard 批次会直接生效）。
-
-## 接下来怎么续跑
-
-**⚠️ 续跑前必须先把 mini 的代码同步到最新**——见下方「当前状态与部署清单」，mini 现在缺 6 个已发布的 bug 修复，也缺本次 P0-P3 的全部改动。原样在 mini 上跑 `onboard:pending` 会：继续用未隔离失败的批量循环（`onboard-alpha-investor.ts` 那份仍然是老代码是没关系的，`onboard:pending` 走的是新脚本 `onboard-batch-runner.ts`——这个从写出来就在 v0.43.35 之前，mini 上是有的；但 P/E 负值、40-F 去重、股价 checkpoint 冻结、`--force` 断点误判这 4 个修复 mini 没有）、继续写入已经决定要停掉的 `section_blocks`、并发仍是 1。
-
-```bash
-ssh mini
-cd ~/buffett-tribe
-export PATH=$HOME/node/bin:/opt/homebrew/bin:$PATH
-npm run onboard:pending -- --dry-run          # 先看还剩多少、都是谁
-npm run onboard:pending -- --limit 50         # 建议继续按 50 一批，别一次性跑完
-```
-
-每批建议：跑完看失败列表分类（合理跳过 / 已知缺口 / 真失败），抽查几家生成内容质量，确认没问题再开下一批。
-
-## 当前状态与部署清单（2026-08-30 会话结束时）
-
-代码分布在三个地方，版本互不一致，续跑或部署前先对照这张表：
-
-| 位置 | 6 个 bug 修复（`4bff4b33`/v0.43.36） | 本次 P0-P3 | 备注 |
-|---|---|---|---|
-| 本地 `main` 分支 | ✅ 已 commit 已 push | ✅ 已 commit（`dc19e425`+`524ae382`）已打 tag `v0.43.37` 已 push | — |
-| mini（`~/buffett-tribe`） | ❌ 缺失，仍是 v0.43.35 | ❌ 缺失 | 不是 git checkout（无 `.git`），代码靠人工同步，不会自动跟上 push——**这是目前唯一还没同步的地方** |
-| air7（pi-gateway，`/agent` 生产网关） | 不适用（独立部署单元） | ✅ 已跑 `deploy.sh` 部署，已重启 PM2，已 grep 确认部署文件含改动 | — |
-
-**✅ P0-P3 已全部落地（2026-08-30 会话内完成，更新于清理脚本执行后）**：
-
-1. **Commit + 部署 + 打 tag，已完成**：`dc19e425`（fix: stop writing zero-consumer section_blocks artifacts, fix silent 40-F truncation）+ `524ae382`（chore: bump version to v0.43.37），已打 tag `v0.43.37` 并推送到 `main`。`services/pi-gateway/deploy.sh` 已跑，air7 上的 `pi-gateway-buffett-tribe` 已重启并核实部署的文件里含 P0/P3 改动（grep 确认过）。
-2. **`section_blocks` 清理脚本已执行**：`--dry-run` 先确认只有 `section_blocks`（13,999 个，比复盘时的 13,986 略多——多出的是 BN/SU 40-F 补跑时 mini 还在用 P1 之前的旧代码写入的），确认后正式跑，R2 + DB 共删除 13,999 个对象。执行后复查 `FilingArtifact` 按 kind 分组：`section_blocks` 已归零，`section_text`（14,357）/`primary_html`/`primary_pdf` 等其他 kind 均未受影响。
-3. **验证**：lint / typecheck（app + scripts + pi-gateway）/ 根目录 vitest 全绿；`search-filings.test.ts` 的 4 个 L3 golden case 里 3 个稳定通过，第 4 个（DIS "Aspire"）因 2026-08-30 当次 R2 到本机的实测延迟（75.5s/6MB，超过工具自身 45s×2 的重试预算）失败，确认与本次改动无关（该行 `textArtifactId` 为 `null`，P3 的改动对它是 no-op）。
-
-**已经落地、不可逆的部分**（生产数据库已直接变更）：BN、SU 两家 40-F 公司的 42 个 `FilingSection` 全部补上了 `textArtifactId`（此前 0/31）；`section_blocks` 存量已从 R2/DB 彻底删除。
-
-**唯一还没做的事——同步 mini**：mini（`~/buffett-tribe`）的 `scripts/` 目录仍然落后两轮，既没有更早的 6-bug-fix 提交（`4bff4b33`/v0.43.36），也没有本次 P0-P3。**下次在 mini 上跑 `onboard:pending` 之前必须先手动同步这些文件过去**，否则会继续写入已经决定停掉的 `section_blocks`（清理脚本只是删存量，不会阻止旧代码继续产生新的）、并发仍是 1。
-
-**新发现、不在 P0-P3 范围内、建议单独立项**：`FULL_TEXT_FETCH_TIMEOUT_MS`（45秒 × 2 次重试 = 90秒预算）相对 2026-08-30 实测的 R2 延迟（6MB 文件单次 fetch 75.5 秒）偏小，`search_filings` 对没有 text artifact 的大 section 做 `primary_html` 现场重解析时有真实概率超时降级到截断预览（叠加 P0 的警告后至少不会再是静默的，但仍是能力缺口）。
-
----
-
-# Handoff 追加 — 品牌改名 Value Tribe + DIS 测试根因订正（2026-08-30 第二次会话）
-
-## 1. 品牌改名：巴菲特部落 · Buffett Tribe → 价值部落 · Value Tribe
-
-起因是讨论「给美国市场用户做一条主力支线」。结论是**不 fork、不开长期 branch**——数据层（13F / 10-K / filing sections / 股价）本来就是英文源数据，`Chunk` 表更是早已 `contentEn`（必填 100%）+ `contentZh`（95% 覆盖）的英文优先双语结构，检索三条路径全查 `contentEn`。英文版真正的增量成本只在表现层和生成内容，fork 会把 105 个脚本和 schema 复制一份、每个管线 bug 要修两遍。完整方案（locale 载体、schema locale 维度、分期）见下方第 3 节。
-
-改名本身作为方案的 P0 单独发布（域名暂不处理，用户明确押后）。
-
-- **新增单一真源**：`src/lib/brand.ts`（`BRAND_ZH` / `BRAND_EN` / `BRAND_FULL`）+ `services/pi-gateway/src/brand.ts`（pi-gateway 是独立 deployable，无法跨包 import，两份需手动同步，文件注释里写明了）。
-- **改动面**：Next.js 应用 24 个文件、pi-gateway 2 个 tool 的 label/description + `AGENTS.md`、`scripts/send-announcement.ts`、README/PRODUCT/CLAUDE.md。
-- **刻意未改的内部标识符**（改了会破坏线上数据或部署）：R2 key 前缀 `buffett-tribe/users/...`、PM2 进程名与远端目录 `pi-gateway-buffett-tribe`、`package.json` 的 `name`、`/api/mcp` 的 MCP server `name`、以及全部域名（含分享卡片上的 `https://buffett.air7.fun`）。
-- **刻意未改写的历史记录**：`PRODUCT.md` 的 2026-08-28 变更日志条目、`TODO.md:189` 的 v0.43.5 条目——它们记述过去发生的事，其中还引用了 `InsightPost.source` 当时的真实数据值，改写历史日志是错的。
-- **生产数据迁移（已执行，不可逆）**：`InsightPost` 的 `source` 6 行、`author` 6 行、`contentRaw` 英文 6 行 + 中文 1 行，全部由旧品牌改为新品牌。做这个是因为 `/insights` 把 `source` 直接当标签渲染、且 `master-data.ts` 的徽章映射是拿它当键查的，不迁移会出现「站点已改名但这 6 篇仍显示旧名」。迁移完成后 `master-data.ts` 里过渡用的旧键别名已删除。
-
-## 2. 订正：DIS "Aspire" 测试失败的真实根因不是 R2 延迟
-
-上一节记录把它归因为「R2 到本机延迟 75.5s 超过 45s×2 预算」。**这个结论不完整**。真实根因是 **`section_text` artifact 缺失**：
-
-- DIS 2020 的 `item_1_business` 全文 83,675 字，`FilingSection.content` 只存了 3,000 字预览，而 `textArtifactId` 为 `null`。`FilingSection.textArtifact` 的外键是 `onDelete: SetNull`，所以 **artifact 一被删，链接就自动变 NULL**——这正是早期那版「三种 kind 全删」的 `cleanup-section-artifacts.ts` 造成的，上次只回填了 BN/SU，没回填其他公司。
-- 走 `primary_html` 现场重解析这条兜底路径时，DIS 2020 的 primary_html 有 6.1MB，确实会撞上延迟预算——但那只是**第二重失败**，不是根因。
-- **修复**：`npm run import:10k -- --ticker DIS --from 2020 --to 2020` 重导一次，21 个 section 全部补上 text artifact。测试通过，且耗时从 **101s 降到 9.25s**（走上 text artifact 快速路径，不再重解析 6MB HTML）。
-
-上次记录里「P3 的改动对它是 no-op」的说法也需要订正：P3 加的降级警告**正常工作**——工具如实输出了「⚠️ 完整正文暂不可用……原文共 83,675 字，此处仅 3,000 字，请勿据此得出结论」。P3 把一个静默的错误变成了一个可见的错误，这正是它该做的；测试失败是**被 P3 暴露出来的真实数据缺陷**，不是 P3 的回归。
-
-## 3. 新发现的真实缺口：4,780 个 section 正在提供降级内容
-
-顺着上面的根因全库普查（判据：`textArtifactId is null AND length(content) < contentTextLength`，即「没有全文 artifact，且存的确实是被截断的预览」）：
-
-| 指标 | 数量 |
+| 位置 | 状态 |
 |---|---|
-| 降级的 FilingSection | **4,780** |
-| 涉及公司 | **110** |
-| 需重导的 filing | **645** |
-| 平均可用正文比例 | **27.4%** |
+| 本地 `main` | 最新。**有未 commit 改动**（见下） |
+| mini（`~/buffett-tribe`） | 已 rsync 到今天最新（含未 commit 改动）。⚠️ mini 不是 git checkout（无 `.git`），代码靠人工 rsync，**跑任何任务前必须先同步** |
+| air7（pi-gateway `/agent` 网关） | v0.43.37 已部署。本轮改动不涉及 pi-gateway |
 
-按 `extractionVersion` 看分布更清楚：v2 共 10,857 个 section，**text artifact 数为 0**（那一代根本没有这个机制）；v3 共 16,181 个，14,342 个有、1,839 个缺。8/29–8/30 两批重新导入的（8,965 + 1,117）则 100% 完整——说明**当前写入路径是对的，这是历史存量问题**。
+**未 commit 改动（2026-09-27，13 个文件 + 本文件）**：
+- `src/lib/valuation-metrics.ts`（哨兵类型）
+- `scripts/generate-valuation-analysis.ts`（估值哨兵）
+- `scripts/generate-business-model.ts`（canvas 写顶层字段）
+- `scripts/migrate-canvas-field.ts`（一次性迁移，已执行）
+- `tests/valuation-metrics.test.ts`（哨兵用例）
+- `src/app/api/company/search/route.ts`、`src/app/(admin)/admin/universe/page.tsx`、`src/components/admin/AdminUniverseExplorer.tsx`（快速通道筛选修复）
+- `scripts/fetch-cn-annual-report.py`（招股书兜底：无年报时搜招股说明书，`require_chapter_heading` 防概览小节误匹配）
+- `scripts/import-cn-annual-report-from-file.ts`（支持 `filingKind: cn-prospectus`）
+- `scripts/onboard-company.ts`（CN step verify 接受 cn-prospectus）
+- `scripts/lib/company-generation.ts`、`src/lib/company-data.ts`、`src/app/company/[id]/annual-report/[year]/page.tsx`（cn-prospectus 接入证据/参考资料/阅读页）
+- `scripts/lib/annual-report-import-core.ts`（40-F 附件抽取接受 EX-1.x）
 
-受影响最多的公司：BABA(85 section/8 filing)、LUV(70/7)、TM(69/6)、JOYY(67/6)、TSM(65/6)、NETTF(65/6)、RH(65/7)、GOTU(65/6)、AAL(63/6)、LBTYK(63/12)、TSLA(62/10)。
+### 优先队列 / Phase 分布
 
-**影响**：`/agent` 的 `search_filings` 对这 110 家公司回答年报类问题时，平均只能看到 27% 的正文。P3 的警告保证了它不会静默撒谎，但能力缺口是真的。
+- 优先通道当前只剩 **1 家滞留**：`VOD`（phase=1/priority=100）— 根因见问题 1。
+- 长鑫、SHOP、美的今日全部 phase=2（长鑫/SHOP 的 priority=100 残留但 phase=2 已出队，不会再被选中；如需清零：`UPDATE "Entity" SET priority = 0 WHERE ticker IN ('688825.SS','SHOP')`）。
+- 今日已完成 13 家 P1→P2（SPCX、CSTAF、BIDU、TCOM、QXO、BSP、300760.SZ、2097.HK、688825.SS、SHOP、000333.SZ 等）。
 
-**建议**：立项做一次 645 filing 的 `import:10k` 回填。这是个大活（每个 section 一次 R2 写入），按 CLAUDE.md 的既定分工应在 **mini** 上跑，且注意 mini 到 R2 的延迟是 air7 的约 4 倍。已作为 P0 记入 `TODO.md`。
+### Cron（mini）
 
-## 4. 美国市场支线的完整方案（已与用户对齐，尚未开工）
+- ✅ 股价周更两条在跑：周六 12:00 cn,hk / 周日 01:00 us（mini 系统时区北京时间）
+- ✅ **Hourly priority worker 已启用（2026-09-27 下午）**：每小时 15 分，`hourly-priority-worker.sh 15 all`，日志 `~/logs/buffett-tribe/priority-worker.log`（旧 `phase1-worker.log` 停用）。页面上加快速通道的公司最迟下一个整点 15 分被处理。
+  - 行为要点：PID 锁防重入；35 分钟硬超时直接 exit，被中断的公司靠 onboard checkpoint 下次续跑；batch 15 = 快速通道优先 + **standard P0 三市场轮巡补齐**（前两批实测：每批消化 ~13 家 P0）。
+  - 前两批实测（17:15/18:15）：快速通道 SHOP✅、美的✅、VOD❌（见问题 1），standard 补位 ~20 家全部成功。
 
-已定的两个前提：**整站统一改名 Value Tribe**（一个品牌两个 locale，顺带规避在美国用 Buffett 名字做商业产品的商标/姓名权风险）；**英文内容从源数据独立生成**（不从中文翻译——中文本身就是从英文源数据生成的，再翻回去是二次损耗）。
+## 二、未解决问题（按优先级）
 
-三条架构决策：
+### 会堵队列
 
-1. **locale 载体 = `[locale]` 路由段 + middleware 重写**，不是 header 注入——locale 若来自 `headers()` 会让每个页面退化为动态渲染，丢掉现有静态/ISR 能力。路径策略保守优先：中文留在根路径**一个 URL 都不改**，英文走 `/en/*`。
-2. **生成内容用 locale-keyed 行**（`@@unique([entityId, locale])`），**故意不沿用** `Chunk` 的 `contentEn`/`contentZh` 配对列——那里两语种是翻译派生、1:1、永远 2 种；这里是各自独立生成、需独立重生成、语种数开放，配对列会让 5 字段 × N 语种列数爆炸。
-3. **`onboard-company.ts` 不按 locale 分叉**，照抄既有的 market 纪律，locale 只是 `steps` 的参数。
+**1. VOD edgartools helper 480s 超时**
+VOD 有 7 份 20-F（2020-2026）全部 0 section（历史桩），step 1 重导时 helper 在 480s 默认超时内处理不完巨型 20-F（沃达丰年报 10-20MB HTML × mini→SEC 网络）。`--extract-timeout-ms` 参数已存在但 onboard-company 没传。正在用 30min 超时手动验证耗时，之后决定接线值。
 
-分期（每期独立可发布）：P0 改名（**本次已发布**）→ P1 locale 骨架（只启用 zh，站点行为不变）→ P2 文案抽取（1,112 行 / 98 文件入字典）→ P3 schema + 管线（migration + 8 个 `generate-*.ts` 加 `--locale`）→ P4 批量生成 + agent locale 化 → P5 法务页/邮件/hreflang。
+### 影响内容质量
 
-**开工前必须先处理的风险**：英文 token 密度约为中文的 1.5–2 倍，按中文输出调好的 `max_tokens` 跑英文时会静默截断；而本仓库已知**没有截断检测+重试机制**（见记忆「LLM截断检测缺口」）。P4 是 244 家 × 5 步 = 1,220 次调用，**建议把截断检测提到 P3 之前做**，否则会烧钱产垃圾。
+**2. SPAC 拿到无意义估值**
+CSTAF 生成了「正式」估值（PE 39.55，信托现金利息算的），三情景隐含回报全 null。哨兵门槛「任一可用指标即生成」对空白支票公司太宽。
+**修法**：排除 SIC 6726 / 空白支票公司，或要求有实际营收才算「可用指标」。
 
-另外「Value Tribe」是个相当通用的名字，动手处理域名前需确认 `valuetribe.com` 可得 + USPTO 无冲突。
+**3. business/moat 步骤的同款「合法跳过判失败」未修**
+`scripts/generate-business-model.ts`「no usable filing section evidence」和 `scripts/generate-value-analysis.ts:170` 的跳过路径仍留 null → verify 判失败。9 家实测没踩到（step 1 重导把 sections 都抽出来了），但 BTGO 这类公司必踩。
+**修法**：推广估值哨兵同款 pattern，但 canvas/moat 前端消费面更大，需先评估。
 
-## 5. 顺带发现、未修
+**4. SPCX 财务数据质量存疑**
+单季 CapEx $28.5B（营收仅 $4B）、新上市公司 $4.4B 回购，疑似招股书抽数口径错误（可能是累计值）。需对照 S-1 原文核实——否则未来 FY 数据到了自动生成的估值建立在脏底子上。
 
-`scripts/import-beneficial-ownership.ts` 有 6 个既有 typecheck 报错（`formData.coverPageHeader` possibly undefined，220/221/223/249/250/252 行）。`npm run typecheck:scripts` 不在 CI 门禁里，所以一直没暴露。本次未修（与改名无关）。
+### 技术债 / 小项
 
-## 追加 — 站点域名迁移到 vt.air7.fun（2026-08-30）
+**5. `onboardPhase2Attempts`/`onboardPhase2LastError` 字段不存在**
+2026-09-27 上午的 handoff 声称 worker 会记录这两个字段，但 `prisma/schema.prisma` 的 `Entity` 模型里没有。重试计数要么没实现要么记在别处——若没落库，滞留公司的失败历史不可见。需核实。
 
-**订正一个长期存在的文档错误**：`CLAUDE.md` 和 `PRODUCT.md` 一直写着站点跑在 `buffett-tribe.com`，实测该域名**根本不解析**。真实生产域名一直是 `buffett.air7.fun`（Vercel 直接托管，sin1 region，air7 的 nginx 里没有它的 server_name——那里的 `buffett` 命中是另一个项目 talk-with-buffett 的 TTS/ASR relay）。已改为 `vt.air7.fun`。
+**6. 估值 tab 对哨兵是隐藏而非占位文案**（产品决策，待拍板）。
 
-**平台侧（用户已操作）**：Aliyun DNS 加 `vt` CNAME 指向 Vercel 签发的项目专属目标；Vercel 添加 `vt.air7.fun`；`NEXTAUTH_URL` 已更新。**`buffett.air7.fun` 被直接删除，没有设 308 重定向**——后果见下。
+**7. `scripts/import-10k-edgartools.ts:260` 日志文案过时**：还写 "section text/blocks"，P1 停写实际生效（DB `section_blocks` 保持 0），改一个字符串的事。
 
-**代码侧（5 处）**：
-- `src/lib/site-url.ts` 的 `DEFAULT_SITE_ORIGIN`——**这是唯一真正驱动线上绝对 URL 的地方**。`NEXT_PUBLIC_SITE_URL` 在 Vercel 里根本没设，一直走的是这个硬编码兜底值。
-- `InsightOverviewShareButton.tsx` 分享卡片上的域名文本，原本是硬编码字面量（没走 `SITE_ORIGIN`，最容易漏的一处），已改为引用 `SITE_ORIGIN`。
-- `scripts/send-announcement.ts` 的 `BASE_URL`。
-- `skills/buffett-tribe/SKILL.md` 的 11 处 `/api/tools` 调用地址。
-- `CLAUDE.md` / `PRODUCT.md` 的架构图。
+**8. `typecheck:scripts` 有 9 个既有报错**（`backfill-cn-repurchase` / `backfill-company-financials-fast` / `import-cn/hk-interim-report-from-file` / `import-beneficial-ownership`），不在 CI 门禁，一直未修。
 
-**确认过不需要改的**：没有 OAuth provider（只有 `CredentialsProvider`），无回调 URI；pi-gateway 和 `/api/pi` 都没有 origin 白名单，且 pi-gateway 是服务端调用不经浏览器；`relay.air7.fun`（`PI_GATEWAY_URL`）、R2 public URL、Supabase 都是独立端点；`next.config.ts` 无 redirects/images 白名单；数据库存量内容（`InsightPost.contentRaw`/`sourceUrl`、`Note`）里绝对域名 0 处；发件域 `air7.fun` 本身不变。
+**9. `scripts/send-announcement.ts:20` 发件地址 `buffet@air7.fun`（一个 t）与 `.env.local` 的 `RESEND_FROM=buffett@air7.fun` 不一致**，疑似笔误，未动。
 
-**已知损失（可恢复，但需要回 Vercel 操作）**：旧域名被删而非 301/308，导致三类历史链接永久失效——① 已发出去的分享图里的二维码（`ShareCard.tsx` / `/api/share/preview` 用 `SITE_ORIGIN` 现场生成，位图一旦渲染就写死了）；② 之前群发的公告邮件里的全部链接；③ `SKILL.md` 里旧的 `/api/tools` 地址（若有外部消费方）。Aliyun 的 DNS 记录仍在，**在 Vercel 重新 Add `buffett.air7.fun` 并设为 308 → `vt.air7.fun` 即可全部恢复**。
+## 三、仍需引用的背景
 
-**遗留缺口（未处理）**：`metadataBase` 仍未设置（OG/twitter 图走相对解析）；全站没有 `sitemap.ts` / `robots.ts`。两者都是既有问题，不是本次迁移引入的。另：`scripts/send-announcement.ts:20` 的发件地址是 `buffet@air7.fun`（一个 t），而 `.env.local` 的 `RESEND_FROM` 是 `buffett@air7.fun`（两个 t），疑似笔误，未动。
+### 执行环境
 
-**用户拍板（2026-08-30）：不设 308 重定向。** 已发布分享图里的二维码、之前群发公告邮件里的链接维持失效状态，不再挽回。Aliyun 的 DNS 记录理论上仍可用于恢复，但这是明确决定，后续会话不要再提醒或重提此项。
+- **批量/cron 任务都在 mini 跑**（M4/32G，ssh 别名 `mini`）；air7（3.4G 内存）曾因 OOM 硬重启，只留 pi-gateway。air7 到 Cloudflare R2 的延迟约为 mini 的 1/4。
+- mini 上 `npm run worker:priority -- --dry-run|--batch-size N [--timeout-mins N]` 手动触发；`worker:phase1` 是 `worker:priority` 的兼容别名。
+- 数据库是共享生产库（Supabase），本地/mini 跑的脚本都直接写生产。
 
-## 追加 — 删除 `skills/buffett-tribe` 对外 REST skill（2026-08-30）
+### 已知能力缺口（非 bug，立项才能解决）
 
-用户拍板：这个 skill（供外部 Claude 用户通过 `curl` 调用 `/api/tools/search`、`/api/tools/document` 查询巴菲特信件语料）"还没想清楚"，整个删除，不保留降级版本。
+- **INTC**：10-K TOC 被折叠成单个 table block，6 份 filing 全抽 0 section，抽取器深层结构问题（TODO.md 有同类记录：RACE、INTU）。
+- **BTGO**：10-K 主文档无 inline XBRL（传统 XBRL 豁免期），财务推导只认 inline XBRL。
+- **645 filing / 4,780 section 回填**（P0，在 TODO.md）：6 月一刀切删 text artifact 的存量，110 家公司 `search_filings` 平均只能看到 27% 正文。当前写入路径是对的，纯历史存量问题。
+- **`FULL_TEXT_FETCH_TIMEOUT_MS`（45s×2=90s）偏小**：大 primary_html 现场重解析有真实概率超时降级（P3 警告使其不再静默）。
 
-**排查过程中发现的真实 bug**（促成了这次删除，而不只是改名同步）：`skills/buffett-tribe/SKILL.md` 文档着完整的第三个工具 `graph`（`/api/tools/graph`，带参数表、响应格式、workflow 建议、两条 curl 示例），但 `bd88b065`（"retire Neo4j graph layer"）早就把这套图谱层和对应路由删掉了，`skills/` 目录的文档没有同步删——任何照着这份文档调 `graph` 端点的外部使用者会拿到 404。这个 skill 从未注册到本机 `~/.claude/skills`（不是内部在用），传播渠道只有这个仓库本身被 clone/引用。
+### 数据架构关键决策（不要回退）
 
-**删除范围**：
-- `skills/buffett-tribe/SKILL.md`（连带空出的 `skills/buffett-tribe/` 目录；`skills/` 目录本身保留——底下还有一个跟这次无关的 `supabase-postgres-best-practices` symlink）
-- `src/app/api/tools/search/route.ts`、`src/app/api/tools/document/route.ts`——这两个 REST 路由是专门为这个 skill 存在的，站内没有任何页面引用它们（`grep` 确认过）
+- **section_blocks 已停写并清零**（2026-08-30，v0.43.37）：它零生产消费方。`cleanup-section-artifacts.ts` 的 kind 过滤已收窄为只删 `section_blocks`——**绝不能把 `section_text`/`section_html` 加回 IN 列表**：`section_text` 是 CN/HK 年报唯一全文来源（PDF 路线无 primary_html 可重解析），6 月一刀切已造成过 40-F 静默降级事故。
+- **`search_filings` 优先读 text artifact**（P3）：缺失才回退 primary_html 重解析；两条路都失败时输出可见警告而非静默截断。
+- **FilingSection 唯一真实消费方是 pi-gateway `search_filings`**；年报阅读器走 primary_html/primary_pdf iframe，不碰 FilingSection。
+- **估值分析「数据不足」哨兵**（2026-09-27）：`CompanyAnalysis.valuation = { status: "insufficient_data", reason, missing, checkedAt }` 是「查过、数据不够」的一等状态，不是失败。哨兵被视为无内容，每次生成运行自动重查，FY 数据到了自动补正式分析。前端 `parseValuationPayload` 对哨兵返回 null → tab 隐藏。
+- **canvas 写顶层字段**（2026-09-27）：`generate-business-model.ts` 写 `CompanyAnalysis.canvas`；历史 `business.canvas` 已回填（7 行），`business` 旧值保留只读（`value-line-data.ts` 还读 `business.narrative` 做兜底），schema 字段待后续 migration 删除。
 
-**确认过不能删的**：`src/lib/mcp-tools.ts` 的 `toolSearch`/`toolGetDocument` 两个函数**必须保留**——`/api/mcp/route.ts`（对外 MCP 协议 server 的 `search`/`get_document` 工具）复用的是同一份实现，这是另一套独立且在 PRODUCT.md 里文档化的对外集成，跟被删的 REST skill 是两回事，不能连带删。已用 `grep` 确认 `mcp-tools.ts` 现在只被 `/api/mcp/route.ts` 一处引用。
+### 产品与品牌
 
-**内容范围判断**：清理前顺手核实过，这个 skill 的知识库范围本身没有过时——`Source` 表只有 `shareholder`（61 篇，1965–2025）和 `partnership`（33 篇，1958–1970），全是巴菲特本人的信，"Warren Buffett knowledge base" 这个定位描述是准确的，不是因为改名或范围过窄才删，纯粹是产品形态"还没想清楚"。
+- 品牌已改名 **Value Tribe**（v0.45.x，2026-08-30）：单一真源 `src/lib/brand.ts` + `services/pi-gateway/src/brand.ts`（两份手动同步）。刻意未改：R2 key 前缀、PM2 进程名、package name、MCP server name。
+- 域名 `vt.air7.fun`（Vercel sin1）。`buffett.air7.fun` 已删且**用户明确拍板不设 308 重定向，后续会话不要再提**。`metadataBase` 未设、无 sitemap/robots 是既有缺口。
+- **美国市场支线（已对齐未开工）**：英文从源数据独立生成（不翻译中文）；locale 载体 `[locale]` 路由段 + middleware 重写；生成内容用 locale-keyed 行（不用 Chunk 的配对列）；`onboard-company.ts` 不按 locale 分叉。分期 P0✅改名 → P1 locale 骨架 → P2 文案抽取 → P3 schema+管线 → P4 批量生成 → P5 法务页。**P4 前必须先做 LLM 截断检测**（英文 token 密度 1.5-2×，现有 max_tokens 会静默截断）。动手前确认 `valuetribe.com` 可得 + USPTO 无冲突。
 
----
+## 四、归档（已完成，仅供溯源）
 
-# Handoff 追加 — 统一优先队列 + Phase 1→2 自动推进机制（2026-09-27）
-
-## 背景与问题
-
-**现状**：
-- Phase 0 → Phase 1 的批处理工作正常（`pipeline-phase1-worker.ts` + cron 每小时15分）
-- Phase 1 公司只有基础概览（`profile`/`overview`），缺少深度分析内容（`business`/`moat`/`management`/`valuation`）
-- Phase 2 公司才有完整的商业分析内容
-- **数据分布（截至讨论时）**：
-  - Phase 0: 15,184 家（92.3%）
-  - Phase 1: 1,086 家（6.6%）
-  - Phase 2: 162 家（1.0%）— **只有 0.99% 的公司有完整内容**
-
-**核心问题**：Phase 1→2 的转化率极低（14.9%），大量公司停留在"半成品"状态，用户看到的商业模式、护城河、管理层、估值等页面是空白或占位内容。
-
-## 方案：统一优先队列 + 智能 Phase 推进（方案 A）
-
-### 设计原则
-用户通过"建档"/"分析"按钮标记优先处理的公司（`priority > 0`），worker 根据公司当前 `onboardPhase` 自动决定推进到下一阶段：
-- `onboardPhase === 0` → 执行 Phase 1（基础 onboarding）
-- `onboardPhase === 1` → 执行 Phase 2（深度分析）
-
-### 需要改动的部分
-
-#### 1. UI 层 — Phase 1 公司的"深度分析"按钮
-
-**Phase 0 公司的入口**（已存在）：
-- 位置：`/company` 页面搜索结果的 phase 0 卡片
-- 按钮文案：**"建档"**（⚡️ 图标 + 文字）
-- API：`/api/company/fast-track`
-- 行为：设置 `priority > 0`
-
-**Phase 1 公司的入口**（需新增）：
-- 位置：**公司详情页 tab 导航栏**（`CompanySectionTabs` 组件）
-- 显示逻辑：
-  - `onboardPhase === 1`：只显示 4 个可用 tab（价值线、财务分析、大师持仓、参考资料）+ **"⚡️深度分析"按钮**
-  - `onboardPhase >= 2`：显示全部 8 个 tab，**不显示按钮**
-  - **Phase 1 时不显示灰色锁住的 tab**（商业模式、护城河、管理层、估值），替换为统一的深度分析按钮
-- 按钮文案：**"深度分析"**（⚡️ 图标 + 文字）
-- 按钮样式：在 tab 导航栏右侧，与 tab 平级，视觉上用不同颜色/样式突出它是操作按钮而非内容 tab
-- API：复用 `/api/company/fast-track`
-- 点击后状态：
-  - 类似 Phase 0 的"已排队"状态（显示 ✓ + "已排队"）
-  - 或禁用状态显示"排队中…"
-  - 或按钮消失，显示提示文本
-
-**设计优势**：
-- 更直观：用户看到按钮就知道如何获取深度分析内容，而不是看到一堆锁住的灰色 tab
-- 节省空间：4 个锁住的 tab → 1 个行动按钮
-- 视觉更清爽：避免一半 tab 是灰色不可点击状态
-- 语义明确：行动路径清晰
-
-#### 2. Worker 脚本 — 混合处理 Phase 0→1 和 Phase 1→2
-**当前逻辑**（`scripts/pipeline-phase1-worker.ts`）：
-```typescript
-WHERE onboardPhase = 0 AND priority > 0
-ORDER BY priority DESC, priorityRequestedAt ASC
-RUN: npm run onboard:company -- --phase 1
-```
-
-**新逻辑**（需修改）：
-```typescript
-// 查询：同时获取 phase 0 和 phase 1 的优先公司
-const phase0Candidates = await fetchCandidates({ onboardPhase: 0, priority: { gt: 0 } });
-const phase1Candidates = await fetchCandidates({ onboardPhase: 1, priority: { gt: 0 } });
-
-// 合并并按优先级排序
-const allCandidates = [...phase0Candidates, ...phase1Candidates]
-  .sort((a, b) => {
-    if (b.priority !== a.priority) return b.priority - a.priority;
-    return (a.priorityRequestedAt || new Date(0)).getTime() - (b.priorityRequestedAt || new Date(0)).getTime();
-  });
-
-// 执行：根据当前 phase 决定执行什么
-for (const company of allCandidates) {
-  const phase = company.onboardPhase === 0 ? '1' : '2';
-  await runCommand('npm', ['run', 'onboard:company', '--', '--ticker', company.ticker, '--market', company.market, '--phase', phase]);
-}
-```
-
-**文件重命名考虑**：
-- `pipeline-phase1-worker.ts` 名称已不准确（不只处理 phase 1）
-- 建议重命名为 `pipeline-priority-worker.ts` 或 `pipeline-onboard-worker.ts`
-- 同步更新 `package.json` 的 script 名称和 `scripts/cron/hourly-phase1-worker.sh`
-
-#### 3. 批量大小与超时调整
-**成本差异**：
-- Phase 1：1 个 LLM 生成步骤（`overview`）
-- Phase 2：4 个 LLM 生成步骤（`business` + `moat` + `management` + `valuation`）
-- **时间比例**：Phase 2 ≈ 4× Phase 1
-
-**当前配置**（cron 脚本）：
-- `BATCH_SIZE = 20`
-- `timeout = 35` 分钟
-
-**调整方案**（用户选择：固定降低 batch）：
-- 降低 `BATCH_SIZE` 到 10-15，确保 Phase 0/1 混合处理时不超时
-- 保持 35 分钟 timeout 不变
-- **简单实现**：不做动态成本计算，避免复杂度
-
-**备选方案（暂不采用）**：
-- 方案 B：动态计算"成本单位"（Phase 1 = 1 unit, Phase 2 = 4 units），总 units 不超过阈值
-- 方案 C：分开计数（如：Phase 1 最多 15 家 + Phase 2 最多 5 家）
-
-#### 4. 优先级排序策略
-**默认策略**（保持简单）：
-- 按 `priority` 降序（数值越大越优先）
-- 同 priority 时按 `priorityRequestedAt` 升序（先请求先处理）
-- **Phase 0 和 Phase 1 混合排序**，不做人工倾斜
-
-**未采用的策略**（用户表示"不明白问题"）：
-- Phase 1→2 优先于 Phase 0→1（先服务已有内容的公司）
-- 或反之（先扩大覆盖面）
-
-### 实施清单
-
-**必须完成的改动**：
-1. ✅ 方案设计已确定（方案 A：统一优先队列）
-2. ✅ Phase 1 公司详情页添加"完善"加急按钮（UI + 样式 + 状态持久化）
-3. ✅ 修改 Worker 调度逻辑（`scripts/pipeline-priority-worker.ts`）：
-   - 查询逻辑：同时获取 phase 0 和 phase 1 的优先公司（`onboardPhase IN (0, 1) AND priority > 0`）
-   - 执行逻辑：根据当前 phase 自动决定传 `--phase 1` 还是 `--phase 2`，重试与失败次数按 phase 独立计数
-   - 日志输出：清晰标记每个公司的阶段跃迁（`[P0→P1 基础建档]` / `[P1→P2 深度分析]`）
-4. ✅ 调整 batch size：默认 batch size 统一下调至 15，timeout 保持 35 分钟
-5. ✅ 重命名 worker 脚本与相关引用：升级为 `scripts/pipeline-priority-worker.ts`，保留 `worker:phase1` 别名兼容，新增 `worker:priority`
-6. ✅ 更新 CLAUDE.md 的相关描述（统一优先队列与调度机制）
-
-**验证要点**：
-- Phase 0 公司标记优先后，下次 cron 执行 Phase 1
-- Phase 1 公司点击"分析"按钮后，下次 cron 执行 Phase 2
-- 混合批次不会因为 Phase 2 任务过多而超时
-- 日志清晰标记每个公司的处理阶段
-
-**已知风险**：
-- Phase 2 的 4 个 LLM 步骤耗时较长，batch size 必须保守设定
-- 用户可能会集中标记大量 Phase 1 公司，导致队列积压
-- 需要监控 cron 执行时间，必要时进一步调整 batch size
-
-**不在此方案范围内**：
-- Phase 1→2 的自动批处理（不依赖用户标记）— 这是另一个独立的产品决策
-- 优先级的自动过期或衰减机制
-- Phase 2 完成后的 priority 自动清零（当前机制保持不变）
-
----
-
-# Handoff 追加 — 统一优先队列（Phase 1→2 推进）全链路落地与接手指南（2026-09-27）
-
-## 一、本次上线总结（v0.45.23 + Worker 重构）
-
-本次完整打通了 **Phase 1（基础数据建档）→ Phase 2（深度商业分析）的优先排队与推进机制**：
-
-1. **前端界面与交互**：
-   - Phase 1 公司详情页自动隐藏 4 个尚未生成的灰态 Tab（商业分析、价值分析、管理分析、估值分析），保持界面清爽；
-   - 在 Tab 栏右侧增设 Apple HIG 风格「⚡ 完善」加急按钮；
-   - 点击后调用 `/api/company/fast-track`，即时变为「排队中…」并在成功后切换为柔光绿「✓ 已排队」；
-   - 数据层（`getCompanyByIdentifier`、`getCompanyByCik`、`getCompanyByTicker`）补齐 `priority` 与 `onboardPhase` 查询；详情页加载或刷新时，只要 `priority > 0` 即精准初始化为「✓ 已排队」状态。
-2. **后台调度 Worker 升级（`scripts/pipeline-priority-worker.ts`）**：
-   - 统一优先队列：优先扫描 `onboardPhase IN (0, 1) AND priority > 0` 的标的；
-   - 自动分流：若 `onboardPhase === 0` 则传参 `--phase 1`；若 `onboardPhase === 1` 则传参 `--phase 2`（依次生成商业画布、护城河、治理管理、估值分析）；
-   - 重试隔离：Phase 1 失败记录 `onboardPhase2Attempts` 与 `onboardPhase2LastError`，**保持 `onboardPhase = 1` 不被误判为死信（-1）**；
-   - 优先级自动重置：当公司完成对应 Phase 步骤后，自动清零 `priority`，避免重复霸占队列；
-   - 批处理大小下调：默认 `BATCH_SIZE` 由 30/20 降为 **15**（保留 35 分钟超时），防范 Phase 2 多个重度 LLM 耗时累积超时；
-   - 脚本别名与向后兼容：`package.json` 提供 `worker:priority`，并保留 `worker:phase1` 兼容别名；同时提供 `scripts/cron/hourly-priority-worker.sh` 与 `scripts/cron/hourly-phase1-worker.sh`。
-3. **远端同步与部署**：
-   - 代码与脚本已通过 rsync 全量同步至 `mini:~/buffett-tribe`。
-
----
-
-## 二、当前数据库排队现状
-
-生产数据库中当前共有 **10 家** 公司处于优先通道（`priority > 0`），全部为 **Phase 1** 状态：
-
-| # | 代码/Ticker | 市场 | 公司名称 | 状态 | 优先分 | 来源说明 |
-|---|---|---|---|---|---|---|
-| 1 | `SPCX` | 美股 | 太空探索技术 (SpaceX) | Phase 1 | 110 | 2026-09-27 用户手动添加 |
-| 2 | `SHOP` | 美股 | Shopify公司 | Phase 1 | 100 | 2026-09-27 用户在详情页点击加急 |
-| 3 | `BIDU` | 美股 | 百度 | Phase 1 | 100 | 2026-09-25 优先建档测试遗留（用户要求保留测试） |
-| 4 | `TCOM` | 美股 | 携程集团 | Phase 1 | 100 | 2026-09-25 优先建档测试遗留 |
-| 5 | `QXO` | 美股 | QXO公司 | Phase 1 | 100 | 2026-09-25 优先建档测试遗留 |
-| 6 | `BSP` | 美股 | 弯曲勺子 (Bending Spoons) | Phase 1 | 100 | 2026-09-25 优先建档测试遗留 |
-| 7 | `688825.SS` | A股 | 长鑫科技 | Phase 1 | 100 | 2026-09-25 优先建档测试遗留 |
-| 8 | `300760.SZ` | A股 | 迈瑞医疗 | Phase 1 | 100 | 2026-09-25 优先建档测试遗留 |
-| 9 | `2097.HK` | 港股 | 蜜雪集团 | Phase 1 | 100 | 2026-09-25 优先建档测试遗留 |
-| 10 | `CSTAF` | 美股 | 星座收购公司I | Phase 1 | 100 | 2026-09-25 优先建档测试遗留 |
-
-*注：由于用户明确要求保留上述标的用于测试验证，因此未做清零。若后续需清空历史遗留，执行：*
-```sql
-UPDATE "Entity" SET priority = 0 WHERE ticker NOT IN ('SPCX', 'SHOP') AND priority > 0;
-```
-
----
-
-## 三、实测验证记录与边缘案例
-
-### 1. Dry-Run 校验（通过）
-在 `mini` 上运行 `npm run worker:priority -- --dry-run`：
-- 精确检出上述 10 家标的为 `[⚡ FAST-TRACK] [P1→P2 深度分析]`；
-- 剩余 5 个名额由三大市场轮巡选出 5 家 `[STANDARD] [P0→P1 基础建档]`，总计 15 家。
-
-### 2. Live 批次实测（SPCX）
-在 `mini` 上手工执行 `npm run worker:priority -- --batch-size 1`：
-- 成功调度第一优先级 `SPCX`；
-- 成功生成并入库了商业画布、价值分析（护城河 10 个维度）、管理分析（3 张治理卡片）；
-- 估值分析因 SpaceX 属未上市招股书标的、无公开股价与年报财务数据而合理跳过；
-- Worker 正确记录 `onboardPhase2Attempts: 1`，且**保持 `onboardPhase = 1` 不被误降为死信**，证明重试隔离机制完全生效。
-
-### 3. 已知边缘案例（SHOP / 加拿大赴美上市 10-K 与 40-F 混杂）
-- Shopify (SHOP) 为加拿大跨类股/赴美上市实体，在 SEC EDGAR 中同时存在 10-K 与 40-F 记录。
-- 10-K 提取出 23 个 sections，但 40-F 记录的 sections 为 0。
-- `onboard-company.ts` 中的 `import10kFullStep.verify` 原逻辑检查了 `filingsWithoutSections === 0`，当存在 0-section 的 40-F 冗余记录时会触发校验未通过。后续可针对多 filing 类型微调校验条件（如判断只要 `10k` 或 `40f` 任意一套具备完整 sections 即算通过）。
-
----
-
-## 四、接手人操作指南
-
-### 1. 手工触发与队列排查
-```bash
-ssh mini
-cd ~/buffett-tribe
-export PATH="/Users/rafael/node/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
-
-# 1. 试跑检查排队名单
-npm run worker:priority -- --dry-run
-
-# 2. 手工跑单家验证
-npm run worker:priority -- --batch-size 1
-
-# 3. 手工跑全批次
-npm run worker:priority -- --batch-size 15
-```
-
-### 2. 启用定时 Cron（未来验证稳定后）
-在 `mini` 上运行 `crontab -e`，取消注释 Hourly Worker（已更新默认批大小为 15）：
-```cron
-# 每小时 15 分执行优先与建档 Worker
-15 * * * * /Users/rafael/buffett-tribe/scripts/cron/hourly-priority-worker.sh 15 all >> /Users/rafael/logs/buffett-tribe/phase1-worker.log 2>&1
-```
-
+- **2026-08-29~30 批量 onboarding 清理**：259 家待完善美股桩，两批处理后剩 ~175 家；7 个真 bug 全修（v0.43.36：批量容错、P/E 门槛误杀、负 EPS 情景、edgartools 依赖、10-K/A 去重、股价 checkpoint 20h 过期、断点误判）。执行地从 air7 迁到 mini（air7 OOM 硬重启，pi-matrix 已清除）。
+- **2026-08-30 P0-P3（v0.43.37）**：40-F 全文修复（BN/SU 42 section 补 artifact + 截断警告）、section_blocks 停写+清理 13,999 个对象、section 并发 6、search_filings text-artifact 优先。DIS 测试根因：artifact 缺失而非 R2 延迟，重导后 101s→9.25s。
+- **2026-08-30 改名 Value Tribe + 域名迁移 vt.air7.fun + 删除 `skills/buffett-tribe` 对外 REST skill**（连带删 `/api/tools/search|document`；`src/lib/mcp-tools.ts` 保留，`/api/mcp` 在用）。
+- **2026-09-27 统一优先队列上线（v0.45.23）**：Phase 1 详情页「⚡ 完善」按钮、worker 混合调度 P0→P1/P1→P2、batch 15、重试隔离、完成后 priority 自动清零。
+- **2026-09-27 估值哨兵修复**：SPCX（新上市仅一季数据）卡死队列的根因；同日 9 家优先通道全量实测 7 成 2 败（失败根因即问题 1/2）。
+- **2026-09-27 canvas 字段迁移**：生成器改写顶层 `canvas`，7 行历史回填（`scripts/migrate-canvas-field.ts`）。
+- **2026-09-27 admin/universe 快速通道筛选修复**：`/api/company/search`、页面计数、行徽章三处还按旧语义 `onboardPhase = 0 AND priority > 0` 过滤（统一队列上线后 Phase 1 也能进快速通道，旧查询恒返回 0），已改为 `onboardPhase IN (0,1)` 与 worker 语义一致；徽章顺带显示走向（P0→P1 / P1→P2）。
+- **2026-09-27 长鑫治本：CN 招股说明书兜底**：`fetch-cn-annual-report.py` 无年报时自动回退搜招股书（标题精确匹配「…招股说明书」结尾，排除提示性公告/意向书/注册稿），新 kind `cn-prospectus` 接入导入器、onboard CN step verify、证据链（company-generation/company-data）、阅读页（PDF 渲染，标题「招股说明书」）。`_find_chapter_range` 提升为模块级并加 `require_chapter_heading`（防招股书「概览」小节抢匹配）。长鑫 2 分钟跑完 Phase 2：招股书 8 sections + 正式估值（三情景 38%/65%/91%）。茅台回归无损。
+- **2026-09-27 SHOP 治本：40-F EX-1.x 附件**：Form 40-F 官方 exhibit 类型 EX-1.1（AIF）/EX-1.2（审计财报）/EX-1.3（MD&A），抽取器原来只认 EX-99.*。过滤放宽 + 分类器加 documentType 确定性映射。SHOP 四个 40-F 年份各补 3 sections，17:15 cron 批次 P1→P2 直接跑通。

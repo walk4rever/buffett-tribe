@@ -244,7 +244,7 @@ export async function fetchLatestFilingEvidence(entityId: string): Promise<Filin
   const filing = await prisma.extSource.findFirst({
     where: {
       filerEntityId: entityId,
-      kind: { in: ["10k", "20f", "40f", "hk-annual-report", "cn-annual-report", "us-prospectus"] },
+      kind: { in: ["10k", "20f", "40f", "hk-annual-report", "cn-annual-report", "cn-prospectus", "us-prospectus"] },
     },
     orderBy: [{ periodYear: "desc" }, { periodQuarter: "desc" }, { ts: "desc" }],
     select: {
