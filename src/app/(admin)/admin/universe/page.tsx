@@ -15,7 +15,7 @@ import { AdminUniverseExplorer } from "@/components/admin/AdminUniverseExplorer"
 export const dynamic = "force-dynamic";
 
 export default async function AdminUniversePage() {
-  const [totalCompanies, phaseCounts, marketPhaseCounts, recentPhase1, failedCompanies, fastTrackCount] =
+  const [totalCompanies, phaseCounts, marketPhaseCounts, recentUpdates, failedCompanies, fastTrackCount] =
     await Promise.all([
       prisma.entity.count({ where: { type: "company" } }),
       prisma.$queryRaw<Array<{ onboardPhase: number; count: bigint }>>`
@@ -35,7 +35,7 @@ export default async function AdminUniversePage() {
       prisma.entity.findMany({
         where: {
           type: "company",
-          onboardPhase: 1,
+          onboardPhase: { in: [1, 2] },
         },
         select: {
           id: true,
@@ -44,11 +44,12 @@ export default async function AdminUniversePage() {
           ticker: true,
           market: true,
           canonicalName: true,
+          onboardPhase: true,
           updatedAt: true,
           metadata: true,
         },
         orderBy: { updatedAt: "desc" },
-        take: 12,
+        take: 15,
       }),
       prisma.entity.findMany({
         where: {
@@ -280,16 +281,16 @@ export default async function AdminUniversePage() {
           <div className="admin-card-header">
             <div className="admin-card-title-group">
               <Clock size={16} className="admin-card-title-icon" />
-              <h2>最新 Phase 1 接入流水 (来自 mini 写入)</h2>
+              <h2>管线最新更新</h2>
             </div>
-            <span className="admin-stat-hint">最新 {recentPhase1.length} 家</span>
+            <span className="admin-stat-hint">最新 {recentUpdates.length} 家</span>
           </div>
 
           <div className="admin-universe-feed-list">
-            {recentPhase1.length === 0 ? (
-              <div className="admin-universe-empty">暂无近期接入流水</div>
+            {recentUpdates.length === 0 ? (
+              <div className="admin-universe-empty">暂无近期更新</div>
             ) : (
-              recentPhase1.map((c) => {
+              recentUpdates.map((c) => {
                 const meta = (c.metadata as Record<string, unknown>) || {};
                 const zh = (typeof meta.nameZh === "string" && meta.nameZh) || c.canonicalName;
                 const formattedTime = new Intl.DateTimeFormat("zh-CN", {
@@ -297,13 +298,19 @@ export default async function AdminUniversePage() {
                   day: "2-digit",
                   hour: "2-digit",
                   minute: "2-digit",
+                  timeZone: "Asia/Shanghai",
                 }).format(new Date(c.updatedAt));
                 const url = formatCompanyUrl(c);
+                const phaseLabel = c.onboardPhase === 1 ? "P1" : "P2";
+                const phaseBadgeClass = c.onboardPhase === 1 ? "admin-badge--blue" : "admin-badge--green";
 
                 return (
                   <div key={c.id} className="admin-universe-feed-item">
                     <div className="admin-universe-feed-main">
-                      <span className="admin-badge admin-badge--blue">
+                      <span className={`admin-badge ${phaseBadgeClass}`}>
+                        {phaseLabel}
+                      </span>
+                      <span className="admin-badge admin-badge--gray">
                         {(c.market || "us").toUpperCase()}
                       </span>
                       <span className="admin-universe-feed-ticker">{c.ticker || c.code}</span>

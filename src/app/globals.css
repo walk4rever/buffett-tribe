@@ -17161,8 +17161,17 @@ a.insight-entity-chip:hover {
 }
 
 .admin-stat-hint {
-  color: rgba(0, 0, 0, 0.4);
-  font-weight: 400;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* When used in card headers, slightly larger and different color */
+.admin-card-header .admin-stat-hint {
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 /* Activity Grid */
