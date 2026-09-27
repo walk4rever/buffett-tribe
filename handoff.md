@@ -293,3 +293,148 @@ npm run onboard:pending -- --limit 50         # 建议继续按 50 一批，别�
 **确认过不能删的**：`src/lib/mcp-tools.ts` 的 `toolSearch`/`toolGetDocument` 两个函数**必须保留**——`/api/mcp/route.ts`（对外 MCP 协议 server 的 `search`/`get_document` 工具）复用的是同一份实现，这是另一套独立且在 PRODUCT.md 里文档化的对外集成，跟被删的 REST skill 是两回事，不能连带删。已用 `grep` 确认 `mcp-tools.ts` 现在只被 `/api/mcp/route.ts` 一处引用。
 
 **内容范围判断**：清理前顺手核实过，这个 skill 的知识库范围本身没有过时——`Source` 表只有 `shareholder`（61 篇，1965–2025）和 `partnership`（33 篇，1958–1970），全是巴菲特本人的信，"Warren Buffett knowledge base" 这个定位描述是准确的，不是因为改名或范围过窄才删，纯粹是产品形态"还没想清楚"。
+
+---
+
+# Handoff 追加 — 统一优先队列 + Phase 1→2 自动推进机制（2026-09-27）
+
+## 背景与问题
+
+**现状**：
+- Phase 0 → Phase 1 的批处理工作正常（`pipeline-phase1-worker.ts` + cron 每小时15分）
+- Phase 1 公司只有基础概览（`profile`/`overview`），缺少深度分析内容（`business`/`moat`/`management`/`valuation`）
+- Phase 2 公司才有完整的商业分析内容
+- **数据分布（截至讨论时）**：
+  - Phase 0: 15,184 家（92.3%）
+  - Phase 1: 1,086 家（6.6%）
+  - Phase 2: 162 家（1.0%）— **只有 0.99% 的公司有完整内容**
+
+**核心问题**：Phase 1→2 的转化率极低（14.9%），大量公司停留在"半成品"状态，用户看到的商业模式、护城河、管理层、估值等页面是空白或占位内容。
+
+## 方案：统一优先队列 + 智能 Phase 推进（方案 A）
+
+### 设计原则
+用户通过"建档"/"分析"按钮标记优先处理的公司（`priority > 0`），worker 根据公司当前 `onboardPhase` 自动决定推进到下一阶段：
+- `onboardPhase === 0` → 执行 Phase 1（基础 onboarding）
+- `onboardPhase === 1` → 执行 Phase 2（深度分析）
+
+### 需要改动的部分
+
+#### 1. UI 层 — Phase 1 公司的"深度分析"按钮
+
+**Phase 0 公司的入口**（已存在）：
+- 位置：`/company` 页面搜索结果的 phase 0 卡片
+- 按钮文案：**"建档"**（⚡️ 图标 + 文字）
+- API：`/api/company/fast-track`
+- 行为：设置 `priority > 0`
+
+**Phase 1 公司的入口**（需新增）：
+- 位置：**公司详情页 tab 导航栏**（`CompanySectionTabs` 组件）
+- 显示逻辑：
+  - `onboardPhase === 1`：只显示 4 个可用 tab（价值线、财务分析、大师持仓、参考资料）+ **"⚡️深度分析"按钮**
+  - `onboardPhase >= 2`：显示全部 8 个 tab，**不显示按钮**
+  - **Phase 1 时不显示灰色锁住的 tab**（商业模式、护城河、管理层、估值），替换为统一的深度分析按钮
+- 按钮文案：**"深度分析"**（⚡️ 图标 + 文字）
+- 按钮样式：在 tab 导航栏右侧，与 tab 平级，视觉上用不同颜色/样式突出它是操作按钮而非内容 tab
+- API：复用 `/api/company/fast-track`
+- 点击后状态：
+  - 类似 Phase 0 的"已排队"状态（显示 ✓ + "已排队"）
+  - 或禁用状态显示"排队中…"
+  - 或按钮消失，显示提示文本
+
+**设计优势**：
+- 更直观：用户看到按钮就知道如何获取深度分析内容，而不是看到一堆锁住的灰色 tab
+- 节省空间：4 个锁住的 tab → 1 个行动按钮
+- 视觉更清爽：避免一半 tab 是灰色不可点击状态
+- 语义明确：行动路径清晰
+
+#### 2. Worker 脚本 — 混合处理 Phase 0→1 和 Phase 1→2
+**当前逻辑**（`scripts/pipeline-phase1-worker.ts`）：
+```typescript
+WHERE onboardPhase = 0 AND priority > 0
+ORDER BY priority DESC, priorityRequestedAt ASC
+RUN: npm run onboard:company -- --phase 1
+```
+
+**新逻辑**（需修改）：
+```typescript
+// 查询：同时获取 phase 0 和 phase 1 的优先公司
+const phase0Candidates = await fetchCandidates({ onboardPhase: 0, priority: { gt: 0 } });
+const phase1Candidates = await fetchCandidates({ onboardPhase: 1, priority: { gt: 0 } });
+
+// 合并并按优先级排序
+const allCandidates = [...phase0Candidates, ...phase1Candidates]
+  .sort((a, b) => {
+    if (b.priority !== a.priority) return b.priority - a.priority;
+    return (a.priorityRequestedAt || new Date(0)).getTime() - (b.priorityRequestedAt || new Date(0)).getTime();
+  });
+
+// 执行：根据当前 phase 决定执行什么
+for (const company of allCandidates) {
+  const phase = company.onboardPhase === 0 ? '1' : '2';
+  await runCommand('npm', ['run', 'onboard:company', '--', '--ticker', company.ticker, '--market', company.market, '--phase', phase]);
+}
+```
+
+**文件重命名考虑**：
+- `pipeline-phase1-worker.ts` 名称已不准确（不只处理 phase 1）
+- 建议重命名为 `pipeline-priority-worker.ts` 或 `pipeline-onboard-worker.ts`
+- 同步更新 `package.json` 的 script 名称和 `scripts/cron/hourly-phase1-worker.sh`
+
+#### 3. 批量大小与超时调整
+**成本差异**：
+- Phase 1：1 个 LLM 生成步骤（`overview`）
+- Phase 2：4 个 LLM 生成步骤（`business` + `moat` + `management` + `valuation`）
+- **时间比例**：Phase 2 ≈ 4× Phase 1
+
+**当前配置**（cron 脚本）：
+- `BATCH_SIZE = 20`
+- `timeout = 35` 分钟
+
+**调整方案**（用户选择：固定降低 batch）：
+- 降低 `BATCH_SIZE` 到 10-15，确保 Phase 0/1 混合处理时不超时
+- 保持 35 分钟 timeout 不变
+- **简单实现**：不做动态成本计算，避免复杂度
+
+**备选方案（暂不采用）**：
+- 方案 B：动态计算"成本单位"（Phase 1 = 1 unit, Phase 2 = 4 units），总 units 不超过阈值
+- 方案 C：分开计数（如：Phase 1 最多 15 家 + Phase 2 最多 5 家）
+
+#### 4. 优先级排序策略
+**默认策略**（保持简单）：
+- 按 `priority` 降序（数值越大越优先）
+- 同 priority 时按 `priorityRequestedAt` 升序（先请求先处理）
+- **Phase 0 和 Phase 1 混合排序**，不做人工倾斜
+
+**未采用的策略**（用户表示"不明白问题"）：
+- Phase 1→2 优先于 Phase 0→1（先服务已有内容的公司）
+- 或反之（先扩大覆盖面）
+
+### 实施清单
+
+**必须完成的改动**：
+1. ✅ 方案设计已确定（方案 A：统一优先队列）
+2. ✅ Phase 1 公司详情页添加"完善"加急按钮（UI + 样式 + 状态持久化）
+3. ⬜ 修改 `pipeline-phase1-worker.ts`：
+   - 查询逻辑：同时获取 phase 0 和 phase 1 的优先公司
+   - 执行逻辑：根据当前 phase 决定传 `--phase 1` 还是 `--phase 2`
+   - 日志输出：标记每个公司的 phase 和目标 phase
+4. ⬜ 调整 batch size（cron 脚本或 worker 默认值）
+5. ⬜ 重命名 worker 脚本和相关引用（可选但推荐）
+6. ⬜ 更新 CLAUDE.md 的相关描述
+
+**验证要点**：
+- Phase 0 公司标记优先后，下次 cron 执行 Phase 1
+- Phase 1 公司点击"分析"按钮后，下次 cron 执行 Phase 2
+- 混合批次不会因为 Phase 2 任务过多而超时
+- 日志清晰标记每个公司的处理阶段
+
+**已知风险**：
+- Phase 2 的 4 个 LLM 步骤耗时较长，batch size 必须保守设定
+- 用户可能会集中标记大量 Phase 1 公司，导致队列积压
+- 需要监控 cron 执行时间，必要时进一步调整 batch size
+
+**不在此方案范围内**：
+- Phase 1→2 的自动批处理（不依赖用户标记）— 这是另一个独立的产品决策
+- 优先级的自动过期或衰减机制
+- Phase 2 完成后的 priority 自动清零（当前机制保持不变）

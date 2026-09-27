@@ -156,6 +156,8 @@ export async function getCompanyByCik(cikRaw: string) {
       code: true,
       sector: true,
       metadata: true,
+      onboardPhase: true,
+      priority: true,
     },
   });
   return entity;
@@ -180,6 +182,8 @@ export async function getCompanyByTicker(ticker: string) {
       cik: true,
       sector: true,
       metadata: true,
+      onboardPhase: true,
+      priority: true,
       updatedAt: true,
       _count: {
         select: {
@@ -209,6 +213,8 @@ export async function getCompanyByTicker(ticker: string) {
         cik: true,
         sector: true,
         metadata: true,
+        onboardPhase: true,
+        priority: true,
       },
     });
     if (!resolved) return null;
@@ -231,6 +237,8 @@ export async function getCompanyByTicker(ticker: string) {
     cik: best.cik,
     sector: best.sector,
     metadata: best.metadata,
+    onboardPhase: best.onboardPhase,
+    priority: best.priority,
   };
 }
 
@@ -258,6 +266,8 @@ export async function getCompanyByIdentifier(raw: string) {
           code: true,
           sector: true,
           metadata: true,
+          onboardPhase: true,
+          priority: true,
         },
       });
       if (company) return company;
@@ -277,6 +287,8 @@ export async function getCompanyByIdentifier(raw: string) {
       code: null,
       sector: byTicker.sector,
       metadata: byTicker.metadata,
+      onboardPhase: byTicker.onboardPhase,
+      priority: byTicker.priority,
     };
   }
 
@@ -300,6 +312,8 @@ export async function getCompanyByIdentifier(raw: string) {
       code: true,
       sector: true,
       metadata: true,
+      onboardPhase: true,
+      priority: true,
     },
   });
 }

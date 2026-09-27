@@ -345,6 +345,27 @@ export default async function CompanyPage({ params, searchParams }: Props) {
 
   const dashboard = buildCompanyFinancialDashboard(company, financials, financialsCurrency);
 
+  // Phase 1 公司：只显示可用 tab + 深度分析按钮，不显示灰色锁住的 tab
+  const onboardPhase = company.onboardPhase ?? 0;
+  const showDeepAnalysisButton = onboardPhase === 1;
+  const companyPriority = company.priority ?? 0;
+
+  const allTabs = [
+    { id: "valueline",  label: "价值线",  desc: "数字价值线核心全景" },
+    { id: "business",   label: "商业分析", desc: "九宫格商业模式画布",  ...(!businessCanvas  ? { disabled: true } : {}) },
+    { id: "financial",  label: "财务分析", desc: "核心三张表与杜邦分解" },
+    { id: "value",      label: "价值分析", desc: "护城河雷达与资本回报", ...(!hasRealMoat    ? { disabled: true } : {}) },
+    { id: "management", label: "管理分析", desc: "治理结构与资本配置",  ...(!hasManagement  ? { disabled: true } : {}) },
+    { id: "valuation",  label: "估值分析", desc: "历史分位与情景推演",  ...(!hasValuation   ? { disabled: true } : {}) },
+    { id: "holdings",   label: "大师持仓", desc: "13F顶尖机构季度动向" },
+    { id: "references", label: "参考资料", desc: "官方SEC 10-K年报原文" },
+  ];
+
+  // Phase 1 时过滤掉 disabled 的 tab（商业分析、价值分析、管理分析、估值分析）
+  const visibleTabs = showDeepAnalysisButton
+    ? allTabs.filter(tab => !tab.disabled)
+    : allTabs;
+
   return (
     <div className={`company-page dvl-page ${isEmbed ? "company-page--embed" : ""}`}>
       {!isEmbed ? <SiteNav /> : null}
@@ -353,19 +374,14 @@ export default async function CompanyPage({ params, searchParams }: Props) {
       <div className="company-wrap dvl-wrap">
         {/* ── Unified 8-Tab Workspace (价值线 + 7 Deep-Dive dimensions) ── */}
         <CompanySectionTabs
-          tabs={[
-            { id: "valueline",  label: "价值线",  desc: "数字价值线核心全景" },
-            { id: "business",   label: "商业分析", desc: "九宫格商业模式画布",  ...(!businessCanvas  ? { disabled: true } : {}) },
-            { id: "financial",  label: "财务分析", desc: "核心三张表与杜邦分解" },
-            { id: "value",      label: "价值分析", desc: "护城河雷达与资本回报", ...(!hasRealMoat    ? { disabled: true } : {}) },
-            { id: "management", label: "管理分析", desc: "治理结构与资本配置",  ...(!hasManagement  ? { disabled: true } : {}) },
-            { id: "valuation",  label: "估值分析", desc: "历史分位与情景推演",  ...(!hasValuation   ? { disabled: true } : {}) },
-            { id: "holdings",   label: "大师持仓", desc: "13F顶尖机构季度动向" },
-            { id: "references", label: "参考资料", desc: "官方SEC 10-K年报原文" },
-          ]}
+          tabs={visibleTabs}
           initialTabId={initialTabId || "valueline"}
           valueLineData={valueLineData}
           initialTicker={rawTicker}
+          showDeepAnalysisButton={showDeepAnalysisButton}
+          companyId={company.id}
+          companyName={zhName}
+          initialPriority={companyPriority}
         >
           {/* Tab 1 (valueline) is rendered internally by CompanySectionTabs via <ValueLineBody /> */}
 

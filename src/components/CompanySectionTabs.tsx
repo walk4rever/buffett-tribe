@@ -28,6 +28,10 @@ type CompanySectionTabsProps = {
   valueLineData?: ValueLineData | null;
   initialTicker?: string;
   fallbackHeader?: ReactNode;
+  showDeepAnalysisButton?: boolean;
+  companyId?: string;
+  companyName?: string;
+  initialPriority?: number;
 };
 
 export function CompanySectionTabs({
@@ -37,6 +41,10 @@ export function CompanySectionTabs({
   valueLineData,
   initialTicker,
   fallbackHeader,
+  showDeepAnalysisButton = false,
+  companyId,
+  companyName,
+  initialPriority = 0,
 }: CompanySectionTabsProps) {
   const firstEnabledTabId = tabs.find((t) => !t.disabled)?.id ?? "";
   const resolvedInitialTab =
@@ -47,6 +55,16 @@ export function CompanySectionTabs({
   const [isMatrixOpen, setIsMatrixOpen] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [isPendingDeepAnalysis, setIsPendingDeepAnalysis] = useState(false);
+  const [isDeepAnalysisQueued, setIsDeepAnalysisQueued] = useState(
+    initialPriority > 0
+  );
+
+  useEffect(() => {
+    if (initialPriority > 0) {
+      setIsDeepAnalysisQueued(true);
+    }
+  }, [initialPriority]);
 
   const [selectedTicker, setSelectedTicker] = useState<string>(
     initialTicker || valueLineData?.selectedTicker || valueLineData?.ticker || ""
@@ -68,6 +86,28 @@ export function CompanySectionTabs({
       const url = new URL(window.location.href);
       url.searchParams.set("ticker", t);
       window.history.replaceState(null, "", url.toString());
+    }
+  };
+
+  const handleDeepAnalysisClick = async () => {
+    if (!companyId || isPendingDeepAnalysis || isDeepAnalysisQueued) return;
+    setIsPendingDeepAnalysis(true);
+    try {
+      const res = await fetch("/api/company/fast-track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: companyId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setIsDeepAnalysisQueued(true);
+      } else {
+        console.error("Deep analysis request failed:", data.error);
+      }
+    } catch (err) {
+      console.error("Deep analysis request error:", err);
+    } finally {
+      setIsPendingDeepAnalysis(false);
     }
   };
 
@@ -260,6 +300,38 @@ export function CompanySectionTabs({
             </svg>
             <span className="company-tabs-matrix-badge">{tabs.length}</span>
           </button>
+
+          {/* Deep Analysis Button (Phase 1 only) */}
+          {showDeepAnalysisButton && (
+            <button
+              type="button"
+              className={`company-tabs-deep-analysis-btn ${isDeepAnalysisQueued ? "company-tabs-deep-analysis-btn--queued" : ""}`}
+              onClick={handleDeepAnalysisClick}
+              disabled={isPendingDeepAnalysis || isDeepAnalysisQueued}
+              title={
+                isDeepAnalysisQueued
+                  ? "已加入完善队列"
+                  : `申请完善${companyName ? ` ${companyName} ` : ""}深度分析内容`
+              }
+            >
+              {isDeepAnalysisQueued ? (
+                <>
+                  <span className="company-tabs-deep-analysis-icon" aria-hidden="true">✓</span>
+                  <span>已排队</span>
+                </>
+              ) : isPendingDeepAnalysis ? (
+                <>
+                  <span className="company-tabs-deep-analysis-spinner" aria-hidden="true" />
+                  <span>排队中…</span>
+                </>
+              ) : (
+                <>
+                  <span className="company-tabs-deep-analysis-icon" aria-hidden="true">⚡</span>
+                  <span>完善</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 

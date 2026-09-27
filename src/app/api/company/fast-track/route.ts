@@ -97,12 +97,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If already Phase 1 or higher, no fast-track queueing needed
-    if (entity.onboardPhase >= 1) {
+    // Phase 2+ companies are already fully onboarded
+    if (entity.onboardPhase >= 2) {
       return NextResponse.json({
         success: true,
         alreadyComplete: true,
-        message: "该标的已完成建档，无需排队",
+        message: "该标的已完成深度分析，无需排队",
       });
     }
 
@@ -112,6 +112,7 @@ export async function POST(request: NextRequest) {
     const newPriority = currentPriority + increment;
 
     const currentMeta = (entity.metadata as Record<string, unknown>) || {};
+    const isPhase1 = entity.onboardPhase === 1;
     const updatedMeta = {
       ...currentMeta,
       fastTrack: true,
@@ -132,11 +133,15 @@ export async function POST(request: NextRequest) {
       (typeof currentMeta.nameZh === "string" && currentMeta.nameZh) ||
       entity.canonicalName;
 
+    const message = isPhase1
+      ? `已为 ${displayName} 开启深度分析优先通道，下次批处理将优先执行`
+      : `已为 ${displayName} 开启快速通道优先建档，下次批处理将优先插队执行`;
+
     return NextResponse.json({
       success: true,
       entityId: entity.id,
       priority: newPriority,
-      message: `已为 ${displayName} 开启快速通道优先建档，下次批处理将优先插队执行`,
+      message,
     });
   } catch (error) {
     console.error("[fast-track] Failed to expedite company:", error);
