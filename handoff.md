@@ -35,16 +35,17 @@
 ### Cron（mini）
 
 - ✅ 股价周更两条在跑：周六 12:00 cn,hk / 周日 01:00 us（mini 系统时区北京时间）
-- ✅ **Hourly priority worker 已启用（2026-09-27 下午）**：每小时 15 分，`hourly-priority-worker.sh 15 all`，日志 `~/logs/buffett-tribe/priority-worker.log`（旧 `phase1-worker.log` 停用）。页面上加快速通道的公司最迟下一个整点 15 分被处理。
-  - 行为要点：PID 锁防重入；35 分钟硬超时直接 exit，被中断的公司靠 onboard checkpoint 下次续跑；batch 15 = 快速通道优先 + **standard P0 三市场轮巡补齐**（前两批实测：每批消化 ~13 家 P0）。
+- ✅ **Hourly priority worker 已启用（2026-09-27 下午）**：每小时 15 分，`hourly-priority-worker.sh 10 all`（2026-09-27 晚从 15 降为 10：35min 超时才是真实上限，实测一批 13-14 家就顶满；batch 10 更大概率干净跑完不撞截断），日志 `~/logs/buffett-tribe/priority-worker.log`（旧 `phase1-worker.log` 停用）。页面上加快速通道的公司最迟下一个整点 15 分被处理。
+  - 行为要点：PID 锁防重入；35 分钟硬超时直接 exit，被中断的公司靠 onboard checkpoint 下次续跑；batch 10 = 快速通道优先 + **standard P0 三市场轮巡补齐**。
   - 前两批实测（17:15/18:15）：快速通道 SHOP✅、美的✅、VOD❌（见问题 1），standard 补位 ~20 家全部成功。
 
 ## 二、未解决问题（按优先级）
 
 ### 会堵队列
 
-**1. VOD edgartools helper 480s 超时**
-VOD 有 7 份 20-F（2020-2026）全部 0 section（历史桩），step 1 重导时 helper 在 480s 默认超时内处理不完巨型 20-F（沃达丰年报 10-20MB HTML × mini→SEC 网络）。`--extract-timeout-ms` 参数已存在但 onboard-company 没传。正在用 30min 超时手动验证耗时，之后决定接线值。
+### 会堵队列
+
+（暂无）
 
 ### 影响内容质量
 
@@ -112,3 +113,4 @@ CSTAF 生成了「正式」估值（PE 39.55，信托现金利息算的），三
 - **2026-09-27 admin/universe 快速通道筛选修复**：`/api/company/search`、页面计数、行徽章三处还按旧语义 `onboardPhase = 0 AND priority > 0` 过滤（统一队列上线后 Phase 1 也能进快速通道，旧查询恒返回 0），已改为 `onboardPhase IN (0,1)` 与 worker 语义一致；徽章顺带显示走向（P0→P1 / P1→P2）。
 - **2026-09-27 长鑫治本：CN 招股说明书兜底**：`fetch-cn-annual-report.py` 无年报时自动回退搜招股书（标题精确匹配「…招股说明书」结尾，排除提示性公告/意向书/注册稿），新 kind `cn-prospectus` 接入导入器、onboard CN step verify、证据链（company-generation/company-data）、阅读页（PDF 渲染，标题「招股说明书」）。`_find_chapter_range` 提升为模块级并加 `require_chapter_heading`（防招股书「概览」小节抢匹配）。长鑫 2 分钟跑完 Phase 2：招股书 8 sections + 正式估值（三情景 38%/65%/91%）。茅台回归无损。
 - **2026-09-27 SHOP 治本：40-F EX-1.x 附件**：Form 40-F 官方 exhibit 类型 EX-1.1（AIF）/EX-1.2（审计财报）/EX-1.3（MD&A），抽取器原来只认 EX-99.*。过滤放宽 + 分类器加 documentType 确定性映射。SHOP 四个 40-F 年份各补 3 sections，17:15 cron 批次 P1→P2 直接跑通。
+- **2026-09-27 VOD 治本收官**：逐年导入 7 份 20-F（每年原子落库，绕开 helper 多年连抓超时）→ 发现 FY2020 主文档无 inline XBRL（BTGO 同类缺口）→ `import10kFullStep.verify` 增加「`isInlineXbrl=false` 的 filing 不计入零 section 失败」豁免 + 接线 `--extract-timeout-ms 900000`。VOD Phase 2 全通（正式估值，PE 395.7——微利率年高 PE 属实）。排查期间 cron 临时暂停后已恢复（batch 已降 10）。
