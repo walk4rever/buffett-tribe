@@ -87,6 +87,22 @@
     - A 股通过 `ak.stock_repurchase_em()` 自动抓取并汇总各财年真实已回购金额写入 `ShareRepurchaseAmt`；港股已通过 `stock_financial_hk_report_em` 接入现金流量表回购股份；
     - 在 `src/lib/value-line-data.ts` 与 `src/components/ValueLineCard.tsx` 中增加 `totalBuyback5Y` 与 `buybackAmountLabel`（如贵州茅台 `5年累计回购 ¥90.0亿`、五粮液 `5年累计回购 ¥11.0亿`、泡泡玛特 `5年累计回购 HK$10.5亿`、苹果 `5年累计回购 $4,385.8亿`），并在财务趋势表与四宫格第三格高亮展示；实测回填验证 600519、000858、000560、09992 全绿。
   - [ ] **P1.2 美股 10-Q 季报与滚动 TTM 数据接入**：在 Phase 1 导入管线中按需补充近 4 季 10-Q，点亮财务分析 Tab 中美股季报与 TTM 指标。
+  - [ ] **P1.3 A 股存量历史数据全量回补（backfill-cn-repurchase）执行中断复盘与待解技术卡点**（2026-09-27）：
+    - **当前已回补进度**：
+      - 股票回购（`ShareRepurchaseAmt`）：**已完成 135 行，覆盖 67 家公司**（东方财富 5,523 条全市场回购明细缓存已全量匹配入库并写入）。
+      - 原生总股本（`CommonStockSharesOutstanding`）：**已完成 3,178+ 行，覆盖 59 家公司**，剩余待补约 92 家（A 股存量已有财务数据公司共 151 家）。
+    - **现场中断原因与技术根因分析（Root Cause）**：
+      1. **Supabase PgBouncer 连接池耗尽与认证超时**：
+         - 报错特征：`FATAL: (ECHECKOUTTIMEOUT) unable to check out connection from the pool after 15000ms in Transaction mode` 及 `FATAL: Failed to connect to database: authentication did not complete within 15000ms`。
+         - 根因：开发机本地常驻跑有 `next dev`（PID 41694 占用 5 条长连接）及间歇性 `next build`（多 jest worker SSG 占用 8~10 条连接），Supabase PgBouncer 交易池上限被占满；Prisma Client 默认连接池（5 条并发）发起请求时排队超时断开。
+         - 对策：CLI 脚本数据库连接串需显式约束 `&connection_limit=1`，且外层包裹指数退避重试（`executeWithRetry`）。
+      2. **`financials: { some: {} }` 深度相关子查询在大表下的性能瓶颈**：
+         - 根因：在 5,569 家 Entity 与数十万条 Financial 记录下，Prisma 的 `financials: { some: {} }` 在 Postgres 生成了低效的 `EXISTS (SELECT 1 FROM Financial ...)` 嵌套扫描，跨公网 WAN 延迟下耗时 >30 秒，极易触发 PgBouncer 15s 超时。
+         - 对策：获取存量公司应改用 `ExtSource` 过滤（`accessionNumber: "akshare-annual"`）或分页批量扫，避免在 Entity 过滤上做深度关联。
+      3. **Phase 2 批量写入并发锁已初步优化，待最终整编**：
+         - 原 `runPool(..., 8)` 逐行 upsert 会导致锁等待与长事务，现已重写为 `createMany({ skipDuplicates: true })`（单批写入从 3 分钟降至 2 秒），等待连接池隔离与重试机制合流。
+    - **后续恢复建议**：
+      - 待空闲时段或在 remote mini 独立机器上，给脚本加上 `connection_limit=1` 与重连保护后，单次执行 `node --env-file=.env.local --import tsx scripts/backfill-cn-repurchase.ts` 跑完剩余 92 家即可收官。
 
   - **判据**：`textArtifactId is null AND length(content) < contentTextLength`。按 `extractionVersion` 分：v2 全部 10,857 个 section text artifact 数为 0（那一代没这机制），v3 的 16,181 个里缺 1,839 个。8/29–8/30 两批重导的 10,082 个则 100% 完整——**当前写入路径是对的，这是历史存量问题**。
   - **受影响最多**：BABA(85/8)、LUV(70/7)、TM(69/6)、JOYY(67/6)、TSM(65/6)、NETTF(65/6)、RH(65/7)、GOTU(65/6)、AAL(63/6)、LBTYK(63/12)、TSLA(62/10)。

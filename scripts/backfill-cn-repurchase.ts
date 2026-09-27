@@ -36,17 +36,6 @@ async function runCommand(cmd: string, args: string[]): Promise<{ code: number; 
   });
 }
 
-async function runPool<T>(items: T[], concurrency: number, fn: (item: T, index: number) => Promise<void>) {
-  let cursor = 0;
-  const workers = Array.from({ length: Math.max(1, concurrency) }, async () => {
-    while (true) {
-      const index = cursor++;
-      if (index >= items.length) return;
-      await fn(items[index], index);
-    }
-  });
-  await Promise.all(workers);
-}
 
 async function ensureExtSource(entityId: string, ticker: string, code: string, market: string) {
   const accessionNumber = "akshare-annual";
@@ -118,24 +107,36 @@ async function main() {
     repurchaseByCode.get(c)!.push(r);
   }
 
+
+
+  // 一次 groupBy 拿每家公司 FY 最大 periodEnd（避免拉几十万行）
+  const entityIds = companies.map((c) => c.id);
+  const maxFyRows = await db.financial.groupBy({
+    by: ["entityId"],
+    where: { entityId: { in: entityIds }, periodType: "FY" },
+    _max: { periodEnd: true },
+  });
+  const maxFyYearByEntity = new Map<string, number>();
+  for (const r of maxFyRows) {
+    if (r._max.periodEnd) {
+      maxFyYearByEntity.set(r.entityId, new Date(r._max.periodEnd).getUTCFullYear());
+    }
+  }
+
   let repCompaniesWithData = 0;
-  let repRowsWritten = 0;
+  const repRows: Array<{
+    entityId: string; sourceId: string; periodEnd: Date;
+    periodType: string; lineItem: string; value: number; unit: string;
+  }> = [];
+  const repSourceMap = new Map<string, string>(); // entityId -> sourceId
 
   for (const comp of companies) {
     const code = comp.code!;
     const repList = repurchaseByCode.get(code);
     if (!repList || repList.length === 0) continue;
 
-    // 查出该 entity 的已存 FY 年份
-    const fyRecords = await db.financial.findMany({
-      where: { entityId: comp.id, periodType: "FY" },
-      select: { periodEnd: true },
-      distinct: ["periodEnd"],
-    });
-    if (fyRecords.length === 0) continue;
-
-    const completedFyYears = fyRecords.map((r) => new Date(r.periodEnd).getUTCFullYear()).sort((a, b) => a - b);
-    const maxFyYear = completedFyYears[completedFyYears.length - 1];
+    const maxFyYear = maxFyYearByEntity.get(comp.id);
+    if (!maxFyYear) continue;
 
     const repByYear: Record<number, number> = {};
     for (const r of repList) {
@@ -161,35 +162,41 @@ async function main() {
     repCompaniesWithData++;
     const ticker = comp.ticker ?? (code.startsWith("6") ? `${code}.SS` : `${code}.SZ`);
     const extSource = await ensureExtSource(comp.id, ticker, code, "cn");
+    repSourceMap.set(comp.id, extSource.id);
 
     for (const [yStr, totalAmt] of yearEntries) {
-      const periodEnd = new Date(`${yStr}-12-31T00:00:00.000Z`);
+      repRows.push({
+        entityId: comp.id,
+        sourceId: extSource.id,
+        periodEnd: new Date(`${yStr}-12-31T00:00:00.000Z`),
+        periodType: "FY",
+        lineItem: "ShareRepurchaseAmt",
+        value: totalAmt,
+        unit: "CNY",
+      });
+    }
+  }
+
+  // 批量写入（createMany skipDuplicates + 逐行 upsert 兜底更新 value）
+  let repRowsWritten = 0;
+  if (repRows.length > 0) {
+    await db.$connect();
+    const created = await db.financial.createMany({ data: repRows, skipDuplicates: true });
+    repRowsWritten = created.count;
+    // upsert remaining (already-existing rows that were skipped — update value)
+    for (const row of repRows) {
       await db.financial.upsert({
         where: {
           entityId_periodEnd_periodType_lineItem: {
-            entityId: comp.id,
-            periodEnd,
-            periodType: "FY",
-            lineItem: "ShareRepurchaseAmt",
+            entityId: row.entityId, periodEnd: row.periodEnd,
+            periodType: row.periodType, lineItem: row.lineItem,
           },
         },
-        create: {
-          entityId: comp.id,
-          sourceId: extSource.id,
-          periodEnd,
-          periodType: "FY",
-          lineItem: "ShareRepurchaseAmt",
-          value: totalAmt,
-          unit: "CNY",
-        },
-        update: {
-          sourceId: extSource.id,
-          value: totalAmt,
-          unit: "CNY",
-        },
+        create: row,
+        update: { value: row.value, sourceId: row.sourceId },
       });
-      repRowsWritten++;
     }
+    repRowsWritten = repRows.length;
   }
 
   console.log(`✓ 回购回补完成: 命中 ${repCompaniesWithData} 家有回购记录的公司，累计写入 ${repRowsWritten} 行数据。\n`);
@@ -249,7 +256,7 @@ async function main() {
         continue;
       }
 
-      // 批量写入该批次到数据库
+      // 批量写入该批次到数据库（createMany skipDuplicates，比逐行 upsert 快 10-20x）
       let batchWritten = 0;
       for (const comp of batch) {
         const code = comp.code!;
@@ -259,34 +266,33 @@ async function main() {
         const ticker = comp.ticker ?? (code.startsWith("6") ? `${code}.SS` : `${code}.SZ`);
         const extSource = await ensureExtSource(comp.id, ticker, code, "cn");
 
-        await runPool(recs, 8, async (rec) => {
-          const periodEnd = new Date(rec.periodEnd);
-          await db.financial.upsert({
-            where: {
-              entityId_periodEnd_periodType_lineItem: {
-                entityId: comp.id,
-                periodEnd,
-                periodType: rec.periodType,
-                lineItem: rec.lineItem,
-              },
-            },
-            create: {
-              entityId: comp.id,
-              sourceId: extSource.id,
-              periodEnd,
-              periodType: rec.periodType,
-              lineItem: rec.lineItem,
-              value: rec.value,
-              unit: "CNY",
-            },
-            update: {
-              sourceId: extSource.id,
-              value: rec.value,
-              unit: "CNY",
-            },
-          });
-          batchWritten++;
-        });
+        const rows = recs.map((rec) => ({
+          entityId: comp.id,
+          sourceId: extSource.id,
+          periodEnd: new Date(rec.periodEnd),
+          periodType: rec.periodType,
+          lineItem: rec.lineItem,
+          value: rec.value,
+          unit: "CNY" as const,
+        }));
+
+        // Retry once on P1017 connection-reset (Prisma idle timeout during long Python fetch)
+        let result = { count: 0 };
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            await db.$connect();
+            result = await db.financial.createMany({ data: rows, skipDuplicates: true });
+            break;
+          } catch (err: unknown) {
+            const code = (err as { code?: string })?.code;
+            if (attempt === 0 && (code === "P1017" || code === "P1001")) {
+              await new Promise((r) => setTimeout(r, 500));
+              continue;
+            }
+            throw err;
+          }
+        }
+        batchWritten += result.count;
       }
 
       sharesRowsWritten += batchWritten;
@@ -340,7 +346,7 @@ async function main() {
       where: { entityId: e.id, lineItem: "ShareRepurchaseAmt" },
       orderBy: { periodEnd: "desc" },
     });
-    const totalRep = repurchases.reduce((sum, r) => sum + r.value, 0);
+    const totalRep = repurchases.reduce((sum, r) => sum + Number(r.value), 0);
 
     console.log(
       `  - ${e.code} ${e.canonicalName}: 最新 FY 股本 = ${latestShare ? (latestShare.value / 1e8).toFixed(2) + " 亿股 (" + new Date(latestShare.periodEnd).getFullYear() + ")" : "无"} | 累计回购 = ${(totalRep / 1e8).toFixed(2)} 亿元 (${repurchases.length} 年记录)`
