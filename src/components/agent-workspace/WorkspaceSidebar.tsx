@@ -2,7 +2,6 @@
 
 import { CollapsibleSection } from "@/components/agent-workspace/CollapsibleSection";
 import { NotesSidebar } from "@/components/agent-workspace/NotesSidebar";
-import { PortfolioPanel } from "@/components/agent-workspace/PortfolioPanel";
 import { WatchlistSection } from "@/components/agent-workspace/WatchlistSection";
 import type { Note } from "@/hooks/useNotes";
 
@@ -37,8 +36,6 @@ export function WorkspaceSidebar({
       >
         <NotesSidebar notes={notes} activeNoteId={activeNoteId} onOpenNote={onOpenNote} />
       </CollapsibleSection>
-
-      <PortfolioPanel />
 
       <CollapsibleSection title="关注">
         <WatchlistSection />

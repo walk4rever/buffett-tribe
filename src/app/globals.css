@@ -14107,6 +14107,11 @@ body {
   line-height: 1.5;
 }
 
+/* Hide footer on /agent page */
+body:has(.agent-workspace) .site-footer {
+  display: none;
+}
+
 /* ════════════════════════════════
    PDF Reader — sample document view
    ════════════════════════════════ */
@@ -15433,9 +15438,10 @@ a.insight-entity-chip:hover {
 }
 
 .agent-workspace-main:has(.agent-workspace-note-pane) .agent-workspace-chat-pane {
-  flex: 0 0 auto;
-  width: 680px;
+  flex: 1;
+  max-width: 680px;
   min-width: 480px;
+  margin: 0 auto;
 }
 
 /* ── Note Editor ── */
