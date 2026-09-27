@@ -438,3 +438,99 @@ for (const company of allCandidates) {
 - Phase 1→2 的自动批处理（不依赖用户标记）— 这是另一个独立的产品决策
 - 优先级的自动过期或衰减机制
 - Phase 2 完成后的 priority 自动清零（当前机制保持不变）
+
+---
+
+# Handoff 追加 — 统一优先队列（Phase 1→2 推进）全链路落地与接手指南（2026-09-27）
+
+## 一、本次上线总结（v0.45.23 + Worker 重构）
+
+本次完整打通了 **Phase 1（基础数据建档）→ Phase 2（深度商业分析）的优先排队与推进机制**：
+
+1. **前端界面与交互**：
+   - Phase 1 公司详情页自动隐藏 4 个尚未生成的灰态 Tab（商业分析、价值分析、管理分析、估值分析），保持界面清爽；
+   - 在 Tab 栏右侧增设 Apple HIG 风格「⚡ 完善」加急按钮；
+   - 点击后调用 `/api/company/fast-track`，即时变为「排队中…」并在成功后切换为柔光绿「✓ 已排队」；
+   - 数据层（`getCompanyByIdentifier`、`getCompanyByCik`、`getCompanyByTicker`）补齐 `priority` 与 `onboardPhase` 查询；详情页加载或刷新时，只要 `priority > 0` 即精准初始化为「✓ 已排队」状态。
+2. **后台调度 Worker 升级（`scripts/pipeline-priority-worker.ts`）**：
+   - 统一优先队列：优先扫描 `onboardPhase IN (0, 1) AND priority > 0` 的标的；
+   - 自动分流：若 `onboardPhase === 0` 则传参 `--phase 1`；若 `onboardPhase === 1` 则传参 `--phase 2`（依次生成商业画布、护城河、治理管理、估值分析）；
+   - 重试隔离：Phase 1 失败记录 `onboardPhase2Attempts` 与 `onboardPhase2LastError`，**保持 `onboardPhase = 1` 不被误判为死信（-1）**；
+   - 优先级自动重置：当公司完成对应 Phase 步骤后，自动清零 `priority`，避免重复霸占队列；
+   - 批处理大小下调：默认 `BATCH_SIZE` 由 30/20 降为 **15**（保留 35 分钟超时），防范 Phase 2 多个重度 LLM 耗时累积超时；
+   - 脚本别名与向后兼容：`package.json` 提供 `worker:priority`，并保留 `worker:phase1` 兼容别名；同时提供 `scripts/cron/hourly-priority-worker.sh` 与 `scripts/cron/hourly-phase1-worker.sh`。
+3. **远端同步与部署**：
+   - 代码与脚本已通过 rsync 全量同步至 `mini:~/buffett-tribe`。
+
+---
+
+## 二、当前数据库排队现状
+
+生产数据库中当前共有 **10 家** 公司处于优先通道（`priority > 0`），全部为 **Phase 1** 状态：
+
+| # | 代码/Ticker | 市场 | 公司名称 | 状态 | 优先分 | 来源说明 |
+|---|---|---|---|---|---|---|
+| 1 | `SPCX` | 美股 | 太空探索技术 (SpaceX) | Phase 1 | 110 | 2026-09-27 用户手动添加 |
+| 2 | `SHOP` | 美股 | Shopify公司 | Phase 1 | 100 | 2026-09-27 用户在详情页点击加急 |
+| 3 | `BIDU` | 美股 | 百度 | Phase 1 | 100 | 2026-09-25 优先建档测试遗留（用户要求保留测试） |
+| 4 | `TCOM` | 美股 | 携程集团 | Phase 1 | 100 | 2026-09-25 优先建档测试遗留 |
+| 5 | `QXO` | 美股 | QXO公司 | Phase 1 | 100 | 2026-09-25 优先建档测试遗留 |
+| 6 | `BSP` | 美股 | 弯曲勺子 (Bending Spoons) | Phase 1 | 100 | 2026-09-25 优先建档测试遗留 |
+| 7 | `688825.SS` | A股 | 长鑫科技 | Phase 1 | 100 | 2026-09-25 优先建档测试遗留 |
+| 8 | `300760.SZ` | A股 | 迈瑞医疗 | Phase 1 | 100 | 2026-09-25 优先建档测试遗留 |
+| 9 | `2097.HK` | 港股 | 蜜雪集团 | Phase 1 | 100 | 2026-09-25 优先建档测试遗留 |
+| 10 | `CSTAF` | 美股 | 星座收购公司I | Phase 1 | 100 | 2026-09-25 优先建档测试遗留 |
+
+*注：由于用户明确要求保留上述标的用于测试验证，因此未做清零。若后续需清空历史遗留，执行：*
+```sql
+UPDATE "Entity" SET priority = 0 WHERE ticker NOT IN ('SPCX', 'SHOP') AND priority > 0;
+```
+
+---
+
+## 三、实测验证记录与边缘案例
+
+### 1. Dry-Run 校验（通过）
+在 `mini` 上运行 `npm run worker:priority -- --dry-run`：
+- 精确检出上述 10 家标的为 `[⚡ FAST-TRACK] [P1→P2 深度分析]`；
+- 剩余 5 个名额由三大市场轮巡选出 5 家 `[STANDARD] [P0→P1 基础建档]`，总计 15 家。
+
+### 2. Live 批次实测（SPCX）
+在 `mini` 上手工执行 `npm run worker:priority -- --batch-size 1`：
+- 成功调度第一优先级 `SPCX`；
+- 成功生成并入库了商业画布、价值分析（护城河 10 个维度）、管理分析（3 张治理卡片）；
+- 估值分析因 SpaceX 属未上市招股书标的、无公开股价与年报财务数据而合理跳过；
+- Worker 正确记录 `onboardPhase2Attempts: 1`，且**保持 `onboardPhase = 1` 不被误降为死信**，证明重试隔离机制完全生效。
+
+### 3. 已知边缘案例（SHOP / 加拿大赴美上市 10-K 与 40-F 混杂）
+- Shopify (SHOP) 为加拿大跨类股/赴美上市实体，在 SEC EDGAR 中同时存在 10-K 与 40-F 记录。
+- 10-K 提取出 23 个 sections，但 40-F 记录的 sections 为 0。
+- `onboard-company.ts` 中的 `import10kFullStep.verify` 原逻辑检查了 `filingsWithoutSections === 0`，当存在 0-section 的 40-F 冗余记录时会触发校验未通过。后续可针对多 filing 类型微调校验条件（如判断只要 `10k` 或 `40f` 任意一套具备完整 sections 即算通过）。
+
+---
+
+## 四、接手人操作指南
+
+### 1. 手工触发与队列排查
+```bash
+ssh mini
+cd ~/buffett-tribe
+export PATH="/Users/rafael/node/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
+# 1. 试跑检查排队名单
+npm run worker:priority -- --dry-run
+
+# 2. 手工跑单家验证
+npm run worker:priority -- --batch-size 1
+
+# 3. 手工跑全批次
+npm run worker:priority -- --batch-size 15
+```
+
+### 2. 启用定时 Cron（未来验证稳定后）
+在 `mini` 上运行 `crontab -e`，取消注释 Hourly Worker（已更新默认批大小为 15）：
+```cron
+# 每小时 15 分执行优先与建档 Worker
+15 * * * * /Users/rafael/buffett-tribe/scripts/cron/hourly-priority-worker.sh 15 all >> /Users/rafael/logs/buffett-tribe/phase1-worker.log 2>&1
+```
+
