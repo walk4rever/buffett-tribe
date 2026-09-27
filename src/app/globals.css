@@ -4945,10 +4945,7 @@ body.layout-no-header {
   padding-bottom: 1.85rem;
 }
 
-.companies-item--static .companies-item-zh {
-  opacity: 0.75;
-}
-
+.companies-item--static .companies-item-zh,
 .companies-item--static .companies-item-en,
 .companies-item--static .companies-item-ticker {
   opacity: 0.52;

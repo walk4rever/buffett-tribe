@@ -97,7 +97,7 @@ export function CompanyGrid({
                 ) : (
                   <span className="companies-fasttrack-icon" aria-hidden="true">⚡</span>
                 )}
-                <span>{isPending ? "排队中…" : "优先建档"}</span>
+                <span>{isPending ? "排队中…" : "建档"}</span>
               </button>
             )}
           </span>

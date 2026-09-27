@@ -94,25 +94,31 @@ async function getMarketUniverseCounts() {
 // management/valuation), not "most recently created" (misses refreshed old
 // companies) or "any DB write" (StockPrice updates daily, which would just
 // permanently pin every actively-priced company here and defeat the point).
+// Only show phase1+ companies (phase0 means onboarding incomplete/failed).
 async function getRecentlyUpdatedCompanies(limit = 18): Promise<CompanyDirectoryItem[]> {
   try {
     const latest = await prisma.companyAnalysis.findMany({
       orderBy: { updatedAt: "desc" },
-      take: limit,
+      take: limit * 2, // Fetch more to account for phase0 filtering
       select: { entityId: true },
     });
     if (!latest.length) return [];
 
     const entityIds = latest.map((row) => row.entityId);
     const rows = await prisma.entity.findMany({
-      where: { id: { in: entityIds }, type: "company" },
+      where: {
+        id: { in: entityIds },
+        type: "company",
+        onboardPhase: { gte: 1 }
+      },
       select: ENTITY_DIRECTORY_SELECT,
     });
     const byId = new Map(rows.map((row) => [row.id, row]));
     return entityIds
       .map((id) => byId.get(id))
       .filter((row): row is EntityDirectoryRow => row != null)
-      .map(toDirectoryItem);
+      .map(toDirectoryItem)
+      .slice(0, limit); // Trim to requested limit after filtering
   } catch {
     return [];
   }
