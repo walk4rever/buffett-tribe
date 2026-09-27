@@ -6,7 +6,7 @@
 # and standard Phase 0 companies across US, HK, and CN markets.
 #
 # Usage:
-#   scripts/cron/hourly-phase1-worker.sh [batch_size] [market] [extra_args...]
+#   scripts/cron/hourly-priority-worker.sh [batch_size] [market] [extra_args...]
 
 set -euo pipefail
 

@@ -415,13 +415,13 @@ for (const company of allCandidates) {
 **必须完成的改动**：
 1. ✅ 方案设计已确定（方案 A：统一优先队列）
 2. ✅ Phase 1 公司详情页添加"完善"加急按钮（UI + 样式 + 状态持久化）
-3. ⬜ 修改 `pipeline-phase1-worker.ts`：
-   - 查询逻辑：同时获取 phase 0 和 phase 1 的优先公司
-   - 执行逻辑：根据当前 phase 决定传 `--phase 1` 还是 `--phase 2`
-   - 日志输出：标记每个公司的 phase 和目标 phase
-4. ⬜ 调整 batch size（cron 脚本或 worker 默认值）
-5. ⬜ 重命名 worker 脚本和相关引用（可选但推荐）
-6. ⬜ 更新 CLAUDE.md 的相关描述
+3. ✅ 修改 Worker 调度逻辑（`scripts/pipeline-priority-worker.ts`）：
+   - 查询逻辑：同时获取 phase 0 和 phase 1 的优先公司（`onboardPhase IN (0, 1) AND priority > 0`）
+   - 执行逻辑：根据当前 phase 自动决定传 `--phase 1` 还是 `--phase 2`，重试与失败次数按 phase 独立计数
+   - 日志输出：清晰标记每个公司的阶段跃迁（`[P0→P1 基础建档]` / `[P1→P2 深度分析]`）
+4. ✅ 调整 batch size：默认 batch size 统一下调至 15，timeout 保持 35 分钟
+5. ✅ 重命名 worker 脚本与相关引用：升级为 `scripts/pipeline-priority-worker.ts`，保留 `worker:phase1` 别名兼容，新增 `worker:priority`
+6. ✅ 更新 CLAUDE.md 的相关描述（统一优先队列与调度机制）
 
 **验证要点**：
 - Phase 0 公司标记优先后，下次 cron 执行 Phase 1
