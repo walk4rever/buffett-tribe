@@ -194,7 +194,7 @@ AGENTS.md（`services/pi-gateway/AGENTS.md`）定义 Agent system prompt：投�
 | 区域 | 未登录 | 已登录 |
 |------|--------|--------|
 | `/master`、`/company`、`/insights`、公司页六个 tab | 完全可见 | 完全可见 |
-| `/agent` 页面 | 服务端 `getServerSession` 未命中直接 `redirect` 到 `/login?callbackUrl=%2Fagent`，不渲染任何内容 | 正常使用 |
+| `/agent` 页面 | **可直接使用（2026-09-28 起）**：不再强制跳转登录，匿名用户按 IP 每自然日 5 次试用额度，用尽后 429 提示登录解锁；左侧工作区侧栏、笔记面板、"存为笔记"按钮对匿名用户隐藏 | 正常使用 |
 | 各处「AI 解读」入口（公司页、大师页、年报阅读器、洞见页——`CompanyAgentDialog`/`MasterAgentDialog`/`FilingReader`/`PdfFilingReader`/`InsightChatShell`，均经由共享的 `useAgentGate` hook） | 点击触发按钮（含选中原文后的"问 AI 这段"）时当场检测未登录，`router.push` 跳转 `/login?callbackUrl=<当前页面?openAgent=1>`，不打开对话框 | 正常使用 |
 | `/punch`（打孔墙）+ `/punch/[slug]`（详情页） | 服务端 `getServerSession` 未命中直接 `redirect` 到 `/login?callbackUrl=...`，不渲染任何内容 | 正常浏览 |
 | 「活动」（导航占位，功能未实现） | — | 功能实际上线时应沿用与打孔一致的登录门禁，无需另行讨论 |
@@ -244,6 +244,8 @@ NextAuth（Credentials Provider，`src/lib/auth.ts`）是现有唯一认证实�
 - 数据模型：新增 Prisma model（暂定名 `CreditLedger`），append-only（只 insert 不 update，余额 = `SUM(delta)`），照抄 ai-dive `ai_pulse_credit_ledger` 的设计——包括预留 `period IS NULL`（永不过期）的行给未来的付费充值用，即使付费本期不做，表结构也不用等付费上线时再改一次。幂等发放不能用 Prisma `@@unique([userId, reason, period])`（那是全表唯一约束，`spend_agent` 这种一个月内会插很多行的 reason 会被第一条之后的所有扣费全部拒写，直接打断计费）——ai-dive 实际是**部分唯一索引** `CREATE UNIQUE INDEX ... ON (user_id, reason, period) WHERE reason IN ('grant_free','grant_plan')`，只约束"发放"类 reason，`spend_agent` 不受约束。Prisma schema DSL 不支持声明部分索引，要照搬本文档「Commands」里已有的 shadow DB 手工提取 workaround，在迁移里手写这条 `CREATE UNIQUE INDEX ... WHERE ...`。顺带留意 ai-dive 已经把 `grant_plan`（未来付费套餐发放）也纳入这个部分索引——buffett-tribe 即使本期不做付费，新建索引时也应该把这个 reason 值一并纳入，避免以后加付费功能时还要再改一次索引。
 - 起步策略：功能上线那一刻，所有已登录用户（不分新老）统一从当前自然月开始拿 1000 额度，不追溯、不区别对待。
 - **admin 不豁免配额**：`role === 'admin'` 的账号和普通用户走同一套限额检查，不特殊放行（ai-dive 自己 `/api/agent/route.ts` 里也是如此——`withinHourlyLimit`/`getBalance` 检查不看 role）。原因不是"图省事"，是刻意选择：管理员（当前就是站长本人）需要额度不够用时，走的应该是 `/admin` 后台里未来要做的「手动调整用户额度」功能（往 `CreditLedger` insert 一条正 `delta`、reason 用区别于自动发放的独立值如 `grant_admin_adjust`，不落进上面那条部分唯一索引的 `WHERE reason IN (...)` 范围内，因为这是一次性人工操作、不需要按 period 去重幂等），而不是在计量逻辑里开一个"role 特权"的后门分支——这样将来"给某个用户额外发放额度"这个操作，管理员自己用和支持普通用户用是同一条路径，不用维护两套。
+
+**匿名试用（2026-09-28 实现）**：未登录用户按 IP 每自然日 5 次试用额度（`GUEST_DAILY_LIMIT`，`src/lib/guest-credits.ts`，复用 `ChatUsage` 表按 `(ip, date)` 计数），在 `/api/pi` 前置检查并在放行后**立即**记账（防止并发请求同时通过检查绕过限额）；超过返回 429 + 登录引导文案。IP 获取优先 `cf-connecting-ip`（Cloudflare 提供的真实访客 IP），fallback `x-forwarded-for`——迁移到 Cloudflare 后只读 `x-forwarded-for` 会拿到边缘节点 IP，全站访客共享一个配额池。`/api/quota` 对登录/匿名返回两种不同形态的 JSON（`type: "user" | "guest"`）。**踩过的坑（CDN 缓存）**：`/api/quota` 对匿名请求也返回 200，Cloudflare 缓存规则误配成 "Eligible for cache"（应为 "Bypass cache"）后，某个匿名访客的 guest 响应被边缘节点缓存并服务给登录用户——响应里没有 `balance` 字段，`/dashboard` 配额卡 `balance.toLocaleString()` 直接崩溃。修复双管齐下：Cache Rule 改为 Bypass + `/api/quota` 响应统一带 `Cache-Control: private, no-store`（`dynamic = "force-dynamic"`），前端 `QuotaCard` 对非 user 形态响应降级为错误卡片不再崩溃。教训：**任何对匿名请求返回 200 且内容因人而异的接口，都要显式发 `no-store`**，不能只依赖 CDN 规则配置。
 
 **`role` 与 `/admin` 后台（本期要做）**：
 - `User` 新增 `role` 字段（二值 `'user' | 'admin'`，对应 ai-dive `CHECK (role IN ('user','admin'))`），不做细粒度 RBAC——buffett-tribe 是单人运营项目（`CLAUDE.md` 释出流程明确写"no PR flow for solo iteration"），提前做多角色权限属于过度设计。

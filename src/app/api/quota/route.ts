@@ -5,6 +5,12 @@ import { getClientIp } from "@/lib/ratelimit";
 import { checkGuestLimit } from "@/lib/guest-credits";
 import { currentPeriod, getBalance } from "@/lib/credits";
 
+export const dynamic = "force-dynamic";
+
+// Per-user/per-IP response — must never be cached by CDN (Cloudflare) or the
+// browser, otherwise one visitor's quota snapshot is served to everyone else.
+const NO_STORE = { "Cache-Control": "private, no-store, must-revalidate" };
+
 /**
  * GET /api/quota
  *
@@ -25,7 +31,7 @@ export async function GET(req: Request) {
       limit: 1000,
       period: period,  // YYYY-MM 格式，用于 QuotaCard 显示
       monthlyLimit: 1000,  // 兼容旧格式
-    });
+    }, { headers: NO_STORE });
   } else {
     // 未登录用户：返回 IP 每日试用次数
     const ip = getClientIp(req);
@@ -37,6 +43,6 @@ export async function GET(req: Request) {
       limit: 5,
       period: "daily",
       allowed,
-    });
+    }, { headers: NO_STORE });
   }
 }

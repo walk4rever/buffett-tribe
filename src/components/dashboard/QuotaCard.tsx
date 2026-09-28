@@ -24,7 +24,7 @@ export function QuotaCard() {
     );
   }
 
-  if (!quota) {
+  if (!quota || typeof quota.balance !== "number") {
     return (
       <section className="dashboard-card dashboard-quota-card">
         <div className="dashboard-card-header">
