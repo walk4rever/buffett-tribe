@@ -669,7 +669,7 @@ date: "2026-06-09"
         "",
         "—— 摘自《巴菲特致股东信精选》",
         "",
-        "🔗 原文链接：https://vt.air7.fun/insights/berkshire-shareholder-letter",
+        "🔗 原文链接：https://vt.air7fun.com/insights/berkshire-shareholder-letter",
         "",
         "【Value-Tribe · 价值部落】买股票就是买公司。用投资大师的框架深度理解一家公司。",
       ].join("\n"));

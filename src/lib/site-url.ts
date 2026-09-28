@@ -2,7 +2,8 @@
 // is what actually drives every absolute site URL (share cards, QR codes, OG
 // images), so it is the one place a domain migration has to touch.
 // Renamed from buffett.air7.fun on 2026-08-30 with the Value Tribe rebrand.
-const DEFAULT_SITE_ORIGIN = "https://vt.air7.fun";
+// Migrated to vt.air7fun.com on 2026-09-28 for Cloudflare CDN.
+const DEFAULT_SITE_ORIGIN = "https://vt.air7fun.com";
 
 export const SITE_ORIGIN = normalizeSiteOrigin(process.env.NEXT_PUBLIC_SITE_URL) ?? DEFAULT_SITE_ORIGIN;
 
