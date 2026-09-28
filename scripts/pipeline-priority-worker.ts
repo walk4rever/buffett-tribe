@@ -22,6 +22,9 @@
  *
  *   # Target a specific market:
  *   npm run worker:priority -- --market hk --batch-size 15
+ *
+ *   # Priority-channel only (no standard Phase 0 fill):
+ *   npm run worker:priority -- --priority-only
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, appendFileSync } from "node:fs";
@@ -305,10 +308,11 @@ async function main() {
   const targetMarket = (getArg("--market") ?? "all").toLowerCase();
   const delayMs = parseInt(getArg("--delay") ?? "2000", 10);
   const timeoutMins = parseInt(getArg("--timeout-mins") ?? "35", 10);
+  const priorityOnly = hasFlag("--priority-only");
 
   logMessage("=======================================================");
-  logMessage(`PRIORITY BATCH WORKER STARTED [Mode: ${dryRun ? "DRY-RUN" : "LIVE"}]`);
-  logMessage(`Configuration: BatchSize=${batchSize}, Market=${targetMarket}, Delay=${delayMs}ms, Timeout=${timeoutMins}m`);
+  logMessage(`PRIORITY BATCH WORKER STARTED [Mode: ${dryRun ? "DRY-RUN" : "LIVE"}${priorityOnly ? ", PRIORITY-ONLY" : ""}]`);
+  logMessage(`Configuration: BatchSize=${batchSize}, Market=${targetMarket}, Delay=${delayMs}ms, Timeout=${timeoutMins}m, PriorityOnly=${priorityOnly}`);
 
   if (!dryRun) {
     if (!acquireLock()) {
@@ -338,7 +342,7 @@ async function main() {
     let regularList: CandidateCompany[] = [];
 
     // 2. Supplement remaining slots with standard Phase 0 companies
-    if (remainingSlots > 0) {
+    if (!priorityOnly && remainingSlots > 0) {
       if (targetMarket === "all") {
         const perMarket = Math.ceil(remainingSlots / 3);
         const [usList, hkList, cnList] = await Promise.all([
