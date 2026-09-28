@@ -12,6 +12,11 @@ const REOPEN_PARAM = "openAgent";
  * current URL as callbackUrl, plus a marker to reopen the panel) and returns
  * false so the caller skips opening. After login redirects back, the marker
  * fires `onReopen` once and is stripped from the URL.
+ *
+ * 2026-09-28: With guest trial enabled, this hook no longer blocks unauthenticated
+ * users — they can proceed to use AI features with IP-based trial quota. The
+ * redirect-to-login path is preserved but only triggered when explicitly needed
+ * (e.g., user hits trial limit and clicks "login to unlock").
  */
 export function useAgentGate(onReopen: () => void) {
   const { status } = useSession();
@@ -35,14 +40,17 @@ export function useAgentGate(onReopen: () => void) {
   }, [status, searchParams]);
 
   function requireAuth(): boolean {
-    if (status === "authenticated") return true;
-    if (status === "loading") return false;
+    // Guest trial enabled: always return true, let API handle trial quota
+    return true;
+  }
+
+  function promptLogin(): void {
     const params = new URLSearchParams(searchParams);
     params.set(REOPEN_PARAM, "1");
     const target = `${pathname}?${params.toString()}`;
     router.push(`/login?callbackUrl=${encodeURIComponent(target)}`);
-    return false;
   }
 
-  return { requireAuth };
+  return { requireAuth, promptLogin };
 }
+

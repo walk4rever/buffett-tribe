@@ -17,6 +17,7 @@ import { TOOL_META, type ImageAttachment, type Message } from "@/hooks/useAgentC
 import { fileToImageAttachment, isSupportedImageFile } from "@/lib/downscale-image";
 import { mdComponents } from "@/lib/markdown-components";
 import { CopyMarkdownButton } from "@/components/CopyMarkdownButton";
+import { AgentQuotaHint } from "@/components/AgentQuotaHint";
 
 function imageSrc(img: ImageAttachment): string {
   return `data:${img.mimeType};base64,${img.data}`;
@@ -253,6 +254,8 @@ export function AgentChat({
 
       {/* Input */}
       <div className="chat-input-wrap">
+        <AgentQuotaHint />
+
         {pendingImages.length > 0 && (
           <div className="chat-pending-images">
             {pendingImages.map((img, i) => (

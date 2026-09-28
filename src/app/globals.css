@@ -21381,6 +21381,57 @@ a.insight-entity-chip:hover {
   }
 }
 
+/* ── Agent Quota Hint ── */
+
+.agent-quota-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  max-width: 720px;
+  margin: 0 auto 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.agent-quota-hint--guest {
+  background: linear-gradient(135deg, rgba(0, 113, 227, 0.08) 0%, rgba(41, 151, 255, 0.06) 100%);
+  border: 1px solid rgba(0, 113, 227, 0.15);
+  color: var(--text);
+}
+
+.agent-quota-hint--warning {
+  background: rgba(255, 149, 0, 0.08);
+  border: 1px solid rgba(255, 149, 0, 0.2);
+  color: var(--text);
+}
+
+.agent-quota-hint-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--apple-blue);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: opacity 0.15s ease;
+}
+
+.agent-quota-hint-link:hover {
+  opacity: 0.8;
+}
+
+@media (max-width: 600px) {
+  .agent-quota-hint {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+  }
+}
+
 
 
 

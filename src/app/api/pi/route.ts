@@ -5,6 +5,8 @@ import { validateImageAttachments } from "@/lib/image-attachment";
 import { agentContextSchema, deriveContextKey } from "@/lib/agent-context";
 import prisma from "@/lib/prisma";
 import { currentPeriod, ensureFreeGrant, getBalance, recordSpend, withinHourlyLimit } from "@/lib/credits";
+import { checkGuestLimit, recordGuestUsage } from "@/lib/guest-credits";
+import { getClientIp } from "@/lib/ratelimit";
 
 // A multi-tool question ("从电力角度分析哪家公司值得投资" — 5 tool rounds, 22 calls)
 // measured 81s against the gateway directly, so the previous 90s/85s pair left ~4s of
@@ -19,18 +21,35 @@ const HISTORY_LIMIT = 10;
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
+
+  // 未登录用户：检查 IP 试用额度
   if (!session) {
-    return NextResponse.json({ error: "AI 对话需要登录后使用。" }, { status: 401 });
-  }
+    const ip = getClientIp(req);
+    const { allowed, remaining } = await checkGuestLimit(ip);
 
-  if (!(await withinHourlyLimit(session.user.id))) {
-    return NextResponse.json({ error: "请求过于频繁，请稍后再试。" }, { status: 429 });
-  }
+    if (!allowed) {
+      return NextResponse.json(
+        {
+          error: "今日试用次数已用完，登录后享受每月 1000 次免费额度。",
+          guestLimitReached: true,
+          remaining: 0,
+        },
+        { status: 429 }
+      );
+    }
 
-  const period = currentPeriod();
-  await ensureFreeGrant(session.user.id, period);
-  if ((await getBalance(session.user.id, period)) <= 0) {
-    return NextResponse.json({ error: "本月额度已用完，下月重置。" }, { status: 429 });
+    // 继续处理，成功后在下方记录使用
+  } else {
+    // 已登录用户：原有限流逻辑
+    if (!(await withinHourlyLimit(session.user.id))) {
+      return NextResponse.json({ error: "请求过于频繁，请稍后再试。" }, { status: 429 });
+    }
+
+    const period = currentPeriod();
+    await ensureFreeGrant(session.user.id, period);
+    if ((await getBalance(session.user.id, period)) <= 0) {
+      return NextResponse.json({ error: "本月额度已用完，下月重置。" }, { status: 429 });
+    }
   }
 
   if (!GATEWAY_URL || !AGENT_SECRET) {
@@ -101,7 +120,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status: upstream.status });
   }
 
-  await recordSpend(session.user.id, undefined, period);
+  // 记录用量：已登录用户记录到 CreditLedger，匿名用户记录到 ChatUsage
+  if (session) {
+    await recordSpend(session.user.id, undefined, currentPeriod());
+  } else {
+    await recordGuestUsage(getClientIp(req));
+  }
 
   return new Response(upstream.body, {
     headers: {

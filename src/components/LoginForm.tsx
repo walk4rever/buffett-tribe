@@ -74,7 +74,9 @@ export function LoginForm() {
   return (
     <div className="login-wrap">
       <Link href="/" className="login-brand">{BRAND_EN}</Link>
-      <p className="login-sub">登录后可使用 AI 投研对话、打孔等更多功能</p>
+      <p className="login-sub">
+        注册登录后享受每月 1000 次 AI 对话额度，使用投研笔记、打孔等完整功能
+      </p>
 
       <div className="login-card">
         <div className="login-tabs">

@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { deriveContextKey } from "@/lib/agent-context";
@@ -15,16 +14,15 @@ export const metadata = {
 
 export default async function AgentPage() {
   const session = await getServerSession(authOptions);
-  if (!session) {
-    redirect("/login?callbackUrl=%2Fagent");
-  }
 
-  const turns = await getRecentTurns(session.user.id, deriveContextKey(undefined));
-  const initialMessages: Message[] = turns.map((t) => ({
-    role: t.role,
-    text: t.text,
-    imageUrls: t.imageUrls.length ? t.imageUrls : undefined,
-  }));
+  // 2026-09-28: 允许匿名用户访问，使用 IP 级别试用额度
+  const initialMessages: Message[] = session
+    ? (await getRecentTurns(session.user.id, deriveContextKey(undefined))).map((t) => ({
+        role: t.role,
+        text: t.text,
+        imageUrls: t.imageUrls.length ? t.imageUrls : undefined,
+      }))
+    : [];
 
   return (
     <div className="idea-screen">

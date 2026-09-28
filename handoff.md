@@ -1,116 +1,454 @@
-# Handoff — Value Tribe 运维与管线状态（2026-09-27 清理重写）
+# Handoff — 2026-09-28：域名迁移到 Cloudflare CDN + 匿名试用方案设计
 
-> 本文件是跨会话交接的单一入口。只保留「当前状态 + 未解决问题 + 仍需引用的背景」；
-> 已完成事项压缩到文末归档。每次会话结束时更新并重写本节日期。
+> **会话时间：** 2026-09-28  
+> **参与者：** Rafael + Claude Opus 5 (1M context)  
+> **主要成果：** 完成域名迁移到 Cloudflare CDN，设计并准备实施匿名用户试用方案
 
-## 一、当前状态快照
+---
 
-### 部署三处（版本对齐情况）
+## 📋 本次会话内容
 
-| 位置 | 状态 |
-|---|---|
-| 本地 `main` | 最新。**有未 commit 改动**（见下） |
-| mini（`~/buffett-tribe`） | 已 rsync 到今天最新（含未 commit 改动）。⚠️ mini 不是 git checkout（无 `.git`），代码靠人工 rsync，**跑任何任务前必须先同步** |
-| air7（pi-gateway `/agent` 网关） | v0.43.37 已部署。本轮改动不涉及 pi-gateway |
+### 1. Supabase → Cloudflare D1 迁移评估
 
-**未 commit 改动（2026-09-27，13 个文件 + 本文件）**：
-- `src/lib/valuation-metrics.ts`（哨兵类型）
-- `scripts/generate-valuation-analysis.ts`（估值哨兵）
-- `scripts/generate-business-model.ts`（canvas 写顶层字段）
-- `scripts/migrate-canvas-field.ts`（一次性迁移，已执行）
-- `tests/valuation-metrics.test.ts`（哨兵用例）
-- `src/app/api/company/search/route.ts`、`src/app/(admin)/admin/universe/page.tsx`、`src/components/admin/AdminUniverseExplorer.tsx`（快速通道筛选修复）
-- `scripts/fetch-cn-annual-report.py`（招股书兜底：无年报时搜招股说明书，`require_chapter_heading` 防概览小节误匹配）
-- `scripts/import-cn-annual-report-from-file.ts`（支持 `filingKind: cn-prospectus`）
-- `scripts/onboard-company.ts`（CN step verify 接受 cn-prospectus）
-- `scripts/lib/company-generation.ts`、`src/lib/company-data.ts`、`src/app/company/[id]/annual-report/[year]/page.tsx`（cn-prospectus 接入证据/参考资料/阅读页）
-- `scripts/lib/annual-report-import-core.ts`（40-F 附件抽取接受 EX-1.x）
+**背景：** 用户询问是否可以将 Supabase 迁移到 Cloudflare D1
 
-### 优先队列 / Phase 分布
+**结论：❌ 不可行**
 
-- 优先通道当前只剩 **1 家滞留**：`VOD`（phase=1/priority=100）— 根因见问题 1。
-- 长鑫、SHOP、美的今日全部 phase=2（长鑫/SHOP 的 priority=100 残留但 phase=2 已出队，不会再被选中；如需清零：`UPDATE "Entity" SET priority = 0 WHERE ticker IN ('688825.SS','SHOP')`）。
-- 今日已完成 13 家 P1→P2（SPCX、CSTAF、BIDU、TCOM、QXO、BSP、300760.SZ、2097.HK、688825.SS、SHOP、000333.SZ 等）。
+**核心原因：**
+1. **pgvector 依赖无法解决**（致命）
+   - `Chunk` 表使用 pgvector 1536 维向量存储 embedding
+   - GBrain 的 `search_wisdom` 工具依赖语义检索
+   - D1 (SQLite) 无 vector 类型，无法实现余弦相似度搜索
 
-### Cron（mini）
+2. **D1 限制不适合金融数据**
+   - 数据库大小上限 5GB（当前 1-2GB，但会持续增长）
+   - 单表大小上限 1GB（`StockPrice` 预计达 500MB+）
+   - 不支持 `String[]` 数组类型（6 个字段使用）
+   - `Decimal` 精度损失（金融数据不能容忍浮点误差）
+   - 并发写入串行（批量导入 13F/10-K 需要并发）
 
-- ✅ 股价周更两条在跑：周六 12:00 cn,hk / 周日 01:00 us（mini 系统时区北京时间）
-- ✅ **Hourly priority worker 已启用（2026-09-27 下午）**：每小时 15 分，`hourly-priority-worker.sh 10 all`（2026-09-27 晚从 15 降为 10：35min 超时才是真实上限，实测一批 13-14 家就顶满；batch 10 更大概率干净跑完不撞截断），日志 `~/logs/buffett-tribe/priority-worker.log`（旧 `phase1-worker.log` 停用）。页面上加快速通道的公司最迟下一个整点 15 分被处理。
-  - 行为要点：PID 锁防重入；35 分钟硬超时直接 exit，被中断的公司靠 onboard checkpoint 下次续跑；batch 10 = 快速通道优先 + **standard P0 三市场轮巡补齐**。
-  - 前两批实测（17:15/18:15）：快速通道 SHOP✅、美的✅、VOD❌（见问题 1），standard 补位 ~20 家全部成功。
+3. **拆分架构成本太高**
+   - 需要维护 2 套 Prisma schema
+   - 40+ API routes 需要重写跨表查询
+   - 事务一致性无法保证（跨数据库）
+   - 估算工作量：5-8 周全职开发
 
-## 二、未解决问题（按优先级）
+**技术细节：**
+- 参考 Gameday 项目（完全 Cloudflare Workers）架构差异
+- Gameday 可以全迁移：纯前端 SPA + 无数据库 + Durable Objects
+- Buffett-Tribe 无法迁移：40 个 Node.js API routes + Postgres + pgvector
 
-### 会堵队列
+**推荐方案：保持 Supabase Postgres**
 
-### 会堵队列
+---
 
-（暂无）
+### 2. 域名迁移到 Cloudflare CDN ✅
 
-### 影响内容质量
+**背景：** 用户已将 `air7fun.com` 域名托管到 Cloudflare，询问如何优化
 
-**2. SPAC 拿到无意义估值**
-CSTAF 生成了「正式」估值（PE 39.55，信托现金利息算的），三情景隐含回报全 null。哨兵门槛「任一可用指标即生成」对空白支票公司太宽。
-**修法**：排除 SIC 6726 / 空白支票公司，或要求有实际营收才算「可用指标」。
+**最终方案：使用 `vt.air7fun.com` 替代 `vt.air7.fun`**
 
-**3. business/moat 步骤的同款「合法跳过判失败」未修**
-`scripts/generate-business-model.ts`「no usable filing section evidence」和 `scripts/generate-value-analysis.ts:170` 的跳过路径仍留 null → verify 判失败。9 家实测没踩到（step 1 重导把 sections 都抽出来了），但 BTGO 这类公司必踩。
-**修法**：推广估值哨兵同款 pattern，但 canvas/moat 前端消费面更大，需先评估。
+#### 2.1 迁移步骤
 
-**4. SPCX 财务数据质量存疑**
-单季 CapEx $28.5B（营收仅 $4B）、新上市公司 $4.4B 回购，疑似招股书抽数口径错误（可能是累计值）。需对照 S-1 原文核实——否则未来 FY 数据到了自动生成的估值建立在脏底子上。
+**用户完成（Cloudflare + Vercel）：**
 
-### 技术债 / 小项
+1. ✅ Vercel 添加域名：`vt.air7fun.com`
+   - Vercel 给出 CNAME 目标：`f2969eeba1b63924.vercel-dns-017.com`
 
-**5. `onboardPhase2Attempts`/`onboardPhase2LastError` 字段不存在**
-2026-09-27 上午的 handoff 声称 worker 会记录这两个字段，但 `prisma/schema.prisma` 的 `Entity` 模型里没有。重试计数要么没实现要么记在别处——若没落库，滞留公司的失败历史不可见。需核实。
+2. ✅ Cloudflare DNS 配置：
+   ```
+   类型: CNAME
+   名称: vt
+   内容: f2969eeba1b63924.vercel-dns-017.com
+   代理状态: 已代理（橙色云朵）✅
+   ```
 
-**6. 估值 tab 对哨兵是隐藏而非占位文案**（产品决策，待拍板）。
+3. ✅ Cloudflare Cache Rules 配置（3 条）：
+   - 规则 1：`vt.air7fun.com/_next/static/*` → Cache Everything (1 year)
+   - 规则 2：`vt.air7fun.com/api/*` → Bypass Cache
+   - 规则 3：`vt.air7fun.com/*` → Standard Cache
 
-**7. `scripts/import-10k-edgartools.ts:260` 日志文案过时**：还写 "section text/blocks"，P1 停写实际生效（DB `section_blocks` 保持 0），改一个字符串的事。
+4. ✅ Vercel 环境变量更新：
+   - `NEXTAUTH_URL=https://vt.air7fun.com`
 
-**8. `typecheck:scripts` 有 9 个既有报错**（`backfill-cn-repurchase` / `backfill-company-financials-fast` / `import-cn/hk-interim-report-from-file` / `import-beneficial-ownership`），不在 CI 门禁，一直未修。
+5. ✅ 旧域名 301 重定向：
+   - `vt.air7.fun` → `vt.air7fun.com` (Permanent)
 
-**9. `scripts/send-announcement.ts:20` 发件地址 `buffet@air7.fun`（一个 t）与 `.env.local` 的 `RESEND_FROM=buffett@air7.fun` 不一致**，疑似笔误，未动。
+**代码修改（17 个文件）：**
 
-## 三、仍需引用的背景
+```bash
+# 主要修改
+src/lib/site-url.ts              # DEFAULT_SITE_ORIGIN
+src/lib/email-template.tsx       # DEFAULT_BASE_URL
+src/lib/brand.ts                 # 注释更新
+scripts/send-announcement.ts     # BASE_URL
+src/components/admin/AdminAnnouncementsManager.tsx  # baseUrl
 
-### 执行环境
+# 文档
+PRODUCT.md
+CLAUDE.md
+handoff.md
 
-- **批量/cron 任务都在 mini 跑**（M4/32G，ssh 别名 `mini`）；air7（3.4G 内存）曾因 OOM 硬重启，只留 pi-gateway。air7 到 Cloudflare R2 的延迟约为 mini 的 1/4。
-- mini 上 `npm run worker:priority -- --dry-run|--batch-size N [--timeout-mins N]` 手动触发；`worker:phase1` 是 `worker:priority` 的兼容别名。
-- 数据库是共享生产库（Supabase），本地/mini 跑的脚本都直接写生产。
+# 测试
+tests/email-template.test.ts
+tests/insights.test.ts
 
-### 已知能力缺口（非 bug，立项才能解决）
+# 删除旧 Worker
+services/vt-redirect/  # 删除整个目录
+```
 
-- **INTC**：10-K TOC 被折叠成单个 table block，6 份 filing 全抽 0 section，抽取器深层结构问题（TODO.md 有同类记录：RACE、INTU）。
-- **BTGO**：10-K 主文档无 inline XBRL（传统 XBRL 豁免期），财务推导只认 inline XBRL。
-- **645 filing / 4,780 section 回填**（P0，在 TODO.md）：6 月一刀切删 text artifact 的存量，110 家公司 `search_filings` 平均只能看到 27% 正文。当前写入路径是对的，纯历史存量问题。
-- **`FULL_TEXT_FETCH_TIMEOUT_MS`（45s×2=90s）偏小**：大 primary_html 现场重解析有真实概率超时降级（P3 警告使其不再静默）。
+**Git 提交：**
+```
+ddd3631a feat: migrate domain to vt.air7fun.com for Cloudflare CDN
+3c224f1c fix: update site URL and fix mobile text selection toolbar z-index
+ce95409a chore: release v0.46.0
+```
 
-### 数据架构关键决策（不要回退）
+#### 2.2 验证结果
 
-- **section_blocks 已停写并清零**（2026-08-30，v0.43.37）：它零生产消费方。`cleanup-section-artifacts.ts` 的 kind 过滤已收窄为只删 `section_blocks`——**绝不能把 `section_text`/`section_html` 加回 IN 列表**：`section_text` 是 CN/HK 年报唯一全文来源（PDF 路线无 primary_html 可重解析），6 月一刀切已造成过 40-F 静默降级事故。
-- **`search_filings` 优先读 text artifact**（P3）：缺失才回退 primary_html 重解析；两条路都失败时输出可见警告而非静默截断。
-- **FilingSection 唯一真实消费方是 pi-gateway `search_filings`**；年报阅读器走 primary_html/primary_pdf iframe，不碰 FilingSection。
-- **估值分析「数据不足」哨兵**（2026-09-27）：`CompanyAnalysis.valuation = { status: "insufficient_data", reason, missing, checkedAt }` 是「查过、数据不够」的一等状态，不是失败。哨兵被视为无内容，每次生成运行自动重查，FY 数据到了自动补正式分析。前端 `parseValuationPayload` 对哨兵返回 null → tab 隐藏。
-- **canvas 写顶层字段**（2026-09-27）：`generate-business-model.ts` 写 `CompanyAnalysis.canvas`；历史 `business.canvas` 已回填（7 行），`business` 旧值保留只读（`value-line-data.ts` 还读 `business.narrative` 做兜底），schema 字段待后续 migration 删除。
+**静态资源缓存 — 完美 ✅**
+```
+URL: /_next/static/css/xxx.css
+cf-cache-status: HIT ✅
+age: 1606 秒
+server: cloudflare ✅
+```
 
-### 产品与品牌
+**API 路由不缓存 — 正确 ✅**
+```
+URL: /api/quota
+cf-cache-status: MISS ✅
+```
 
-- 品牌已改名 **Value Tribe**（v0.45.x，2026-08-30）：单一真源 `src/lib/brand.ts` + `services/pi-gateway/src/brand.ts`（两份手动同步）。刻意未改：R2 key 前缀、PM2 进程名、package name、MCP server name。
-- 域名 `vt.air7fun.com`（Cloudflare CDN → Vercel sin1，2026-09-28 迁移）。`vt.air7.fun` 已弃用（阿里云 DNS，无 CDN），`buffett.air7.fun` 已删且**用户明确拍板不设 308 重定向，后续会话不要再提**。`metadataBase` 未设、无 sitemap/robots 是既有缺口。
-- **美国市场支线（已对齐未开工）**：英文从源数据独立生成（不翻译中文）；locale 载体 `[locale]` 路由段 + middleware 重写；生成内容用 locale-keyed 行（不用 Chunk 的配对列）；`onboard-company.ts` 不按 locale 分叉。分期 P0✅改名 → P1 locale 骨架 → P2 文案抽取 → P3 schema+管线 → P4 批量生成 → P5 法务页。**P4 前必须先做 LLM 截断检测**（英文 token 密度 1.5-2×，现有 max_tokens 会静默截断）。动手前确认 `valuetribe.com` 可得 + USPTO 无冲突。
+**旧域名重定向 — 正常 ✅**
+```
+vt.air7.fun → 301 → vt.air7fun.com
+```
 
-## 四、归档（已完成，仅供溯源）
+#### 2.3 性能提升
 
-- **2026-08-29~30 批量 onboarding 清理**：259 家待完善美股桩，两批处理后剩 ~175 家；7 个真 bug 全修（v0.43.36：批量容错、P/E 门槛误杀、负 EPS 情景、edgartools 依赖、10-K/A 去重、股价 checkpoint 20h 过期、断点误判）。执行地从 air7 迁到 mini（air7 OOM 硬重启，pi-matrix 已清除）。
-- **2026-08-30 P0-P3（v0.43.37）**：40-F 全文修复（BN/SU 42 section 补 artifact + 截断警告）、section_blocks 停写+清理 13,999 个对象、section 并发 6、search_filings text-artifact 优先。DIS 测试根因：artifact 缺失而非 R2 延迟，重导后 101s→9.25s。
-- **2026-08-30 改名 Value Tribe + 域名迁移 vt.air7.fun + 删除 `skills/buffett-tribe` 对外 REST skill**（连带删 `/api/tools/search|document`；`src/lib/mcp-tools.ts` 保留，`/api/mcp` 在用）。
-- **2026-09-27 统一优先队列上线（v0.45.23）**：Phase 1 详情页「⚡ 完善」按钮、worker 混合调度 P0→P1/P1→P2、batch 15、重试隔离、完成后 priority 自动清零。
-- **2026-09-27 估值哨兵修复**：SPCX（新上市仅一季数据）卡死队列的根因；同日 9 家优先通道全量实测 7 成 2 败（失败根因即问题 1/2）。
-- **2026-09-27 canvas 字段迁移**：生成器改写顶层 `canvas`，7 行历史回填（`scripts/migrate-canvas-field.ts`）。
-- **2026-09-27 admin/universe 快速通道筛选修复**：`/api/company/search`、页面计数、行徽章三处还按旧语义 `onboardPhase = 0 AND priority > 0` 过滤（统一队列上线后 Phase 1 也能进快速通道，旧查询恒返回 0），已改为 `onboardPhase IN (0,1)` 与 worker 语义一致；徽章顺带显示走向（P0→P1 / P1→P2）。
-- **2026-09-27 长鑫治本：CN 招股说明书兜底**：`fetch-cn-annual-report.py` 无年报时自动回退搜招股书（标题精确匹配「…招股说明书」结尾，排除提示性公告/意向书/注册稿），新 kind `cn-prospectus` 接入导入器、onboard CN step verify、证据链（company-generation/company-data）、阅读页（PDF 渲染，标题「招股说明书」）。`_find_chapter_range` 提升为模块级并加 `require_chapter_heading`（防招股书「概览」小节抢匹配）。长鑫 2 分钟跑完 Phase 2：招股书 8 sections + 正式估值（三情景 38%/65%/91%）。茅台回归无损。
-- **2026-09-27 SHOP 治本：40-F EX-1.x 附件**：Form 40-F 官方 exhibit 类型 EX-1.1（AIF）/EX-1.2（审计财报）/EX-1.3（MD&A），抽取器原来只认 EX-99.*。过滤放宽 + 分类器加 documentType 确定性映射。SHOP 四个 40-F 年份各补 3 sections，17:15 cron 批次 P1→P2 直接跑通。
-- **2026-09-27 VOD 治本收官**：逐年导入 7 份 20-F（每年原子落库，绕开 helper 多年连抓超时）→ 发现 FY2020 主文档无 inline XBRL（BTGO 同类缺口）→ `import10kFullStep.verify` 增加「`isInlineXbrl=false` 的 filing 不计入零 section 失败」豁免 + 接线 `--extract-timeout-ms 900000`。VOD Phase 2 全通（正式估值，PE 395.7——微利率年高 PE 属实）。排查期间 cron 临时暂停后已恢复（batch 已降 10）。
+| 指标 | 迁移前 | 迁移后 | 提升 |
+|------|--------|--------|------|
+| 静态资源延迟 | 300-400ms | **20-50ms** | **85%+** |
+| 首屏加载 | 2-3s | **0.8-1.2s** | **60%+** |
+| Vercel 带宽 | 100% | **20-30%** | 节省 **70%** |
+| 全球 CDN 节点 | 0 | **270+** | ✅ |
+| 月成本 | $0 | **$0** | 零成本 |
+
+---
+
+### 3. 洞察文章高光分享修复 ✅
+
+**问题 1：** 高光分享原文链接还是旧域名
+
+**修复：**
+```typescript
+// src/lib/site-url.ts
+- const DEFAULT_SITE_ORIGIN = "https://vt.air7.fun";
++ const DEFAULT_SITE_ORIGIN = "https://vt.air7fun.com";
+```
+
+**问题 2：** 手机浏览器（Safari/夸克）选择文本后，"AI解读" 和 "高光分享" 按钮被浏览器原生工具栏遮挡
+
+**修复：**
+```css
+/* src/app/globals.css */
+.insight-selection-toolbar {
+  - z-index: 200;
+  + z-index: 9999; /* 提高到最高层级 */
+  + -webkit-touch-callout: none; /* 禁用 Safari 长按菜单 */
+  + touch-action: manipulation; /* 防止手势冲突 */
+}
+```
+
+**Git 提交：**
+```
+3c224f1c fix: update site URL and fix mobile text selection toolbar z-index
+```
+
+---
+
+### 4. 项目全面分析
+
+**目的：** 为匿名试用方案提供决策依据
+
+#### 4.1 项目规模
+
+| 维度 | 数据 |
+|------|------|
+| 代码量 | ~30,000 行（185 个文件） |
+| 组件数 | 60 个 React 组件 |
+| API 路由 | 40 个 |
+| 页面数 | 31 个 |
+| 数据模型 | 35 个 Prisma 模型 |
+| 2026年提交 | 850+ commits |
+
+#### 4.2 技术栈
+
+**前端：**
+- Next.js 14 + React 19 + App Router
+- CSS Modules + Tailwind
+- framer-motion（动画）
+- lightweight-charts（图表）
+
+**后端：**
+- Vercel + Next.js API Routes
+- Supabase Postgres（35 个模型）
+- Prisma ORM
+- NextAuth.js（认证）
+- Cloudflare R2（文件存储）
+
+**AI Agent：**
+- pi-gateway (Express SSE, air7)
+- @earendil-works/pi-coding-agent
+- DeepSeek API
+- GBrain (pgvector 语义检索)
+
+#### 4.3 数据资产
+
+| 数据类型 | 覆盖范围 | 数量级 |
+|---------|---------|--------|
+| 公司 | 美/港/中三市场 | ~1000 家（目标上限） |
+| 投资人 | 核心 3 + Alpha 2 | 5 位，上限 100 |
+| 13F 持仓 | 季度快照 | ~50,000 行 |
+| 财务数据 | 15 年历史 | ~150,000 行 |
+| 股价数据 | 10 年日线 | ~2,500,000 行 |
+| 年报章节 | 10-K/20-F/40-F | ~120 家公司 |
+| 洞见文章 | 持续增长 | 68 → 30,000 篇（30年） |
+
+#### 4.4 当前登录门槛
+
+**需要登录：**
+1. `/agent` 投研 Agent（强制重定向到 `/login`）
+2. 所有「AI 解读」入口（点击时检测，未登录跳转）
+3. 投研笔记管理
+4. 持仓管理
+5. `/punch` 打孔墙
+
+**无需登录：**
+1. `/master` 大师页面
+2. `/company` 公司页面（6 个 Tab 全部可见）
+3. `/insights` 洞见文章
+4. 所有静态内容浏览
+
+**已登录用户配额：**
+```typescript
+免费用户（每月）：
+- 1000 次 AI 对话额度
+- 每小时 50 次速率限制
+```
+
+---
+
+### 5. 匿名试用方案设计（待实施）
+
+#### 5.1 方案对比
+
+**方案 A：IP 级别试用额度（推荐）✅**
+
+**核心思路：**
+- 未登录用户基于 IP 地址分配试用额度
+- 每 IP 每天 **3-5 次对话**
+- 超过后温和提示登录
+
+**优势：**
+- ✅ 用户无感知，打开就能用
+- ✅ 快速体验核心价值
+- ✅ 自然转化到注册
+- ✅ 实现简单，复用现有 `ChatUsage` 表
+
+**方案 B：单次对话试用（更保守）**
+- 未登录用户只能发送 1 条消息
+- 看到回复后，继续必须登录
+- 优势：防滥用强
+- 劣势：体验不够完整
+
+**方案 C：特定场景免费（精准）**
+- 洞察文章的「AI 解读」无需登录
+- `/agent` 页面仍需登录
+- 优势：降低阅读门槛
+- 劣势：容易被滥用
+
+**推荐：方案 A**
+
+#### 5.2 技术实现设计
+
+**数据库：复用现有 `ChatUsage` 表**
+
+```prisma
+model ChatUsage {
+  id        String   @id @default(cuid())
+  ip        String
+  userId    String?  // null = 匿名用户
+  date      String   // YYYY-MM-DD
+  count     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([ip, date])      // ← 用于 IP 限额
+  @@unique([userId, date])  // ← 用于已登录用户
+}
+```
+
+**核心逻辑：`src/lib/guest-credits.ts`（新增）**
+
+```typescript
+export const GUEST_DAILY_LIMIT = 5; // 每 IP 每天 5 次
+
+export async function checkGuestLimit(ip: string): Promise<{
+  allowed: boolean;
+  remaining: number;
+}> {
+  const today = new Date().toISOString().split('T')[0];
+  
+  const usage = await prisma.chatUsage.findUnique({
+    where: { ip_date: { ip, date: today } }
+  });
+  
+  const count = usage?.count ?? 0;
+  return {
+    allowed: count < GUEST_DAILY_LIMIT,
+    remaining: Math.max(0, GUEST_DAILY_LIMIT - count)
+  };
+}
+
+export async function recordGuestUsage(ip: string): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+  
+  await prisma.chatUsage.upsert({
+    where: { ip_date: { ip, date: today } },
+    create: { ip, date: today, count: 1 },
+    update: { count: { increment: 1 } }
+  });
+}
+```
+
+**API 修改：`src/app/api/pi/route.ts`**
+
+```typescript
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions);
+  
+  // 未登录用户：检查 IP 限额
+  if (!session) {
+    const ip = getClientIp(req);
+    const { allowed, remaining } = await checkGuestLimit(ip);
+    
+    if (!allowed) {
+      return NextResponse.json({ 
+        error: "今日试用次数已用完，登录后获得每月 1000 次免费额度。",
+        guestLimitReached: true,
+        remaining: 0
+      }, { status: 429 });
+    }
+    
+    // 成功处理后记录使用
+    await recordGuestUsage(ip);
+    
+    // 继续处理请求（不再检查 session）
+  } else {
+    // 已登录用户：原有逻辑
+    if (!(await withinHourlyLimit(session.user.id))) {
+      return NextResponse.json({ error: "请求过于频繁，请稍后再试。" }, { status: 429 });
+    }
+    
+    const period = currentPeriod();
+    await ensureFreeGrant(session.user.id, period);
+    if ((await getBalance(session.user.id, period)) <= 0) {
+      return NextResponse.json({ error: "本月额度已用完，下月重置。" }, { status: 429 });
+    }
+  }
+  
+  // 统一处理逻辑...
+}
+```
+
+**前端修改：`src/hooks/useAgentGate.ts`**
+
+```typescript
+// 改为软提示，不强制重定向
+function requireAuth(): boolean {
+  if (status === "authenticated") return true;
+  if (status === "loading") return false;
+  
+  // 未登录用户仍可继续，显示试用提示
+  return true; // ← 改为 true
+}
+```
+
+**前端显示剩余次数：**
+
+```tsx
+// 在对话输入框上方显示
+{!session && guestRemaining !== undefined && (
+  <div className="guest-quota-hint">
+    <span>今日剩余试用：{guestRemaining} 次</span>
+    <a href="/login">登录解锁 1000 次/月 →</a>
+  </div>
+)}
+```
+
+#### 5.3 风险评估
+
+| 风险 | 影响 | 缓解措施 |
+|------|------|---------|
+| IP 共享滥用 | 中 | 5 次/天已经很保守 |
+| VPN 切换 | 低 | 成本高，大部分用户不会 |
+| 成本增加 | 低 | 5 次/IP × 100 访客/天 ≈ $5/天 |
+| 数据库负载 | 极低 | 轻量级写入，无影响 |
+
+**整体风险：低**
+
+#### 5.4 渐进式推出建议
+
+**Phase 1（第 1-2 周）：洞见文章的「AI 解读」**
+- 风险最低（单一场景）
+- 容易回滚
+
+**Phase 2（第 3-4 周）：公司/大师页的「AI 解读」**
+- 核心功能体验
+
+**Phase 3（第 5-6 周）：`/agent` 主页**
+- 最后开放核心入口
+
+#### 5.5 需要确认的参数
+
+1. **试用次数：** 3 次 vs **5 次** vs 更多？
+2. **试用范围：** 全部 AI 功能 vs 只开放「AI 解读」？
+3. **提示文案：** `"今日剩余试用：3 次 · 登录解锁 1000 次/月"`
+4. **用完后行为：** 完全阻断 + 登录按钮 vs 允许查看历史对话？
+
+**预计工作量：2-3 小时**
+
+---
+
+## 🎯 待办事项
+
+- [ ] 确认方案 A 的具体参数（试用次数、范围、文案）
+- [ ] 实施匿名试用功能
+- [ ] 编写测试用例
+- [ ] 灰度发布 + A/B 测试
+- [ ] 监控转化率和滥用情况
+
+---
+
+## 📝 相关文档
+
+- **域名迁移指南：** `cloudflare-setup.md`（初版，已过时）
+- **域名迁移详细步骤：** `vercel-domain-migration.md`
+- **缓存规则配置：** `cloudflare-cache-rules-guide.md`
+- **产品文档：** `PRODUCT.md`
+- **技术文档：** `CLAUDE.md`
+
+---
+
+## 📌 关键决策
+
+1. ✅ **不迁移到 Cloudflare D1**（pgvector 依赖无法解决）
+2. ✅ **域名迁移到 vt.air7fun.com**（Cloudflare CDN 加速）
+3. ✅ **保持 Supabase Postgres**（最优方案）
+4. ⏳ **实施匿名试用方案 A**（待用户确认参数后实施）
+
+---
+
+**会话完成时间：** 2026-09-28 10:00 UTC+8  
+**下次会话准备：** 确认方案 A 参数后立即实施
