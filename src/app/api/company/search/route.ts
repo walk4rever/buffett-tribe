@@ -145,7 +145,11 @@ export async function GET(request: NextRequest) {
       { items },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+          // Admin explorers pass fresh=1 to bypass CDN/browser caching so
+          // live queue views (e.g. fast-track) never serve stale counts.
+          "Cache-Control": searchParams.get("fresh") === "1"
+            ? "no-store"
+            : "public, s-maxage=30, stale-while-revalidate=60",
         },
       }
     );

@@ -30,8 +30,9 @@ export function AdminUniverseExplorer({
       if (m !== "all") params.set("market", m);
       if (p !== "all") params.set("phase", p);
       params.set("limit", "40");
+      params.set("fresh", "1"); // admin view: never serve cached results
 
-      const res = await fetch(`/api/company/search?${params.toString()}`);
+      const res = await fetch(`/api/company/search?${params.toString()}`, { cache: "no-store" });
       if (!res.ok) throw new Error("Search failed");
       const data = await res.json();
       setItems(data.items || []);
