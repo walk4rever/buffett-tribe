@@ -8,6 +8,7 @@ import { agentContextSchema, deriveContextKey } from "@/lib/agent-context";
 import { getRecentTurns } from "@/lib/agent-history";
 import { imageExtensionForMimeType, validateImageAttachments, type ImageAttachment } from "@/lib/image-attachment";
 import { buildUserObjectKey, uploadToR2 } from "@/lib/r2";
+import { NO_STORE_HEADERS } from "@/lib/http-cache";
 
 async function uploadChatImages(userId: string, images: ImageAttachment[]): Promise<string[]> {
   const urls: string[] = [];
@@ -36,7 +37,7 @@ export async function GET(req: Request) {
 
   const turns = await getRecentTurns(session.user.id, contextKey);
 
-  return NextResponse.json({ turns });
+  return NextResponse.json({ turns }, { headers: NO_STORE_HEADERS });
 }
 
 const postBodySchema = z.object({

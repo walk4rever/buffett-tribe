@@ -24,7 +24,7 @@ export function useNotes() {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    fetch("/api/notes")
+    fetch("/api/notes", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { notes?: Note[] } | null) => {
         if (data?.notes) setNotes(data.notes);

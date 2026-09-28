@@ -121,7 +121,7 @@ export function useAgentChat({ context, initialMessages }: UseAgentChatOptions =
   useEffect(() => {
     if (skipHistoryFetchRef.current) return;
     let cancelled = false;
-    fetch(`/api/agent-turns?contextKey=${encodeURIComponent(contextKey)}`)
+    fetch(`/api/agent-turns?contextKey=${encodeURIComponent(contextKey)}`, { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { turns?: { role: "user" | "assistant"; text: string; imageUrls?: string[] }[] } | null) => {
         if (cancelled || !data?.turns?.length) return;

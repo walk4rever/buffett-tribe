@@ -30,7 +30,7 @@ export function usePortfolio() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/portfolio")
+    fetch("/api/portfolio", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { holdings?: PortfolioHolding[] } | null) => {
         if (data?.holdings) setHoldings(data.holdings);

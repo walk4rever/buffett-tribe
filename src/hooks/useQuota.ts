@@ -13,7 +13,7 @@ export function useQuota() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/quota")
+    fetch("/api/quota", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data: Quota | null) => {
         if (data) setQuota(data);

@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { normalizeTicker, isValidTickerFormat, currencyForTicker } from "@/lib/ticker";
 import { getCompanyByTicker } from "@/lib/company-data";
+import { NO_STORE_HEADERS } from "@/lib/http-cache";
 
 export interface PortfolioHoldingDto {
   id: string;
@@ -72,7 +73,7 @@ export async function GET() {
     orderBy: { createdAt: "asc" },
   });
 
-  return NextResponse.json({ holdings: await serializeHoldings(holdings) });
+  return NextResponse.json({ holdings: await serializeHoldings(holdings) }, { headers: NO_STORE_HEADERS });
 }
 
 const postBodySchema = z.object({

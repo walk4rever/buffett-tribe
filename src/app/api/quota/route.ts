@@ -4,12 +4,13 @@ import { authOptions } from "@/lib/auth";
 import { getClientIp } from "@/lib/ratelimit";
 import { checkGuestLimit } from "@/lib/guest-credits";
 import { currentPeriod, getBalance } from "@/lib/credits";
+import { NO_STORE_HEADERS } from "@/lib/http-cache";
 
 export const dynamic = "force-dynamic";
 
 // Per-user/per-IP response — must never be cached by CDN (Cloudflare) or the
 // browser, otherwise one visitor's quota snapshot is served to everyone else.
-const NO_STORE = { "Cache-Control": "private, no-store, must-revalidate" };
+const NO_STORE = NO_STORE_HEADERS;
 
 /**
  * GET /api/quota

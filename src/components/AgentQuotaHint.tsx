@@ -20,7 +20,7 @@ export function AgentQuotaHint() {
   const [loading, setLoading] = useState(true);
 
   const fetchQuota = () => {
-    fetch("/api/quota")
+    fetch("/api/quota", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data: QuotaInfo | null) => {
         setQuota(data);

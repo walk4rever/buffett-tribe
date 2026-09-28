@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { NO_STORE_HEADERS } from "@/lib/http-cache";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -15,7 +16,7 @@ export async function GET() {
     orderBy: { updatedAt: "desc" },
   });
 
-  return NextResponse.json({ notes });
+  return NextResponse.json({ notes }, { headers: NO_STORE_HEADERS });
 }
 
 const postBodySchema = z.object({

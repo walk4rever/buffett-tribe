@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/admin-auth";
 import prisma from "@/lib/prisma";
+import { NO_STORE_HEADERS } from "@/lib/http-cache";
 
 export async function GET() {
   const session = await requireAdminSession();
@@ -30,7 +31,7 @@ export async function GET() {
     return NextResponse.json({
       totalCount: validUsers.length,
       users: validUsers,
-    });
+    }, { headers: NO_STORE_HEADERS });
   } catch (err: unknown) {
     console.error("[admin/announcements/recipients] GET error:", err);
     return NextResponse.json(
