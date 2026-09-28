@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
       const nameEn =
         (typeof meta?.nameEnShort === "string" && meta.nameEnShort.trim()) ||
         row.canonicalName;
-      const tickers = uniqueTickers([row.ticker, row.code]);
+      const tickers = uniqueTickers(row.ticker ? [row.ticker] : [row.code]);
       const marketVal: CompanyMarket = (row.market as CompanyMarket) ?? "us";
       const onboardPhase = typeof row.onboardPhase === "number" ? row.onboardPhase : 0;
       const isPhase1OrHigher = onboardPhase >= 1;
