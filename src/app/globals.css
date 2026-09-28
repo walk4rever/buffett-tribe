@@ -4956,6 +4956,27 @@ body.layout-no-header {
   box-shadow: inset 2px 0 0 transparent;
 }
 
+/* P1 card: navigable (inner Link) + ⚡深析 capsule pinned bottom-right */
+.companies-item--card {
+  padding: 0;
+  min-height: 72px;
+  cursor: default;
+}
+
+.companies-item--card .companies-item-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.7rem 0.8rem 1.85rem;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
 /* Apple HIG Fast-track Capsule Button */
 .companies-fasttrack-btn {
   position: absolute;

@@ -50,9 +50,68 @@ export function CompanyGrid({
   // last row still reads as a complete grid rather than one lone box.
   const fillerCount = (6 - (items.length % 6)) % 6;
 
+  // P0 cards offer ⚡建档 (P0→P1), P1 cards offer ⚡深析 (P1→P2) — same
+  // fast-track API, different label/copy by current phase.
+  const renderFastTrackAction = (c: CompanyDirectoryItem) => {
+    const isP0 = !c.href;
+    const isQueued = Boolean(
+      c.isFastTrack || (c.priority && c.priority > 0) || fastTrackedKeys?.has(c.key)
+    );
+    const isPending = Boolean(pendingKeys?.has(c.key));
+
+    if (isQueued) {
+      return (
+        <span
+          className="companies-fasttrack-btn companies-fasttrack-btn--queued"
+          title={isP0 ? "已进入快速通道排队中，下次批处理将优先建档" : "已进入快速通道排队中，下次批处理将优先深度分析"}
+        >
+          <span className="companies-fasttrack-icon" aria-hidden="true">✓</span>
+          <span>已排队</span>
+        </span>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        className={`companies-fasttrack-btn ${isPending ? "companies-fasttrack-btn--pending" : ""}`}
+        disabled={isPending}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onFastTrack?.(c);
+        }}
+        title={isP0 ? "申请快速通道优先建档" : "申请快速通道优先深度分析"}
+      >
+        {isPending ? (
+          <span className="companies-fasttrack-spinner" aria-hidden="true" />
+        ) : (
+          <span className="companies-fasttrack-icon" aria-hidden="true">⚡</span>
+        )}
+        <span>{isPending ? "排队中…" : isP0 ? "建档" : "深析"}</span>
+      </button>
+    );
+  };
+
   return (
     <div className="companies-grid">
       {items.map((c) => {
+        if (c.href && c.onboardPhase === 1) {
+          // P1: navigable card with a ⚡深析 action at the bottom-right corner
+          return (
+            <span key={c.key} className="companies-item companies-item--card">
+              <Link href={c.href} className="companies-item-link">
+                <span className="companies-item-zh">{c.nameZh}</span>
+                <span className="companies-item-en">{c.nameEn}</span>
+                {c.tickers.length > 0 ? (
+                  <span className="companies-item-ticker">({c.tickers.map((t) => formatTickerForDisplay(t, c.market)).join(" / ")})</span>
+                ) : null}
+              </Link>
+              {renderFastTrackAction(c)}
+            </span>
+          );
+        }
+
         if (c.href) {
           return (
             <Link key={c.key} href={c.href} className="companies-item">
@@ -68,7 +127,6 @@ export function CompanyGrid({
         const isQueued = Boolean(
           c.isFastTrack || (c.priority && c.priority > 0) || fastTrackedKeys?.has(c.key)
         );
-        const isPending = Boolean(pendingKeys?.has(c.key));
 
         return (
           <span
@@ -82,34 +140,7 @@ export function CompanyGrid({
               <span className="companies-item-ticker">({c.tickers.map((t) => formatTickerForDisplay(t, c.market)).join(" / ")})</span>
             ) : null}
 
-            {isQueued ? (
-              <span
-                className="companies-fasttrack-btn companies-fasttrack-btn--queued"
-                title="已进入快速通道排队中，下次批处理将优先建档"
-              >
-                <span className="companies-fasttrack-icon" aria-hidden="true">✓</span>
-                <span>已排队</span>
-              </span>
-            ) : (
-              <button
-                type="button"
-                className={`companies-fasttrack-btn ${isPending ? "companies-fasttrack-btn--pending" : ""}`}
-                disabled={isPending}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onFastTrack?.(c);
-                }}
-                title="申请快速通道优先建档"
-              >
-                {isPending ? (
-                  <span className="companies-fasttrack-spinner" aria-hidden="true" />
-                ) : (
-                  <span className="companies-fasttrack-icon" aria-hidden="true">⚡</span>
-                )}
-                <span>{isPending ? "排队中…" : "建档"}</span>
-              </button>
-            )}
+            {renderFastTrackAction(c)}
           </span>
         );
       })}
@@ -156,7 +187,9 @@ export function CompanyDirectory({
       const data = await res.json();
       if (res.ok && data.success) {
         setFastTrackedKeys((prev) => new Set(prev).add(item.key));
-        showToast(data.message || `已为 ${item.nameZh} 开启快速通道优先建档`);
+        showToast(data.message || (item.onboardPhase === 1
+          ? `已为 ${item.nameZh} 开启深度分析优先通道`
+          : `已为 ${item.nameZh} 开启快速通道优先建档`));
       } else {
         showToast(data.error || "快速通道申请失败，请稍后重试");
       }

@@ -310,8 +310,8 @@ export function CompanySectionTabs({
               disabled={isPendingDeepAnalysis || isDeepAnalysisQueued}
               title={
                 isDeepAnalysisQueued
-                  ? "已加入完善队列"
-                  : `申请完善${companyName ? ` ${companyName} ` : ""}深度分析内容`
+                  ? "已加入深度分析优先队列"
+                  : `申请优先深度分析${companyName ? ` ${companyName}` : ""}`
               }
             >
               {isDeepAnalysisQueued ? (
@@ -327,7 +327,7 @@ export function CompanySectionTabs({
               ) : (
                 <>
                   <span className="company-tabs-deep-analysis-icon" aria-hidden="true">⚡</span>
-                  <span>完善</span>
+                  <span>深析</span>
                 </>
               )}
             </button>

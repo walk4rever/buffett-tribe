@@ -36,6 +36,7 @@ const ENTITY_DIRECTORY_SELECT = {
   code: true,
   ticker: true,
   onboardPhase: true,
+  priority: true,
   metadata: true,
   securitiesAsCompany: {
     select: { ticker: true, kind: true },
@@ -64,6 +65,8 @@ function toDirectoryItem(row: EntityDirectoryRow): CompanyDirectoryItem {
     market,
     isComplete: isPhase1Complete,
     onboardPhase,
+    id: row.id,
+    priority: typeof row.priority === "number" ? row.priority : 0,
   };
 }
 

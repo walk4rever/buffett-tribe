@@ -1,8 +1,8 @@
-# Handoff — 2026-09-28（晚）：紫金矿业优先通道卡死问题 + 年报 PDF 上传决策
+# Handoff — 2026-09-28（晚）：紫金矿业优先通道卡死 + 注册简化 + Resend 域名核查
 
 > **会话时间：** 2026-09-28 傍晚（北京时间）
 > **参与者：** Rafael + Kimi Code
-> **主要成果：** 定位紫金矿业在优先通道死循环的根因，完成临时解锁；遗留一个产品/架构决策：年报 PDF 到底要不要上传 R2
+> **主要成果：** ① 定位紫金矿业在优先通道死循环的根因并临时解锁，遗留"年报 PDF 要不要上传 R2"决策；② 注册窗口简化为邮箱+密码，昵称默认取邮箱前缀（已上线）；③ 核查域名迁移对 Resend 邮件服务的影响（结论：无需改动）
 
 ---
 
@@ -79,3 +79,40 @@
 1. 决策：年报 PDF 是否上传 R2（上面 A–E 方案，或组合）
 2. 若决定继续上传 → 选 A 或 B 实施，然后手工重跑紫金 P2 验证
 3. 无论决策如何 → 修复 worker 超时记失败 + 杀子进程两个缺陷
+
+---
+
+## ✉️ 注册窗口简化（已完成并上线）
+
+- 注册表只剩「邮箱 + 密码」两栏，删除「昵称（可选）」输入框
+- 服务端默认昵称取邮箱前缀：`rafael+test@gmail.com` → `rafael`（剥离 `+tag`）；空前缀存 `null`
+- 昵称仍可通过现有个人资料功能修改
+- 改动：`src/components/LoginForm.tsx`、`src/app/api/auth/register/route.ts`
+- 已端到端测试（普通邮箱 / +tag / 重复 409 / 短密码 400 / 非法邮箱 400 / 注册后自动登录 session 昵称正确），lint + build 通过
+- **提交 `c7cc5992`，已 push 到 main**（Vercel 自动部署）
+
+---
+
+## 📮 Resend 邮件服务 × 域名迁移核查（结论：无需改动）
+
+**背景：** 本站域名从 `vt.air7.fun` 迁到 `vt.air7fun.com`（Cloudflare CDN），需确认对 Resend 发信的影响。
+
+### 实测结论
+
+- Resend 账户唯一发送域名是 **`air7.fun`，状态 verified**（区域 ap-northeast-1，2026-03 配置）
+- `air7.fun` 的 DNS 仍在阿里云（hichina），**未随迁移动过**，Resend 所需记录完整：
+  - DKIM：`resend._domainkey.air7.fun` TXT ✅
+  - SPF：`send.air7.fun` MX（feedback-smtp...amazonses）+ `v=spf1 include:amazonses.com ~all` TXT ✅
+- 发件地址 `vt@air7.fun`（`src/lib/brand.ts:29` 默认值）与已验证域名匹配
+- 邮件内链接（重置密码等）此前已随代码改到 `vt.air7fun.com`，无遗留
+
+**关键概念：** 发信只依赖**发件域名**（air7.fun）的 DNS 验证，与**网站域名**（air7fun.com）无关，所以域名迁移对邮件服务零影响。
+
+### ⚠️ 两个长期注意事项
+
+1. **`air7.fun` 不能废弃**，它现在承担三件事：① Resend 发信验证 ② pi-gateway（`relay.air7.fun`）③ 旧站 301 跳转。若未来把它的 DNS 也迁到 Cloudflare，DKIM/SPF 三条记录必须原样搬过去，否则发信立刻挂。
+2. **Vercel 环境变量检查项**：`RESEND_FROM` / `RESEND_REPLY_TO` 要么不设（代码兜底 `vt@air7.fun`），要么只能是 `@air7.fun` 地址；改成 `@air7fun.com` 会因域名未验证导致发送失败。（本次 vercel CLI 在本机卡在登录交互未查到，需在 Vercel 后台人工确认。）
+
+### 可选优化（未做，留待决策）
+
+让发件人也用新域名 `vt@air7fun.com` 保持品牌一致：Resend 后台添加 `air7fun.com` 发送域名 → DKIM/SPF 记录加到 Cloudflare DNS → 验证通过后改 `RESEND_FROM`；`RESEND_REPLY_TO` 建议保留 `vt@air7.fun`（该邮箱有 AWS inbound SMTP 收件，新域名未配收件）。
