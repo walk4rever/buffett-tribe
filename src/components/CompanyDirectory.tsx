@@ -25,6 +25,16 @@ const MARKET_SECTIONS: Array<{ market: CompanyMarket; label: string }> = [
   { market: "us", label: "美股" },
 ];
 
+// US tickers are stored bare ("AAPL") while HK/CN carry their exchange
+// suffix ("0700.HK", "600519.SS"); qualify US ones at display time so all
+// markets read the same.
+function formatTickerForDisplay(ticker: string, market: CompanyMarket): string {
+  if (market === "us" && !ticker.toUpperCase().endsWith(".US")) {
+    return `${ticker}.US`;
+  }
+  return ticker;
+}
+
 export function CompanyGrid({
   items,
   onFastTrack,
@@ -49,7 +59,7 @@ export function CompanyGrid({
               <span className="companies-item-zh">{c.nameZh}</span>
               <span className="companies-item-en">{c.nameEn}</span>
               {c.tickers.length > 0 ? (
-                <span className="companies-item-ticker">({c.tickers.join(" / ")})</span>
+                <span className="companies-item-ticker">({c.tickers.map((t) => formatTickerForDisplay(t, c.market)).join(" / ")})</span>
               ) : null}
             </Link>
           );
@@ -69,7 +79,7 @@ export function CompanyGrid({
             <span className="companies-item-zh">{c.nameZh}</span>
             <span className="companies-item-en">{c.nameEn}</span>
             {c.tickers.length > 0 ? (
-              <span className="companies-item-ticker">({c.tickers.join(" / ")})</span>
+              <span className="companies-item-ticker">({c.tickers.map((t) => formatTickerForDisplay(t, c.market)).join(" / ")})</span>
             ) : null}
 
             {isQueued ? (
