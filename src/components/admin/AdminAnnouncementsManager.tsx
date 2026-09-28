@@ -150,7 +150,7 @@ export function AdminAnnouncementsManager({
       markdown: markdown || "",
       preheader: preheader || undefined,
       user: { name: "投资朋友", email: "user@example.com" },
-      baseUrl: "https://vt.air7.fun",
+      baseUrl: "https://vt.air7fun.com",
     });
   }, [subject, markdown, preheader]);
 
@@ -838,7 +838,7 @@ export function AdminAnnouncementsManager({
                         type="button"
                         title="插入行动按钮 (CTA Button)"
                         onClick={() =>
-                          handleInsertShortcut("[立即体验新功能 →](https://vt.air7.fun/agent#button)")
+                          handleInsertShortcut("[立即体验新功能 →](https://vt.air7fun.com/agent#button)")
                         }
                         className="admin-toolbar-btn admin-toolbar-btn--accent"
                       >

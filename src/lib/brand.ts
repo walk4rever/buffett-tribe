@@ -11,7 +11,7 @@
  *   - package.json name, repo name
  *
  * The site domain is NOT here either — it lives in src/lib/site-url.ts
- * (vt.air7.fun since 2026-08-30).
+ * (vt.air7fun.com since 2026-09-28, moved to Cloudflare CDN).
  */
 export const BRAND_ZH = "价值部落";
 export const BRAND_EN = "Value-Tribe";

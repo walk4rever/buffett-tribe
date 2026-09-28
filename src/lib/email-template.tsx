@@ -15,7 +15,7 @@ export interface BuildEmailOptions {
   baseUrl?: string;
 }
 
-export const DEFAULT_BASE_URL = "https://vt.air7.fun";
+export const DEFAULT_BASE_URL = "https://vt.air7fun.com";
 
 /**
  * Replace placeholders like {{name}} and {{email}} in content

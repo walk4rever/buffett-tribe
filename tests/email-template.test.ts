@@ -31,9 +31,9 @@ describe("Email Template & Markdown Transformer", () => {
 
   it("renders CTA button when #button hash is used in link", () => {
     const md = "[立即体验 →](/agent#button)";
-    const html = renderMarkdownToEmailHtml(md, undefined, "https://vt.air7.fun");
+    const html = renderMarkdownToEmailHtml(md, undefined, "https://vt.air7fun.com");
 
-    expect(html).toContain("https://vt.air7.fun/agent");
+    expect(html).toContain("https://vt.air7fun.com/agent");
     expect(html).toContain("立即体验 →");
     expect(html).toContain("border-radius:8px");
     expect(html).toContain("background:#0071e3");
@@ -41,7 +41,7 @@ describe("Email Template & Markdown Transformer", () => {
 
   it("renders WeChat CTA button with green styling when #wechat hash is used in link", () => {
     const md = "[加我微信交流](/wechat-qr.jpeg#wechat)";
-    const html = renderMarkdownToEmailHtml(md, undefined, "https://vt.air7.fun");
+    const html = renderMarkdownToEmailHtml(md, undefined, "https://vt.air7fun.com");
 
     expect(html).toContain("加我微信交流");
     expect(html).toContain("background:#07c160");
@@ -49,7 +49,7 @@ describe("Email Template & Markdown Transformer", () => {
 
   it("renders WeChat QR code image nicely sized and centered", () => {
     const md = "![微信二维码](https://pub-675abd2580e643e89dde5e766edae1b7.r2.dev/buffett-tribe/email/announcement-2026-06/wechat-qr.jpeg#wechat)";
-    const html = renderMarkdownToEmailHtml(md, undefined, "https://vt.air7.fun");
+    const html = renderMarkdownToEmailHtml(md, undefined, "https://vt.air7fun.com");
 
     expect(html).toContain("wechat-qr.jpeg");
     expect(html).toContain('width="190"');

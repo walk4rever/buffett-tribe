@@ -99,7 +99,7 @@ CSTAF 生成了「正式」估值（PE 39.55，信托现金利息算的），三
 ### 产品与品牌
 
 - 品牌已改名 **Value Tribe**（v0.45.x，2026-08-30）：单一真源 `src/lib/brand.ts` + `services/pi-gateway/src/brand.ts`（两份手动同步）。刻意未改：R2 key 前缀、PM2 进程名、package name、MCP server name。
-- 域名 `vt.air7.fun`（Vercel sin1）。`buffett.air7.fun` 已删且**用户明确拍板不设 308 重定向，后续会话不要再提**。`metadataBase` 未设、无 sitemap/robots 是既有缺口。
+- 域名 `vt.air7fun.com`（Cloudflare CDN → Vercel sin1，2026-09-28 迁移）。`vt.air7.fun` 已弃用（阿里云 DNS，无 CDN），`buffett.air7.fun` 已删且**用户明确拍板不设 308 重定向，后续会话不要再提**。`metadataBase` 未设、无 sitemap/robots 是既有缺口。
 - **美国市场支线（已对齐未开工）**：英文从源数据独立生成（不翻译中文）；locale 载体 `[locale]` 路由段 + middleware 重写；生成内容用 locale-keyed 行（不用 Chunk 的配对列）；`onboard-company.ts` 不按 locale 分叉。分期 P0✅改名 → P1 locale 骨架 → P2 文案抽取 → P3 schema+管线 → P4 批量生成 → P5 法务页。**P4 前必须先做 LLM 截断检测**（英文 token 密度 1.5-2×，现有 max_tokens 会静默截断）。动手前确认 `valuetribe.com` 可得 + USPTO 无冲突。
 
 ## 四、归档（已完成，仅供溯源）
