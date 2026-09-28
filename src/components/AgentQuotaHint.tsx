@@ -60,11 +60,9 @@ export function AgentQuotaHint() {
 
   // 未登录用户（访客）
   if (quota.type === "guest") {
-    const remaining = quota.remaining ?? 0;
-
     return (
       <div className="agent-quota-hint agent-quota-hint--guest">
-        <span>今日试用：剩余 {remaining}/{quota.limit} 次</span>
+        <span>今日试用 {quota.limit} 次</span>
         <Link href="/login" className="agent-quota-hint-link">
           登录解锁 1000 次/月 →
         </Link>
