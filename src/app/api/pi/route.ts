@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   // 未登录用户：检查 IP 试用额度
   if (!session) {
     const ip = getClientIp(req);
-    const { allowed, remaining } = await checkGuestLimit(ip);
+    const { allowed } = await checkGuestLimit(ip);
 
     if (!allowed) {
       return NextResponse.json(
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
   // (indexed LIMIT 10) — pi-gateway only actually uses this to seed a session it's
   // creating fresh (cold start: new tab, TTL eviction, or a gateway restart).
   let history: { role: string; text: string; hadImages: boolean }[] = [];
-  if (session.user?.id) {
+  if (session?.user?.id) {
     const parsedContext = agentContextSchema.optional().safeParse(body.context);
     const contextKey = deriveContextKey(parsedContext.success ? parsedContext.data : undefined);
     const turns = await prisma.chatTurn.findMany({
