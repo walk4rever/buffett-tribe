@@ -12453,10 +12453,6 @@ body {
   letter-spacing: -0.224px;
 }
 
-.insight-detail-tags {
-  margin-top: 0.65rem;
-}
-
 .insight-detail-nav {
   display: grid;
   grid-template-columns: 1fr 1fr;

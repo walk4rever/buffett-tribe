@@ -58,13 +58,6 @@ export default async function InsightDetailPage({ params }: Props) {
               <span>{dateLabel}</span>
             </div>
             {post.description ? <p className="insight-detail-desc">{post.description}</p> : null}
-            {post.tags.length > 0 ? (
-              <div className="insight-row-tags insight-detail-tags">
-                {post.tags.map((tag) => (
-                  <span key={tag}>{tag}</span>
-                ))}
-              </div>
-            ) : null}
           </header>
 
           <InsightReader
