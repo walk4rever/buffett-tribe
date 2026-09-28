@@ -19,9 +19,7 @@ export function AgentQuotaHint() {
   const [quota, setQuota] = useState<QuotaInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (status === "loading") return;
-
+  const fetchQuota = () => {
     fetch("/api/quota")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: QuotaInfo | null) => {
@@ -29,7 +27,19 @@ export function AgentQuotaHint() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    if (status === "loading") return;
+    fetchQuota();
   }, [status, session]);
+
+  // 监听自定义事件，每次发送消息后刷新配额
+  useEffect(() => {
+    const handleQuotaUpdate = () => fetchQuota();
+    window.addEventListener("quota-update", handleQuotaUpdate);
+    return () => window.removeEventListener("quota-update", handleQuotaUpdate);
+  }, []);
 
   if (loading || !quota) return null;
 

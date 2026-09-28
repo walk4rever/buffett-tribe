@@ -22,7 +22,7 @@ const HISTORY_LIMIT = 10;
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
 
-  // 未登录用户：检查 IP 试用额度
+  // 未登录用户：检查 IP 试用额度并立即记录（防止并发请求绕过限制）
   if (!session) {
     const ip = getClientIp(req);
     const { allowed } = await checkGuestLimit(ip);
@@ -38,7 +38,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // 继续处理，成功后在下方记录使用
+    // 立即记录使用，避免并发请求都通过检查
+    await recordGuestUsage(ip);
   } else {
     // 已登录用户：原有限流逻辑
     if (!(await withinHourlyLimit(session.user.id))) {
@@ -120,11 +121,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status: upstream.status });
   }
 
-  // 记录用量：已登录用户记录到 CreditLedger，匿名用户记录到 ChatUsage
+  // 记录用量：已登录用户记录到 CreditLedger（匿名用户已在开头记录）
   if (session) {
     await recordSpend(session.user.id, undefined, currentPeriod());
-  } else {
-    await recordGuestUsage(getClientIp(req));
   }
 
   return new Response(upstream.body, {

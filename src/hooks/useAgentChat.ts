@@ -294,6 +294,8 @@ export function useAgentChat({ context, initialMessages }: UseAgentChatOptions =
         // Persisted either way: the partial answer is real work the user can read,
         // and keeping it in ChatTurn is what lets a follow-up pick up where it stopped.
         persistTurn("assistant", assistantText);
+        // 通知配额组件刷新（用于匿名用户试用次数和已登录用户月度额度）
+        window.dispatchEvent(new Event("quota-update"));
       }
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
