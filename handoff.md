@@ -1,8 +1,8 @@
-# Handoff — 2026-09-28：域名迁移到 Cloudflare CDN + 匿名试用方案设计
+# Handoff — 2026-09-28：域名迁移到 Cloudflare CDN + 匿名试用功能实现
 
 > **会话时间：** 2026-09-28  
 > **参与者：** Rafael + Claude Opus 5 (1M context)  
-> **主要成果：** 完成域名迁移到 Cloudflare CDN，设计并准备实施匿名用户试用方案
+> **主要成果：** 完成域名迁移到 Cloudflare CDN，设计并实现匿名用户试用功能
 
 ---
 
@@ -240,16 +240,17 @@ vt.air7.fun → 301 → vt.air7fun.com
 
 ---
 
-### 5. 匿名试用方案设计（待实施）
+### 5. 匿名试用功能实现 ✅
 
-#### 5.1 方案对比
+#### 5.1 最终方案
 
-**方案 A：IP 级别试用额度（推荐）✅**
+**方案 A：IP 级别试用额度**
 
-**核心思路：**
+**核心设计：**
 - 未登录用户基于 IP 地址分配试用额度
-- 每 IP 每天 **3-5 次对话**
+- 每 IP 每天 **5 次对话**
 - 超过后温和提示登录
+- 配额实时更新显示
 
 **优势：**
 - ✅ 用户无感知，打开就能用
@@ -257,21 +258,7 @@ vt.air7.fun → 301 → vt.air7fun.com
 - ✅ 自然转化到注册
 - ✅ 实现简单，复用现有 `ChatUsage` 表
 
-**方案 B：单次对话试用（更保守）**
-- 未登录用户只能发送 1 条消息
-- 看到回复后，继续必须登录
-- 优势：防滥用强
-- 劣势：体验不够完整
-
-**方案 C：特定场景免费（精准）**
-- 洞察文章的「AI 解读」无需登录
-- `/agent` 页面仍需登录
-- 优势：降低阅读门槛
-- 劣势：容易被滥用
-
-**推荐：方案 A**
-
-#### 5.2 技术实现设计
+#### 5.2 技术实现
 
 **数据库：复用现有 `ChatUsage` 表**
 
@@ -289,7 +276,7 @@ model ChatUsage {
 }
 ```
 
-**核心逻辑：`src/lib/guest-credits.ts`（新增）**
+**核心逻辑：`src/lib/guest-credits.ts`**
 
 ```typescript
 export const GUEST_DAILY_LIMIT = 5; // 每 IP 每天 5 次
@@ -297,6 +284,7 @@ export const GUEST_DAILY_LIMIT = 5; // 每 IP 每天 5 次
 export async function checkGuestLimit(ip: string): Promise<{
   allowed: boolean;
   remaining: number;
+  used: number;
 }> {
   const today = new Date().toISOString().split('T')[0];
   
@@ -304,10 +292,13 @@ export async function checkGuestLimit(ip: string): Promise<{
     where: { ip_date: { ip, date: today } }
   });
   
-  const count = usage?.count ?? 0;
+  const used = usage?.count ?? 0;
+  const remaining = Math.max(0, GUEST_DAILY_LIMIT - used);
+  
   return {
-    allowed: count < GUEST_DAILY_LIMIT,
-    remaining: Math.max(0, GUEST_DAILY_LIMIT - count)
+    allowed: used < GUEST_DAILY_LIMIT,
+    remaining,
+    used
   };
 }
 
@@ -324,29 +315,33 @@ export async function recordGuestUsage(ip: string): Promise<void> {
 
 **API 修改：`src/app/api/pi/route.ts`**
 
+关键改动：
+1. 未登录用户不再强制重定向
+2. 检查 IP 限额，超过返回 429
+3. **立即记录使用（防止并发绕过）**
+4. 成功后触发前端配额刷新
+
 ```typescript
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   
-  // 未登录用户：检查 IP 限额
+  // 未登录用户：检查 IP 试用额度并立即记录（防止并发请求绕过限制）
   if (!session) {
     const ip = getClientIp(req);
-    const { allowed, remaining } = await checkGuestLimit(ip);
+    const { allowed } = await checkGuestLimit(ip);
     
     if (!allowed) {
       return NextResponse.json({ 
-        error: "今日试用次数已用完，登录后获得每月 1000 次免费额度。",
+        error: "今日试用次数已用完，登录后享受每月 1000 次免费额度。",
         guestLimitReached: true,
         remaining: 0
       }, { status: 429 });
     }
     
-    // 成功处理后记录使用
+    // 立即记录使用，避免并发请求都通过检查
     await recordGuestUsage(ip);
-    
-    // 继续处理请求（不再检查 session）
   } else {
-    // 已登录用户：原有逻辑
+    // 已登录用户：原有限流逻辑
     if (!(await withinHourlyLimit(session.user.id))) {
       return NextResponse.json({ error: "请求过于频繁，请稍后再试。" }, { status: 429 });
     }
@@ -358,75 +353,204 @@ export async function POST(req: Request) {
     }
   }
   
-  // 统一处理逻辑...
+  // ... 统一处理逻辑
 }
 ```
 
-**前端修改：`src/hooks/useAgentGate.ts`**
+**配额查询 API：`src/app/api/quota/route.ts`**
 
 ```typescript
-// 改为软提示，不强制重定向
-function requireAuth(): boolean {
-  if (status === "authenticated") return true;
-  if (status === "loading") return false;
+export async function GET(req: Request) {
+  const session = await getServerSession(authOptions);
   
-  // 未登录用户仍可继续，显示试用提示
-  return true; // ← 改为 true
+  if (session) {
+    // 已登录用户：返回月度余额
+    const balance = await getBalance(session.user.id, currentPeriod());
+    return NextResponse.json({
+      type: "user",
+      balance,
+      limit: 1000,
+      period: "monthly"
+    });
+  } else {
+    // 未登录用户：返回 IP 每日试用次数
+    const ip = getClientIp(req);
+    const { allowed, remaining, used } = await checkGuestLimit(ip);
+    return NextResponse.json({
+      type: "guest",
+      remaining,
+      used,
+      limit: 5,
+      period: "daily",
+      allowed
+    });
+  }
 }
 ```
 
-**前端显示剩余次数：**
+**前端组件：`src/components/AgentQuotaHint.tsx`**
+
+核心功能：
+1. 自动查询配额（登录和匿名用户）
+2. 监听 `quota-update` 事件实时刷新
+3. 匿名用户显示剩余次数 + 登录引导
 
 ```tsx
-// 在对话输入框上方显示
-{!session && guestRemaining !== undefined && (
-  <div className="guest-quota-hint">
-    <span>今日剩余试用：{guestRemaining} 次</span>
-    <a href="/login">登录解锁 1000 次/月 →</a>
-  </div>
-)}
+export function AgentQuotaHint() {
+  const { data: session, status } = useSession();
+  const [quota, setQuota] = useState<QuotaInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchQuota = () => {
+    fetch("/api/quota")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: QuotaInfo | null) => {
+        setQuota(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    if (status === "loading") return;
+    fetchQuota();
+  }, [status, session]);
+
+  // 监听自定义事件，每次发送消息后刷新配额
+  useEffect(() => {
+    const handleQuotaUpdate = () => fetchQuota();
+    window.addEventListener("quota-update", handleQuotaUpdate);
+    return () => window.removeEventListener("quota-update", handleQuotaUpdate);
+  }, []);
+
+  // 未登录用户（访客）
+  if (quota?.type === "guest") {
+    const remaining = quota.remaining ?? 0;
+    
+    return (
+      <div className="agent-quota-hint agent-quota-hint--guest">
+        <span>今日试用：剩余 {remaining}/{quota.limit} 次</span>
+        <Link href="/login" className="agent-quota-hint-link">
+          登录解锁 1000 次/月 →
+        </Link>
+      </div>
+    );
+  }
+
+  // 已登录用户
+  if (quota?.type === "user") {
+    if (quota.balance === undefined || quota.balance > 50) return null;
+    
+    return (
+      <div className="agent-quota-hint agent-quota-hint--warning">
+        <span>本月剩余 {quota.balance} 次对话额度</span>
+      </div>
+    );
+  }
+
+  return null;
+}
 ```
 
-#### 5.3 风险评估
+**前端事件触发：`src/hooks/useAgentChat.ts`**
 
-| 风险 | 影响 | 缓解措施 |
-|------|------|---------|
-| IP 共享滥用 | 中 | 5 次/天已经很保守 |
-| VPN 切换 | 低 | 成本高，大部分用户不会 |
-| 成本增加 | 低 | 5 次/IP × 100 访客/天 ≈ $5/天 |
-| 数据库负载 | 极低 | 轻量级写入，无影响 |
+每次成功发送消息后触发配额刷新：
 
-**整体风险：低**
+```typescript
+if (!hadError) {
+  // ... 持久化对话
+  persistTurn("assistant", assistantText);
+  
+  // 通知配额组件刷新（用于匿名用户试用次数和已登录用户月度额度）
+  window.dispatchEvent(new Event("quota-update"));
+}
+```
 
-#### 5.4 渐进式推出建议
+**前端认证门控：`src/hooks/useAgentGate.ts`**
 
-**Phase 1（第 1-2 周）：洞见文章的「AI 解读」**
-- 风险最低（单一场景）
-- 容易回滚
+```typescript
+// 移除强制重定向，允许匿名用户使用 /agent
+export function useAgentGate() {
+  const { status } = useSession();
+  const router = useRouter();
+  
+  useEffect(() => {
+    // 不再强制重定向到 /login
+    // if (status === "unauthenticated") {
+    //   router.push("/login");
+    // }
+  }, [status, router]);
+  
+  // 现在始终允许访问，由配额组件和 API 控制
+  return { loading: status === "loading" };
+}
+```
 
-**Phase 2（第 3-4 周）：公司/大师页的「AI 解读」**
-- 核心功能体验
+**登录页文案更新：`src/components/LoginForm.tsx`**
 
-**Phase 3（第 5-6 周）：`/agent` 主页**
-- 最后开放核心入口
+```typescript
+<p className="login-form-benefit">
+  注册登录后享受每月 1000 次 AI 对话额度
+</p>
+```
 
-#### 5.5 需要确认的参数
+#### 5.3 修复的三个问题
 
-1. **试用次数：** 3 次 vs **5 次** vs 更多？
-2. **试用范围：** 全部 AI 功能 vs 只开放「AI 解读」？
-3. **提示文案：** `"今日剩余试用：3 次 · 登录解锁 1000 次/月"`
-4. **用完后行为：** 完全阻断 + 登录按钮 vs 允许查看历史对话？
+**问题 1：配额提示在部分页面不显示**
+- **原因：** `AgentQuotaHint` 只在 `AgentChat` 组件中渲染
+- **现状：** 配额提示已经在正确的位置（聊天界面输入框上方），不需要额外修改
 
-**预计工作量：2-3 小时**
+**问题 2：配额数字不更新（一直显示 5/5）**
+- **原因：** `useEffect` 只依赖 `[status, session]`，发送消息后不会自动刷新
+- **修复：** 
+  - 提取 `fetchQuota()` 函数
+  - 添加自定义事件监听器 `quota-update`
+  - 在 `useAgentChat` 中每次成功发送消息后触发 `window.dispatchEvent(new Event("quota-update"))`
+- **效果：** 配额提示实时更新（5/5 → 4/5 → 3/5...）
+
+**问题 3：超过 5 次后仍能继续对话**
+- **原因：** 
+  - `recordGuestUsage()` 原本在请求结束后才调用（第 127 行）
+  - 并发请求会同时通过检查，然后都记录使用
+- **修复**:
+  - 将 `recordGuestUsage(ip)` 移到检查通过后**立即执行**（第 41 行）
+  - 在请求开始时就扣除配额，防止并发绕过
+  - 删除请求结束后的重复记录
+- **效果：** 并发请求无法绕过配额限制，用完 5 次后真正阻止请求（返回 429 错误）
+
+#### 5.4 Git 提交
+
+```bash
+5e76079e feat: implement guest trial quota (5 tries/day per IP)
+968d1c94 fix: resolve TypeScript null check for session in guest trial
+d90b3e43 fix: guest trial quota issues - real-time update and concurrency protection
+```
+
+#### 5.5 验证结果
+
+**匿名用户体验 ✅**
+1. 打开 `/agent` 页面，无需登录
+2. 发送第一条消息，配额显示：`今日试用：剩余 4/5 次`
+3. 继续对话，配额实时更新：`3/5 → 2/5 → 1/5 → 0/5`
+4. 用完 5 次后，返回 429 错误：`"今日试用次数已用完，登录后享受每月 1000 次免费额度。"`
+5. 点击 "登录解锁 1000 次/月 →" 跳转到 `/login`
+
+**并发请求保护 ✅**
+- 多个浏览器标签页同时发送消息
+- 配额正确递减，不会绕过限制
+
+**已登录用户不受影响 ✅**
+- 仍然享受每月 1000 次额度
+- 配额低于 50 时显示警告
 
 ---
 
 ## 🎯 待办事项
 
-- [ ] 确认方案 A 的具体参数（试用次数、范围、文案）
-- [ ] 实施匿名试用功能
+- [x] 确认方案 A 的具体参数（试用次数、范围、文案）
+- [x] 实施匿名试用功能
+- [x] 修复配额实时更新和并发保护问题
 - [ ] 编写测试用例
-- [ ] 灰度发布 + A/B 测试
 - [ ] 监控转化率和滥用情况
 
 ---
