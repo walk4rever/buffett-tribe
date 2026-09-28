@@ -494,7 +494,7 @@ export function useAgentGate() {
 </p>
 ```
 
-#### 5.3 修复的三个问题
+#### 5.3 修复的问题
 
 **问题 1：配额提示在部分页面不显示**
 - **原因：** `AgentQuotaHint` 只在 `AgentChat` 组件中渲染
@@ -510,13 +510,33 @@ export function useAgentGate() {
 
 **问题 3：超过 5 次后仍能继续对话**
 - **原因：** 
-  - `recordGuestUsage()` 原本在请求结束后才调用（第 127 行）
+  - `recordGuestUsage()` 原本在请求结束后才调用
   - 并发请求会同时通过检查，然后都记录使用
 - **修复**:
-  - 将 `recordGuestUsage(ip)` 移到检查通过后**立即执行**（第 41 行）
+  - 将 `recordGuestUsage(ip)` 移到检查通过后**立即执行**
   - 在请求开始时就扣除配额，防止并发绕过
   - 删除请求结束后的重复记录
 - **效果：** 并发请求无法绕过配额限制，用完 5 次后真正阻止请求（返回 429 错误）
+
+**问题 4：未登录用户能看到其他用户的笔记（安全漏洞）**
+- **原因：** 退出登录后，左侧工作区侧边栏仍然显示，且浏览器可能缓存了 session
+- **修复：** 在 `AgentPageChat` 中添加 session 检查，未登录时隐藏：
+  - 左侧工作区侧边栏
+  - 工作区展开按钮
+  - 笔记编辑器面板
+  - "存为笔记"按钮
+- **效果：** 匿名用户完全无法访问笔记功能
+
+**问题 5：Cloudflare CDN 导致 IP 检测失败（致命问题）**
+- **原因：** 
+  - `getClientIp()` 使用 `x-forwarded-for` 获取 IP
+  - 迁移到 Cloudflare 后，该字段返回的是 Cloudflare 边缘服务器 IP（172.x.x.x, 104.x.x.x）
+  - 所有通过同一边缘节点的用户共享配额池，配额立即用完
+- **修复：**
+  - 优先使用 `cf-connecting-ip` 头（Cloudflare 提供的真实用户 IP）
+  - Fallback 到 `x-forwarded-for`（其他反向代理）
+  - 添加 `.trim()` 去除空格
+- **效果：** 每个真实用户独立拥有 5 次/天配额
 
 #### 5.4 Git 提交
 

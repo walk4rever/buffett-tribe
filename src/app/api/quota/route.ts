@@ -17,12 +17,14 @@ export async function GET(req: Request) {
 
   if (session) {
     // 已登录用户：返回月度余额
-    const balance = await getBalance(session.user.id, currentPeriod());
+    const period = currentPeriod();
+    const balance = await getBalance(session.user.id, period);
     return NextResponse.json({
       type: "user",
       balance,
       limit: 1000,
-      period: "monthly",
+      period: period,  // YYYY-MM 格式，用于 QuotaCard 显示
+      monthlyLimit: 1000,  // 兼容旧格式
     });
   } else {
     // 未登录用户：返回 IP 每日试用次数
