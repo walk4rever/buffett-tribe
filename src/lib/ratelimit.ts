@@ -30,9 +30,18 @@ export const aiAnalysisRatelimit = createRatelimit(10, 60);
 export const highlightsRatelimit = createRatelimit(30, 60);
 
 export function getClientIp(request: Request): string {
+  // Cloudflare 提供真实用户 IP（优先使用）
+  const cfConnectingIp = request.headers.get("cf-connecting-ip");
+  if (cfConnectingIp) {
+    return cfConnectingIp;
+  }
+
+  // 其他反向代理的 fallback
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) {
-    return forwarded.split(",")[0];
+    return forwarded.split(",")[0].trim();
   }
+
+  // 开发环境 fallback
   return "127.0.0.1";
 }
