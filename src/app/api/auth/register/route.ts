@@ -6,7 +6,6 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const email = body?.email?.trim().toLowerCase();
   const password = body?.password;
-  const name = body?.name?.trim();
 
   if (!email || !password) {
     return NextResponse.json({ error: "邮箱和密码不能为空" }, { status: 400 });
@@ -24,7 +23,10 @@ export async function POST(req: Request) {
   }
 
   const hashed = await bcrypt.hash(password, 10);
-  await prisma.user.create({ data: { email, password: hashed, name: name || null } });
+  // 默认昵称取邮箱前缀（去掉 +tag 部分），用户可在个人资料里修改
+  const localPart = email.split("@")[0].split("+")[0].trim();
+  const name = localPart || null;
+  await prisma.user.create({ data: { email, password: hashed, name } });
 
   return NextResponse.json({ ok: true });
 }

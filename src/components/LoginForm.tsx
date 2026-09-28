@@ -14,7 +14,6 @@ export function LoginForm() {
   const [tab, setTab] = useState<"login" | "register" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
@@ -57,7 +56,7 @@ export function LoginForm() {
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -95,15 +94,6 @@ export function LoginForm() {
         </div>
 
         <form onSubmit={tab === "login" ? handleLogin : tab === "register" ? handleRegister : handleForgot} className="login-form">
-          {tab === "register" && (
-            <input
-              className="login-input"
-              type="text"
-              placeholder="昵称（可选）"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          )}
           <input
             className="login-input"
             type="email"
