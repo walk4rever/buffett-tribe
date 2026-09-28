@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import {
   PanelLeftClose,
   PanelLeft,
@@ -16,6 +17,7 @@ interface AgentPageChatProps {
 }
 
 export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
+  const { data: session } = useSession();
   const { messages, input, setInput, streaming, sendMessage, abort, pendingImages, addImage, removeImage } =
     useAgentChat({ initialMessages });
 
@@ -29,7 +31,7 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
     const handleResize = () => {
       const desktop = window.innerWidth >= 1280;
       setIsDesktop(desktop);
-      if (desktop) {
+      if (desktop && session) {
         setLeftOpen(true);
       } else {
         setLeftOpen(false);
@@ -39,7 +41,7 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [session]);
 
   return (
     <div className="agent-workspace">
@@ -55,58 +57,62 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
           />
         )}
 
-        {/* Left Sidebar (Research Materials, Portfolio & Watchlist) */}
-        <aside
-          className={`agent-workspace-sidebar agent-workspace-sidebar-left ${
-            leftOpen ? "is-open" : "is-closed"
-          }`}
-        >
-          <div className="agent-sidebar-header agent-sidebar-header--nav">
-            <button
-              type="button"
-              className="agent-sidebar-toggle-btn"
-              onClick={() => setLeftOpen(false)}
-              title="收起侧边栏"
-            >
-              <PanelLeftClose size={16} />
-            </button>
-            <span className="agent-sidebar-title">工作区</span>
-          </div>
-          <div className="agent-sidebar-content">
-            <WorkspaceSidebar
-              notes={notes}
-              activeNoteId={activeNote?.id ?? null}
-              onOpenNote={(id) => {
-                openNote(id);
-                if (!isDesktop) setLeftOpen(false);
-              }}
-              onCreateNote={() => {
-                void createNote();
-                if (!isDesktop) setLeftOpen(false);
-              }}
-            />
-          </div>
-        </aside>
+        {/* Left Sidebar (Research Materials, Portfolio & Watchlist) - 仅登录用户可见 */}
+        {session && (
+          <aside
+            className={`agent-workspace-sidebar agent-workspace-sidebar-left ${
+              leftOpen ? "is-open" : "is-closed"
+            }`}
+          >
+            <div className="agent-sidebar-header agent-sidebar-header--nav">
+              <button
+                type="button"
+                className="agent-sidebar-toggle-btn"
+                onClick={() => setLeftOpen(false)}
+                title="收起侧边栏"
+              >
+                <PanelLeftClose size={16} />
+              </button>
+              <span className="agent-sidebar-title">工作区</span>
+            </div>
+            <div className="agent-sidebar-content">
+              <WorkspaceSidebar
+                notes={notes}
+                activeNoteId={activeNote?.id ?? null}
+                onOpenNote={(id) => {
+                  openNote(id);
+                  if (!isDesktop) setLeftOpen(false);
+                }}
+                onCreateNote={() => {
+                  void createNote();
+                  if (!isDesktop) setLeftOpen(false);
+                }}
+              />
+            </div>
+          </aside>
+        )}
 
         {/* Center Main Stage (Note Editor + Chat Pane) */}
         <div className="agent-workspace-main">
-          {/* Floating Expand Toggle Button when Sidebar is Closed */}
-          <div className="agent-pane-floating-bars">
-            {!leftOpen && (
-              <button
-                type="button"
-                className="agent-pane-toggle agent-pane-toggle--left"
-                onClick={() => setLeftOpen(true)}
-                title="展开工作区"
-              >
-                <PanelLeft size={15} />
-                <span>工作区</span>
-              </button>
-            )}
-          </div>
+          {/* Floating Expand Toggle Button when Sidebar is Closed - 仅登录用户可见 */}
+          {session && (
+            <div className="agent-pane-floating-bars">
+              {!leftOpen && (
+                <button
+                  type="button"
+                  className="agent-pane-toggle agent-pane-toggle--left"
+                  onClick={() => setLeftOpen(true)}
+                  title="展开工作区"
+                >
+                  <PanelLeft size={15} />
+                  <span>工作区</span>
+                </button>
+              )}
+            </div>
+          )}
 
-          {/* Side-by-side Note Editor Pane */}
-          {activeNote && draft && (
+          {/* Side-by-side Note Editor Pane - 仅登录用户可见 */}
+          {session && activeNote && draft && (
             <div className="agent-workspace-note-pane">
               <NoteEditor
                 key={activeNote.id}
@@ -132,9 +138,9 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
               pendingImages={pendingImages}
               onAddImage={addImage}
               onRemoveImage={removeImage}
-              onSaveAsNote={(text) => {
+              onSaveAsNote={session ? (text) => {
                 void saveAsNote(text);
-              }}
+              } : undefined}
             />
           </div>
         </div>
