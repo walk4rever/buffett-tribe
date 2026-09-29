@@ -14,7 +14,6 @@ import { pathToFileURL } from "node:url";
 import { fetchFilingIndexFiles, fetchSecText } from "./lib/filing-archive";
 import { ImportTimer } from "./lib/import-timer";
 import {
-  archiveFilingArtifacts,
   db,
   decimalFromNumber,
   findBestFactValue,
@@ -346,7 +345,7 @@ async function importEdgarToolsAnnualReports(params: {
       (count) => `sections=${count}`,
     );
 
-    const { html: indexHtml, files: indexFiles } = await filingTimer.time(
+    const { files: indexFiles } = await filingTimer.time(
       "fetch filing index",
       () => fetchFilingIndexFiles(cik, filing.accession),
       (index) => `files=${index.files.length}`,
@@ -368,19 +367,10 @@ async function importEdgarToolsAnnualReports(params: {
       ),
       (count) => `attachments=${count}`,
     );
-    await filingTimer.time("archive artifacts", () => archiveFilingArtifacts({
-        entityId: companyEntity.id,
-        sourceId: extSource.id,
-        cik,
-        accession: filing.accession,
-        primaryDocument: filing.primaryDocument,
-        filingUrlBase: filing.filingUrlBase,
-        primaryHtml: html,
-        indexHtml,
-        indexFiles,
-      }),
-      (artifacts) => `artifacts=${artifacts.length}`,
-    );
+
+    // Archive artifacts removed 2026-09-29: unified external links strategy
+    // No longer upload primary_html/index_html to R2; use SEC viewer URL instead
+    console.log(`  Archive skipped: use external SEC viewer URL (${extSource.url})`);
 
     await filingTimer.time("update source metadata", () => db.extSource.update({
         where: { id: extSource.id },

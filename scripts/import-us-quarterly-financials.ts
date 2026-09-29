@@ -113,6 +113,7 @@ export async function importUsQuarterlyFinancialsForEntity(
         periodYear: filing.fy,
         periodQuarter: quarterNum,
         filedAt: filing.filedAt ? new Date(filing.filedAt) : null,
+        url: `https://www.sec.gov/cgi-bin/viewer?action=view&cik=${cik}&accession_number=${filing.accn}&xbrl_type=v`,
         metadata: {
           ticker,
           form: "10-Q",
@@ -125,6 +126,7 @@ export async function importUsQuarterlyFinancialsForEntity(
         periodYear: filing.fy,
         periodQuarter: quarterNum,
         filedAt: filing.filedAt ? new Date(filing.filedAt) : null,
+        url: `https://www.sec.gov/cgi-bin/viewer?action=view&cik=${cik}&accession_number=${filing.accn}&xbrl_type=v`,
       },
     });
 

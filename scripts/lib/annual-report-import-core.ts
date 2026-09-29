@@ -835,7 +835,6 @@ export async function upsertExtSource(
 ) {
   const year = new Date(filing.reportDate).getUTCFullYear();
   const quarter = Math.ceil((new Date(filing.reportDate).getUTCMonth() + 1) / 3);
-  const accnoPath = filing.accession.replace(/-/g, "");
   const kind = filing.form.startsWith("20-F") ? "20f" : filing.form.startsWith("40-F") ? "40f" : "10k";
 
   // Dedupe key is (filerEntityId, accessionNumber). The DB also enforces this
@@ -854,7 +853,7 @@ export async function upsertExtSource(
       periodQuarter: quarter,
       ts: new Date(filing.reportDate),
       filedAt: new Date(filing.filedAt),
-      url: `https://www.sec.gov/Archives/edgar/data/${cik}/${accnoPath}/${filing.primaryDocument}`,
+      url: `https://www.sec.gov/cgi-bin/viewer?action=view&cik=${cik}&accession_number=${filing.accession}&xbrl_type=v`,
       metadata: {
         accession: filing.accession,
         primaryDocument: filing.primaryDocument,

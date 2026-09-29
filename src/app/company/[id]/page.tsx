@@ -756,23 +756,15 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                       ? `${filing.periodYear}${filing.periodQuarter ? (filing.periodQuarter === 2 && filing.kind.includes("interim") ? " H1" : ` Q${filing.periodQuarter}`) : ""}`
                       : "—";
 
-                    // CN/HK: always link to external source (PDF artifacts removed in cleanup)
-                    // US: check for primary_html (10-K sections) for internal reader
-                    const isCnHkFiling = filing.kind.startsWith('cn-') || filing.kind.startsWith('hk-');
-                    const hasUsHtmlArtifact = !isCnHkFiling && filing.artifacts.some((a) => a.kind === "primary_html");
-
-                    // Fallback: construct SEC EDGAR URL from accessionNumber + CIK when no url/artifact
+                    // 2026-09-29: Unified external links strategy
+                    // All filings (CN/HK/US) use external links, no internal reader
                     const accessionNumber = typeof meta.accession === "string" ? meta.accession : null;
-                    const constructedSecUrl = !filing.url && !hasUsHtmlArtifact && company.cik && accessionNumber
+                    const constructedSecUrl = !filing.url && company.cik && accessionNumber
                       ? `https://www.sec.gov/cgi-bin/viewer?action=view&cik=${company.cik}&accession_number=${accessionNumber}&xbrl_type=v`
                       : null;
                     const effectiveUrl = filing.url || constructedSecUrl;
 
-                    const readerBadge = hasUsHtmlArtifact
-                      ? "在线阅读 (HTML)"
-                      : effectiveUrl
-                        ? "查看原文 ↗"
-                        : null;
+                    const readerBadge = effectiveUrl ? "查看原文 ↗" : null;
 
                     const filingDate = filing.filedAt ? filing.filedAt.toISOString().slice(0, 10) : null;
 
@@ -787,27 +779,14 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                           ) : null}
                         </div>
                         {readerBadge ? (
-                          <span className={`company-reference-badge ${hasUsHtmlArtifact ? "company-reference-badge--active" : ""}`}>
+                          <span className="company-reference-badge">
                             {readerBadge}
                           </span>
                         ) : null}
                       </div>
                     );
 
-                    // US with HTML artifact → internal reader
-                    if (hasUsHtmlArtifact) {
-                      return (
-                        <Link
-                          key={filing.id}
-                          className="company-reference-card company-reference-card--clickable"
-                          href={`${baseCompanyUrl}/filing/${filing.id}`}
-                        >
-                          {cardHead}
-                        </Link>
-                      );
-                    }
-
-                    // CN/HK or US with external URL → external link
+                    // All filings use external links (unified strategy)
                     if (effectiveUrl) {
                       return (
                         <a
@@ -822,7 +801,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                       );
                     }
 
-                    // Fallback: no artifact, no URL
+                    // Fallback: no URL
                     return (
                       <article key={filing.id} className="company-reference-card">
                         {cardHead}
