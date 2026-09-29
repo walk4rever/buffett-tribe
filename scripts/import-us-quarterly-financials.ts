@@ -24,6 +24,39 @@ function hasFlag(flag: string): boolean {
   return process.argv.slice(2).includes(flag);
 }
 
+/**
+ * Build SEC filing URL with fallback strategy:
+ * 1. Try to fetch primary document name from filing index
+ * 2. Build direct Archives URL if found
+ * 3. Fallback to SEC viewer URL
+ */
+async function buildFilingUrl(cik: string, accession: string, formType: string): Promise<string> {
+  const paddedCik = cik.padStart(10, "0");
+
+  try {
+    // Try to get primary document name from filing index
+    const { files } = await fetchFilingIndexFiles(paddedCik, accession);
+
+    // Find primary document (10-Q, 10-K, etc.)
+    const primaryDoc = files.find(f =>
+      f.category === "attachment" &&
+      f.description?.toLowerCase().includes(formType.toLowerCase()) &&
+      (f.documentName.endsWith('.htm') || f.documentName.endsWith('.html'))
+    );
+
+    if (primaryDoc) {
+      // Use direct Archives URL (more reliable)
+      const accessionPath = accession.replace(/-/g, "");
+      return `https://www.sec.gov/Archives/edgar/data/${paddedCik}/${accessionPath}/${primaryDoc.documentName}`;
+    }
+  } catch (error) {
+    console.warn(`  Warning: Could not fetch filing index for ${accession}, using viewer URL`);
+  }
+
+  // Fallback to SEC viewer URL
+  return `https://www.sec.gov/cgi-bin/viewer?action=view&cik=${cik}&accession_number=${accession}&xbrl_type=v`;
+}
+
 type QuarterFiling = {
   accn: string;
   fy: number;
@@ -98,6 +131,9 @@ export async function importUsQuarterlyFinancialsForEntity(
   for (const filing of sortedFilings) {
     const quarterNum = filing.fp === "Q1" ? 1 : filing.fp === "Q2" ? 2 : 3;
 
+    // Build URL with fallback strategy
+    const filingUrl = await buildFilingUrl(cik, filing.accn, "10-Q");
+
     // Upsert ExtSource
     const extSource = await db.extSource.upsert({
       where: {
@@ -113,7 +149,7 @@ export async function importUsQuarterlyFinancialsForEntity(
         periodYear: filing.fy,
         periodQuarter: quarterNum,
         filedAt: filing.filedAt ? new Date(filing.filedAt) : null,
-        url: `https://www.sec.gov/cgi-bin/viewer?action=view&cik=${cik}&accession_number=${filing.accn}&xbrl_type=v`,
+        url: filingUrl,
         metadata: {
           ticker,
           form: "10-Q",
@@ -126,7 +162,7 @@ export async function importUsQuarterlyFinancialsForEntity(
         periodYear: filing.fy,
         periodQuarter: quarterNum,
         filedAt: filing.filedAt ? new Date(filing.filedAt) : null,
-        url: `https://www.sec.gov/cgi-bin/viewer?action=view&cik=${cik}&accession_number=${filing.accn}&xbrl_type=v`,
+        url: filingUrl,
       },
     });
 

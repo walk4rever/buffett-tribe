@@ -251,8 +251,9 @@ async function main() {
 
     try {
       console.log(`  Calling LLM (unified generation)...`);
-      const raw = await callJsonLLM(SYSTEM_PROMPT, prompt, {
-        model: AI_MODEL,
+      const raw = await callJsonLLM({
+        systemPrompt: SYSTEM_PROMPT,
+        userPrompt: prompt,
         maxTokens: 16000,
         temperature: 0.2,
       });

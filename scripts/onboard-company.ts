@@ -66,10 +66,12 @@ type Market = "us" | "cn" | "hk";
 type StepId =
   | "seed_entity"
   | "import_financials_fast"
+  | "create_annual_report_extsource"
   | "import_10k"
   | "import_price"
   | "import_financials"
   | "import_annual_report"
+  | "slice_annual_report"
   | "generate_company_profile"
   | "generate_business_model"
   | "generate_value_analysis"
@@ -344,10 +346,34 @@ function buildImportFinancialsStep(ticker: string, market: "cn" | "hk", code: st
   };
 }
 
-function buildImportAnnualReportStep(ticker: string, market: "cn" | "hk", fromYear: string, code: string): Step {
+// P1: Create ExtSource records with URLs only (no slicing)
+function buildCreateAnnualReportExtSourceStep(ticker: string, market: "cn" | "hk", fromYear: string, code: string): Step {
   return {
-    id: "import_annual_report",
-    label: "导入年报原文（HKEXnews/cninfo → FilingSection，不上传 R2 PDF）",
+    id: "create_annual_report_extsource",
+    label: "创建年报 ExtSource 记录（仅 URL，不切片）",
+    run: () => {
+      return runNpmScript("create:cn-hk-annual-extsource", [
+        "--ticker", ticker,
+        "--market", market,
+        "--code", code,
+        "--from-year", fromYear,
+      ]);
+    },
+    verify: async (entityId) => {
+      const kinds = market === "cn" ? ["cn-annual-report", "cn-prospectus"] : [`${market}-annual-report`];
+      const count = await prisma.extSource.count({
+        where: { filerEntityId: entityId, kind: { in: kinds } }
+      });
+      return count > 0;
+    },
+  };
+}
+
+// P2: Slice existing ExtSource records (fetch PDFs and create FilingSection)
+function buildSliceAnnualReportStep(ticker: string, market: "cn" | "hk", fromYear: string, code: string): Step {
+  return {
+    id: "slice_annual_report",
+    label: "切片年报原文（下载 PDF → FilingSection，不上传 R2）",
     run: () => {
       const scriptName = market === "hk" ? "import:hk-annual-report" : "import:cn-annual-report";
       return runNpmScript(scriptName, [
@@ -356,15 +382,11 @@ function buildImportAnnualReportStep(ticker: string, market: "cn" | "hk", fromYe
         "--ticker", ticker,
         "--from-year", fromYear,
         "--import-db",
-        "--skip-r2-upload"  // New: skip PDF upload to R2, user reads from external link
+        "--skip-r2-upload"  // Skip PDF upload to R2, user reads from external link
       ]);
     },
     verify: async (entityId) => {
-      // Per-filing, not per-entity — same lesson as the US 10-K path: an
-      // entity-level count > 0 stays green even when one year's PDF extracts
-      // zero chunks. CN accepts the IPO prospectus kind as well: newly listed
-      // companies (e.g. 688825) have no annual report yet and
-      // fetch-cn-annual-report.py falls back to 招股说明书.
+      // Verify that all ExtSource records have FilingSection children
       const kinds = market === "cn" ? ["cn-annual-report", "cn-prospectus"] : [`${market}-annual-report`];
       const [totalFilings, filingsWithoutSections] = await Promise.all([
         prisma.extSource.count({ where: { filerEntityId: entityId, kind: { in: kinds } } }),
@@ -374,6 +396,34 @@ function buildImportAnnualReportStep(ticker: string, market: "cn" | "hk", fromYe
     },
   };
 }
+
+// Legacy: full import (ExtSource + slicing in one step) - kept for backward compatibility
+// Unused in the new P1/P2 split flow but retained as a reference
+// function buildImportAnnualReportStep(ticker: string, market: "cn" | "hk", fromYear: string, code: string): Step {
+//   return {
+//     id: "import_annual_report",
+//     label: "导入年报原文（HKEXnews/cninfo → FilingSection，不上传 R2 PDF）",
+//     run: () => {
+//       const scriptName = market === "hk" ? "import:hk-annual-report" : "import:cn-annual-report";
+//       return runNpmScript(scriptName, [
+//         "--code", code,
+//         "--market", market,
+//         "--ticker", ticker,
+//         "--from-year", fromYear,
+//         "--import-db",
+//         "--skip-r2-upload"  // New: skip PDF upload to R2, user reads from external link
+//       ]);
+//     },
+//     verify: async (entityId) => {
+//       const kinds = market === "cn" ? ["cn-annual-report", "cn-prospectus"] : [`${market}-annual-report`];
+//       const [totalFilings, filingsWithoutSections] = await Promise.all([
+//         prisma.extSource.count({ where: { filerEntityId: entityId, kind: { in: kinds } } }),
+//         prisma.extSource.count({ where: { filerEntityId: entityId, kind: { in: kinds }, sections: { none: {} } } }),
+//       ]);
+//       return totalFilings > 0 && filingsWithoutSections === 0;
+//     },
+//   };
+// }
 
 async function main() {
   const ticker = normalizeTicker(getArg("--ticker"));
@@ -626,17 +676,35 @@ async function main() {
     },
   };
 
+  // US P1: Create ExtSource records with URLs only (no slicing)
+  const createUsAnnualExtSourceStep: Step = {
+    id: "create_annual_report_extsource",
+    label: "创建年报 ExtSource 记录（仅 URL，不切片）",
+    run: async () => {
+      const args = ["--ticker", ticker, "--from", fromYear, "--to", toYear];
+      if (resolvedCik) args.push("--cik", resolvedCik);
+      return runNpmScript("create:us-annual-extsource", args);
+    },
+    verify: async (entityId) => {
+      const count = await prisma.extSource.count({
+        where: { filerEntityId: entityId, kind: { in: ["10k", "20f", "40f"] } }
+      });
+      return count > 0;
+    },
+  };
+
   let steps: Step[];
 
   if (market === "us") {
     const phase1Steps: Step[] = [
       importFinancialsFastStep,
+      createUsAnnualExtSourceStep,  // NEW: Create ExtSource at P1
       importPriceStep,
       generateOverviewStep,
       syncNameMapStep,
     ];
     const phase2Steps: Step[] = [
-      import10kFullStep,
+      import10kFullStep,  // P2: Slice the ExtSource records created at P1
       ...phase2AnalysisSteps,
     ];
 
@@ -651,17 +719,19 @@ async function main() {
     const code = resolveCnHkCode(ticker, market);
     const seedEntityStep = buildSeedEntityStep(ticker, market, code);
     const importFinancialsStep = buildImportFinancialsStep(ticker, market, code);
-    const importAnnualReportStep = buildImportAnnualReportStep(ticker, market, fromYear, code);
+    const createAnnualExtSourceStep = buildCreateAnnualReportExtSourceStep(ticker, market, fromYear, code);
+    const sliceAnnualReportStep = buildSliceAnnualReportStep(ticker, market, fromYear, code);
 
     const phase1Steps: Step[] = [
       seedEntityStep,
+      createAnnualExtSourceStep,  // NEW: Create ExtSource at P1
       importPriceStep,
       importFinancialsStep,
       generateOverviewStep,
       syncNameMapStep,
     ];
     const phase2Steps: Step[] = [
-      importAnnualReportStep,
+      sliceAnnualReportStep,  // P2: Slice the ExtSource records created at P1
       ...phase2AnalysisSteps,
     ];
 
