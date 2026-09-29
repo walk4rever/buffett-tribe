@@ -26,7 +26,6 @@ import {
   findCompanies,
   getArg,
   hasFlag,
-  hasUsableFilingEvidence,
   normalizeText,
   parseJsonObject,
   prisma,

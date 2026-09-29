@@ -347,10 +347,17 @@ function buildImportFinancialsStep(ticker: string, market: "cn" | "hk", code: st
 function buildImportAnnualReportStep(ticker: string, market: "cn" | "hk", fromYear: string, code: string): Step {
   return {
     id: "import_annual_report",
-    label: "导入年报原文（HKEXnews/cninfo → FilingSection + R2 PDF，供 LLM 生成与阅读页使用）",
+    label: "导入年报原文（HKEXnews/cninfo → FilingSection，不上传 R2 PDF）",
     run: () => {
       const scriptName = market === "hk" ? "import:hk-annual-report" : "import:cn-annual-report";
-      return runNpmScript(scriptName, ["--code", code, "--market", market, "--ticker", ticker, "--from-year", fromYear, "--import-db"]);
+      return runNpmScript(scriptName, [
+        "--code", code,
+        "--market", market,
+        "--ticker", ticker,
+        "--from-year", fromYear,
+        "--import-db",
+        "--skip-r2-upload"  // New: skip PDF upload to R2, user reads from external link
+      ]);
     },
     verify: async (entityId) => {
       // Per-filing, not per-entity — same lesson as the US 10-K path: an
@@ -439,7 +446,27 @@ async function main() {
       (await verifyCompanyAnalysisField(entityId, "profile", stepStartedAt, force)),
   };
 
-  const phase2AnalysisSteps: Step[] = [
+  // Unified analysis generation - replaces 5 separate steps
+  const phase2UnifiedAnalysisStep: Step = {
+    id: "generate_unified_analysis",
+    label: "生成完整投资分析（统一调用：business + moat + management + valuation）",
+    skip: skipGeneration,
+    run: () => runNpmScript("generate:unified-analysis", buildGenerateArgs(ticker, force)),
+    verify: async (entityId, stepStartedAt) => {
+      // All 4 fields must exist (overview checked separately in Phase 1)
+      const hasAllFields = await Promise.all([
+        verifyCompanyAnalysisField(entityId, "business", stepStartedAt, force),
+        verifyCompanyAnalysisField(entityId, "moat", stepStartedAt, force),
+        verifyCompanyAnalysisField(entityId, "management", stepStartedAt, force),
+        verifyCompanyAnalysisField(entityId, "valuation", stepStartedAt, force),
+      ]);
+      return hasAllFields.every(Boolean);
+    },
+  };
+
+  // Legacy: keep old 5-step approach for backward compatibility (commented out, not used by default)
+  /*
+  const phase2AnalysisStepsLegacy: Step[] = [
     {
       id: "generate_business_model",
       label: "生成业务概览与商业画布（business_overview）",
@@ -471,6 +498,10 @@ async function main() {
       verify: (entityId, stepStartedAt) => verifyCompanyAnalysisField(entityId, "valuation", stepStartedAt, force),
     },
   ];
+  */
+
+  // Use unified step by default
+  const phase2AnalysisSteps: Step[] = [phase2UnifiedAnalysisStep];
 
   const syncNameMapStep: Step = {
     id: "sync_name_map",

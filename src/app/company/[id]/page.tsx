@@ -740,10 +740,12 @@ export default async function CompanyPage({ params, searchParams }: Props) {
               )}
             </section>
 
-            {/* Tab 7: Reference Filings & 10-K */}
+            {/* Tab 7: Reference Materials */}
             <section className="company-section" data-tab-panel="references">
+              {/* Region 1: Official Filings */}
               <div className="company-financial-trend-head">
-                <h3>官方报告与参考资料</h3>
+                <h3>官方报告</h3>
+                <span className="dvl-section-subtitle">招股说明书、年度报告、季度报告等监管披露文件</span>
               </div>
               {referenceFilings.length ? (
                 <div className="company-reference-list">
@@ -754,16 +756,23 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                       ? `${filing.periodYear}${filing.periodQuarter ? (filing.periodQuarter === 2 && filing.kind.includes("interim") ? " H1" : ` Q${filing.periodQuarter}`) : ""}`
                       : "—";
 
-                    const hasReadableArtifact = filing.artifacts.some(
-                      (a) => a.kind === "primary_html" || a.kind === "primary_pdf"
-                    );
-                    const readerBadge = filing.artifacts.some((a) => a.kind === "primary_html")
+                    // CN/HK: always link to external source (PDF artifacts removed in cleanup)
+                    // US: check for primary_html (10-K sections) for internal reader
+                    const isCnHkFiling = filing.kind.startsWith('cn-') || filing.kind.startsWith('hk-');
+                    const hasUsHtmlArtifact = !isCnHkFiling && filing.artifacts.some((a) => a.kind === "primary_html");
+
+                    // Fallback: construct SEC EDGAR URL from accessionNumber + CIK when no url/artifact
+                    const accessionNumber = typeof meta.accession === "string" ? meta.accession : null;
+                    const constructedSecUrl = !filing.url && !hasUsHtmlArtifact && company.cik && accessionNumber
+                      ? `https://www.sec.gov/cgi-bin/viewer?action=view&cik=${company.cik}&accession_number=${accessionNumber}&xbrl_type=v`
+                      : null;
+                    const effectiveUrl = filing.url || constructedSecUrl;
+
+                    const readerBadge = hasUsHtmlArtifact
                       ? "在线阅读 (HTML)"
-                      : filing.artifacts.some((a) => a.kind === "primary_pdf")
-                        ? "在线阅读 (PDF)"
-                        : filing.url
-                          ? "查看原文 ↗"
-                          : null;
+                      : effectiveUrl
+                        ? "查看原文 ↗"
+                        : null;
 
                     const filingDate = filing.filedAt ? filing.filedAt.toISOString().slice(0, 10) : null;
 
@@ -778,14 +787,15 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                           ) : null}
                         </div>
                         {readerBadge ? (
-                          <span className={`company-reference-badge ${hasReadableArtifact ? "company-reference-badge--active" : ""}`}>
+                          <span className={`company-reference-badge ${hasUsHtmlArtifact ? "company-reference-badge--active" : ""}`}>
                             {readerBadge}
                           </span>
                         ) : null}
                       </div>
                     );
 
-                    if (hasReadableArtifact) {
+                    // US with HTML artifact → internal reader
+                    if (hasUsHtmlArtifact) {
                       return (
                         <Link
                           key={filing.id}
@@ -797,12 +807,13 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                       );
                     }
 
-                    if (filing.url) {
+                    // CN/HK or US with external URL → external link
+                    if (effectiveUrl) {
                       return (
                         <a
                           key={filing.id}
                           className="company-reference-card company-reference-card--clickable"
-                          href={filing.url}
+                          href={effectiveUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
@@ -811,6 +822,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                       );
                     }
 
+                    // Fallback: no artifact, no URL
                     return (
                       <article key={filing.id} className="company-reference-card">
                         {cardHead}
@@ -835,6 +847,14 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                   {" "}搜索「{company.code}」查看原文。
                 </p>
               )}
+
+              {/* Region 2: Additional References (placeholder for future /insights articles, research, etc.) */}
+              <div className="company-financial-trend-head" style={{ marginTop: "3rem" }}>
+                <h3>其他资料</h3>
+              </div>
+              <div className="company-empty">
+                暂无关联的投资洞察文章。未来将展示 /insights 中提及该公司的分析内容。
+              </div>
             </section>
           </CompanySectionTabs>
       </div>
