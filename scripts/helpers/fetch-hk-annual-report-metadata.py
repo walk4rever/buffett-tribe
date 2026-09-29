@@ -107,7 +107,7 @@ def fetch_annual_reports_metadata(code: str, from_year: int) -> list[dict]:
     # Resolve stock ID
     stock_id = resolve_stock_id(session, code)
 
-    # Fetch filings
+    # Fetch filings - API now returns JSON, not HTML
     resp = session.get(
         API_ENDPOINT,
         params={
@@ -127,28 +127,32 @@ def fetch_annual_reports_metadata(code: str, from_year: int) -> list[dict]:
     )
     resp.raise_for_status()
 
-    # Parse response
-    soup = BeautifulSoup(resp.text, "html.parser")
-    rows = soup.find_all("tr", class_=re.compile(r"listing-grid-(even|odd)"))
+    # Parse JSON response
+    try:
+        data = resp.json()
+        results = data.get("result", [])
+        if isinstance(results, str):
+            results = json.loads(results)
+    except:
+        # Fallback: try parsing as string
+        results = json.loads(resp.text)
+        if isinstance(results, dict) and "result" in results:
+            results = results["result"]
+            if isinstance(results, str):
+                results = json.loads(results)
 
     reports_by_year = {}
-    for row in rows:
-        cells = row.find_all("td")
-        if len(cells) < 6:
-            continue
-
-        title_cell = cells[2]
-        title = title_cell.get_text(strip=True)
+    for item in results:
+        title = item.get("TITLE", "")
 
         if not ANNUAL_REPORT_TITLE_RE.search(title):
             continue
         if ANNUAL_REPORT_EXCLUDE_RE.search(title):
             continue
 
-        date_cell = cells[1]
-        date_str = date_cell.get_text(strip=True)
+        date_str = item.get("DATE_TIME", "")
         try:
-            filing_date = datetime.strptime(date_str, "%d/%m/%Y")
+            filing_date = datetime.strptime(date_str.split()[0], "%d/%m/%Y")
             period_year = filing_date.year
         except:
             continue
@@ -156,17 +160,12 @@ def fetch_annual_reports_metadata(code: str, from_year: int) -> list[dict]:
         if period_year < from_year:
             continue
 
-        # Extract PDF link
-        link_cell = cells[5]
-        link_tag = link_cell.find("a")
-        if not link_tag:
+        # Build PDF URL
+        file_link = item.get("FILE_LINK", "")
+        if not file_link:
             continue
 
-        href = link_tag.get("href", "")
-        if not href:
-            continue
-
-        pdf_url = f"{BASE_URL}{href}" if href.startswith("/") else href
+        pdf_url = f"{BASE_URL}{file_link}" if file_link.startswith("/") else file_link
 
         # Keep newest filing per year (already sorted by date desc)
         if period_year not in reports_by_year:
@@ -178,6 +177,8 @@ def fetch_annual_reports_metadata(code: str, from_year: int) -> list[dict]:
                     "source": "hkexnews",
                     "title": title,
                     "filingDate": date_str,
+                    "newsId": item.get("NEWS_ID", ""),
+                    "fileSize": item.get("FILE_INFO", ""),
                     "lang": "en",
                     "fetchedAt": datetime.now().isoformat()
                 }
