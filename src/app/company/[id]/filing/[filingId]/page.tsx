@@ -59,7 +59,13 @@ export default async function FilingReaderPage({ params }: Props) {
   const displayCompany = zhName ?? company.canonicalName;
   const backHref = `${canonicalUrl}?tab=references`;
 
-  // 1. PDF filings (HK annual/interim/quarterly, CN annual/interim/quarterly)
+  // CN/HK filings: redirect to external link (PDF artifacts removed in cleanup)
+  const isCnHkFiling = filing.kind.startsWith('cn-') || filing.kind.startsWith('hk-');
+  if (isCnHkFiling && filing.url) {
+    redirect(filing.url);
+  }
+
+  // 1. PDF filings (US prospectus, or legacy CN/HK if artifact still exists)
   const pdfArtifact = filing.artifacts.find((artifact) => artifact.kind === "primary_pdf");
   if (pdfArtifact?.objectKey) {
     const pdfUrl = `/api/filing-pdf/${pdfArtifact.objectKey}`;
