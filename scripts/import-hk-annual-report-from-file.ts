@@ -19,15 +19,24 @@ function getArg(flag: string): string | undefined {
   return args.find((_, i) => args[i - 1] === flag);
 }
 
+function hasFlag(flag: string): boolean {
+  return process.argv.slice(2).includes(flag);
+}
+
 async function main() {
   const filePath = process.argv[2];
   const ticker = getArg("--ticker");
   const code = getArg("--code");
   const market = getArg("--market");
+  const skipR2Upload = hasFlag("--skip-r2-upload");
 
   if (!filePath || !ticker || !code || !market) {
-    console.error("Usage: tsx import-hk-annual-report-from-file.ts <json-file> --ticker <T> --code <C> --market hk");
+    console.error("Usage: tsx import-hk-annual-report-from-file.ts <json-file> --ticker <T> --code <C> --market hk [--skip-r2-upload]");
     process.exit(1);
+  }
+
+  if (skipR2Upload) {
+    console.log("⚠️  R2 upload DISABLED - PDFs will not be archived");
   }
 
   const reports = JSON.parse(readFileSync(filePath, "utf-8")) as ReportRecord[];
@@ -83,18 +92,23 @@ async function main() {
     // needs its own copy. cik falls back to entityId, matching the same
     // null-cik pattern buildStoredTextOnlyFilingSectionData's caller already
     // uses one level up for CN/HK entities (which have no SEC CIK).
-    const pdfBuffer = readFileSync(report.pdfPath);
-    await archiveFilingArtifact(db, {
-      sourceId: extSource.id,
-      kind: "primary_pdf",
-      cik: entity.cik ?? entity.id,
-      accession: accessionNumber,
-      originalName: `${code}_${report.periodYear}.pdf`,
-      contentType: "application/pdf",
-      body: pdfBuffer,
-      sourceUrl: report.url,
-      metadata: { entityId: entity.id, periodYear: report.periodYear },
-    });
+    // Skip if --skip-r2-upload is set (save storage, user reads from external link)
+    if (!skipR2Upload) {
+      const pdfBuffer = readFileSync(report.pdfPath);
+      await archiveFilingArtifact(db, {
+        sourceId: extSource.id,
+        kind: "primary_pdf",
+        cik: entity.cik ?? entity.id,
+        accession: accessionNumber,
+        originalName: `${code}_${report.periodYear}.pdf`,
+        contentType: "application/pdf",
+        body: pdfBuffer,
+        sourceUrl: report.url,
+        metadata: { entityId: entity.id, periodYear: report.periodYear },
+      });
+    } else {
+      console.log(`  Skipped R2 upload for FY${report.periodYear} (--skip-r2-upload)`);
+    }
 
     let yearSections = 0;
     if (report.sections) {
