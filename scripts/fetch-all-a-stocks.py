@@ -36,7 +36,25 @@ def main():
         sys.exit(1)
 
     print("Fetching all A-share listed companies via akshare...", file=sys.stderr)
-    df = ak.stock_info_a_code_name()
+    import time
+    df = None
+    last_err = None
+    for attempt in range(1, 4):
+        try:
+            df = ak.stock_info_a_code_name()
+            if df is not None and not df.empty:
+                break
+        except Exception as e:
+            last_err = e
+            print(f"Attempt {attempt}/3 failed ({e}), retrying in 2s...", file=sys.stderr)
+            time.sleep(2)
+
+    if df is None or df.empty:
+        out_path = Path(args.out)
+        if out_path.exists():
+            print(f"⚠️ Warning: Failed to fetch fresh A-shares ({last_err}), falling back to existing {args.out}", file=sys.stderr)
+            sys.exit(0)
+        raise RuntimeError(f"Failed to fetch A-share stocks after 3 attempts: {last_err}")
 
     results = []
     exchange_counts = {"SZ": 0, "SS": 0, "BJ": 0}

@@ -38,7 +38,25 @@ def main():
         sys.exit(1)
 
     print("Fetching all HK listed companies via akshare (stock_hk_spot)...", file=sys.stderr)
-    df = ak.stock_hk_spot()
+    import time
+    df = None
+    last_err = None
+    for attempt in range(1, 4):
+        try:
+            df = ak.stock_hk_spot()
+            if df is not None and not df.empty:
+                break
+        except Exception as e:
+            last_err = e
+            print(f"Attempt {attempt}/3 failed ({e}), retrying in 2s...", file=sys.stderr)
+            time.sleep(2)
+
+    if df is None or df.empty:
+        out_path = Path(args.out)
+        if out_path.exists():
+            print(f"⚠️ Warning: Failed to fetch fresh HK stocks ({last_err}), falling back to existing {args.out}", file=sys.stderr)
+            sys.exit(0)
+        raise RuntimeError(f"Failed to fetch HK stocks after 3 attempts: {last_err}")
 
     results = []
     seen_tickers = set()
