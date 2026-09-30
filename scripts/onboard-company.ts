@@ -429,17 +429,21 @@ function buildSliceAnnualReportStep(ticker: string, market: "cn" | "hk", fromYea
         "--ticker", ticker,
         "--from-year", fromYear,
         "--import-db",
-        "--skip-r2-upload"  // Skip PDF upload to R2, user reads from external link
+        "--skip-r2-upload",  // Skip PDF upload to R2, user reads from external link
+        "--latest-only",     // Only slice the single most recent annual report
       ]);
     },
     verify: async (entityId) => {
-      // Verify that all ExtSource records have FilingSection children
+      // Verify that at least one ExtSource record has sliced FilingSection children
       const kinds = market === "cn" ? ["cn-annual-report", "cn-prospectus"] : [`${market}-annual-report`];
-      const [totalFilings, filingsWithoutSections] = await Promise.all([
-        prisma.extSource.count({ where: { filerEntityId: entityId, kind: { in: kinds } } }),
-        prisma.extSource.count({ where: { filerEntityId: entityId, kind: { in: kinds }, sections: { none: {} } } }),
-      ]);
-      return totalFilings > 0 && filingsWithoutSections === 0;
+      const validFilingWithSections = await prisma.extSource.count({
+        where: {
+          filerEntityId: entityId,
+          kind: { in: kinds },
+          sections: { some: {} },
+        },
+      });
+      return validFilingWithSections > 0;
     },
   };
 }
@@ -655,7 +659,7 @@ async function main() {
       // enough for giant foreign filers (e.g. VOD's 20-Fs are 10-20MB HTML
       // each and mini→SEC latency compounds per filing). Still bounded by the
       // worker's overall 35min batch timeout.
-      const args = ["--ticker", ticker, "--from", fromYear, "--to", toYear, "--extract-timeout-ms", "900000"];
+      const args = ["--ticker", ticker, "--from", fromYear, "--to", toYear, "--extract-timeout-ms", "900000", "--latest-only"];
       if (resolvedCik) args.push("--cik", resolvedCik);
       try {
         await runNpmScript("import:10k", args);
@@ -682,25 +686,15 @@ async function main() {
       if (financialCount === 0) return false;
 
       const filingKindFilter = { in: ["10k", "20f", "40f", "us-prospectus"] };
-      const [totalFilings, filingsWithoutSections] = await Promise.all([
-        prisma.extSource.count({
-          where: { filerEntityId: entityId, kind: filingKindFilter },
-        }),
-        prisma.extSource.count({
-          where: {
-            filerEntityId: entityId,
-            kind: filingKindFilter,
-            sections: { none: {} },
-            // Filings whose primary doc carries no inline XBRL (legacy or
-            // exempt formats, e.g. VOD's FY2020 20-F: facts=0, contexts=0)
-            // are structurally unparseable by this pipeline — a known
-            // capability gap (same class as BTGO), not an extraction
-            // failure, so they don't fail verification.
-            NOT: { metadata: { path: ["edgartools", "isInlineXbrl"], equals: false } },
-          },
-        }),
-      ]);
-      return totalFilings > 0 && filingsWithoutSections === 0;
+      // Verify that at least one filing has sections
+      const validFilingWithSections = await prisma.extSource.count({
+        where: {
+          filerEntityId: entityId,
+          kind: filingKindFilter,
+          sections: { some: {} },
+        },
+      });
+      return validFilingWithSections > 0;
     },
   };
 

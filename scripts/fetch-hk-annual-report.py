@@ -82,6 +82,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--import-db", action="store_true", help="Import the generated JSON into the database after fetching")
     parser.add_argument("--skip-r2-upload", action="store_true", help="Skip uploading PDF to Cloudflare R2")
     parser.add_argument("--keep-file", action="store_true", help="Keep the generated JSON and PDFs instead of deleting them after import")
+    parser.add_argument("--latest-only", action="store_true", help="Only fetch and slice the single most recent annual report")
     return parser.parse_args()
 
 
@@ -546,6 +547,9 @@ def main() -> int:
         print(f"No annual reports found for {args.code}", file=sys.stderr)
         return 1
     print(f"Found {len(reports)} annual report(s): {[(r['periodYear'], r['lang']) for r in reports]}")
+    if args.latest_only and len(reports) > 1:
+        print(f"  [--latest-only] Restricting to single most recent annual report: FY{reports[0]['periodYear']}")
+        reports = reports[:1]
 
     results = []
     pdf_paths: list[Path] = []

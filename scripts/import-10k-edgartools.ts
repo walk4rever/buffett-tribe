@@ -110,6 +110,7 @@ function parseArgs(args: string[]) {
   const extractTimeoutMs = parsePositiveInt(getArg("--extract-timeout-ms"), 8 * 60 * 1000);
   const financialsOnly = hasFlag("--financials-only") || hasFlag("--fast");
   const noHtml = financialsOnly || hasFlag("--no-edgartools-html");
+  const latestOnly = hasFlag("--latest-only");
   const python = getArg("--python") ?? (process.env.EDGARTOOLS_PYTHON || path.join(process.cwd(), ".venv/bin/python"));
   const cik = getArg("--cik");
 
@@ -129,7 +130,7 @@ function parseArgs(args: string[]) {
     fromYear = toYear - years + 1;
   }
 
-  return { ticker, fromYear, toYear, filingConcurrency, extractTimeoutMs, noHtml, python, financialsOnly, cik };
+  return { ticker, fromYear, toYear, filingConcurrency, extractTimeoutMs, noHtml, latestOnly, python, financialsOnly, cik };
 }
 
 function runEdgarToolsHelper(params: {
@@ -177,6 +178,7 @@ async function extractWithEdgarTools(params: {
   python: string;
   extractTimeoutMs: number;
   noHtml: boolean;
+  latestOnly?: boolean;
 }) {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "buffett-edgartools-"));
   const outputPath = path.join(tempDir, "annual-report.json");
@@ -196,6 +198,7 @@ async function extractWithEdgarTools(params: {
       args.push("--cik", params.cik);
     }
     if (params.noHtml) args.push("--no-html");
+    if (params.latestOnly) args.push("--latest-only");
 
     await runEdgarToolsHelper({ python: params.python, args, timeoutMs: params.extractTimeoutMs });
 
@@ -226,6 +229,7 @@ async function importEdgarToolsAnnualReports(params: {
   filingConcurrency: number;
   extractTimeoutMs: number;
   noHtml: boolean;
+  latestOnly?: boolean;
   python: string;
   financialsOnly?: boolean;
 }) {
@@ -245,12 +249,17 @@ async function importEdgarToolsAnnualReports(params: {
 
   const companyEntity = await importTimer.time("upsert company", () => upsertCompanyEntity(cik, ticker, extracted.title, extracted.profile));
   const facts = await importTimer.time("fetch companyfacts", () => getCompanyFacts(cik));
-  const targetFilings = extracted.filings
+  let targetFilings = extracted.filings
     .filter((filing) => {
       const y = new Date(filing.reportDate).getUTCFullYear();
       return y >= params.fromYear && y <= params.toYear;
     })
     .sort((a, b) => (a.reportDate < b.reportDate ? 1 : -1));
+
+  if (params.latestOnly && targetFilings.length > 1) {
+    console.log(`  [--latest-only] Restricting to single most recent annual filing: ${targetFilings[0].reportDate}`);
+    targetFilings = targetFilings.slice(0, 1);
+  }
 
   console.log(`Found ${targetFilings.length} annual filings from edgartools (${params.fromYear}-${params.toYear})`);
   console.log(

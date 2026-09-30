@@ -147,8 +147,13 @@ def extract(args: argparse.Namespace) -> dict[str, Any]:
         elif str(_safe_get(existing, "form") or "").endswith("/A") and not form.endswith("/A"):
             by_report_date[report_date] = filing
 
+    items_to_process = sorted(by_report_date.items(), reverse=True)
+    if getattr(args, "latest_only", False) and items_to_process:
+        print(f"[edgartools-helper] {ticker}: [--latest-only] filtering {len(items_to_process)} filings down to latest 1: {items_to_process[0][0]}", file=sys.stderr, flush=True)
+        items_to_process = items_to_process[:1]
+
     selected = []
-    for report_date, filing in sorted(by_report_date.items(), reverse=True):
+    for report_date, filing in items_to_process:
         accession = str(_safe_get(filing, "accession_number") or _safe_get(filing, "accession_no") or "")
         print(
             f"[edgartools-helper] {ticker}: selected {report_date} {accession}",
@@ -190,6 +195,7 @@ def main() -> None:
     parser.add_argument("--identity", default=DEFAULT_IDENTITY)
     parser.add_argument("--output", help="Write JSON payload to this path instead of stdout.")
     parser.add_argument("--no-html", action="store_true", help="Only emit filing metadata; TS importer will fetch HTML.")
+    parser.add_argument("--latest-only", action="store_true", help="Only extract the single most recent annual filing.")
     args = parser.parse_args()
 
     payload = extract(args)
