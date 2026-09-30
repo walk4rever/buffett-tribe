@@ -80,6 +80,7 @@ def parse_args() -> argparse.Namespace:
                         help="Report language: zh-first prefers the Chinese version per year and falls back to English for years where no Chinese filing exists (default); zh/en pin a single language")
     parser.add_argument("--out-dir", default="/tmp/hk-annual-report-ak", help="Directory for the generated JSON fixture and downloaded PDFs")
     parser.add_argument("--import-db", action="store_true", help="Import the generated JSON into the database after fetching")
+    parser.add_argument("--skip-r2-upload", action="store_true", help="Skip uploading PDF to Cloudflare R2")
     parser.add_argument("--keep-file", action="store_true", help="Keep the generated JSON and PDFs instead of deleting them after import")
     return parser.parse_args()
 
@@ -593,6 +594,8 @@ def main() -> int:
             "scripts/import-hk-annual-report-from-file.ts", str(json_path),
             "--ticker", ticker, "--code", args.code, "--market", args.market,
         ]
+        if args.skip_r2_upload:
+            cmd.append("--skip-r2-upload")
         subprocess.run(cmd, check=True)
 
     if not args.keep_file:
