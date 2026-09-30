@@ -39,6 +39,7 @@
     "onboard:csi300": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/batch-onboard-csi300.ts",
     "onboard:hk": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/batch-onboard-hk.ts",
     "seed:master-universe": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/seed-master-universe.ts",
+    "sync:new-listings": "bash scripts/cron/weekly-sync-new-listings.sh",
     "status:universe": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/status-universe.ts",
     "worker:priority": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/pipeline-priority-worker.ts",
     "worker:phase1": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/pipeline-priority-worker.ts",

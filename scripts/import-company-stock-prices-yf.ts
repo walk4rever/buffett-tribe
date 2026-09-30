@@ -14,6 +14,7 @@ type ParsedArgs = {
   failFast: boolean;
   keepFiles: boolean;
   markets: string[] | null;
+  minPhase: number;
 };
 
 // When a ticker already has StockPrice rows, resume this many days before its
@@ -49,6 +50,8 @@ function parseMarkets(value: string | undefined): string[] | null {
 function parseArgs(): ParsedArgs {
   const argv = process.argv.slice(2);
   const explicitStart = getArgValue(argv, "--start");
+  const minPhaseRaw = getArgValue(argv, "--min-phase");
+  const allPhases = argv.includes("--all-phases");
   return {
     batchSize: Number(getArgValue(argv, "--batch-size") ?? "10"),
     start: explicitStart ?? defaultStartDate(),
@@ -61,6 +64,7 @@ function parseArgs(): ParsedArgs {
     failFast: argv.includes("--fail-fast"),
     keepFiles: argv.includes("--keep-files"),
     markets: parseMarkets(getArgValue(argv, "--market")),
+    minPhase: allPhases ? 0 : (minPhaseRaw !== undefined ? Number(minPhaseRaw) : 1),
   };
 }
 
@@ -114,11 +118,16 @@ async function main() {
   const allCompanies = await db.entity.findMany({
     where: {
       type: "company",
+      ...(args.minPhase > 0 ? { onboardPhase: { gte: args.minPhase } } : {}),
       ...(args.markets
-        ? { OR: args.markets.map((market) => (market === "us" ? { market: null } : { market })) }
+        ? {
+            OR: args.markets.flatMap((market) =>
+              market === "us" ? [{ market: "us" }, { market: null }] : [{ market }],
+            ),
+          }
         : {}),
     },
-    select: { id: true, ticker: true, canonicalName: true, metadata: true },
+    select: { id: true, ticker: true, canonicalName: true, metadata: true, onboardPhase: true },
     orderBy: { ticker: "asc" },
   });
 
@@ -130,6 +139,11 @@ async function main() {
     const meta = company.metadata as Record<string, unknown> | null;
     return meta?.delisted !== true;
   });
+
+  console.log(
+    `[stock-prices-yf] Selected ${companies.length} active companies with onboardPhase >= ${args.minPhase} ` +
+    `(markets: ${args.markets?.join(",") ?? "all"}, total matching: ${allCompanies.length})`,
+  );
 
   const allSecurities = await db.security.findMany({
     where: {

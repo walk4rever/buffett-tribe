@@ -145,10 +145,11 @@ async function main() {
       select: { code: true, ticker: true, onboardPhase: true },
     });
     const existingCodes = new Set(existingCn.map((c) => c.code).filter(Boolean));
+    const existingTickers = new Set(existingCn.map((c) => c.ticker?.toUpperCase()).filter(Boolean));
     console.log(`Existing A-share companies in DB: ${existingCn.length}`);
 
     const newCnEntities = aShares
-      .filter((s) => !existingCodes.has(s.code))
+      .filter((s) => !existingCodes.has(s.code) && !existingTickers.has(s.ticker.toUpperCase()))
       .map((s) => ({
         type: "company",
         market: "cn",
