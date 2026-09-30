@@ -119,6 +119,14 @@
     6. **Hourly priority worker cron 在 mini 正式启用**（每小时 15 分，batch 15 = 快速通道优先 + standard P0 轮巡补齐，前两批消化 ~20 家 P0 全部成功）。
   - **遗留已知问题**：VOD 等巨型 20-F 发行人重导时 edgartools helper 480s 默认超时不够（`--extract-timeout-ms` 可配但 onboard 未传），实测接线中；SPAC（CSTAF）估值门槛过宽（信托利息 PE 无意义）待收。
 
+- [x] **㉓ 自动化调度双轮驱动、周度全网新上市公司入池与股价更新精准收敛**（2026-09-30 完成上线，详见 `PRODUCT.md`「v0.46.4 变更」）：
+  - **落地成果**：
+    1. **双轮驱动调度管线（Hourly Dual-Drive Worker）**：升级 `scripts/pipeline-priority-worker.ts`，快速通道（`priority > 0`）绝对优先，剩余名额在 P1→P2 深度分析与 P0→P1 基础建档间按 5:5 动态配比与补位，三市场轮流交替，每批严格限制 10 家，防超时防重入；
+    2. **Phase 2 结构校验与 4 步独立生成恢复**：还原 4 步独立生成（商业画布、护城河、治理、估值），杜绝 unify 单步引发的雷达图与治理卡片锁死，补齐 `isValidAnalysisPayload` 严密结构校验，修复受影响标的；
+    3. **周度新上市公司全网自动发现与增量入池**：编写 `scripts/cron/weekly-sync-new-listings.sh`，串联 CN（akshare）、HK（akshare）、US（SEC EDGAR），每周六 10:00 CST 自动增量入池，首次运行增量 35 家新股，总池子扩充至 16,467 家；
+    4. **周度股价更新精准收敛至 `onboardPhase >= 1`**：升级 `scripts/import-company-stock-prices-yf.ts`，跳过 1.5 万家 P0 存根，耗时减少 92%，消除被 Yahoo Finance IP 限流隐患；修复美股 `market: 'us'` 查询；
+    5. **年报不上传 R2 策略全面落地与 SEC Identity 修复**：前端年报外链直接跳转官方直链，修复 `edgartools-fetch-filings.py` 缺失 SEC User-Agent Identity 阻断问题。
+
 - [ ] **① 年报阅读页重新设计 — 仅剩"一键切换中文"未做**（2026-07-21，v0.39.12 已发布左侧目录/附件删除 + 字体行距控件 + AI 解读分栏，结论见 `PRODUCT.md`「年报阅读」「v0.39.12 变更」）：
   - **2) 一键切换中文**（保留年报原样式结构，只译文字）——两个方案未拍板，讨论中倾向认为该做小样本效果对比再定：
     - 方案 A：iframe 加载后遍历文本节点原地替换，CSS/表格/排版原样不动，最贴合"保留原样式"的字面要求；风险是 SEC inline XBRL HTML 极度碎片化（Ferrari 那份文件顶层就有 4814 个 div，一句话常被拆成多个 `<span>`），逐节点翻译缺上下文，译文质量堪忧，金额/代码等不该翻译的内容也需要小心跳过。

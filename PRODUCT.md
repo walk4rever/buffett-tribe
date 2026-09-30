@@ -2,7 +2,7 @@
 
 # 价值部落 · Value Tribe — 产品设计文档
 
-> 最后更新：2026-09-27（v0.45.24）
+> 最后更新：2026-09-30（v0.46.4）
 
 ---
 
@@ -1096,7 +1096,24 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.45.24）
+## 当前实现状态（v0.46.4）
+
+### v0.46.4 变更（2026-09-30）
+
+- **周度新上市公司全网自动发现与增量入池机制（`weekly-sync-new-listings.sh`）**：
+  - 串联 CN（akshare 沪深北主板+北交所，带 3 次重试与兜底）、HK（akshare 港股全量，带 3 次重试与兜底）、US（SEC EDGAR 官方每日实时 JSON）；
+  - 自动检测新挂牌 IPO 公司并作为 `onboardPhase: 0`、`isMasterUniverse: true` 写入 `Entity` 表，首期实测已将全库从 16,432 家扩充至 **16,467 家**（新增 3 家 A股、13 家港股、19 家美股）；
+  - 配置 mini 机器每周六 10:00 CST 自动执行，新上市标的无缝并入大池子。
+- **周度股价更新性能与范围精准收敛至 `onboardPhase >= 1`**：
+  - 升级 `scripts/import-company-stock-prices-yf.ts`，默认收敛更新范围为 `>= Phase 1` 的已建档标的（目前 ~1,330 家），彻底跳过 1.5 万家纯存根的 Phase 0 标的，耗时减少 92% 并杜绝 Yahoo Finance IP 限流；
+  - 修复美股市场代码过滤历史遗留问题，精准兼容 `market: 'us'` 与历史空值；
+  - P0 标的由 Worker 推进至 P1 时自动按需拉齐 2020 年至今历史股价，后续自然纳入周更。
+- **调度管线双轮驱动升级（优先通道 + 50% P0→P1 基础建档 + 50% P1→P2 深度分析）**：
+  - 升级 `scripts/pipeline-priority-worker.ts`，优先处理快速通道（`priority > 0`），剩余配额在 P0→P1 与 P1→P2 之间按 5:5 动态配比与补位，三市场轮流交替，每批严格限制 10 家，防超时防重入；
+  - 修复 `verifyCompanyAnalysisField`，恢复 4 步独立深度分析生成，杜绝 unify 单步引发的雷达图与治理卡片锁死，补齐 `isValidAnalysisPayload` 严密结构校验。
+- **年报与资产存储策略收敛（No-R2 策略）与 SEC Identity 修复**：
+  - 全面取消年报 PDF/HTML 上传 R2，前端参考资料 Tab 统一跳转 SEC / 巨潮 / 披露易官方直链；
+  - 修复 `edgartools-fetch-filings.py` 缺失 SEC User-Agent Identity 导致接口拒绝的问题。
 
 ### v0.45.24 变更（2026-09-27）
 
