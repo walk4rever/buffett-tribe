@@ -125,7 +125,12 @@
     2. **Phase 2 结构校验与 4 步独立生成恢复**：还原 4 步独立生成（商业画布、护城河、治理、估值），杜绝 unify 单步引发的雷达图与治理卡片锁死，补齐 `isValidAnalysisPayload` 严密结构校验，修复受影响标的；
     3. **周度新上市公司全网自动发现与增量入池**：编写 `scripts/cron/weekly-sync-new-listings.sh`，串联 CN（akshare）、HK（akshare）、US（SEC EDGAR），每周六 10:00 CST 自动增量入池，首次运行增量 35 家新股，总池子扩充至 16,467 家；
     4. **周度股价更新精准收敛至 `onboardPhase >= 1`**：升级 `scripts/import-company-stock-prices-yf.ts`，跳过 1.5 万家 P0 存根，耗时减少 92%，消除被 Yahoo Finance IP 限流隐患；修复美股 `market: 'us'` 查询；
-    5. **年报不上传 R2 策略全面落地与 SEC Identity 修复**：前端年报外链直接跳转官方直链，修复 `edgartools-fetch-filings.py` 缺失 SEC User-Agent Identity 阻断问题。
+- [x] **㉔ 自动化调度单标的 4 分钟超时熔断、进程树根除与马斯克算法全流程审计**（2026-09-30 完成上线，详见 `PRODUCT.md`「v0.46.5 变更」）：
+  - **落地成果**：
+    1. **单标的 4 分钟超时熔断机制**：`scripts/pipeline-priority-worker.ts` 引入 `runCommandWithTimeout` 与 `--company-timeout-mins 4`，单标的执行超时立即熔断跳过并记录重试，彻底根除个别异常标的（如 16 分钟网络断连的安踏、13 分钟大年报的阿里巴巴）饿死整批的问题；
+    2. **进程组连根清理（Tree Kill）**：通过 `spawn(..., { detached: true })` 与 `process.kill(-pid, "SIGKILL")` 机制，在超时和进程退出时同步清理全部子孙 Python/Node 进程，消除 Mini 机器孤儿进程泄漏隐患；
+    3. **看门狗安全网优化**：全局超时收拢至 45 分钟，配套 `SIGINT`/`SIGTERM` 信号守门员，杜绝死锁与跨周期任务冲突；
+    4. **马斯克五步算法全流程审计与方案定案**：针对全大盘与新股覆盖、高质量深度分析两大目标，重点聚焦年报切片冗余（存疑点 3）与估值模型纯代码化（存疑点 5）完成第一性原理剖析，沉淀至 `handoff.md`。
 
 - [ ] **① 年报阅读页重新设计 — 仅剩"一键切换中文"未做**（2026-07-21，v0.39.12 已发布左侧目录/附件删除 + 字体行距控件 + AI 解读分栏，结论见 `PRODUCT.md`「年报阅读」「v0.39.12 变更」）：
   - **2) 一键切换中文**（保留年报原样式结构，只译文字）——两个方案未拍板，讨论中倾向认为该做小样本效果对比再定：

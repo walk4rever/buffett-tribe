@@ -21,4 +21,4 @@ mkdir -p logs
 
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') : Starting Hourly Priority Worker (batch=${BATCH_SIZE}, market=${MARKET}) ==="
 
-npm run worker:priority -- --batch-size "$BATCH_SIZE" --market "$MARKET" --delay 2000 --timeout-mins 35 "${@:3}"
+npm run worker:priority -- --batch-size "$BATCH_SIZE" --market "$MARKET" --delay 2000 --timeout-mins 45 --company-timeout-mins 4 "${@:3}"

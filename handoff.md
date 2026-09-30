@@ -1,90 +1,138 @@
-# Handoff: 自动化管线双轮驱动升级与多市场长青维护体系
+# Handoff: Onboard 核心流程深度审计与重构方案（聚焦存疑点 3 与 5）
 
 ## 会话时间
 2026-09-30
 
 ---
 
-## 核心架构与系统当前状态
+## 一、 核心纲领与两大不可动摇的确定目标
 
-### 1. 全球大盘底座（Master Universe）
-截至 2026-09-30，全库三地市场总覆盖规模为 **16,467 家**：
-- **美股 (US)**：8,076 家（SEC 官方全量 exchange 挂牌标的）
-- **A股 (CN)**：5,572 家（上交所、深交所、北交所全量股票）
-- **港股 (HK)**：2,819 家（港交所主板与创业板全量股票）
+在应用**马斯克五步工程算法 (The Musk Algorithm)** 对整个 Onboard 流程进行审查时，我们确立了两大不可动摇的最高业务公理：
 
-**各阶段（Phase）分布状态**：
-- **Phase 0（待建档底座）**：~15,137 家（纯代码与公司名存根，等待批处理或快速通道激活）
-- **Phase 1（基础建档完成）**：~1,139 家（已有财务数据、基础公司资料、外部年报链接与自上市以来的股价历史）
-- **Phase 2（深度分析完备）**：~191 家（已有完整商业模式九宫格画布、10 维雷达图护城河、资本分配治理卡片、三情景估值模型）
+1. **目标 1：支持三大市场（美股 / 港股 / A股）所有的公司，包括新上市公司（IPO / 次新股）**
+   - 全库 1.6 万+ 上市公司必须全覆盖，且能够平滑接入每周新增的 IPO 标的；
+   - 任何标的在用户检索或大师持仓触发时，系统必须具备端到端建档与深度呈现能力。
+2. **目标 2：对公司进行高质量的深度投研分析，切实帮助投资者理解公司**
+   - 坚守“买股票就是买公司”的核心哲学，分析必须基于第一层真实披露事实，绝不凭空臆造数据；
+   - 交付真正的护城河评估、商业模式画像、资本分配与估值锚点，为投资决策提供高质量依据。
 
----
-
-### 2. 自动化调度管线（Hourly Dual-Drive Worker）
-- **文件**：[`scripts/pipeline-priority-worker.ts`](file:///Users/rafael/R129/buffett-tribe/scripts/pipeline-priority-worker.ts) / [`scripts/cron/hourly-priority-worker.sh`](file:///Users/rafael/R129/buffett-tribe/scripts/cron/hourly-priority-worker.sh)
-- **调度频次**：每小时 15 分触发一次（mini 机器常驻）。
-- **调度策略**：
-  1. **第一优先级（快速通道 VIP）**：优先抽取用户在网页端申请加急的标的（`priority > 0` 且 `onboardPhase IN [0, 1]`），无条件插队置顶处理。
-  2. **第二优先级（大池子双轮驱动）**：快速通道未满时，剩余名额在 **P1→P2（完善四大深度分析）** 与 **P0→P1（基础建档扩大覆盖）** 之间按 5:5 动态配比，且任意一侧不足时自动补满另一侧。
-  3. **三大市场交叉轮询（Round-Robin）**：US、HK、CN 交叉推进，防止单一市场饥饿。
-  4. **严格批次约束**：单批 `<= 10` 家，执行超时阈值设为 35 分钟，内置 PID 文件排他锁，杜绝跨批次重叠。
+**Step 1（质疑并精简需求 / Make requirements less dumb）的核心原则**：
+在目标锁定的前提下，必须以第一性原理彻底击碎在“实现手段”上人为附加的错误假设、过度设计与脆弱约束。以下针对整个流程中负担最沉重、矛盾最集中的 **存疑点 3（年报切片落库）** 与 **存疑点 5（估值模型 LLM 包装）** 展开深度剖析。
 
 ---
 
-### 3. 周度长青维护任务（Weekly Maintenance Crons）
+## 二、 存疑点 3 深度剖析：整本年报全量章节正则切片与数据库落库
 
-#### (1) 全网新上市公司自动发现入池（每周六 10:00 CST）
-- **文件**：[`scripts/cron/weekly-sync-new-listings.sh`](file:///Users/rafael/R129/buffett-tribe/scripts/cron/weekly-sync-new-listings.sh) / [`scripts/seed-master-universe.ts`](file:///Users/rafael/R129/buffett-tribe/scripts/seed-master-universe.ts)
-- **机制**：
-  - A 股通过 `akshare.stock_info_a_code_name()` 获取最新代码（带 3 次重试与现有文件兜底）；
-  - 港股通过 `akshare.stock_hk_spot()` 获取最新列表（带 3 次重试与现有文件兜底）；
-  - 美股直接拉取 SEC EDGAR 官方 `company_tickers_exchange.json`；
-  - 比对现有数据库，新上市 IPO 代码自动以 `onboardPhase: 0`、`isMasterUniverse: true` 写入 `Entity`，无缝纳入大池子。
+### 1. 目标定位
+为下游的商业模式画布（Canvas）、护城河雷达（Moat）、治理卡片（Management）提供权威的原始披露依据（Evidence），确保“分析挂在事实之上”，杜绝大模型纯自由幻觉。
 
-#### (2) 周度股价更新（周六 12:00 CN/HK，周日 01:00 US）
-- **文件**：[`scripts/import-company-stock-prices-yf.ts`](file:///Users/rafael/R129/buffett-tribe/scripts/import-company-stock-prices-yf.ts) / [`scripts/cron/update-stock-prices.sh`](file:///Users/rafael/R129/buffett-tribe/scripts/cron/update-stock-prices.sh)
-- **机制**：
-  - **精准范围过滤**：默认仅对 `onboardPhase >= 1` 的标的更新最新股价（收敛至 ~1,330 家，跳过 1.5 万家 Phase 0 存根，耗时减少 92% 并杜绝被 Yahoo Finance IP 限流）；
-  - **按需拉取**：P0 标的在后续被 Worker 提拔为 P1 时，`onboard-company.ts` 会自动拉齐其自 2020 年（或上市日）至今的全部历史股价，随后自然并入周更集合。
+### 2. 现状与实现路径
+- **当前管线**：
+  - 美股调用 [`import:10k`](file:///Users/rafael/R129/buffett-tribe/scripts/import-10k-edgartools.ts)（依托 `edgartools-fetch-filings.py`），港股调用 [`import:hk-annual-report`](file:///Users/rafael/R129/buffett-tribe/scripts/fetch-hk-annual-report.py)，A 股调用 [`import:cn-annual-report`](file:///Users/rafael/R129/buffett-tribe/scripts/fetch-cn-annual-report.py)；
+  - 下载整本 10~20MB 的 10-K/20-F HTML 或 PDF 文件；
+  - 动用长达 1,200 行正则解析器（[`extract-10k-sections.ts`](file:///Users/rafael/R129/buffett-tribe/scripts/lib/extract-10k-sections.ts)，内含 45 个解析函数），强行切分出 Item 1, 1A, 1B, 2, 3, 5, 7, 7A, 8, 9, 10, 11, 12, 13, 14 等 20+ 个章节；
+  - 默认抓取自 2020 年至今 **连续 5~6 年** 的全部年报，生成成百上千条记录写入数据库 `FilingSection` 表；
+  - 为防止超时，在 [`onboard-company.ts`](file:///Users/rafael/R129/buffett-tribe/scripts/onboard-company.ts#L658) 中硬性设置了 **15 分钟（900,000ms）** 的超长单步超时。
+
+### 3. 核心问题（第一性原理审视）
+1. **与前端“No-R2 政策”发生战略脱节**：
+   - 现行前端年报阅读页已彻底推行 No-R2 政策，统一外链官方权威链接（美股 SEC Viewer、港股披露易直链、A 股巨潮直链）。**没有真实用户会在自建站逐段查阅 `FilingSection` 碎片**。自建库退化为单纯的“中转缓存池”。
+2. **下游消费严重断层（切了 100%，实际只吃 5%）**：
+   - 审查 [`scripts/lib/company-generation.ts`](file:///Users/rafael/R129/buffett-tribe/scripts/lib/company-generation.ts#L243-L280) 的 `fetchLatestFilingEvidence()` 发现：
+     - **时间跨度断层**：下游 LLM 脚本通过 `orderBy: [{ periodYear: "desc" }]` 仅获取 **最近 1 份年报** 的切片，此前连续跑 5 年（2020-2024）下载切片的数十万行记录，LLM 在生成时从未读取！
+     - **章节范围断层**：Prompt 实际消费的只有 **Item 1（业务描述）** 和 **Item 7（MD&A 管理层讨论）**；其余如税务递延、股票期权归属、独立审计师签字页等几百页切片，纯属系统冗余噪音。
+3. **脆弱的“修不完的正则地狱”**：
+   - 现实中各大公司的年报排版千差万别（如 Ferrari 20-F 的无序 div、Shopify 40-F 的 EX 附件、Vodafone 的 20MB 超大表格、次新股的招股说明书）；
+   - 每次遇到格式异化，切片器即告崩溃，迫使工程师不断在抽取器中追加补丁分支，将确定性工程变成了概率性博弈。
+4. **成为 Onboard 最大的耗时卡点**：
+   - 该步骤耗费了 Onboard 80% 以上的时间（单家公司动辄 5~15 分钟），直接导致后台不敢做即时生成，只能退缩为每小时跑几家的脆弱 Cron。
+
+### 4. 建议与重构方案（精简需求）
+- **需求重新定义**：*“高质量分析需要的不是在自建数据库里完整镜像全套年报章节，而是‘精准获取最新一年核心经营事实（Business & MD&A）’。”*
+- **落地动作**：
+  1. **删除全量章节与多财年抽取**：停止对 2020 至今所有历史年份进行地毯式全量切片；
+  2. **收敛为“聚焦双章节提取（Item 1 & Item 7）”**：通过 EDGAR API / 巨潮在线接口，仅按需定向提取最新财年的 Business 与 MD&A 原文；
+  3. **跳过无意义入库**：核心章节文本可直接作为瞬时生成上下文喂给 LLM，无需将几百兆冷数据强行塞进 Postgres `FilingSection` 表，大幅减轻数据库膨胀与 I/O 压力。
 
 ---
 
-### 4. 年报与资产存储策略（No-R2 Policy）
-- **当前标准**：年报 PDF 与 HTML 原文**绝不上传 R2**，节约对象存储成本与上传时间；
-- **展示方式**：前端参考资料 Tab 统一构造或展示官方权威外部链接：
-  - **美股**：SEC EDGAR 官方 Viewer URL（`https://www.sec.gov/cgi-bin/viewer?...`）
-  - **A股**：巨潮资讯网官方 PDF 直链
-  - **港股**：港交所披露易（HKEXnews）官方直链
+## 三、 存疑点 5 深度剖析：估值模型作为“LLM 生成步骤”的本质矛盾
+
+### 1. 目标定位
+为投资者提供客观、严肃、具备安全边际参考的估值研判，包含历史市盈率（PE）估值走廊、当前分位评估、未来成长三情景推演（保守/基准/乐观）与隐含年化回报率。
+
+### 2. 现状与实现路径
+- **当前管线**：
+  - 执行独立脚本 [`scripts/generate-valuation-analysis.ts`](file:///Users/rafael/R129/buffett-tribe/scripts/generate-valuation-analysis.ts)；
+  - 首先通过 TypeScript 函数 [`computeValuationMetrics()`](file:///Users/rafael/R129/buffett-tribe/src/lib/valuation-metrics.ts#L155) 计算 5 年财务数据（营收、利润、FCF、CAGR）及历史价格，推导出当前 PE、历史中位数、最小/最大值及百分位；
+  - 随后将这些数字作为上下文塞入庞大的 Prompt，请求 LLM 生成包含 `position`、`quality`、`scenarios`、`conclusion` 的复杂 JSON Payload；
+  - LLM 返回后，代码再调用 `computeScenarios()` 校验并计算隐含价格与年化回报率，最终写入 `CompanyAnalysis.valuation`；
+  - [`onboard-company.ts`](file:///Users/rafael/R129/buffett-tribe/scripts/onboard-company.ts#L194) 的 `verify` 机制对字段进行严格校验，稍有不符或超时便判死整条 Onboard 流程。
+
+### 3. 核心问题（第一性原理审视）
+1. **错把“确定性数学”包装成“大模型生成任务”**：
+   - 估值分析的核心灵魂是**数学模型与量化统计**：过去 5 年历史 PE 走廊、分位数位置、营收 CAGR 增速、三情景隐含回报率计算公式（`impliedPrice = EPS * (1+g)^N * exitPE`）是 100% 确定性的闭式数学方程。
+   - 让大模型去做数学或输出严格结构化多层 JSON，是 LLM 最容易发生幻觉、格式畸变与超时的反模式。
+2. **导致系统死循环与 Schema 崩溃的罪魁祸首**：
+   - 历史复盘：此前尝试将分析合并（Unified Analysis）之所以彻底流产，正是因为估值模型格式复杂，大模型一旦输出格式微调，整个 Payload 立即校验失败；
+   - 极端标的死循环：对于次新股（SPCX）、微亏股或周期反转股，由于缺乏完整历史 EPS，LLM 频繁输出不合规内容，导致 Worker 连续 3 次失败将其打入死信池，逼得系统不得不开发显式哨兵（`status: "insufficient_data"`）来破除死循环。
+3. **无谓的时间与成本消耗**：
+   - `computeValuationMetrics()` 本身纯代码计算耗时仅需 **3~10 毫秒**；
+   - 但包装进 LLM 后，强行增加了一轮 20~30 秒的高昂网络 I/O，并成为整个 Onboard 流程中最容易超时的瓶颈点之一。
+
+### 4. 建议与重构方案（精简需求）
+- **需求重新定义**：*“高质量估值分析 = 100% 严谨的代码量化公式 + 轻量级的定性文字洞察。”*
+- **落地动作**：
+  1. **估值指标完全纯代码化（Code-Native）**：
+     - 将 `computeValuationMetrics()` 产出的历史中位数、分位走廊、基准情景数学推演，直接以纯代码形式落库或在前端即时计算，**执行耗时 `< 10ms`，准确率 100%，零 Token 成本，彻底根除死循环**；
+  2. **剥离出 Phase 2 阻塞流**：
+     - 只要有基础财务与价格（Phase 1），估值走廊与情景矩阵即可瞬间就绪，无需等待重型 LLM；
+  3. **定性评述降级为辅助增强**：
+     - 大模型仅负责在有需要时为估值定性（如“当前估值处于历史中位偏低”或结合大师动作对比），不再承担输出数值结构体的重任。
 
 ---
 
-### 5. Mini 机器 Crontab 配置与部署规范
-远端机器（`mini`, 100.72.199.33）Crontab 当前配置：
-```cron
-PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
+## 四、 两大存疑点重构后的 Onboard 架构全景预期
 
-# 1. 每周六 10:00 (北京时间)：全网三大市场新上市公司探测入池 (写入 Phase 0)
-0 10 * * 6 /Users/rafael/buffett-tribe/scripts/cron/weekly-sync-new-listings.sh >> /Users/rafael/logs/buffett-tribe/sync-new-listings.log 2>&1
+通过在 Step 1 剔除“全本年报全量章节切片”与“估值纯数学模型包装 LLM”两大伪需求，整个 Onboard 架构将迎来根本性蜕变：
 
-# 2. 每周六 12:00 (北京时间)：更新已建档 (Phase >= 1) 的 CN/HK 股票周度股价
-0 12 * * 6 /Users/rafael/buffett-tribe/scripts/cron/update-stock-prices.sh cn,hk >> /Users/rafael/logs/buffett-tribe/update-stock-prices-cn-hk.log 2>&1
+```
+【重构前（沉重且极度脆弱）】
+  Phase 1: 5年财务 + 5年全量日K(1200+天) + 概览生成 (数分钟，极易被 Yahoo 封锁)
+    ↓
+  Phase 2: 5年整本年报全量下载 + 1200行正则全量章节切片落库(10~15分钟，极易崩)
+    ↓
+  LLM 四步串行: 画布(20s) -> 护城河(20s) -> 管理层(20s) -> 估值纯数学包装(30s)
+  ─────────────────────────────────────────────────────────────
+  总耗时：15 ~ 20 分钟/家 | 稳定性：极低（单处报错全盘重跑） | 只能依赖后台 Hourly Cron 挂机
 
-# 3. 每周日 01:00 (北京时间)：更新已建档 (Phase >= 1) 的 US 股票周度股价
-0 1 * * 0 /Users/rafael/buffett-tribe/scripts/cron/update-stock-prices.sh us >> /Users/rafael/logs/buffett-tribe/update-stock-prices-us.log 2>&1
+【重构后（极简、坚固、按需即时）】
+  Phase 1（基础事实秒级就绪，5秒内完成）：
+    - 基础元数据 + 三大报表核心科目（SEC / Akshare 接口直取）
+    - 最新行情快照 + 确定性估值走廊数学指标（纯代码 10ms 算完）
+    - 3句话公司核心业务概览
+    ──> 前台已可完整展现公司名片、核心指标矩阵、估值击球区、官方年报外链！
 
-# 4. 每小时 15 分：双轮驱动批处理 (优先通道 + P0-P1 50% + P1-P2 50%，<= 10 家/批)
-15 * * * * /Users/rafael/buffett-tribe/scripts/cron/hourly-priority-worker.sh 10 all >> /Users/rafael/logs/buffett-tribe/priority-worker.log 2>&1
+  Phase 2（深度洞察并行生成，20秒内完成）：
+    - 定向按需提取最新财年 Item 1（业务）& Item 7（MD&A）核心文本
+    - 商业模式画布、护城河雷达、资本分配卡片【三路并行发射 (Promise.all)】
+  ─────────────────────────────────────────────────────────────
+  总耗时：约 20 ~ 25 秒/家 | 稳定性：极高（解耦脆弱正则与数学计算） | 具备全网即点即看（JIT）能力
 ```
 
-**部署标准命令（必须保持 exclude 规则以保护远端环境）**：
-```bash
-rsync -avz --exclude 'node_modules' --exclude '.next' --exclude '.git' --exclude '.cache' --exclude 'logs' --exclude '.venv' --exclude 'venv' --exclude 'scratch' --exclude 'tmp' ./ mini:~/buffett-tribe/
-```
-
 ---
 
-### 6. 近期缺陷排查与加固记录
-1. **统一分析脚本回退**：废弃 `generate-company-analysis-unified.ts`，还原回成熟的 4 步独立生成（商业模式画布、护城河、治理分析、估值模型）。
-2. **结构化严格校验**：`verifyCompanyAnalysisField()` 引入 `isValidAnalysisPayload`，严格校验护城河 10 维雷达图、治理资本分配卡片、估值 PE 分位与三情景指标，防止畸形数据放行。
-3. **估值不足哨兵**：对于次新股或财务年限不足标的（如 `0100.HK`），校验逻辑识别并放行 `{ status: "insufficient_data" }`，避免死循环重试。
-4. **SEC 爬虫 Identity 修复**：[`scripts/helpers/edgartools-fetch-filings.py`](file:///Users/rafael/R129/buffett-tribe/scripts/helpers/edgartools-fetch-filings.py) 显式调用 `set_identity("BuffettTribe rafael@air7.fun")`，杜绝 SEC 请求拦截。
+## 五、 后续落地与推进路线图
+
+- [ ] **Step 2 (坚决删除)**：
+  - 彻底删除 `pipeline-priority-worker.ts` 中的无主大池随机 50% 轮询；
+  - 停用 `weekly-sync-new-listings.sh` 定时任务；
+  - 废除对历史 5 年非必要财报章节的全量提取与入库逻辑。
+- [ ] **Step 3 (简化与优化)**：
+  - 将估值模型全面收敛为纯 TypeScript/Python 算法计算，移除对大模型输出数学情景的依赖；
+  - 将 `fetchLatestFilingEvidence()` 改造为仅定向提取最新一期核心章节；
+  - 将 Phase 2 的独立 LLM 生成步骤改造为 `Promise.all` 并发。
+- [ ] **Step 4 (提速验证)**：
+  - 将 Fast-Track 升级为即时响应机制（用户点击加急后，10 秒内前端直出 Phase 1，25 秒内补齐 Phase 2）。
+- [ ] **Step 5 (自动化保障)**：
+  - 仅针对“大师 13F 季度变动”与“真实用户加急请求”保留健壮的自动化调度守护。

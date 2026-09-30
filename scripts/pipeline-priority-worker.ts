@@ -126,10 +126,52 @@ function releaseLock() {
   }
 }
 
-function runCommand(cmd: string, args: string[]): Promise<number> {
+let activeChildPid: number | null = null;
+
+function killChildProcessGroup(pid: number | null) {
+  if (!pid) return;
+  try {
+    // Negative PID sends signal to the entire process group (child + all descendants)
+    process.kill(-pid, "SIGKILL");
+  } catch {
+    // Process group may have already exited
+  }
+}
+
+function runCommandWithTimeout(
+  cmd: string,
+  args: string[],
+  timeoutMs: number
+): Promise<{ exitCode: number; timedOut: boolean }> {
   return new Promise((resolve) => {
-    const child = spawn(cmd, args, { stdio: "inherit", env: process.env, cwd: process.cwd() });
-    child.on("close", (code) => resolve(code ?? 1));
+    const child = spawn(cmd, args, {
+      stdio: "inherit",
+      env: process.env,
+      cwd: process.cwd(),
+      detached: true,
+    });
+
+    activeChildPid = child.pid ?? null;
+    let timedOut = false;
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      if (child.pid) {
+        killChildProcessGroup(child.pid);
+      }
+    }, timeoutMs);
+
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      activeChildPid = null;
+      resolve({ exitCode: timedOut ? 124 : (code ?? 1), timedOut });
+    });
+
+    child.on("error", () => {
+      clearTimeout(timer);
+      activeChildPid = null;
+      resolve({ exitCode: 1, timedOut });
+    });
   });
 }
 
@@ -385,13 +427,16 @@ async function main() {
   const batchSize = Math.max(1, parseInt(getArg("--batch-size") ?? "10", 10));
   const targetMarket = (getArg("--market") ?? "all").toLowerCase();
   const delayMs = parseInt(getArg("--delay") ?? "2000", 10);
-  const timeoutMins = parseInt(getArg("--timeout-mins") ?? "35", 10);
+  const companyTimeoutMins = Math.max(1, parseInt(getArg("--company-timeout-mins") ?? "4", 10));
+  const companyTimeoutMs = companyTimeoutMins * 60 * 1000;
+  const defaultGlobalTimeout = Math.min(Math.max(45, Math.ceil(batchSize * companyTimeoutMins + 5)), 55);
+  const timeoutMins = parseInt(getArg("--timeout-mins") ?? String(defaultGlobalTimeout), 10);
   const priorityOnly = hasFlag("--priority-only");
   const phaseFilter = getArg("--phase"); // optional override: "1" | "2"
 
   logMessage("=======================================================");
   logMessage(`PRIORITY BATCH WORKER STARTED [Mode: ${dryRun ? "DRY-RUN" : "LIVE"}${priorityOnly ? ", PRIORITY-ONLY" : ""}]`);
-  logMessage(`Configuration: BatchSize=${batchSize}, Market=${targetMarket}, Delay=${delayMs}ms, Timeout=${timeoutMins}m, PriorityOnly=${priorityOnly}${phaseFilter ? `, Phase=${phaseFilter}` : ""}`);
+  logMessage(`Configuration: BatchSize=${batchSize}, Market=${targetMarket}, Delay=${delayMs}ms, Timeout=${timeoutMins}m, CompanyTimeout=${companyTimeoutMins}m, PriorityOnly=${priorityOnly}${phaseFilter ? `, Phase=${phaseFilter}` : ""}`);
 
   if (!dryRun) {
     if (!acquireLock()) {
@@ -400,12 +445,26 @@ async function main() {
     }
   }
 
-  // Setup hard timeout guard
+  // Setup hard timeout guard (Dead Man's Switch)
   const timeoutTimer = setTimeout(() => {
     logMessage(`WARNING: Worker reached maximum execution timeout of ${timeoutMins} minutes! Exiting gracefully.`);
+    if (activeChildPid) {
+      killChildProcessGroup(activeChildPid);
+    }
     releaseLock();
     process.exit(0);
   }, timeoutMins * 60 * 1000);
+
+  const cleanupAndExit = (signal: string, code: number) => {
+    logMessage(`Worker received ${signal}. Cleaning up child processes and exiting...`);
+    if (activeChildPid) {
+      killChildProcessGroup(activeChildPid);
+    }
+    releaseLock();
+    process.exit(code);
+  };
+  process.on("SIGINT", () => cleanupAndExit("SIGINT", 130));
+  process.on("SIGTERM", () => cleanupAndExit("SIGTERM", 143));
 
   try {
     let candidateList: CandidateCompany[] = [];
@@ -463,17 +522,25 @@ async function main() {
       logMessage(`\n>>> [${i + 1}/${candidateList.length}] Processing [${phaseTag}] ${company.ticker} (${company.market.toUpperCase()})...`);
 
       try {
-        const exitCode = await runCommand("npm", [
-          "run",
-          "onboard:company",
-          "--",
-          "--ticker",
-          company.ticker,
-          "--market",
-          company.market,
-          "--phase",
-          targetPhaseStr,
-        ]);
+        const { exitCode, timedOut } = await runCommandWithTimeout(
+          "npm",
+          [
+            "run",
+            "onboard:company",
+            "--",
+            "--ticker",
+            company.ticker,
+            "--market",
+            company.market,
+            "--phase",
+            targetPhaseStr,
+          ],
+          companyTimeoutMs
+        );
+
+        if (timedOut) {
+          throw new Error(`单标的执行超时（超过 ${companyTimeoutMins} 分钟），已主动熔断跳过并清理进程组`);
+        }
 
         if (exitCode !== 0) {
           throw new Error(`onboard:company exited with status code ${exitCode}`);
