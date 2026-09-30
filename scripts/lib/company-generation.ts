@@ -480,7 +480,21 @@ export function parseJsonObject(raw: string): Record<string, unknown> {
   if (!jsonMatch) {
     throw new Error("No JSON object found in model response");
   }
-  const parsed = JSON.parse(jsonMatch[0]);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonMatch[0]);
+  } catch (err) {
+    // If the model appended trailing commentary or markdown fences after the closing bracket,
+    // Node V8 JSON parser throws "Unexpected non-whitespace character after JSON at position X".
+    // Slicing up to position X reliably recovers the valid JSON object.
+    const posMatch = (err as Error)?.message?.match(/position (\d+)/i);
+    if (posMatch) {
+      const pos = Number.parseInt(posMatch[1], 10);
+      parsed = JSON.parse(jsonMatch[0].slice(0, pos));
+    } else {
+      throw err;
+    }
+  }
   const object = jsonObject(parsed);
   if (!object) {
     throw new Error("Model response JSON is not an object");
