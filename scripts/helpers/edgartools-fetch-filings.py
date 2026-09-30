@@ -11,7 +11,8 @@ import sys
 from datetime import datetime
 
 try:
-    from edgar import Company
+    from edgar import Company, set_identity
+    set_identity("BuffettTribe rafael@air7.fun")
 except ImportError:
     print("Error: edgartools not installed. Run: pip install edgartools", file=sys.stderr)
     sys.exit(1)
