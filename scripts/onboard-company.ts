@@ -192,6 +192,7 @@ function isValidAnalysisPayload(field: CompanyAnalysisField, value: unknown): bo
       return typeof record.headline === "string" && cards.length > 0;
     }
     case "valuation": {
+      if (record.status === "insufficient_data") return true;
       const metrics = record.metrics as Record<string, unknown> | undefined;
       const scenarios = record.scenarios as Record<string, unknown> | undefined;
       return (
