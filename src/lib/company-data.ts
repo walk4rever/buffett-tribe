@@ -141,11 +141,15 @@ async function retryOnce<T>(fn: () => Promise<T>) {
 }
 
 export async function getCompanyByCik(cikRaw: string) {
-  const cik = normalizeCompanyCik(cikRaw);
-  if (!cik) return null;
+  const unpadded = normalizeCompanyCik(cikRaw);
+  if (!unpadded) return null;
+  const padded = unpadded.padStart(10, "0");
 
-  const entity = await db.entity.findUnique({
-    where: { cik },
+  const entity = await db.entity.findFirst({
+    where: {
+      type: "company",
+      cik: { in: [unpadded, padded] },
+    },
     select: {
       id: true,
       type: true,

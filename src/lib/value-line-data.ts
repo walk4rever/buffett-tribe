@@ -314,7 +314,10 @@ export async function getValueLineData(
   if (parsed) {
     if (parsed.market === "us") {
       entity = await db.entity.findFirst({
-        where: { type: "company", cik: parsed.cik },
+        where: {
+          type: "company",
+          cik: { in: [parsed.cik, parsed.cik.padStart(10, "0")] },
+        },
         select: entitySelect,
       });
     } else {
