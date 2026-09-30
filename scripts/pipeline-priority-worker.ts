@@ -215,20 +215,22 @@ async function fetchFastTrackCandidates(limit: number, marketFilter?: Market): P
 }
 
 /**
- * Fetch standard Phase 0 candidate companies for a market.
+ * Fetch standard candidate companies for a market and target phase.
  */
 async function fetchCandidatesForMarket(
   market: Market,
+  targetPhase: 1 | 2,
   limit: number,
   excludeIds: Set<string> = new Set()
 ): Promise<CandidateCompany[]> {
   if (limit <= 0) return [];
+  const currentPhase = targetPhase === 1 ? 0 : 1;
 
   const rows = await prisma.entity.findMany({
     where: {
       type: "company",
       market,
-      onboardPhase: 0,
+      onboardPhase: currentPhase,
     },
     select: {
       id: true,
@@ -247,7 +249,10 @@ async function fetchCandidatesForMarket(
     if (excludeIds.has(r.id)) continue;
 
     const meta = (r.metadata as Record<string, unknown>) || {};
-    const attempts = typeof meta.onboardPhase1Attempts === "number" ? meta.onboardPhase1Attempts : 0;
+    const attempts = targetPhase === 1
+      ? (typeof meta.onboardPhase1Attempts === "number" ? meta.onboardPhase1Attempts : 0)
+      : (typeof meta.onboardPhase2Attempts === "number" ? meta.onboardPhase2Attempts : 0);
+
     if (attempts >= 3) continue; // Skip persistent failures
 
     let ticker = r.ticker?.trim() ?? "";
@@ -292,8 +297,8 @@ async function fetchCandidatesForMarket(
       canonicalName: r.canonicalName,
       nameZh: typeof meta.nameZh === "string" ? meta.nameZh : undefined,
       priorityScore,
-      currentPhase: 0,
-      targetPhase: 1,
+      currentPhase,
+      targetPhase,
       isFastTrack: false,
     });
   }
@@ -302,17 +307,91 @@ async function fetchCandidatesForMarket(
   return candidates.slice(0, limit);
 }
 
+/**
+ * Fetch standard pool candidate companies with dual-drive balance:
+ * 50% P1->P2 (deep analysis for already profiled companies)
+ * 50% P0->P1 (base profiling for pending universe companies)
+ * With cross-market round-robin (US/HK/CN) and automatic slot fallback.
+ */
+async function fetchStandardCandidates(
+  targetMarket: string,
+  totalSlots: number,
+  excludeIds: Set<string>,
+  phaseFilter?: string
+): Promise<CandidateCompany[]> {
+  if (totalSlots <= 0) return [];
+
+  const fetchPool = async (phase: 1 | 2, limit: number, currentExcludes: Set<string>): Promise<CandidateCompany[]> => {
+    if (limit <= 0) return [];
+    if (targetMarket === "all") {
+      const perMarket = Math.ceil(limit / 3);
+      const [usList, hkList, cnList] = await Promise.all([
+        fetchCandidatesForMarket("us", phase, perMarket, currentExcludes),
+        fetchCandidatesForMarket("hk", phase, perMarket, currentExcludes),
+        fetchCandidatesForMarket("cn", phase, perMarket, currentExcludes),
+      ]);
+      const merged: CandidateCompany[] = [];
+      const maxLen = Math.max(usList.length, hkList.length, cnList.length);
+      for (let i = 0; i < maxLen; i++) {
+        if (usList[i]) merged.push(usList[i]);
+        if (hkList[i]) merged.push(hkList[i]);
+        if (cnList[i]) merged.push(cnList[i]);
+      }
+      return merged.slice(0, limit);
+    } else if (targetMarket === "us" || targetMarket === "hk" || targetMarket === "cn") {
+      return fetchCandidatesForMarket(targetMarket as Market, phase, limit, currentExcludes);
+    } else {
+      throw new Error(`Invalid --market "${targetMarket}". Expected all, us, hk, or cn.`);
+    }
+  };
+
+  if (phaseFilter === "1") {
+    return fetchPool(1, totalSlots, excludeIds);
+  }
+  if (phaseFilter === "2") {
+    return fetchPool(2, totalSlots, excludeIds);
+  }
+
+  // Dual-drive balance: 50% P1->P2 (deep analysis), 50% P0->P1 (base profiling)
+  const desiredP2 = Math.ceil(totalSlots / 2);
+  const p2List = await fetchPool(2, desiredP2, excludeIds);
+
+  const currentExcludes = new Set([...excludeIds, ...p2List.map((c) => c.id)]);
+  const p0SlotsNeeded = totalSlots - p2List.length;
+  const p0List = await fetchPool(1, p0SlotsNeeded, currentExcludes);
+  for (const c of p0List) currentExcludes.add(c.id);
+
+  // If P0 didn't use all remaining slots, top up with more P2
+  const stillNeeded = totalSlots - (p2List.length + p0List.length);
+  let extraP2List: CandidateCompany[] = [];
+  if (stillNeeded > 0) {
+    extraP2List = await fetchPool(2, stillNeeded, currentExcludes);
+  }
+
+  const allP2 = [...p2List, ...extraP2List];
+  // Interleave P1->P2 and P0->P1 for steady progress across both frontiers
+  const interleaved: CandidateCompany[] = [];
+  const maxLen = Math.max(allP2.length, p0List.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (allP2[i]) interleaved.push(allP2[i]);
+    if (p0List[i]) interleaved.push(p0List[i]);
+  }
+
+  return interleaved.slice(0, totalSlots);
+}
+
 async function main() {
   const dryRun = hasFlag("--dry-run");
-  const batchSize = Math.max(1, parseInt(getArg("--batch-size") ?? "15", 10));
+  const batchSize = Math.max(1, parseInt(getArg("--batch-size") ?? "10", 10));
   const targetMarket = (getArg("--market") ?? "all").toLowerCase();
   const delayMs = parseInt(getArg("--delay") ?? "2000", 10);
   const timeoutMins = parseInt(getArg("--timeout-mins") ?? "35", 10);
   const priorityOnly = hasFlag("--priority-only");
+  const phaseFilter = getArg("--phase"); // optional override: "1" | "2"
 
   logMessage("=======================================================");
   logMessage(`PRIORITY BATCH WORKER STARTED [Mode: ${dryRun ? "DRY-RUN" : "LIVE"}${priorityOnly ? ", PRIORITY-ONLY" : ""}]`);
-  logMessage(`Configuration: BatchSize=${batchSize}, Market=${targetMarket}, Delay=${delayMs}ms, Timeout=${timeoutMins}m, PriorityOnly=${priorityOnly}`);
+  logMessage(`Configuration: BatchSize=${batchSize}, Market=${targetMarket}, Delay=${delayMs}ms, Timeout=${timeoutMins}m, PriorityOnly=${priorityOnly}${phaseFilter ? `, Phase=${phaseFilter}` : ""}`);
 
   if (!dryRun) {
     if (!acquireLock()) {
@@ -341,29 +420,9 @@ async function main() {
 
     let regularList: CandidateCompany[] = [];
 
-    // 2. Supplement remaining slots with standard Phase 0 companies
+    // 2. Supplement remaining slots with standard dual-drive companies (P1->P2 and P0->P1)
     if (!priorityOnly && remainingSlots > 0) {
-      if (targetMarket === "all") {
-        const perMarket = Math.ceil(remainingSlots / 3);
-        const [usList, hkList, cnList] = await Promise.all([
-          fetchCandidatesForMarket("us", perMarket, excludeIds),
-          fetchCandidatesForMarket("hk", perMarket, excludeIds),
-          fetchCandidatesForMarket("cn", perMarket, excludeIds),
-        ]);
-
-        // Interleave results (round-robin)
-        const maxLen = Math.max(usList.length, hkList.length, cnList.length);
-        for (let i = 0; i < maxLen; i++) {
-          if (usList[i]) regularList.push(usList[i]);
-          if (hkList[i]) regularList.push(hkList[i]);
-          if (cnList[i]) regularList.push(cnList[i]);
-        }
-        regularList = regularList.slice(0, remainingSlots);
-      } else if (targetMarket === "us" || targetMarket === "hk" || targetMarket === "cn") {
-        regularList = await fetchCandidatesForMarket(targetMarket as Market, remainingSlots, excludeIds);
-      } else {
-        throw new Error(`Invalid --market "${targetMarket}". Expected all, us, hk, or cn.`);
-      }
+      regularList = await fetchStandardCandidates(targetMarket, remainingSlots, excludeIds, phaseFilter);
     }
 
     candidateList = [...fastTrackList, ...regularList];

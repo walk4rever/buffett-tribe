@@ -2,15 +2,15 @@
 # Hourly Priority & Onboarding Batch Worker
 #
 # Runs every hour via crontab on mini.
-# Pulls priority fast-track companies (Phase 0->1 and Phase 1->2)
-# and standard Phase 0 companies across US, HK, and CN markets.
+# Pulls priority fast-track companies, then balances remaining slots from standard pool
+# (50% P1->P2 deep analysis + 50% P0->P1 base profiling, balanced across US, HK, and CN).
 #
 # Usage:
 #   scripts/cron/hourly-priority-worker.sh [batch_size] [market] [extra_args...]
 
 set -euo pipefail
 
-BATCH_SIZE="${1:-15}"
+BATCH_SIZE="${1:-10}"
 MARKET="${2:-all}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_DIR"
