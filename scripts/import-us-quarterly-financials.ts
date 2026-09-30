@@ -49,7 +49,7 @@ async function buildFilingUrl(cik: string, accession: string, formType: string):
       const accessionPath = accession.replace(/-/g, "");
       return `https://www.sec.gov/Archives/edgar/data/${paddedCik}/${accessionPath}/${primaryDoc.documentName}`;
     }
-  } catch (error) {
+  } catch {
     console.warn(`  Warning: Could not fetch filing index for ${accession}, using viewer URL`);
   }
 

@@ -251,8 +251,6 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     redirect(`${canonicalCompanyUrl}${queryString}`);
   }
 
-  const canonicalUrl = formatCompanyUrl(company) ?? `/company/${company.ticker ?? trimmedId}`;
-
   const [
     financials,
     financialsCurrency,
@@ -340,8 +338,6 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   );
   const radarRings = [0.25, 0.5, 0.75, 1];
   const initialTabId = typeof rawTab === "string" ? rawTab.trim() : "";
-
-  const baseCompanyUrl = canonicalCompanyUrl ?? canonicalUrl;
 
   const dashboard = buildCompanyFinancialDashboard(company, financials, financialsCurrency);
 

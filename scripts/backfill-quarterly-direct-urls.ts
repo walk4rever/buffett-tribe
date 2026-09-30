@@ -25,7 +25,7 @@ async function buildDirectUrl(cik: string, accession: string, formType: string):
       const accessionPath = accession.replace(/-/g, "");
       return `https://www.sec.gov/Archives/edgar/data/${paddedCik}/${accessionPath}/${primaryDoc.documentName}`;
     }
-  } catch (error) {
+  } catch {
     // Ignore errors, return null to keep viewer URL
   }
 
