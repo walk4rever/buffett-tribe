@@ -634,3 +634,83 @@ Skipped: 20 (缺少 CIK 或 accession)
 ---
 
 **会话状态**：年报+季报链接简洁化已完成，等待部署到 mini 并验证
+
+---
+
+# Handoff: Phase 2 统一生成脚本导致分析 Tab 未解锁缺陷分析
+
+## 会话时间
+2026-09-29
+
+## 问题现象
+近期通过 onboard 脚本处理的 US 公司（如 `YUM`、`QSR`、`DIDIY`、`BB` 等），在数据库中实体状态已达到 P2，财务数据与年报切片完整，但在公司详情页面中：
+- **价值分析** Tab 处于置灰锁定状态（disabled）
+- **管理分析** Tab 处于置灰锁定状态（disabled）
+- **估值分析** Tab 处于置灰锁定状态（disabled）
+- **商业分析** 九宫格画布存在字段缺失
+
+## 根本原因分析
+经代码与全库排查，确认此问题完全由提交 `0bc4082b` / `a251fb61` 引入的 `generate-company-analysis-unified.ts` 及 `scripts/onboard-company.ts` 变更直接导致：
+
+### 1. Payload Schema 与前端解析逻辑严重脱节
+为了将 5 次 LLM 调用合并为 1 次统一调用，`generate-company-analysis-unified.ts` 重新编写了 Prompt，但其输出的 JSON 结构与前端真实消费的 Schema 完全不匹配：
+
+- **价值分析 (`moat`)**：
+  - 前端要求（`src/app/company/[id]/page.tsx`）：依赖 `rawMoat?.dimensions`（10 维雷达图：监管、规模、产品、成本、分销、品牌、体验、网络、转换、资本配置）以及 `summary.type/strength/durability/allocation/thesis`。
+  - Unified 脚本输出：`{ competitive_advantages: [...], summary: "...", sustainability: "..." }`，缺失 `dimensions`。
+  - 结果：`hasRealMoat = false`，Tab 处于 disabled 状态。
+
+- **管理分析 (`management`)**：
+  - 前端要求（`src/components/CompanyGeneratedSections.tsx`）：`parseManagementPayload` 严格要求 `headline`、`capitalAllocation: { score, cards: [...] }`、`masterViews: [...]`、`alignment: { cards: [...] }`、`watchlist: [...]`。
+  - Unified 脚本输出：`{ quality_score, capital_allocation: { shareholder_returns, reinvestment, debt_management, overall }, track_record, alignment }`。
+  - 结果：`parseManagementPayload` 解析失败返回 `null`，`hasManagement = false`，Tab 处于 disabled 状态。
+
+- **估值分析 (`valuation`)**：
+  - 前端要求（`src/components/CompanyGeneratedSections.tsx`）：原脚本 `scripts/generate-valuation-analysis.ts` 并非纯 LLM 生成，而是先由代码调用 `@/lib/valuation-metrics` 计算出真实历史股价的 PE 分位数（min/max/median/current/percentile）、P/OCF、P/FCF、CAGR 等指标，再由代码 `computeScenarios` 计算情景隐含年化回报。
+  - Unified 脚本输出：退化为由纯 LLM 编造估值区间 `{ intrinsic_value_range, current_price_assessment, key_assumptions, risks, summary }`，缺失定量 `metrics` 与 `scenarios`。
+  - 结果：`parseValuationPayload` 解析失败返回 `null`，`hasValuation = false`，Tab 处于 disabled 状态。
+
+- **商业分析 (`canvas`)**：
+  - 前端要求（`src/components/CompanyBusinessCanvas.tsx`）：字段名为 `keyPartnerships` 与 `valuePropositions`（复数，且各项为带 evidence/sources 的对象）。
+  - Unified 脚本输出：键名为 `keyPartners` 和 `valueProposition`（单数），导致九宫格卡片内容缺失。
+
+### 2. Onboard 校验伪绿（False Positive）
+在 `scripts/onboard-company.ts` 中，校验函数 `verifyCompanyAnalysisField()` 仅判断：
+```typescript
+if (row == null || row[field] == null) return false;
+```
+由于 Unified 脚本确实往数据库的 4 个 JSON 字段写入了对象，校验全部返回 `true`，导致 onboard 脚本误判为 Phase 2 成功完成，实体阶段被提升为 P2。
+
+## 受影响范围
+扫描全库 1,259 家公司，被该 Unified 脚本写入错误数据结构的正好是 2026-09-29 当日跑过 P2 的 4 家公司：
+1. **`YUM`** (百胜餐饮)
+2. **`QSR`** (Restaurant Brands International)
+3. **`DIDIY`** (滴滴)
+4. **`BB`** (BlackBerry)
+
+其他历史存量公司的研报数据均保持正常。
+
+## 待修复清单与建议
+1. **还原 `scripts/onboard-company.ts` 的 Phase 2 步骤**：
+   恢复原本成熟的 4 个独立生成脚本（取消 `phase2AnalysisStepsLegacy` 注释，废弃 `phase2UnifiedAnalysisStep`）。估值需要前置代码量化计算，管理需要股东信语义检索，不宜直接合并为单一文本 Prompt。
+2. **修复受影响公司的研报**：
+   运行原版 4 个生成脚本，配合 `--force` 参数对 `YUM`、`QSR`、`DIDIY`、`BB` 重新生成研报。
+3. **增强 onboard 校验（防回归）**：
+   在 `verifyCompanyAnalysisField` 中增加关键结构校验（如调用 `parseManagementPayload` 等），避免格式错误的 payload 被判定为成功。
+4. **修复 `--phase all` 变量未定义 Bug**：
+   non-US 市场使用 `steps = [...phase1Steps, ...phase2Steps]`，避免 `importAnnualReportStep` 未定义的崩溃。
+
+## 修复执行结果 (2026-09-30)
+1. **代码修复已完成**（[scripts/onboard-company.ts](file:///Users/rafael/R129/buffett-tribe/scripts/onboard-company.ts)）：
+   - Phase 2 分析生成还原为 4 个独立成熟脚本（`generate:business-model`、`generate:value-analysis`、`generate:management-analysis`、`generate:valuation-analysis`）。
+   - non-US 市场的 `--phase all` 逻辑修复为统一的 `[...phase1Steps, ...phase2Steps]`，消除 `ReferenceError`。
+   - `verifyCompanyAnalysisField` 增加 `isValidAnalysisPayload` 结构校验（验证 `moat.dimensions`、`management.headline` 与 `capitalAllocation.cards`、`valuation.metrics` 与 `scenarios`、`canvas` 关键键），防止畸形数据放行或跳过重试。
+2. **受影响公司数据已全部修复**：
+   - 对 `YUM`、`QSR`、`DIDIY`、`BB` 重新执行 4 个分析维度生成。
+   - 数据库验证确认：
+     - `moat.dimensions`: 10 维雷达图数据完整存在，`hasRealMoat = true`
+     - `management`: `headline`、`capitalAllocation`、`masterViews` 齐备，前端解析正常
+     - `valuation`: `metrics`（PE分位数）、`scenarios`（情景年化）量化数据齐备，前端解析正常
+     - `canvas`: 九宫格完整渲染
+   - 4 家公司详情页的所有置灰锁定 Tab 现已全部解锁并正常展示。
+

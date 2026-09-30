@@ -161,7 +161,52 @@ async function findEntityId(ticker: string): Promise<string | null> {
 
 type CompanyAnalysisField = "overview" | "canvas" | "profile" | "business" | "moat" | "management" | "valuation";
 
-// Without --force: a non-null field is success, regardless of when it was
+function isValidAnalysisPayload(field: CompanyAnalysisField, value: unknown): boolean {
+  if (value == null || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  switch (field) {
+    case "overview":
+    case "profile":
+      return (
+        typeof record.summary === "string" ||
+        typeof record.businessDescription === "string" ||
+        typeof record.headline === "string" ||
+        Object.keys(record).length > 0
+      );
+    case "canvas":
+      return (
+        Array.isArray(record.keyPartnerships) ||
+        Array.isArray(record.valuePropositions) ||
+        Object.keys(record).length >= 5
+      );
+    case "business":
+      return (
+        typeof record.canvas === "object" ||
+        Object.keys(record).length > 0
+      );
+    case "moat":
+      return Array.isArray(record.dimensions) && record.dimensions.length > 0;
+    case "management": {
+      const capAlloc = record.capitalAllocation as Record<string, unknown> | undefined;
+      const cards = Array.isArray(capAlloc?.cards) ? capAlloc.cards : [];
+      return typeof record.headline === "string" && cards.length > 0;
+    }
+    case "valuation": {
+      const metrics = record.metrics as Record<string, unknown> | undefined;
+      const scenarios = record.scenarios as Record<string, unknown> | undefined;
+      return (
+        metrics != null &&
+        metrics.pe != null &&
+        scenarios != null &&
+        record.position != null
+      );
+    }
+    default:
+      return true;
+  }
+}
+
+// Without --force: a valid, non-null field is success, regardless of when it was
 // written — resuming without a checkpoint (e.g. after moving to a new
 // machine) re-attempts every step, and a step whose generate:*.ts script
 // correctly skips ("already has X, use --force to overwrite") is not a
@@ -184,6 +229,7 @@ async function verifyCompanyAnalysisField(
     select: { overview: true, canvas: true, profile: true, business: true, moat: true, management: true, valuation: true, updatedAt: true },
   });
   if (row == null || row[field] == null) return false;
+  if (!isValidAnalysisPayload(field, row[field])) return false;
   // Without --force, the generate:* script's own "already has X, use
   // --force to overwrite" skip is a legitimate success — a pre-existing
   // value counts regardless of when it was written (this matters when
@@ -496,27 +542,12 @@ async function main() {
       (await verifyCompanyAnalysisField(entityId, "profile", stepStartedAt, force)),
   };
 
-  // Unified analysis generation - replaces 5 separate steps
-  const phase2UnifiedAnalysisStep: Step = {
-    id: "generate_unified_analysis",
-    label: "生成完整投资分析（统一调用：business + moat + management + valuation）",
-    skip: skipGeneration,
-    run: () => runNpmScript("generate:unified-analysis", buildGenerateArgs(ticker, force)),
-    verify: async (entityId, stepStartedAt) => {
-      // All 4 fields must exist (overview checked separately in Phase 1)
-      const hasAllFields = await Promise.all([
-        verifyCompanyAnalysisField(entityId, "business", stepStartedAt, force),
-        verifyCompanyAnalysisField(entityId, "moat", stepStartedAt, force),
-        verifyCompanyAnalysisField(entityId, "management", stepStartedAt, force),
-        verifyCompanyAnalysisField(entityId, "valuation", stepStartedAt, force),
-      ]);
-      return hasAllFields.every(Boolean);
-    },
-  };
-
-  // Legacy: keep old 5-step approach for backward compatibility (commented out, not used by default)
-  /*
-  const phase2AnalysisStepsLegacy: Step[] = [
+  // Phase 2 analysis steps: 4 separate mature scripts for each dimension
+  // (generate:business-model, generate:value-analysis, generate:management-analysis, generate:valuation-analysis)
+  // Note: generate-company-analysis-unified is deprecated because valuation
+  // requires quantitative code computation and management requires shareholder
+  // letter semantic retrieval; unifying into 1 LLM call corrupted the schema.
+  const phase2AnalysisSteps: Step[] = [
     {
       id: "generate_business_model",
       label: "生成业务概览与商业画布（business_overview）",
@@ -548,10 +579,6 @@ async function main() {
       verify: (entityId, stepStartedAt) => verifyCompanyAnalysisField(entityId, "valuation", stepStartedAt, force),
     },
   ];
-  */
-
-  // Use unified step by default
-  const phase2AnalysisSteps: Step[] = [phase2UnifiedAnalysisStep];
 
   const syncNameMapStep: Step = {
     id: "sync_name_map",
@@ -740,15 +767,7 @@ async function main() {
     } else if (phaseArg === "2") {
       steps = phase2Steps;
     } else {
-      steps = [
-        seedEntityStep,
-        importPriceStep,
-        market === "hk" ? importAnnualReportStep : importFinancialsStep,
-        market === "hk" ? importFinancialsStep : importAnnualReportStep,
-        generateOverviewStep,
-        ...phase2AnalysisSteps,
-        syncNameMapStep,
-      ];
+      steps = [...phase1Steps, ...phase2Steps];
     }
   }
 
