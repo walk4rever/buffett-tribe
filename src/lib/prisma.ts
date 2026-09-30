@@ -1,7 +1,17 @@
 import { PrismaClient } from '@prisma/client'
 
+function getDatasourceUrl(): string | undefined {
+  const url = process.env.DATABASE_URL
+  if (!url) return undefined
+  if (url.includes('connection_limit=')) return url
+  const delimiter = url.includes('?') ? '&' : '?'
+  const limit = process.env.PRISMA_CONNECTION_LIMIT ?? '3'
+  return `${url}${delimiter}connection_limit=${limit}`
+}
+
 const prismaClientSingleton = () => {
-  return new PrismaClient()
+  const datasourceUrl = getDatasourceUrl()
+  return new PrismaClient(datasourceUrl ? { datasourceUrl } : undefined)
 }
 
 declare global {

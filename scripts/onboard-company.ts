@@ -58,6 +58,16 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import prisma from "@/lib/prisma";
+
+// Ensure graceful DB disconnect upon SIGTERM from worker timeout or parent abort
+process.on("SIGTERM", async () => {
+  console.warn("[onboard-company] Received SIGTERM, disconnecting Prisma...");
+  try {
+    await prisma.$disconnect();
+  } catch {}
+  process.exit(143);
+});
+
 import { CN_HK_SEEDS } from "./lib/cn-hk-company-seeds";
 import { resolveCnCurrency, resolveHkCurrencyFromAnnualReport, resolveHkCurrencyViaYfinance } from "./lib/cn-hk-currency-resolve";
 

@@ -77,11 +77,9 @@ type EdgarToolsPayload = {
 
 // upsertFilingSectionsFromHtml() takes a concurrency for its per-section R2 +
 // DB writes but defaults to 1 when the caller omits it — this call site never
-// passed one, so ~20 sections/filing ran fully serial (each artifact write is
-// a Prisma lookup + R2 PutObject + Prisma upsert, all network round trips).
-// 6 keeps well under R2/Supabase connection limits while cutting onboarding
-// wall-clock meaningfully (see handoff.md "效率问题" P2).
-const SECTION_CONCURRENCY = 6;
+// Concurrency of 2 prevents saturating connection pool when running alongside
+// worker and onboard processes in limited pool environments.
+const SECTION_CONCURRENCY = 2;
 
 function getArg(flag: string): string | undefined {
   const args = process.argv.slice(2);
@@ -497,13 +495,25 @@ async function main() {
   console.log("Done.");
 }
 
+process.on("SIGTERM", async () => {
+  try {
+    await db.$disconnect();
+  } catch {}
+  process.exit(143);
+});
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main()
-    .catch((err) => {
-      console.error("Fatal:", err);
-      process.exit(1);
+    .then(async () => {
+      try {
+        await db.$disconnect();
+      } catch {}
     })
-    .finally(async () => {
-      await db.$disconnect();
+    .catch(async (err) => {
+      console.error("Fatal:", err);
+      try {
+        await db.$disconnect();
+      } catch {}
+      process.exit(1);
     });
 }

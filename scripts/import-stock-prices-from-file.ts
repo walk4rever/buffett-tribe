@@ -32,11 +32,23 @@ async function main() {
 
   await replaceStockPriceWindow(db, ticker, start, endExclusive, records);
 
-  console.log("Done.");
-  await db.$disconnect();
-}
-
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
+process.on("SIGTERM", async () => {
+  try {
+    await db.$disconnect();
+  } catch {}
+  process.exit(143);
 });
+
+main()
+  .then(async () => {
+    try {
+      await db.$disconnect();
+    } catch {}
+  })
+  .catch(async (err) => {
+    console.error(err);
+    try {
+      await db.$disconnect();
+    } catch {}
+    process.exit(1);
+  });

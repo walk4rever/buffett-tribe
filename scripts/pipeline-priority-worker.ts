@@ -128,13 +128,33 @@ function releaseLock() {
 
 let activeChildPid: number | null = null;
 
-function killChildProcessGroup(pid: number | null) {
+async function killChildProcessGroup(pid: number | null): Promise<void> {
   if (!pid) return;
   try {
-    // Negative PID sends signal to the entire process group (child + all descendants)
-    process.kill(-pid, "SIGKILL");
+    // Negative PID sends SIGTERM to the entire process group, allowing graceful DB disconnect
+    process.kill(-pid, "SIGTERM");
   } catch {
     // Process group may have already exited
+    return;
+  }
+
+  // Allow up to 2.5 seconds for graceful exit and Prisma disconnect
+  const deadline = Date.now() + 2500;
+  while (Date.now() < deadline) {
+    try {
+      process.kill(-pid, 0); // Check if process group is still alive
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    } catch {
+      // Process group exited cleanly
+      return;
+    }
+  }
+
+  // Fallback to SIGKILL only if process group is still hanging
+  try {
+    process.kill(-pid, "SIGKILL");
+  } catch {
+    // Ignore error if exited in between
   }
 }
 
@@ -566,46 +586,54 @@ async function main() {
         const errMsg = err instanceof Error ? err.message : String(err);
         logMessage(`✗ [${i + 1}/${candidateList.length}] FAILED [${phaseTag}] ${company.ticker}: ${errMsg}`);
 
-        // Update entity failure count
-        try {
-          const entity = await prisma.entity.findUnique({
-            where: { id: company.id },
-            select: { metadata: true },
-          });
-          if (entity) {
-            const meta = (entity.metadata as Record<string, unknown>) || {};
-            if (company.currentPhase === 0) {
-              const attempts = ((meta.onboardPhase1Attempts as number) || 0) + 1;
-              await prisma.entity.update({
-                where: { id: company.id },
-                data: {
-                  onboardPhase: attempts >= 3 ? -1 : 0,
-                  metadata: {
-                    ...meta,
-                    onboardPhase1Attempts: attempts,
-                    onboardPhase1LastError: errMsg,
-                    onboardPhase1LastAttemptAt: new Date().toISOString(),
+        // Update entity failure count with retry to guarantee error tracking even under pool contention
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            if (attempt > 1) {
+              await new Promise((r) => setTimeout(r, 1000 * attempt));
+            }
+            const entity = await prisma.entity.findUnique({
+              where: { id: company.id },
+              select: { metadata: true },
+            });
+            if (entity) {
+              const meta = (entity.metadata as Record<string, unknown>) || {};
+              if (company.currentPhase === 0) {
+                const attempts = ((meta.onboardPhase1Attempts as number) || 0) + 1;
+                await prisma.entity.update({
+                  where: { id: company.id },
+                  data: {
+                    onboardPhase: attempts >= 3 ? -1 : 0,
+                    metadata: {
+                      ...meta,
+                      onboardPhase1Attempts: attempts,
+                      onboardPhase1LastError: errMsg,
+                      onboardPhase1LastAttemptAt: new Date().toISOString(),
+                    },
                   },
-                },
-              });
-            } else {
-              // Phase 1 -> Phase 2 failure: retain onboardPhase=1 (don't demote to -1), record phase 2 attempts
-              const attempts = ((meta.onboardPhase2Attempts as number) || 0) + 1;
-              await prisma.entity.update({
-                where: { id: company.id },
-                data: {
-                  metadata: {
-                    ...meta,
-                    onboardPhase2Attempts: attempts,
-                    onboardPhase2LastError: errMsg,
-                    onboardPhase2LastAttemptAt: new Date().toISOString(),
+                });
+              } else {
+                // Phase 1 -> Phase 2 failure: retain onboardPhase=1 (don't demote to -1), record phase 2 attempts
+                const attempts = ((meta.onboardPhase2Attempts as number) || 0) + 1;
+                await prisma.entity.update({
+                  where: { id: company.id },
+                  data: {
+                    metadata: {
+                      ...meta,
+                      onboardPhase2Attempts: attempts,
+                      onboardPhase2LastError: errMsg,
+                      onboardPhase2LastAttemptAt: new Date().toISOString(),
+                    },
                   },
-                },
-              });
+                });
+              }
+            }
+            break; // Success
+          } catch (dbErr) {
+            if (attempt === 3) {
+              console.error(`Failed to update entity error metadata for ${company.ticker} after 3 attempts:`, dbErr);
             }
           }
-        } catch (dbErr) {
-          console.error("Failed to update entity error metadata:", dbErr);
         }
       }
 
