@@ -31,6 +31,8 @@ async function main() {
   );
 
   await replaceStockPriceWindow(db, ticker, start, endExclusive, records);
+  console.log("Done.");
+}
 
 process.on("SIGTERM", async () => {
   try {
