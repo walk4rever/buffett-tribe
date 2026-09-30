@@ -714,3 +714,25 @@ if (row == null || row[field] == null) return false;
      - `canvas`: 九宫格完整渲染
    - 4 家公司详情页的所有置灰锁定 Tab 现已全部解锁并正常展示。
 
+---
+
+# Handoff: mini 定时任务双轮驱动升级（优先通道 + 大池子双向推进）
+
+## 背景与目标
+全库 16,432 家公司中，Phase 0 待建档约 15,104 家，Phase 1 已建档待完善深度分析约 1,140 家。为了以稳定可控的节奏（单批上限 10 家）全自动化推进全量公司生命周期，升级 mini 机器的每小时定时任务。
+
+## 升级内容
+1. **调度逻辑重构**（[`scripts/pipeline-priority-worker.ts`](file:///Users/rafael/R129/buffett-tribe/scripts/pipeline-priority-worker.ts)）：
+   - **第 1 顺位（优先通道）**：优先抽取 `priority > 0` 且 `onboardPhase IN [0, 1]` 的快速通道任务。
+   - **第 2 顺位（大池子双轮驱动）**：快速通道未满时，剩余名额在 **P1→P2（完善四大分析）** 与 **P0→P1（基础建档）** 间默认按 5:5 动态配比，且任意一侧不足时自动补满另一侧。
+   - **跨市场均衡**：在 US、HK、CN 间按 Round-Robin 交叉轮询，保障三地市场齐头并进。
+   - **批次总量控制**：单批严格限制 `<= 10` 家，总耗时控制在 10~15 分钟内，杜绝超时与进程堆积。
+2. **mini Crontab 规则更新**：
+   - 移除 `--priority-only` 限制，每小时 15 分触发一次双轮驱动 Worker：
+     ```cron
+     15 * * * * /Users/rafael/buffett-tribe/scripts/cron/hourly-priority-worker.sh 10 all >> /Users/rafael/logs/buffett-tribe/priority-worker.log 2>&1
+     ```
+3. **验证结果**：
+   - mini 实测 dry-run 验证成功，输出精准的 5 家 P1→P2（花旗、友邦、平安、高盛、阿里）与 5 家 P0→P1（EMCOR、丰盛生活、中百、金佰利、东建国际）混合交错队列。
+
+
