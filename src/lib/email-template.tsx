@@ -262,12 +262,12 @@ export function buildFullEmailHtml(options: BuildEmailOptions): string {
               <tr>
                 <td style="vertical-align:middle;padding-right:10px;line-height:0;">
                   <a href="${baseUrl}" style="text-decoration:none;display:inline-block;">
-                    <img src="${baseUrl}/logo-white.svg" width="24" height="24" alt="Value Tribe" style="display:block;border:0;outline:none;text-decoration:none;" />
+                    <img src="${baseUrl}/logo-white.svg" width="24" height="24" alt="Value-Tribe" style="display:block;border:0;outline:none;text-decoration:none;" />
                   </a>
                 </td>
                 <td style="vertical-align:middle;padding-right:12px;white-space:nowrap;">
                   <a href="${baseUrl}" style="text-decoration:none;font-size:17px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-                    Value Tribe
+                    Value-Tribe
                   </a>
                 </td>
                 <td style="vertical-align:middle;padding-left:12px;border-left:1px solid #334155;">
@@ -290,8 +290,8 @@ export function buildFullEmailHtml(options: BuildEmailOptions): string {
     <!-- Footer -->
     <div style="border-top:0.5px solid #e5e7eb;padding:20px 36px;background:#f9fafb;">
       <p style="margin:0 0 6px;font-size:12px;color:#9ca3af;">
-        © 2026 Value Tribe &nbsp;|&nbsp;
-        <a href="https://vt.air7.fun" style="color:#6b7280;text-decoration:none;">vt.air7.fun</a>
+        © 2026 Value-Tribe &nbsp;|&nbsp;
+        <a href="https://vt.air7fun.com" style="color:#6b7280;text-decoration:none;">vt.air7fun.com</a>
       </p>
       <p style="margin:0;font-size:11px;color:#9ca3af;line-height:1.5;">
         此为产品发布与重要功能通知邮件。如您不希望接收此类产品通告，可直接回复本邮件说明退订。

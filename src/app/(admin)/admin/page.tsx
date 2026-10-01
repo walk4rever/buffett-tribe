@@ -1,33 +1,29 @@
 import Link from "next/link";
 import {
   Users,
-  CreditCard,
-  Flame,
   Percent,
+  Building2,
+  CheckCircle2,
   ArrowUpRight,
-  Clock,
   UserCheck,
+  Clock,
 } from "lucide-react";
 import prisma from "@/lib/prisma";
-import { currentPeriod, GRANT_FREE, SPEND_AGENT, GRANT_ADMIN_ADJUST } from "@/lib/credits";
-
-function formatReason(reason: string): string {
-  switch (reason) {
-    case GRANT_FREE:
-      return "月度免费额度";
-    case SPEND_AGENT:
-      return "投研 Agent 消耗";
-    case GRANT_ADMIN_ADJUST:
-      return "管理员调整";
-    default:
-      return reason;
-  }
-}
+import { currentPeriod, SPEND_AGENT, GRANT_FREE } from "@/lib/credits";
+import { formatCompanyUrl } from "@/lib/company-data";
 
 export default async function AdminOverviewPage() {
   const period = currentPeriod();
 
-  const [userCount, granted, spent, recentUsers, recentLedger] = await Promise.all([
+  const [
+    userCount,
+    granted,
+    spent,
+    recentUsers,
+    totalCompanies,
+    phaseCounts,
+    recentCompanyUpdates,
+  ] = await Promise.all([
     prisma.user.count(),
     prisma.creditLedger.aggregate({
       _sum: { delta: true },
@@ -42,16 +38,32 @@ export default async function AdminOverviewPage() {
       orderBy: { createdAt: "desc" },
       select: { id: true, email: true, name: true, role: true, createdAt: true },
     }),
-    prisma.creditLedger.findMany({
-      take: 6,
-      orderBy: { createdAt: "desc" },
+    prisma.entity.count({ where: { type: "company" } }),
+    prisma.$queryRaw<Array<{ onboardPhase: number; count: bigint }>>`
+      SELECT "onboardPhase", count(*) as count
+      FROM "Entity"
+      WHERE type = 'company'
+      GROUP BY "onboardPhase"
+      ORDER BY "onboardPhase" ASC;
+    `,
+    prisma.entity.findMany({
+      where: {
+        type: "company",
+        onboardPhase: { in: [1, 2] },
+      },
       select: {
         id: true,
-        delta: true,
-        reason: true,
-        createdAt: true,
-        user: { select: { email: true, name: true } },
+        cik: true,
+        code: true,
+        ticker: true,
+        market: true,
+        canonicalName: true,
+        onboardPhase: true,
+        updatedAt: true,
+        metadata: true,
       },
+      orderBy: { updatedAt: "desc" },
+      take: 8,
     }),
   ]);
 
@@ -60,19 +72,30 @@ export default async function AdminOverviewPage() {
   const burnRate =
     grantedTotal > 0 ? ((spentTotal / grantedTotal) * 100).toFixed(1) : "0.0";
 
+  const phaseMap: Record<number, number> = {};
+  for (const row of phaseCounts) {
+    phaseMap[row.onboardPhase] = Number(row.count);
+  }
+
+  const p1 = phaseMap[1] ?? 0;
+  const p2 = phaseMap[2] ?? 0;
+  const completedCount = p1 + p2;
+  const completionRate =
+    totalCompanies > 0 ? ((completedCount / totalCompanies) * 100).toFixed(1) : "0.0";
+
   return (
     <div className="admin-page-container">
       {/* Page Title */}
       <div className="admin-page-heading">
         <div>
-          <h1 className="admin-page-title">数据大盘</h1>
+          <h1 className="admin-page-title">全站数据大盘</h1>
           <p className="admin-page-desc">
-            全站用户增长与本月 ({period}) 额度运转概况
+            用户增长与公司建档核心指标概览 · 本月账期 {period}
           </p>
         </div>
       </div>
 
-      {/* 4-Stat Grid */}
+      {/* 4-Stat Grid: 用户2个 + 公司2个 */}
       <div className="admin-stat-grid">
         <Link href="/admin/users" className="admin-stat-card">
           <div className="admin-stat-top">
@@ -90,40 +113,41 @@ export default async function AdminOverviewPage() {
 
         <div className="admin-stat-card">
           <div className="admin-stat-top">
-            <span className="admin-stat-label">本月已发放额度</span>
-            <span className="admin-stat-icon admin-stat-icon--green">
-              <CreditCard size={16} />
-            </span>
-          </div>
-          <div className="admin-stat-value">{grantedTotal.toLocaleString()}</div>
-          <div className="admin-stat-bottom">
-            <span className="admin-stat-hint">按需分配给活跃用户</span>
-          </div>
-        </div>
-
-        <div className="admin-stat-card">
-          <div className="admin-stat-top">
-            <span className="admin-stat-label">本月已消耗额度</span>
-            <span className="admin-stat-icon admin-stat-icon--orange">
-              <Flame size={16} />
-            </span>
-          </div>
-          <div className="admin-stat-value">{spentTotal.toLocaleString()}</div>
-          <div className="admin-stat-bottom">
-            <span className="admin-stat-hint">AI 深度投研问答调用</span>
-          </div>
-        </div>
-
-        <div className="admin-stat-card">
-          <div className="admin-stat-top">
-            <span className="admin-stat-label">全站额度消耗率</span>
+            <span className="admin-stat-label">本月额度消耗率</span>
             <span className="admin-stat-icon admin-stat-icon--purple">
               <Percent size={16} />
             </span>
           </div>
           <div className="admin-stat-value">{burnRate}%</div>
           <div className="admin-stat-bottom">
-            <span className="admin-stat-hint">消耗量 / 发放量</span>
+            <span className="admin-stat-hint">消耗 {spentTotal.toLocaleString()} / 发放 {grantedTotal.toLocaleString()}</span>
+          </div>
+        </div>
+
+        <Link href="/admin/universe" className="admin-stat-card">
+          <div className="admin-stat-top">
+            <span className="admin-stat-label">全量公司底座</span>
+            <span className="admin-stat-icon admin-stat-icon--orange">
+              <Building2 size={16} />
+            </span>
+          </div>
+          <div className="admin-stat-value">{totalCompanies.toLocaleString()}</div>
+          <div className="admin-stat-bottom">
+            <span>点击查看建档管线</span>
+            <ArrowUpRight size={13} />
+          </div>
+        </Link>
+
+        <div className="admin-stat-card">
+          <div className="admin-stat-top">
+            <span className="admin-stat-label">建档完成率</span>
+            <span className="admin-stat-icon admin-stat-icon--green">
+              <CheckCircle2 size={16} />
+            </span>
+          </div>
+          <div className="admin-stat-value">{completionRate}%</div>
+          <div className="admin-stat-bottom">
+            <span className="admin-stat-hint">P1+P2 共 {completedCount.toLocaleString()} 家</span>
           </div>
         </div>
       </div>
@@ -176,50 +200,68 @@ export default async function AdminOverviewPage() {
           </div>
         </section>
 
-        {/* Recent Credit Activity */}
+        {/* Recent Company Updates */}
         <section className="admin-card">
           <div className="admin-card-header">
             <div className="admin-card-title-group">
               <Clock size={16} className="admin-card-title-icon" />
-              <h2>最新额度变动流水</h2>
+              <h2>管线最新更新</h2>
             </div>
+            <Link href="/admin/universe" className="admin-card-link">
+              <span>查看全部</span>
+              <ArrowUpRight size={13} />
+            </Link>
           </div>
 
-          <div className="admin-ledger-mini-list">
-            {recentLedger.map((row) => {
-              const isPositive = row.delta > 0;
-              const formattedTime = new Intl.DateTimeFormat("zh-CN", {
-                month: "2-digit",
-                day: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-              }).format(new Date(row.createdAt));
+          <div className="admin-universe-feed-list">
+            {recentCompanyUpdates.length === 0 ? (
+              <div className="admin-universe-empty">暂无近期更新</div>
+            ) : (
+              recentCompanyUpdates.map((c) => {
+                const meta = (c.metadata as Record<string, unknown>) || {};
+                const zh = (typeof meta.nameZh === "string" && meta.nameZh) || c.canonicalName;
+                const formattedTime = new Intl.DateTimeFormat("zh-CN", {
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  timeZone: "Asia/Shanghai",
+                }).format(new Date(c.updatedAt));
+                const url = formatCompanyUrl(c);
+                const phaseLabel = c.onboardPhase === 1 ? "P1" : "P2";
+                const phaseBadgeClass = c.onboardPhase === 1 ? "admin-badge--blue" : "admin-badge--green";
 
-              return (
-                <div key={row.id} className="admin-ledger-mini-item">
-                  <div className="admin-ledger-mini-info">
-                    <span className="admin-ledger-mini-user">
-                      {row.user?.email || row.user?.name || "未知用户"}
-                    </span>
-                    <span className="admin-ledger-mini-reason">
-                      {formatReason(row.reason)}
-                    </span>
+                return (
+                  <div key={c.id} className="admin-universe-feed-item">
+                    <div className="admin-universe-feed-main">
+                      <span className={`admin-badge ${phaseBadgeClass}`}>
+                        {phaseLabel}
+                      </span>
+                      <span className="admin-badge admin-badge--gray">
+                        {(c.market || "us").toUpperCase()}
+                      </span>
+                      <span className="admin-universe-feed-ticker">{c.ticker || c.code}</span>
+                      <span className="admin-universe-feed-name">{zh}</span>
+                    </div>
+
+                    <div className="admin-universe-feed-right">
+                      <time className="admin-user-mini-time">{formattedTime}</time>
+                      {url && (
+                        <Link
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="admin-universe-feed-link"
+                          title="查看公司详情"
+                        >
+                          <ArrowUpRight size={13} />
+                        </Link>
+                      )}
+                    </div>
                   </div>
-                  <div className="admin-ledger-mini-meta">
-                    <span
-                      className={`admin-ledger-mini-delta ${
-                        isPositive
-                          ? "admin-ledger-mini-delta--pos"
-                          : "admin-ledger-mini-delta--neg"
-                      }`}
-                    >
-                      {isPositive ? `+${row.delta}` : row.delta}
-                    </span>
-                    <time className="admin-ledger-mini-time">{formattedTime}</time>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </section>
       </div>

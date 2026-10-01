@@ -722,7 +722,7 @@ export function AdminAnnouncementsManager({
                     type="text"
                     value={preheader}
                     onChange={(e) => setPreheader(e.target.value)}
-                    placeholder="例如：Value Tribe 核心功能上线：投资研究 Agent、大师知识库与公司研究画布"
+                    placeholder="例如：Value-Tribe 核心功能上线：投资研究 Agent、大师知识库与公司研究画布"
                     className="admin-form-input"
                   />
                 </div>
@@ -1031,7 +1031,7 @@ export function AdminAnnouncementsManager({
                   </div>
                 )}
                 <div style={{ fontSize: "0.78rem", color: "rgba(0,0,0,0.4)" }}>
-                  正文长度：{markdown.length} 字符 · 发送人：价值部落 &lt;buffet@air7.fun&gt;
+                  正文长度：{markdown.length} 字符 · 发送人：价值部落 &lt;vt@air7fun.com&gt;
                 </div>
               </div>
 
