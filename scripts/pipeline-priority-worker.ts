@@ -371,8 +371,8 @@ async function fetchCandidatesForMarket(
 
 /**
  * Fetch standard pool candidate companies with dual-drive balance:
- * 50% P1->P2 (deep analysis for already profiled companies)
- * 50% P0->P1 (base profiling for pending universe companies)
+ * ~1/3 P1->P2 (deep analysis for already profiled companies, ~5 of 15)
+ * ~2/3 P0->P1 (base profiling for pending universe companies, ~10 of 15)
  * With cross-market round-robin (US/HK/CN) and automatic slot fallback.
  */
 async function fetchStandardCandidates(
@@ -414,8 +414,9 @@ async function fetchStandardCandidates(
     return fetchPool(2, totalSlots, excludeIds);
   }
 
-  // Dual-drive balance: 50% P1->P2 (deep analysis), 50% P0->P1 (base profiling)
-  const desiredP2 = Math.ceil(totalSlots / 2);
+  // Dual-drive balance: 1/3 P1->P2 (deep analysis, ~5 of 15), 2/3 P0->P1 (base profiling, ~10 of 15)
+  // Prioritizes rapid clearance of the 15,000+ P0 stubs while steadily advancing P2
+  const desiredP2 = Math.min(5, Math.floor(totalSlots / 3));
   const p2List = await fetchPool(2, desiredP2, excludeIds);
 
   const currentExcludes = new Set([...excludeIds, ...p2List.map((c) => c.id)]);
@@ -431,12 +432,14 @@ async function fetchStandardCandidates(
   }
 
   const allP2 = [...p2List, ...extraP2List];
-  // Interleave P1->P2 and P0->P1 for steady progress across both frontiers
+  // Interleave P0->P1 (2) and P1->P2 (1) for steady progress across both frontiers
   const interleaved: CandidateCompany[] = [];
-  const maxLen = Math.max(allP2.length, p0List.length);
-  for (let i = 0; i < maxLen; i++) {
-    if (allP2[i]) interleaved.push(allP2[i]);
-    if (p0List[i]) interleaved.push(p0List[i]);
+  let p0Idx = 0;
+  let p2Idx = 0;
+  while (p0Idx < p0List.length || p2Idx < allP2.length) {
+    if (p0Idx < p0List.length) interleaved.push(p0List[p0Idx++]);
+    if (p0Idx < p0List.length) interleaved.push(p0List[p0Idx++]);
+    if (p2Idx < allP2.length) interleaved.push(allP2[p2Idx++]);
   }
 
   return interleaved.slice(0, totalSlots);
@@ -444,7 +447,7 @@ async function fetchStandardCandidates(
 
 async function main() {
   const dryRun = hasFlag("--dry-run");
-  const batchSize = Math.max(1, parseInt(getArg("--batch-size") ?? "10", 10));
+  const batchSize = Math.max(1, parseInt(getArg("--batch-size") ?? "15", 10));
   const targetMarket = (getArg("--market") ?? "all").toLowerCase();
   const delayMs = parseInt(getArg("--delay") ?? "2000", 10);
   const companyTimeoutMins = Math.max(1, parseInt(getArg("--company-timeout-mins") ?? "4", 10));

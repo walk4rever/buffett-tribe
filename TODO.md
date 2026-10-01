@@ -121,7 +121,7 @@
 
 - [x] **㉓ 自动化调度双轮驱动、周度全网新上市公司入池与股价更新精准收敛**（2026-09-30 完成上线，详见 `PRODUCT.md`「v0.46.4 变更」）：
   - **落地成果**：
-    1. **双轮驱动调度管线（Hourly Dual-Drive Worker）**：升级 `scripts/pipeline-priority-worker.ts`，快速通道（`priority > 0`）绝对优先，剩余名额在 P1→P2 深度分析与 P0→P1 基础建档间按 5:5 动态配比与补位，三市场轮流交替，每批严格限制 10 家，防超时防重入；
+    1. **双轮驱动调度管线（Hourly Dual-Drive Worker）**：升级 `scripts/pipeline-priority-worker.ts`，快速通道（`priority > 0`）绝对优先，剩余名额在 P0→P1 基础建档与 P1→P2 深度分析间按 10:5（2:1）动态配比与补位，三市场轮流交替，每批设为 15 家（约 28 分钟），防超时防重入；
     2. **Phase 2 结构校验与 4 步独立生成恢复**：还原 4 步独立生成（商业画布、护城河、治理、估值），杜绝 unify 单步引发的雷达图与治理卡片锁死，补齐 `isValidAnalysisPayload` 严密结构校验，修复受影响标的；
     3. **周度新上市公司全网自动发现与增量入池**：编写 `scripts/cron/weekly-sync-new-listings.sh`，串联 CN（akshare）、HK（akshare）、US（SEC EDGAR），每周六 10:00 CST 自动增量入池，首次运行增量 35 家新股，总池子扩充至 16,467 家；
     4. **周度股价更新精准收敛至 `onboardPhase >= 1`**：升级 `scripts/import-company-stock-prices-yf.ts`，跳过 1.5 万家 P0 存根，耗时减少 92%，消除被 Yahoo Finance IP 限流隐患；修复美股 `market: 'us'` 查询；
