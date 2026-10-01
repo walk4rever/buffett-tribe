@@ -66,7 +66,7 @@ describe("Email Template & Markdown Transformer", () => {
 
     expect(html).toContain("<!DOCTYPE html>");
     expect(html).toContain("本期重大更新发布");
-    expect(html).toContain("Value Tribe");
+    expect(html).toContain("Value-Tribe");
     expect(html).toContain("logo-white.svg");
     expect(html).toContain("买股票就是买公司，知识库+Agent让你更好地理解一家公司！");
     expect(html).toContain("欢迎体验全新功能！");
