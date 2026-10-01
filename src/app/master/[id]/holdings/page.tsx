@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HoldingsDetailTable, type HoldingsDetailRow } from "@/components/HoldingsDetailTable";
 import { HoldingsHistoryExplorer } from "@/components/HoldingsHistoryExplorer";
+import { HoldingsMobileControls } from "@/components/HoldingsMobileControls";
 import { SiteNav } from "@/components/SiteNav";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
 import { getTribeMember, getTribeMemberColor } from "@/lib/tribe";
@@ -44,6 +45,14 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
     // points so every company's x-axis spans the fund's full history, not just
     // that company's own held-quarters range.
     const allQuarterTimes = [...quarters].reverse().map((q) => quarterMidDate(q.year, q.quarter));
+
+    const companies = historyItems.map((item) => ({
+      securityId: item.securityId,
+      zhName: item.zhName,
+      enName: item.enName,
+      ticker: item.ticker,
+    }));
+
     return (
       <div className="holdings-page">
         <SiteNav />
@@ -77,6 +86,16 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
               按公司
             </Link>
           </div>
+
+          {/* Mobile controls */}
+          <HoldingsMobileControls
+            masterId={id}
+            quarters={quarters}
+            selectedYear={selectedYear}
+            selectedQuarter={selectedQuarter}
+            currentView="company"
+            companies={companies}
+          />
 
           <HoldingsHistoryExplorer
             items={historyItems}
@@ -178,6 +197,15 @@ export default async function HoldingsPage({ params, searchParams }: Props) {
             按公司
           </Link>
         </div>
+
+        {/* Mobile controls */}
+        <HoldingsMobileControls
+          masterId={id}
+          quarters={quarters}
+          selectedYear={selectedYear}
+          selectedQuarter={selectedQuarter}
+          currentView="quarter"
+        />
 
         <div className="holdings-layout">
           {/* Quarter selector timeline */}

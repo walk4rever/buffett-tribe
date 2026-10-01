@@ -282,6 +282,17 @@ export function HoldingsHistoryExplorer({
   const [metric, setMetric] = useState<Metric>("shares");
   const selected = items.find((i) => i.securityId === selectedId) ?? items[0];
 
+  // Listen for company selection from mobile select
+  useEffect(() => {
+    const handleSelectCompany = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      setSelectedId(customEvent.detail);
+    };
+
+    window.addEventListener('selectCompany', handleSelectCompany);
+    return () => window.removeEventListener('selectCompany', handleSelectCompany);
+  }, []);
+
   if (!items.length) {
     return <p className="holdings-note">暂无持仓历史数据</p>;
   }

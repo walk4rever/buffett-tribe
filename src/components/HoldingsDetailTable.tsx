@@ -68,7 +68,81 @@ export function HoldingsDetailTable({
   if (!rows.length) return null;
 
   return (
-    <div className={["holdings-table-wrap", "holdings-table-wrap--fit", wrapClassName].filter(Boolean).join(" ")}>
+    <div className={["holdings-table-wrap", "holdings-table-wrap--fit", "holdings-detail-table", wrapClassName].filter(Boolean).join(" ")}>
+      {/* Mobile card layout */}
+      <div className="holdings-card-list">
+        {rows.map((h, i) => {
+          const pctDisplay = h.activity === "SoldOut"
+            ? "0.00%"
+            : h.percentOfPortfolio != null
+              ? `${h.percentOfPortfolio.toFixed(2)}%`
+              : "—";
+
+          return (
+            <div key={h.id} className={`holdings-card ${activityRowClass(h.activity)}`}>
+              <div className="holdings-card-header">
+                <span className="holdings-card-rank">#{i + 1}</span>
+                <div className="holdings-card-company">
+                  {h.companyPath ? (
+                    <Link href={h.companyPath}>
+                      <CompanyDisplayName
+                        zhName={h.zhName}
+                        enName={h.enName}
+                        ticker={h.ticker}
+                        securityKind={h.securityKind}
+                        putCall={h.putCall}
+                        compact
+                      />
+                    </Link>
+                  ) : (
+                    <CompanyDisplayName
+                      zhName={h.zhName}
+                      enName={h.enName}
+                      ticker={h.ticker}
+                      securityKind={h.securityKind}
+                      putCall={h.putCall}
+                      compact
+                    />
+                  )}
+                </div>
+                <span className="holdings-card-pct">{pctDisplay}</span>
+              </div>
+              <div className="holdings-card-metrics">
+                <div className="holdings-card-metric">
+                  <span className="holdings-card-label">市值</span>
+                  <span className="holdings-card-value">{formatValueUsd(h.valueUsd)}</span>
+                </div>
+                <div className="holdings-card-metric">
+                  <span className="holdings-card-label">持股</span>
+                  <span className="holdings-card-value">{formatShares(h.shares)}</span>
+                </div>
+                <div className="holdings-card-metric">
+                  <span className="holdings-card-label">操作</span>
+                  <span className="holdings-card-value">
+                    {h.activity === "SoldOut" ? (
+                      <span className="holdings-activity-soldout">Sold Out</span>
+                    ) : h.activity === "New" ? (
+                      <span className="holdings-activity-new">New</span>
+                    ) : h.activity === "Added" ? (
+                      <span className="holdings-activity-delta holdings-activity-delta--up">
+                        ↑ {formatSignedPct(h.shareDeltaPct)}
+                      </span>
+                    ) : h.activity === "Reduced" ? (
+                      <span className="holdings-activity-delta holdings-activity-delta--down">
+                        ↓ {formatSignedPct(h.shareDeltaPct)}
+                      </span>
+                    ) : (
+                      <span className="holdings-activity-delta">—</span>
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop table layout */}
       <table className={["holdings-table", "holdings-table--fit", tableClassName].filter(Boolean).join(" ")}>
         <thead>
           <tr>

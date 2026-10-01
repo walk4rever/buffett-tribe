@@ -5825,8 +5825,34 @@ body.layout-no-header {
   }
 
   .holdings-sidebar {
-    position: static;
-    max-height: none;
+    display: none;
+  }
+}
+
+@media (max-width: 920px) {
+  /* Mobile: increase company list height */
+  .holdings-company-list {
+    max-height: 420px;
+  }
+
+  /* Mobile: summary bar better wrapping */
+  .holdings-summary {
+    font-size: 0.8125rem;
+  }
+
+  .holdings-summary-item {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Hide company list on mobile, use select instead */
+  .holdings-company-list {
+    display: none !important;
+  }
+
+  .holdings-company-layout {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -5903,6 +5929,224 @@ body.layout-no-header {
   border: 1px solid rgba(245, 158, 11, 0.34);
 }
 
+/* Mobile card layout for holdings */
+.holdings-card-list {
+  display: none;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.holdings-card {
+  background: var(--apple-white);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  padding: 0.875rem 1rem;
+}
+
+.holdings-card.holdings-row--new {
+  background: rgba(0, 113, 227, 0.04);
+  border-color: rgba(0, 113, 227, 0.15);
+}
+
+.holdings-card.holdings-row--added {
+  background: rgba(22, 163, 74, 0.04);
+  border-color: rgba(22, 163, 74, 0.15);
+}
+
+.holdings-card.holdings-row--reduced {
+  background: rgba(185, 28, 28, 0.04);
+  border-color: rgba(185, 28, 28, 0.15);
+}
+
+.holdings-card.holdings-row--soldout {
+  background: rgba(180, 83, 9, 0.06);
+  border-color: rgba(180, 83, 9, 0.15);
+}
+
+.holdings-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.holdings-card-rank {
+  color: rgba(0, 0, 0, 0.3);
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+  min-width: 24px;
+}
+
+.holdings-card-company {
+  flex: 1;
+  min-width: 0;
+}
+
+.holdings-card-company a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.holdings-card-pct {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--apple-near-black);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+
+.holdings-card-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.holdings-card-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.holdings-card-label {
+  font-size: 0.6875rem;
+  color: var(--apple-secondary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.holdings-card-value {
+  font-size: 0.8125rem;
+  color: var(--apple-near-black);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Mobile: 2-column metrics on very small screens */
+@media (max-width: 400px) {
+  .holdings-card-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .holdings-card-pct {
+    font-size: 0.8125rem;
+  }
+
+  .holdings-card-value {
+    font-size: 0.75rem;
+  }
+}
+
+/* Mobile: show cards, hide table */
+@media (max-width: 768px) {
+  /* Fix: allow horizontal content to be visible */
+  .app-shell {
+    overflow: visible;
+  }
+
+  .site-main {
+    overflow-x: visible;
+    overflow-y: auto;
+  }
+
+  .holdings-page {
+    overflow-x: visible;
+  }
+
+  .holdings-wrap {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    overflow: visible;
+  }
+
+  .holdings-layout {
+    overflow: visible;
+  }
+
+  .holdings-main {
+    overflow: visible;
+  }
+
+  /* Holdings detail table - show cards, hide table */
+  .holdings-detail-table .holdings-card-list {
+    display: flex;
+    overflow: visible;
+  }
+
+  .holdings-detail-table .holdings-table {
+    display: none;
+  }
+
+  .holdings-detail-table .holdings-table-wrap {
+    overflow: visible !important;
+    box-shadow: none;
+    background: transparent;
+    border-radius: 0;
+  }
+
+  .holdings-detail-table .holdings-table-wrap--fit {
+    overflow: visible !important;
+  }
+
+  /* Holdings history table - keep visible for company view */
+  .holdings-history-table {
+    display: table !important;
+    font-size: 0.75rem;
+  }
+
+  .holdings-history-table .holdings-th,
+  .holdings-history-table .holdings-td {
+    padding: 0.5rem 0.375rem;
+    font-size: 0.75rem;
+  }
+
+  .holdings-history-table .holdings-th-en {
+    font-size: 0.65rem;
+  }
+
+  .holdings-card {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .holdings-card-header {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .holdings-card-metrics {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .holdings-card-company {
+    overflow: hidden;
+  }
+
+  .holdings-card-company .company-display {
+    max-width: 100%;
+  }
+
+  .holdings-card-company .company-display-zh {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .holdings-card-company .company-display-en {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 .holdings-view-toggle { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
 .holdings-view-toggle-btn {
   font-size: 0.8125rem;
@@ -5915,9 +6159,98 @@ body.layout-no-header {
   transition: border-color 0.15s;
   text-decoration: none;
   letter-spacing: -0.224px;
+  white-space: nowrap;
 }
 .holdings-view-toggle-btn:hover { border-color: #aeaeb2; }
 .holdings-view-toggle-btn--active { border-color: var(--apple-blue); color: var(--apple-blue); background: rgba(0,113,227,0.06); font-weight: 500; }
+
+/* Mobile controls for holdings page */
+.holdings-mobile-controls {
+  display: none;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+/* View toggle button */
+.holdings-mobile-toggle {
+  display: flex;
+  background: var(--apple-light-gray);
+  border-radius: 10px;
+  padding: 0.25rem;
+  border: none;
+  cursor: pointer;
+}
+
+.holdings-mobile-toggle-option {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--apple-body);
+  background: transparent;
+  border-radius: 8px;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.holdings-mobile-toggle-option.active {
+  background: var(--apple-white);
+  color: var(--apple-near-black);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+}
+
+.holdings-mobile-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.holdings-mobile-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--apple-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.holdings-mobile-select {
+  appearance: none;
+  background: var(--apple-white);
+  border: 1.5px solid #d1d1d6;
+  border-radius: 10px;
+  padding: 0.625rem 2.5rem 0.625rem 0.875rem;
+  font-size: 0.9375rem;
+  color: var(--apple-near-black);
+  font-family: inherit;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.875rem center;
+  background-size: 12px;
+  transition: border-color 0.15s;
+}
+
+.holdings-mobile-select:hover {
+  border-color: #aeaeb2;
+}
+
+.holdings-mobile-select:focus {
+  outline: none;
+  border-color: var(--apple-blue);
+}
+
+@media (max-width: 768px) {
+  .holdings-view-toggle {
+    display: none;
+  }
+
+  .holdings-mobile-controls {
+    display: flex;
+  }
+}
+
 
 .holdings-metric-toggle { display: flex; gap: 0.5rem; }
 
@@ -6052,19 +6385,18 @@ body.layout-no-header {
 .person-wrap { max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 5rem; display: grid; gap: 1.5rem; }
 
 /* Hero */
-.person-hero { background: var(--apple-white); border-radius: 18px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.09); }
+.person-hero { background: var(--apple-white); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.09); }
 .person-hero-accent { height: 88px; position: relative; }
-.person-hero-accent::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.10), rgba(0,0,0,0.22)); pointer-events: none; }
 .person-hero-body { padding: 0 1.75rem 1.75rem; display: flex; align-items: flex-start; gap: 1.25rem; position: relative; z-index: 1; }
-.person-avatar { width: 84px; height: 84px; border-radius: 18px; color: #fff; font-weight: 700; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: -42px; border: 3.5px solid white; box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
+.person-avatar { width: 84px; height: 84px; border-radius: 12px; color: #fff; font-weight: 700; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: -42px; border: 3.5px solid white; box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
 .person-hero-info { min-width: 0; padding-top: 0.6rem; }
 .person-eyebrow { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--apple-secondary); margin: 0 0 0.3rem; }
-.person-name { font-size: 2.25rem; line-height: 1.08; letter-spacing: -0.5px; margin: 0; color: var(--apple-near-black); font-weight: 700; }
-.person-firm { margin: 0.28rem 0 0; font-size: 0.9375rem; color: var(--apple-body); }
+.person-name { font-size: 2.25rem; line-height: 1.08; letter-spacing: -0.5px; margin: 0; color: var(--apple-near-black); font-weight: 600; }
+.person-firm { margin: 0.28rem 0 0; font-size: 0.875rem; color: var(--apple-body); }
 .person-alpha-note { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.65rem; }
-.person-alpha-note span { font-size: 0.72rem; color: #4c1d95; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.22); border-radius: 999px; padding: 0.22rem 0.62rem; font-weight: 600; }
-.person-alpha-disclaimer { margin: 0.5rem 0 0; font-size: 0.75rem; color: #6d28d9; opacity: 0.85; line-height: 1.5; }
-.person-intro { margin: 0.9rem 0 0; font-size: 0.9375rem; color: var(--apple-near-black); line-height: 1.58; }
+.person-alpha-note span { font-size: 0.72rem; color: #d97706; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 999px; padding: 0.22rem 0.62rem; font-weight: 600; }
+.person-alpha-disclaimer { margin: 0.5rem 0 0; font-size: 0.75rem; color: var(--apple-body); opacity: 0.85; line-height: 1.5; }
+.person-intro { margin: 0.9rem 0 0; font-size: 1.0625rem; color: var(--apple-near-black); line-height: 1.58; }
 .person-framework { margin-top: 0.85rem; display: grid; gap: 0.46rem; }
 .person-framework-item { font-size: 0.8125rem; color: var(--apple-body); padding-left: 1.1rem; position: relative; line-height: 1.5; }
 .person-framework-item::before { content: "—"; position: absolute; left: 0; color: var(--apple-blue); font-weight: 600; }
@@ -6077,11 +6409,11 @@ body.layout-no-header {
 .person-section-subhead { font-size: 0.75rem; color: var(--apple-secondary); font-weight: 600; margin-bottom: 0.6rem; }
 
 /* Sections */
-.person-section { background: var(--apple-white); border-radius: 18px; padding: 1.5rem; box-shadow: 0 2px 10px rgba(0,0,0,0.07); }
+.person-section { background: var(--apple-white); border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 10px rgba(0,0,0,0.07); }
 .person-section-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem; }
 .person-section-title { margin: 0; font-size: 1.0625rem; color: var(--apple-near-black); letter-spacing: -0.2px; font-weight: 600; }
 .person-section-tag { font-size: 0.6875rem; color: var(--apple-secondary); background: var(--apple-light-gray); border-radius: 999px; padding: 0.22rem 0.55rem; }
-.person-view-all { font-size: 0.75rem; color: var(--apple-link-light); text-decoration: none; }
+.person-view-all { font-size: 0.75rem; color: var(--apple-link-light); text-decoration: none; padding: 0.6rem 0.75rem; min-height: 44px; display: inline-flex; align-items: center; }
 .person-view-all:hover { text-decoration: underline; }
 
 /* Philosophy principles — moved from hero into 投资风格 */
@@ -6467,6 +6799,44 @@ body.layout-no-header {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 240px;
+}
+
+/* P1 Fix: Hero vertical stack on small screens */
+@media (max-width: 480px) {
+  .person-hero-body {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 0 1.25rem 1.5rem;
+  }
+
+  .person-avatar {
+    margin-top: -42px;
+    margin-bottom: 0.5rem;
+  }
+
+  .person-hero-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .person-alpha-note {
+    justify-content: center;
+  }
+}
+
+/* P1 Fix: Insight metrics 2-column on tablets */
+@media (max-width: 768px) and (min-width: 481px) {
+  .person-insight-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .person-insight-metrics {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
@@ -10737,6 +11107,7 @@ body {
   cursor: pointer;
   display: inline-flex;
   min-width: 0;
+  padding: 0.4rem 0;
 }
 
 .person-bar-company-link:hover {
