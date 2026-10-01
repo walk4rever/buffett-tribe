@@ -293,6 +293,13 @@ export function HoldingsHistoryExplorer({
     return () => window.removeEventListener('selectCompany', handleSelectCompany);
   }, []);
 
+  // Notify mobile select when company changes (from clicking list items)
+  useEffect(() => {
+    if (selectedId) {
+      window.dispatchEvent(new CustomEvent('companyChanged', { detail: selectedId }));
+    }
+  }, [selectedId]);
+
   if (!items.length) {
     return <p className="holdings-note">暂无持仓历史数据</p>;
   }

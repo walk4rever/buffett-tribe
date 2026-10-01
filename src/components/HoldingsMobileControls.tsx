@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 interface Quarter {
   year: number;
@@ -34,6 +35,18 @@ export function HoldingsMobileControls({
   selectedCompanyId,
 }: Props) {
   const router = useRouter();
+  const [currentCompanyId, setCurrentCompanyId] = useState(selectedCompanyId || companies[0]?.securityId);
+
+  // Listen for company changes from HoldingsHistoryExplorer
+  useEffect(() => {
+    const handleCompanyChanged = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      setCurrentCompanyId(customEvent.detail);
+    };
+
+    window.addEventListener('companyChanged', handleCompanyChanged);
+    return () => window.removeEventListener('companyChanged', handleCompanyChanged);
+  }, []);
 
   const handleViewToggle = () => {
     if (currentView === "quarter") {
@@ -49,8 +62,8 @@ export function HoldingsMobileControls({
   };
 
   const handleCompanyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    // Company selection in the按公司 view - we'll handle this via scroll or state
     const companyId = e.target.value;
+    setCurrentCompanyId(companyId);
     // Trigger a custom event that HoldingsHistoryExplorer can listen to
     window.dispatchEvent(new CustomEvent('selectCompany', { detail: companyId }));
   };
@@ -98,7 +111,7 @@ export function HoldingsMobileControls({
             </label>
             <select
               id="company-select"
-              value={selectedCompanyId || companies[0]?.securityId}
+              value={currentCompanyId}
               onChange={handleCompanyChange}
               className="holdings-mobile-select"
             >
