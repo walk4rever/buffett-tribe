@@ -104,7 +104,7 @@ async function tagPost(post: { slug: string; title: string; contentRaw: string; 
     systemPrompt: SYSTEM_PROMPT,
     userPrompt: `Title: ${post.title}\n\n${post.contentRaw}`,
     temperature: 0.1,
-    maxTokens: 6000,
+    maxTokens: 32000,
   });
 
   const candidates = parseLlmCompanies(content);
@@ -148,29 +148,68 @@ async function main() {
     process.exit(1);
   }
 
-  const posts = slug
-    ? await db.insightPost.findMany({ where: { slug }, select: { slug: true, title: true, contentRaw: true, entityIds: true } })
-    : await db.insightPost.findMany({ where: { status: "published" }, select: { slug: true, title: true, contentRaw: true, entityIds: true } });
-
-  if (!posts.length) {
-    console.error(`No post found for: ${slug}`);
-    process.exit(1);
-  }
-
-  console.log(`Found ${posts.length} post(s) to process\n`);
-
-  for (const post of posts) {
-    if (post.entityIds.length > 0 && !force) {
-      console.log(`--- ${post.title} (${post.slug}) ---`);
-      console.log(`  SKIP: already has ${post.entityIds.length} entityIds, use --force to retag\n`);
-      continue;
+  if (slug) {
+    const posts = await db.insightPost.findMany({
+      where: { slug },
+      select: { slug: true, title: true, contentRaw: true, entityIds: true }
+    });
+    if (!posts.length) {
+      console.error(`No post found for: ${slug}`);
+      process.exit(1);
     }
-    try {
-      await tagPost(post, dryRun);
-    } catch (err) {
-      console.error(`  Failed: ${err instanceof Error ? err.message : String(err)}`);
+    console.log(`Found ${posts.length} post(s) to process\n`);
+    for (const post of posts) {
+      if (post.entityIds.length > 0 && !force) {
+        console.log(`--- ${post.title} (${post.slug}) ---`);
+        console.log(`  SKIP: already has ${post.entityIds.length} entityIds, use --force to retag\n`);
+        continue;
+      }
+      try {
+        await tagPost(post, dryRun);
+      } catch (err) {
+        console.error(`  Failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      console.log();
     }
-    console.log();
+  } else {
+    // Batch processing for --all mode to avoid loading all contentRaw at once
+    const BATCH_SIZE = 10;
+    const totalCount = await db.insightPost.count({ where: { status: "published" } });
+    console.log(`Found ${totalCount} published post(s) to process\n`);
+
+    let processed = 0;
+    let offset = 0;
+
+    while (offset < totalCount) {
+      const batch = await db.insightPost.findMany({
+        where: { status: "published" },
+        select: { slug: true, title: true, contentRaw: true, entityIds: true },
+        take: BATCH_SIZE,
+        skip: offset,
+      });
+
+      for (const post of batch) {
+        if (post.entityIds.length > 0 && !force) {
+          console.log(`--- ${post.title} (${post.slug}) ---`);
+          console.log(`  SKIP: already has ${post.entityIds.length} entityIds, use --force to retag\n`);
+          continue;
+        }
+        try {
+          await tagPost(post, dryRun);
+        } catch (err) {
+          console.error(`  Failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+        console.log();
+        processed++;
+      }
+
+      offset += BATCH_SIZE;
+      if (offset < totalCount) {
+        console.log(`--- Processed ${processed}/${totalCount}, continuing with next batch ---\n`);
+      }
+    }
+
+    console.log(`\nCompleted processing ${processed}/${totalCount} posts`);
   }
 
   await db.$disconnect();
