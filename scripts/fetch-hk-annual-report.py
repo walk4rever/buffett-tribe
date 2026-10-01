@@ -66,7 +66,10 @@ ANNUAL_REPORT_TITLE_RE = re.compile(r"年報|年度報告|Annual Report", re.IGN
 # (not the annual report — Nongfu's 2022 one is ~3K chars vs ~460K for the
 # real 2022年度報告), and 補充/補遺/澄清公告 are later corrections to it.
 # Newest-first selection would otherwise pick these over the real report.
-ANNUAL_REPORT_EXCLUDE_RE = re.compile(r"補充|補遺|澄清|企業年度報告書|ANNOUNCEMENT", re.IGNORECASE)
+ANNUAL_REPORT_EXCLUDE_RE = re.compile(
+    r"補充|補遺|澄清|企業年度報告書|ANNOUNCEMENT|半年度|中期|季度|Interim|Quarterly",
+    re.IGNORECASE,
+)
 CHUNK_COUNT = 4
 
 
