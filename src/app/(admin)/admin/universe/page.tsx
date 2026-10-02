@@ -124,77 +124,91 @@ export default async function AdminUniversePage() {
         </div>
       </div>
 
-      {/* 5-Stat High-level Metrics */}
-      <div className="admin-stat-grid admin-stat-grid--5">
-        <div className="admin-stat-card">
-          <div className="admin-stat-top">
-            <span className="admin-stat-label">全量大盘底座</span>
-            <span className="admin-stat-icon admin-stat-icon--purple">
-              <Building2 size={16} />
-            </span>
+      {/* 5-Stat Two-Row Metrics: Row 1 = Macro Universe & Exclusions, Row 2 = Operating Pipeline Funnel */}
+      <div className="admin-universe-stats-group">
+        {/* Row 1: Macro Universe (2 Cards) */}
+        <div className="admin-universe-stats-row1">
+          <div className="admin-stat-card">
+            <div className="admin-stat-top">
+              <span className="admin-stat-label">全量上市公司大盘</span>
+              <span className="admin-stat-icon admin-stat-icon--purple">
+                <Building2 size={16} />
+              </span>
+            </div>
+            <div className="admin-stat-value">{totalCompanies.toLocaleString()}</div>
+            <div className="admin-stat-bottom">
+              <span className="admin-stat-hint">
+                覆盖美/港/A三大市场 · 实际运营实体 {(totalCompanies - pErr).toLocaleString()} 家
+              </span>
+            </div>
           </div>
-          <div className="admin-stat-value">{totalCompanies.toLocaleString()}</div>
-          <div className="admin-stat-bottom">
-            <span className="admin-stat-hint">覆盖美/港/A三大市场</span>
+
+          <div className="admin-stat-card">
+            <div className="admin-stat-top">
+              <span className="admin-stat-label">Phase -1 · 豁免非运营标的</span>
+              <span className="admin-stat-icon admin-stat-icon--amber">
+                <ShieldAlert size={16} />
+              </span>
+            </div>
+            <div className="admin-stat-value">{pErr.toLocaleString()}</div>
+            <div className="admin-stat-bottom">
+              <span className="admin-stat-hint">
+                {pErrPct}% 粉单/ETF/退市等主动豁免（不占用建档管线）
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="admin-stat-card">
-          <div className="admin-stat-top">
-            <span className="admin-stat-label">Phase 0 · 待处理底座</span>
-            <span className="admin-stat-icon admin-stat-icon--orange">
-              <Clock size={16} />
-            </span>
+        {/* Row 2: Pipeline Lifecycle Funnel (3 Cards) */}
+        <div className="admin-universe-stats-row2">
+          <div className="admin-stat-card">
+            <div className="admin-stat-top">
+              <span className="admin-stat-label">Phase 0 · 待处理底座</span>
+              <span className="admin-stat-icon admin-stat-icon--orange">
+                <Clock size={16} />
+              </span>
+            </div>
+            <div className="admin-stat-value">{p0.toLocaleString()}</div>
+            <div className="admin-stat-bottom">
+              <span className="admin-stat-hint">
+                占运营实体 {(((p0) / (totalCompanies - pErr || 1)) * 100).toFixed(1)}% · 等待逐批
+                {fastTrackCount > 0 ? (
+                  <> · <strong style={{ color: "var(--apple-blue, #0071e3)" }}>⚡ {fastTrackCount} 家快速排队</strong></>
+                ) : (
+                  "建档"
+                )}
+              </span>
+            </div>
           </div>
-          <div className="admin-stat-value">{p0.toLocaleString()}</div>
-          <div className="admin-stat-bottom">
-            <span className="admin-stat-hint">
-              {p0Pct}% 等待逐批
-              {fastTrackCount > 0 ? (
-                <> · <strong style={{ color: "var(--apple-blue, #0071e3)" }}>⚡ {fastTrackCount} 家快速排队</strong></>
-              ) : (
-                " Onboard"
-              )}
-            </span>
-          </div>
-        </div>
 
-        <div className="admin-stat-card">
-          <div className="admin-stat-top">
-            <span className="admin-stat-label">Phase 1 · 基础已建档</span>
-            <span className="admin-stat-icon admin-stat-icon--blue">
-              <Layers size={16} />
-            </span>
+          <div className="admin-stat-card">
+            <div className="admin-stat-top">
+              <span className="admin-stat-label">Phase 1 · 基础已建档</span>
+              <span className="admin-stat-icon admin-stat-icon--blue">
+                <Layers size={16} />
+              </span>
+            </div>
+            <div className="admin-stat-value">{p1.toLocaleString()}</div>
+            <div className="admin-stat-bottom">
+              <span className="admin-stat-hint">
+                占运营实体 {(((p1) / (totalCompanies - pErr || 1)) * 100).toFixed(1)}% · 财报与量价历史就绪
+              </span>
+            </div>
           </div>
-          <div className="admin-stat-value">{p1.toLocaleString()}</div>
-          <div className="admin-stat-bottom">
-            <span className="admin-stat-hint">{p1Pct}% 财报与量价历史就绪</span>
-          </div>
-        </div>
 
-        <div className="admin-stat-card">
-          <div className="admin-stat-top">
-            <span className="admin-stat-label">Phase 2 · 深度分析研报</span>
-            <span className="admin-stat-icon admin-stat-icon--green">
-              <CheckCircle2 size={16} />
-            </span>
-          </div>
-          <div className="admin-stat-value">{p2.toLocaleString()}</div>
-          <div className="admin-stat-bottom">
-            <span className="admin-stat-hint">{p2Pct}% 完整五维研报与画布</span>
-          </div>
-        </div>
-
-        <div className="admin-stat-card">
-          <div className="admin-stat-top">
-            <span className="admin-stat-label">Phase -1 · 豁免非运营</span>
-            <span className="admin-stat-icon admin-stat-icon--amber">
-              <ShieldAlert size={16} />
-            </span>
-          </div>
-          <div className="admin-stat-value">{pErr.toLocaleString()}</div>
-          <div className="admin-stat-bottom">
-            <span className="admin-stat-hint">{pErrPct}% 粉单/ETF/退市等豁免</span>
+          <div className="admin-stat-card">
+            <div className="admin-stat-top">
+              <span className="admin-stat-label">Phase 2 · 深度研报就绪</span>
+              <span className="admin-stat-icon admin-stat-icon--green">
+                <CheckCircle2 size={16} />
+              </span>
+            </div>
+            <div className="admin-stat-value">{p2.toLocaleString()}</div>
+            <div className="admin-stat-bottom">
+              <span className="admin-stat-hint">
+                占运营实体 {(((p2) / (totalCompanies - pErr || 1)) * 100).toFixed(1)}% · 完整五维研报与画布
+              </span>
+            </div>
           </div>
         </div>
       </div>

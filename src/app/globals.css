@@ -21368,6 +21368,42 @@ a.insight-entity-chip:hover {
 }
 
 /* ── Admin Universe Pipeline Dashboard ── */
+.admin-universe-stats-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.admin-universe-stats-row1 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.admin-universe-stats-row2 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  width: 100%;
+}
+
+@media (max-width: 960px) {
+  .admin-universe-stats-row1 {
+    grid-template-columns: 1fr;
+  }
+  .admin-universe-stats-row2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-universe-stats-row2 {
+    grid-template-columns: 1fr;
+  }
+}
+
 .admin-universe-progress-wrap {
   display: flex;
   flex-direction: column;
