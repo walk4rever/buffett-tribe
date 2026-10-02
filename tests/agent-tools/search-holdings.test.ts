@@ -7,14 +7,14 @@
 //
 // Requires DIRECT_URL. Skips (not fails) when it isn't set.
 import { beforeAll, describe, expect, it } from "vitest";
-import { createSearchHoldingsTool } from "../../services/pi-gateway/src/tools/search-holdings.js";
 
 const hasDb = Boolean(process.env.DIRECT_URL);
 
 describe.skipIf(!hasDb)("search_holdings golden cases (live DB)", () => {
-  let searchHoldingsTool: Awaited<ReturnType<typeof createSearchHoldingsTool>>;
+  let searchHoldingsTool: any;
 
   beforeAll(async () => {
+    const { createSearchHoldingsTool } = await import("../../services/pi-gateway/src/tools/search-holdings.js");
     searchHoldingsTool = await createSearchHoldingsTool();
   });
 

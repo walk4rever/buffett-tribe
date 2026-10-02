@@ -7,12 +7,17 @@
 //
 // Requires DIRECT_URL. Skips (not fails) when it isn't set, so `npm run
 // test` stays green with no secrets for local/default runs.
-import { describe, expect, it } from "vitest";
-import { searchFilingsTool } from "../../services/pi-gateway/src/tools/search-filings.js";
+import { beforeAll, describe, expect, it } from "vitest";
 
 const hasDb = Boolean(process.env.DIRECT_URL);
 
 describe.skipIf(!hasDb)("search_filings golden cases (live DB + R2)", () => {
+  let searchFilingsTool: any;
+
+  beforeAll(async () => {
+    const mod = await import("../../services/pi-gateway/src/tools/search-filings.js");
+    searchFilingsTool = mod.searchFilingsTool;
+  });
   it("finds a keyword deep inside Disney's 2020 10-K business section", async () => {
     const result = await searchFilingsTool.execute(
       "test",

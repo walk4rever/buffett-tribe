@@ -12,12 +12,17 @@
 // Requires DIRECT_URL and DASHSCOPE_API_KEY (real per-call cost). Skips (not
 // fails) when either isn't set — this is why it's intentionally left out of
 // the default CI gate rather than wired in like search_filings/search_holdings.
-import { describe, expect, it } from "vitest";
-import { searchWisdomTool } from "../../services/pi-gateway/src/tools/search-wisdom.js";
+import { beforeAll, describe, expect, it } from "vitest";
 
 const hasDeps = Boolean(process.env.DIRECT_URL) && Boolean(process.env.DASHSCOPE_API_KEY);
 
 describe.skipIf(!hasDeps)("search_wisdom golden cases (live DB + DashScope embeddings)", () => {
+  let searchWisdomTool: any;
+
+  beforeAll(async () => {
+    const mod = await import("../../services/pi-gateway/src/tools/search-wisdom.js");
+    searchWisdomTool = mod.searchWisdomTool;
+  });
   it("finds relevant passages for a canonical Buffett/Munger concept", async () => {
     const result = await searchWisdomTool.execute(
       "test",
