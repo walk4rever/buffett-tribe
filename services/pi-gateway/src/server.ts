@@ -33,6 +33,70 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
 
+const PYTHON_CHART_SCRIPT = `
+import sys, json, yfinance as yf
+ticker = sys.argv[1]
+range_val = sys.argv[2] if len(sys.argv) > 2 else "10d"
+t = yf.Ticker(ticker)
+df = t.history(period=range_val, interval="1d", auto_adjust=False)
+if df.empty:
+    print(json.dumps({"error": "empty"}))
+    sys.exit(0)
+res = {
+    "chart": {
+        "result": [{
+            "meta": {
+                "regularMarketPrice": float(df["Close"].iloc[-1]) if not df.empty else None,
+                "symbol": ticker,
+            },
+            "timestamp": [int(d.timestamp()) for d in df.index],
+            "indicators": {
+                "quote": [{
+                    "open": [float(x) if x == x else None for x in df["Open"]],
+                    "high": [float(x) if x == x else None for x in df["High"]],
+                    "low": [float(x) if x == x else None for x in df["Low"]],
+                    "close": [float(x) if x == x else None for x in df["Close"]],
+                    "volume": [int(x) if x == x else None for x in df["Volume"]],
+                }],
+                "adjclose": [{
+                    "adjclose": [float(x) if x == x else None for x in df.get("Adj Close", df["Close"])],
+                }]
+            }
+        }]
+    }
+}
+print(json.dumps(res))
+`;
+
+app.get("/chart/:ticker", async (req, res) => {
+  const { ticker } = req.params;
+  const range = (req.query.range as string) || "10d";
+  if (!ticker || typeof ticker !== "string") {
+    res.status(400).json({ error: "ticker is required" });
+    return;
+  }
+  try {
+    const { spawnSync } = await import("node:child_process");
+    const cp = spawnSync("python3", ["-c", PYTHON_CHART_SCRIPT, ticker.trim().toUpperCase(), range], {
+      encoding: "utf-8",
+      timeout: 10000,
+    });
+    if (cp.status !== 0 || !cp.stdout) {
+      res.status(502).json({ error: "python chart fetch failed", stderr: cp.stderr?.slice(0, 200) });
+      return;
+    }
+    const data = JSON.parse(cp.stdout);
+    if (!data?.chart?.result) {
+      res.status(404).json({ error: "no data found", data });
+      return;
+    }
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : "Fetch failed" });
+  }
+});
+
+
 app.post("/chat", requireSecret, async (req, res) => {
   const { message, userId, context, images: rawImages, history: rawHistory } = req.body as {
     message?: string;

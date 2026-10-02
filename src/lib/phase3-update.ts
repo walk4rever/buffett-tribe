@@ -116,17 +116,42 @@ async function parseAndUpsertYahooBars(
 }
 
 /**
- * Fetch recent price bars directly from Yahoo Finance chart API (pure Node.js, 0 python dependencies).
- * Has a 4.5-second timeout with resilient fallback.
+ * Fetch recent price bars directly:
+ * 1. Try relay gateway (air7 yfinance proxy) which is immune to Vercel/cloud datacenter 429 IP blocks.
+ * 2. Try direct Yahoo Finance chart API.
+ * 3. Try local yfinance fallback (.venv/bin/python) for local development or mini.
+ * 4. Fall back to existing database price.
  */
 async function fetchAndUpsertRecentPrices(
   ticker: string,
   dryRun = false
 ): Promise<{ ticker: string; latestPrice: number | null; priceDate: string | null; refreshed: boolean }> {
-  try {
-    const encoded = encodeURIComponent(ticker.trim().toUpperCase());
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encoded}?interval=1d&range=10d`;
+  const encoded = encodeURIComponent(ticker.trim().toUpperCase());
 
+  // 1. Try relay gateway (production air7 service, works from Vercel Serverless)
+  const gatewayBase = process.env.PI_GATEWAY_URL || "https://relay.air7.fun/pi";
+  try {
+    const gatewayUrl = `${gatewayBase.replace(/\/+$/, "")}/chart/${encoded}?range=10d`;
+    const gRes = await fetch(gatewayUrl, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (gRes.ok) {
+      const gData = await gRes.json();
+      const result = gData?.chart?.result?.[0];
+      if (result) {
+        return parseAndUpsertYahooBars(ticker, result, dryRun);
+      }
+    } else {
+      console.warn(`[phase3-update] Gateway returned ${gRes.status} for ${ticker}`);
+    }
+  } catch (err) {
+    console.warn(`[phase3-update] Gateway quote fetch failed for ${ticker}:`, err);
+  }
+
+  // 2. Direct Yahoo Finance chart API (fallback if gateway unavailable)
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encoded}?interval=1d&range=10d`;
     const res = await fetch(url, {
       headers: {
         "User-Agent":
@@ -136,20 +161,20 @@ async function fetchAndUpsertRecentPrices(
       signal: AbortSignal.timeout(4500),
     });
 
-    if (!res.ok) {
-      console.warn(`[phase3-update] Yahoo quote HTTP ${res.status} for ${ticker}, attempting local yfinance fallback`);
-      return tryYfinanceFallback(ticker, dryRun);
-    }
-
-    const data = await res.json();
-    const result = data?.chart?.result?.[0];
-    if (result) {
-      return parseAndUpsertYahooBars(ticker, result, dryRun);
+    if (res.ok) {
+      const data = await res.json();
+      const result = data?.chart?.result?.[0];
+      if (result) {
+        return parseAndUpsertYahooBars(ticker, result, dryRun);
+      }
+    } else {
+      console.warn(`[phase3-update] Yahoo quote HTTP ${res.status} for ${ticker}`);
     }
   } catch (err) {
     console.warn(`[phase3-update] Yahoo quote fetch failed for ${ticker}:`, err);
   }
 
+  // 3. Local Python yfinance (for local dev or mini machine)
   return tryYfinanceFallback(ticker, dryRun);
 }
 
