@@ -57,6 +57,8 @@
     "backfill:filing-html-urls:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-filing-html-urls.ts --dry-run",
     "backfill:quarterly-urls": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-quarterly-urls.ts",
     "backfill:quarterly-urls:execute": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-quarterly-urls.ts --execute",
+    "backfill:excluded-entities": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-excluded-entities.ts",
+    "backfill:excluded-entities:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-excluded-entities.ts --dry-run",
     "import:stock-prices:yf": "sh -c 'PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python; exec \"$PY\" scripts/fetch-stock-prices-yf.py \"$@\"' sh",
     "import:cn-hk-financials": "sh -c 'PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python; exec \"$PY\" scripts/fetch-cn-hk-financials-ak.py \"$@\"' sh",
     "import:cn-hk-company-profile": "sh -c 'PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python; exec \"$PY\" scripts/fetch-cn-hk-company-profile-ak.py \"$@\"' sh",

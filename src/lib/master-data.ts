@@ -4,6 +4,7 @@ import { formatCompanyUrl } from "@/lib/company-data";
 import { getDocumentsForOwner } from "@/lib/documents";
 import { computeHoldingActivity, computeShareDeltaPct, type HoldingActivity } from "@/lib/holding-activity";
 import { isNonCompanySecurityKind } from "@/lib/security-kind";
+import { isExcludedEntity } from "@/lib/onboard-exclusion";
 import { BRAND_EN } from "@/lib/brand";
 
 export type QuarterPoint = {
@@ -236,6 +237,7 @@ export function getHoldingCompanyPath(h: HoldingRow): string | null {
   // scripts/lib/security-kind-classify.ts) — link to nothing rather than a
   // permanently-empty stub.
   if (isNonCompanySecurityKind(h.security?.kind)) return null;
+  if (h.security?.company && isExcludedEntity(h.security.company as any)) return null;
   return formatCompanyUrl(h.security?.company ?? {});
 }
 

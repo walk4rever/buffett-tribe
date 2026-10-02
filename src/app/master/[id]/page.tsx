@@ -12,6 +12,7 @@ import { getMasterProfile } from "@/lib/master-profile";
 import { BRAND_ZH } from "@/lib/brand";
 import {
   getHoldingsByQuarter,
+  getHoldingCompanyPath,
   getLatestHoldingChangeSet,
   getLibraryItems,
   getPortfolioInsightRecord,
@@ -127,10 +128,6 @@ function getHoldingDisplay(security: {
 
 function getHoldingTicker(h: Awaited<ReturnType<typeof getHoldingsByQuarter>>[number]) {
   return h.security?.ticker ?? h.security?.company?.ticker ?? null;
-}
-
-function getHoldingCompanyPath(h: Awaited<ReturnType<typeof getHoldingsByQuarter>>[number]) {
-  return formatCompanyUrl(h.security?.company ?? {});
 }
 
 function splitNarrative(text: string) {

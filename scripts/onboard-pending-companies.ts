@@ -18,7 +18,7 @@
  * is caught, logged, and the batch continues.
  */
 import prisma from "@/lib/prisma";
-import { isNonCompanySecurityKind } from "@/lib/security-kind";
+import { evaluateOnboardExclusion } from "@/lib/onboard-exclusion";
 import { getArg, hasFlag } from "./lib/company-generation";
 import { onboardTickersWithFailureIsolation } from "./lib/onboard-batch-runner";
 
@@ -27,6 +27,7 @@ async function findPendingTickers(options?: { retryFailed?: boolean }): Promise<
     where: {
       type: "company",
       ticker: { not: null },
+      onboardPhase: { gte: 0 },
       OR: [{ cik: { not: null } }, { AND: [{ market: { not: null } }, { code: { not: null } }] }],
     },
     select: {
@@ -34,10 +35,6 @@ async function findPendingTickers(options?: { retryFailed?: boolean }): Promise<
       metadata: true,
       createdAt: true,
       _count: { select: { financials: true } },
-      // ETF/trust/warrant/etc. tickers show up as stubs the moment some
-      // investor's 13F holdings mention them, but onboard:company's 10-K
-      // import always fails for them (no annual report exists) — same
-      // exclusion src/app/company/page.tsx applies to the directory.
       securitiesAsCompany: { select: { kind: true } },
     },
     orderBy: { createdAt: "asc" },
@@ -49,17 +46,13 @@ async function findPendingTickers(options?: { retryFailed?: boolean }): Promise<
       if (!options?.retryFailed && meta?.onboardFailedAt) {
         return false;
       }
-      const reason = meta?.unmatchedReason;
-      if (typeof reason === "string" && ["etf", "acquired", "delisted", "no_financial_facts"].includes(reason)) {
-        return false;
-      }
-      return true;
+      const exclusion = evaluateOnboardExclusion({
+        ticker: row.ticker,
+        metadata: meta,
+        securities: row.securitiesAsCompany,
+      });
+      return !exclusion.isExcluded;
     })
-    .filter(
-      (row) =>
-        row.securitiesAsCompany.length === 0 ||
-        !row.securitiesAsCompany.every((s) => isNonCompanySecurityKind(s.kind)),
-    )
     .map((row) => row.ticker as string);
 }
 

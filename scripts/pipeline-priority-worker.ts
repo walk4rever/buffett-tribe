@@ -31,6 +31,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, appendF
 import { spawn } from "node:child_process";
 import path from "node:path";
 import prisma from "@/lib/prisma";
+import { evaluateOnboardExclusion } from "@/lib/onboard-exclusion";
 
 type Market = "us" | "hk" | "cn";
 
@@ -259,6 +260,33 @@ async function fetchFastTrackCandidates(limit: number, marketFilter?: Market): P
     }
     if (!ticker) continue;
 
+    const exclusion = evaluateOnboardExclusion({
+      ticker,
+      code: r.code,
+      canonicalName: r.canonicalName,
+      market: m,
+      onboardPhase: r.onboardPhase,
+      metadata: meta,
+    });
+    if (exclusion.isExcluded) {
+      await prisma.entity.update({
+        where: { id: r.id },
+        data: {
+          onboardPhase: -1,
+          priority: 0,
+          priorityRequestedAt: null,
+          metadata: {
+            ...meta,
+            isExcluded: true,
+            exclusionReason: exclusion.reason,
+            exclusionLabel: exclusion.label,
+            excludedAt: new Date().toISOString(),
+          },
+        },
+      }).catch(() => {});
+      continue;
+    }
+
     candidates.push({
       id: r.id,
       market: m,
@@ -328,6 +356,33 @@ async function fetchCandidatesForMarket(
       }
     }
     if (!ticker) continue;
+
+    const exclusion = evaluateOnboardExclusion({
+      ticker,
+      code: r.code,
+      canonicalName: r.canonicalName,
+      market,
+      onboardPhase: currentPhase,
+      metadata: meta,
+    });
+    if (exclusion.isExcluded) {
+      await prisma.entity.update({
+        where: { id: r.id },
+        data: {
+          onboardPhase: -1,
+          priority: 0,
+          priorityRequestedAt: null,
+          metadata: {
+            ...meta,
+            isExcluded: true,
+            exclusionReason: exclusion.reason,
+            exclusionLabel: exclusion.label,
+            excludedAt: new Date().toISOString(),
+          },
+        },
+      }).catch(() => {});
+      continue;
+    }
 
     let priorityScore = 0;
     if (market === "hk" && CORE_HK_TICKERS.has(ticker.toUpperCase())) priorityScore += 100;

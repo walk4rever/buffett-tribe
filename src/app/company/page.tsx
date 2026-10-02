@@ -74,7 +74,7 @@ async function getMarketUniverseCounts() {
   try {
     const groups = await prisma.entity.groupBy({
       by: ["market"],
-      where: { type: "company" },
+      where: { type: "company", onboardPhase: { gte: 0 } },
       _count: { id: true },
     });
     let total = 0;

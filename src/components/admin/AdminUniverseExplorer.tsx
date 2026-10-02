@@ -89,7 +89,7 @@ export function AdminUniverseExplorer({
       case 1:
         return <span className="admin-badge admin-badge--blue">Phase 1 · 基础建档</span>;
       case -1:
-        return <span className="admin-badge admin-badge--red">异常 · 重试熔断</span>;
+        return <span className="admin-badge admin-badge--amber">豁免 · 场外/非公司标的</span>;
       default:
         return <span className="admin-badge admin-badge--gray">Phase 0 · 待建档</span>;
     }
@@ -157,7 +157,7 @@ export function AdminUniverseExplorer({
             <option value="2">Phase 2 (深度分析)</option>
             <option value="1">Phase 1 (基础建档)</option>
             <option value="0">Phase 0 (待处理底座)</option>
-            <option value="-1">Phase -1 (异常/死信池)</option>
+            <option value="-1">Phase -1 (主动豁免/场外/非公司标的)</option>
           </select>
 
           <button

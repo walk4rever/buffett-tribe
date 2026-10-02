@@ -59,6 +59,9 @@ export async function GET(request: NextRequest) {
     if (!Number.isNaN(phaseNum)) {
       conditions.push(Prisma.sql`e."onboardPhase" = ${phaseNum}`);
     }
+  } else {
+    // Default search hides excluded non-operating entities (onboardPhase = -1)
+    conditions.push(Prisma.sql`e."onboardPhase" >= 0`);
   }
 
   const whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
