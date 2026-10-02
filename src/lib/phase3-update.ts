@@ -163,12 +163,20 @@ async function tryYfinanceFallback(
     const python = existsSync(".venv/bin/python") ? ".venv/bin/python" : null;
     if (python) {
       const start = new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10);
-      const jsonPath = `/tmp/stock-prices-yf/${ticker.toUpperCase()}.json`;
+      const possibleJsonPaths = [
+        `/tmp/stock-prices-yf/${ticker.toUpperCase()}.json`,
+        `/tmp/stock-prices-yf/${ticker.toUpperCase().replace(/\.[A-Z]+$/, "")}.json`,
+      ];
       const args = ["scripts/fetch-stock-prices-yf.py", "--ticker", ticker, "--start", start, "--keep-files"];
       const res = spawnSync(python, args, { encoding: "utf-8", timeout: 10000 });
-      if (res.status === 0 && existsSync(jsonPath)) {
-        const raw = readFileSync(jsonPath, "utf-8");
-        unlinkSync(jsonPath);
+      const foundPath = possibleJsonPaths.find((p) => existsSync(p));
+      if (res.status === 0 && foundPath) {
+        const raw = readFileSync(foundPath, "utf-8");
+        unlinkSync(foundPath);
+        // Clean up corresponding CSV if generated
+        const csvPath = foundPath.replace(/\.json$/, ".csv");
+        if (existsSync(csvPath)) unlinkSync(csvPath);
+
         const data = JSON.parse(raw);
         const result = data?.chart?.result?.[0];
         if (result) {
