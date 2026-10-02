@@ -12,8 +12,10 @@ interface ExplorerItem extends CompanyDirectoryItem {
 
 export function AdminUniverseExplorer({
   initialFastTrackCount = 0,
+  totalCompanies,
 }: {
   initialFastTrackCount?: number;
+  totalCompanies?: number;
 }) {
   const [query, setQuery] = useState("");
   const [market, setMarket] = useState("all");
@@ -99,7 +101,7 @@ export function AdminUniverseExplorer({
     <section className="admin-card admin-card--table">
       <div className="admin-card-header">
         <div className="admin-card-title-group">
-          <h2>全市场标的检索与状态探查 (16,435 家)</h2>
+          <h2>全市场标的检索与状态探查 ({totalCompanies ? totalCompanies.toLocaleString() : "16,476"} 家)</h2>
         </div>
         <span className="admin-stat-hint">
           {loading ? "检索中…" : `展示匹配的前 ${items.length} 家`}

@@ -7,6 +7,7 @@ import {
   Building2,
   ArrowUpRight,
   TrendingUp,
+  ShieldAlert,
 } from "lucide-react";
 import prisma from "@/lib/prisma";
 import { formatCompanyUrl } from "@/lib/company-data";
@@ -90,6 +91,7 @@ export default async function AdminUniversePage() {
   const p0Pct = ((p0 / (totalCompanies || 1)) * 100).toFixed(1);
   const p1Pct = ((p1 / (totalCompanies || 1)) * 100).toFixed(1);
   const p2Pct = ((p2 / (totalCompanies || 1)) * 100).toFixed(1);
+  const pErrPct = ((pErr / (totalCompanies || 1)) * 100).toFixed(1);
 
   // Market stats calculation
   const markets = [
@@ -103,9 +105,11 @@ export default async function AdminUniversePage() {
     const mP0 = Number(rows.find((r) => r.onboardPhase === 0)?.count ?? 0);
     const mP1 = Number(rows.find((r) => r.onboardPhase === 1)?.count ?? 0);
     const mP2 = Number(rows.find((r) => r.onboardPhase === 2)?.count ?? 0);
-    const mTotal = mP0 + mP1 + mP2;
-    const rate = mTotal > 0 ? (((mP1 + mP2) / mTotal) * 100).toFixed(1) : "0.0";
-    return { ...m, total: mTotal, p0: mP0, p1: mP1, p2: mP2, rate };
+    const mPErr = Number(rows.find((r) => r.onboardPhase === -1)?.count ?? 0);
+    const mTotal = mP0 + mP1 + mP2 + mPErr;
+    const activeTotal = mTotal - mPErr;
+    const rate = activeTotal > 0 ? (((mP1 + mP2) / activeTotal) * 100).toFixed(1) : "0.0";
+    return { ...m, total: mTotal, activeTotal, p0: mP0, p1: mP1, p2: mP2, pErr: mPErr, rate };
   });
 
   return (
@@ -121,8 +125,8 @@ export default async function AdminUniversePage() {
         </div>
       </div>
 
-      {/* 4-Stat High-level Metrics */}
-      <div className="admin-stat-grid">
+      {/* 5-Stat High-level Metrics */}
+      <div className="admin-stat-grid admin-stat-grid--5">
         <div className="admin-stat-card">
           <div className="admin-stat-top">
             <span className="admin-stat-label">全量大盘底座</span>
@@ -181,6 +185,19 @@ export default async function AdminUniversePage() {
             <span className="admin-stat-hint">{p2Pct}% 完整五维研报与画布</span>
           </div>
         </div>
+
+        <div className="admin-stat-card">
+          <div className="admin-stat-top">
+            <span className="admin-stat-label">Phase -1 · 豁免非运营</span>
+            <span className="admin-stat-icon admin-stat-icon--amber">
+              <ShieldAlert size={16} />
+            </span>
+          </div>
+          <div className="admin-stat-value">{pErr.toLocaleString()}</div>
+          <div className="admin-stat-bottom">
+            <span className="admin-stat-hint">{pErrPct}% 粉单/ETF/退市等豁免</span>
+          </div>
+        </div>
       </div>
 
       {/* Visual Progress Bar Card */}
@@ -192,7 +209,7 @@ export default async function AdminUniversePage() {
           </div>
           <span className="admin-stat-hint">
             已建档 (P1+P2): {(p1 + p2).toLocaleString()} 家 (
-            {(((p1 + p2) / (totalCompanies || 1)) * 100).toFixed(1)}%)
+            占运营实体 {(((p1 + p2) / (totalCompanies - pErr || 1)) * 100).toFixed(1)}%)
           </span>
         </div>
 
@@ -213,6 +230,13 @@ export default async function AdminUniversePage() {
               style={{ width: `${parseFloat(p0Pct)}%` }}
               title={`Phase 0 待处理: ${p0.toLocaleString()} 家 (${p0Pct}%)`}
             />
+            {pErr > 0 && (
+              <div
+                className="admin-universe-segment admin-universe-segment--amber"
+                style={{ width: `${parseFloat(pErrPct)}%` }}
+                title={`Phase -1 豁免/非运营: ${pErr.toLocaleString()} 家 (${pErrPct}%)`}
+              />
+            )}
           </div>
           <div className="admin-universe-legend">
             <div className="admin-universe-legend-item">
@@ -227,6 +251,12 @@ export default async function AdminUniversePage() {
               <span className="admin-universe-dot admin-universe-dot--gray" />
               <span>Phase 0 待建档底座 ({p0.toLocaleString()} 家 · {p0Pct}%)</span>
             </div>
+            {pErr > 0 && (
+              <div className="admin-universe-legend-item">
+                <span className="admin-universe-dot admin-universe-dot--amber" />
+                <span>Phase -1 豁免非运营 ({pErr.toLocaleString()} 家 · {pErrPct}%)</span>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -240,23 +270,27 @@ export default async function AdminUniversePage() {
               <div>
                 <h3 className="admin-universe-market-title">{m.label}</h3>
                 <span className="admin-universe-market-sub">
-                  总量 {m.total.toLocaleString()} 家 · 建档率 {m.rate}%
+                  总量 {m.total.toLocaleString()} 家 · 运营建档率 {m.rate}%
                 </span>
               </div>
             </div>
 
             <div className="admin-universe-market-stats">
               <div className="admin-universe-market-stat-col">
-                <span className="admin-universe-market-num">{m.p2}</span>
-                <span className="admin-universe-market-lbl">Phase 2 深度</span>
+                <span className="admin-universe-market-num">{m.p2.toLocaleString()}</span>
+                <span className="admin-universe-market-lbl">P2 深度</span>
               </div>
               <div className="admin-universe-market-stat-col">
-                <span className="admin-universe-market-num">{m.p1}</span>
-                <span className="admin-universe-market-lbl">Phase 1 基础</span>
+                <span className="admin-universe-market-num">{m.p1.toLocaleString()}</span>
+                <span className="admin-universe-market-lbl">P1 基础</span>
               </div>
               <div className="admin-universe-market-stat-col">
-                <span className="admin-universe-market-num">{m.p0}</span>
-                <span className="admin-universe-market-lbl">Phase 0 待处理</span>
+                <span className="admin-universe-market-num">{m.p0.toLocaleString()}</span>
+                <span className="admin-universe-market-lbl">P0 待建档</span>
+              </div>
+              <div className="admin-universe-market-stat-col">
+                <span className="admin-universe-market-num">{m.pErr.toLocaleString()}</span>
+                <span className="admin-universe-market-lbl">P-1 豁免</span>
               </div>
             </div>
 
@@ -264,11 +298,20 @@ export default async function AdminUniversePage() {
               <div
                 className="admin-universe-segment admin-universe-segment--green"
                 style={{ width: `${(m.p2 / (m.total || 1)) * 100}%` }}
+                title={`Phase 2 深度: ${m.p2}`}
               />
               <div
                 className="admin-universe-segment admin-universe-segment--blue"
                 style={{ width: `${(m.p1 / (m.total || 1)) * 100}%` }}
+                title={`Phase 1 基础: ${m.p1}`}
               />
+              {m.pErr > 0 && (
+                <div
+                  className="admin-universe-segment admin-universe-segment--amber"
+                  style={{ width: `${(m.pErr / (m.total || 1)) * 100}%` }}
+                  title={`Phase -1 豁免: ${m.pErr}`}
+                />
+              )}
             </div>
           </div>
         ))}
@@ -338,19 +381,19 @@ export default async function AdminUniversePage() {
           </div>
         </section>
 
-        {/* Pipeline Health & Dead Letter Pool */}
+        {/* Pipeline Health, Excluded Entities & Dead Letter Pool */}
         <section className="admin-card">
           <div className="admin-card-header">
             <div className="admin-card-title-group">
               {pErr > 0 ? (
-                <AlertTriangle size={16} className="admin-card-title-icon admin-card-title-icon--red" />
+                <ShieldAlert size={16} className="admin-card-title-icon admin-card-title-icon--amber" />
               ) : (
                 <CheckCircle2 size={16} className="admin-card-title-icon admin-card-title-icon--green" />
               )}
-              <h2>管线健康度与死信预警池</h2>
+              <h2>豁免非运营与死信池</h2>
             </div>
             <span className="admin-stat-hint">
-              {pErr > 0 ? `${pErr} 家异常标的` : "运行健康"}
+              {pErr > 0 ? `${pErr.toLocaleString()} 家豁免/异常标的` : "运行健康"}
             </span>
           </div>
 
@@ -368,22 +411,23 @@ export default async function AdminUniversePage() {
                 {failedCompanies.map((c) => {
                   const meta = (c.metadata as Record<string, unknown>) || {};
                   const zh = (typeof meta.nameZh === "string" && meta.nameZh) || c.canonicalName;
-                  const errReason =
-                    typeof meta.onboardPhase1LastError === "string"
-                      ? meta.onboardPhase1LastError
-                      : "多次重试失败";
+                  const isExcluded = Boolean(meta.isExcluded);
+                  const reason =
+                    (typeof meta.exclusionLabel === "string" && meta.exclusionLabel) ||
+                    (typeof meta.onboardPhase1LastError === "string" && meta.onboardPhase1LastError) ||
+                    (isExcluded ? "豁免非运营标的" : "多次重试失败");
 
                   return (
                     <div key={c.id} className="admin-universe-feed-item admin-universe-feed-item--error">
                       <div className="admin-universe-feed-main">
-                        <span className="admin-badge admin-badge--red">
-                          {(c.market || "us").toUpperCase()}
+                        <span className={`admin-badge ${isExcluded ? "admin-badge--amber" : "admin-badge--red"}`}>
+                          {isExcluded ? "豁免" : (c.market || "us").toUpperCase()}
                         </span>
                         <span className="admin-universe-feed-ticker">{c.ticker || c.code}</span>
                         <span className="admin-universe-feed-name">{zh}</span>
                       </div>
-                      <div className="admin-universe-error-desc" title={errReason}>
-                        {errReason}
+                      <div className="admin-universe-error-desc" title={reason}>
+                        {reason}
                       </div>
                     </div>
                   );
@@ -395,7 +439,7 @@ export default async function AdminUniversePage() {
       </div>
 
       {/* Interactive Explorer / Search Table */}
-      <AdminUniverseExplorer initialFastTrackCount={fastTrackCount} />
+      <AdminUniverseExplorer initialFastTrackCount={fastTrackCount} totalCompanies={totalCompanies} />
     </div>
   );
 }

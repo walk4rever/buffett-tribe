@@ -17551,6 +17551,10 @@ a.insight-entity-chip:hover {
   min-width: 0; /* Allow grid items to shrink */
 }
 
+.admin-stat-grid--5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
 .admin-stat-card {
   background: #ffffff;
   border-radius: 14px;
@@ -17612,6 +17616,16 @@ a.insight-entity-chip:hover {
 .admin-stat-icon--purple {
   background: rgba(175, 82, 222, 0.1);
   color: #af52de;
+}
+
+.admin-stat-icon--amber {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
+.admin-stat-icon--red {
+  background: rgba(255, 59, 48, 0.1);
+  color: #ff3b30;
 }
 
 .admin-stat-value {
@@ -18029,6 +18043,12 @@ a.insight-entity-chip:hover {
 .admin-badge--orange {
   background: rgba(255, 149, 0, 0.12);
   color: #c96b00;
+  font-weight: 600;
+}
+
+.admin-badge--amber {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
   font-weight: 600;
 }
 
@@ -18753,8 +18773,15 @@ a.insight-entity-chip:hover {
 }
 
 /* ========== Responsive Media Queries ========== */
+@media (max-width: 1200px) {
+  .admin-stat-grid--5 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 @media (max-width: 960px) {
-  .admin-stat-grid {
+  .admin-stat-grid,
+  .admin-stat-grid--5 {
     grid-template-columns: repeat(2, 1fr);
   }
 }
@@ -19052,7 +19079,8 @@ a.insight-entity-chip:hover {
 }
 
 @media (max-width: 520px) {
-  .admin-stat-grid {
+  .admin-stat-grid,
+  .admin-stat-grid--5 {
     grid-template-columns: 1fr;
   }
   .admin-toolbar {
@@ -21372,6 +21400,10 @@ a.insight-entity-chip:hover {
   background: rgba(0, 0, 0, 0.15);
 }
 
+.admin-universe-segment--amber {
+  background: #f59e0b;
+}
+
 .admin-universe-legend {
   display: flex;
   flex-wrap: wrap;
@@ -21402,6 +21434,10 @@ a.insight-entity-chip:hover {
 
 .admin-universe-dot--gray {
   background: rgba(0, 0, 0, 0.35);
+}
+
+.admin-universe-dot--amber {
+  background: #f59e0b;
 }
 
 .admin-universe-market-grid {
@@ -21441,7 +21477,7 @@ a.insight-entity-chip:hover {
 
 .admin-universe-market-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.5rem;
   background: rgba(0, 0, 0, 0.02);
   padding: 0.6rem 0.5rem;
