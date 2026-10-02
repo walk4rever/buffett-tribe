@@ -580,6 +580,32 @@ mini 机器 Hourly Cron 批处理近期偶发的 P0 失败案例，经排查全�
    - `src/lib/company-data.ts`：根治 `getRecentHolders` 中 30 次循环查询机构主体的 N+1 级联风暴，收敛为单次 `where: { filerEntityId: { in: holderIds } }` 批量查询；
    - 引入 React 19 `cache()` 消除同一次 Server Component 渲染树中对 `getCompanyByIdentifier` 的重复调用。
 
+### 3. Vercel Serverless Egress 429 根治与 air7 行情中继落地
+- **排查案例（万豪国际 MAR）**：
+  - 用户在网页端点击更新，但股价依然停留在 9月21日。排查确认**不是 Cloudflare 缓存**，而是：
+    1. 数据库底表在更新前确实只记录到 9月21日；
+    2. 线上网页运行在 Vercel Serverless（AWS 数据中心 IP），直接向 Yahoo Finance 发起请求被边缘网关拦截返回 `HTTP 429 Too Many Requests`；
+    3. Vercel 是纯 Node.js 容器，不存在 `.venv/bin/python`，导致本地 yfinance 降级静默失效，回退读取了 DB 老数据。
+- **架构级解决方案（air7 专属行情中继）**：
+  - 在拥有原生独立公网 IP 的 `air7` 机器上配置 Python `yfinance` 与 `curl_cffi`；
+  - 在 [`services/pi-gateway/src/server.ts`](file:///Users/rafael/R129/buffett-tribe/services/pi-gateway/src/server.ts) 暴露 `/chart/:ticker` 高性能中继接口；
+  - [`src/lib/phase3-update.ts`](file:///Users/rafael/R129/buffett-tribe/src/lib/phase3-update.ts) 将行情拉取优先路由至 `https://relay.air7.fun/pi/chart/:ticker`；
+  - **实测验收**：在生产环境 Vercel（`vt.air7fun.com`）上触发 `POST /api/company/phase3`，万豪国际（MAR，849ms）、亚马逊（AMZN，1254ms）、阿里巴巴（BABA，1165ms）均在 1 秒左右完成最新日线抓取、批量事务落库与估值重算，彻底摆脱 429 困扰。
+
+### 4. Phase 3 用户侧价值闭环深度审计（已体现 vs 待呈现）
+用户在页面端点击 `⚡ 更新` 后，底层系统共执行了 5 件事，但在前端展示层存在“后端算得深、前端漏体现”的脱节：
+1. **全 Ticker 实时行情抓取并入库**：**✅ 页面有体现**。页面重载后，顶部最新市价、报价日期、走廊图线即刻刷新；
+2. **5 项基本面红旗体检（纯算法）**：**❌ 页面无直接体现**。现金流背离、塞货、积压、商誉虚胖、高负债率等检测结果已存入后端快照，但前端页面目前未挂载红旗预警卡片；
+3. **动态测算估值走廊偏离度**：**✅ 页面有体现**。依据最新市价动态重算当前 PE，并在首屏 Badge 显示“折价 ~X% 击球区”或“溢价区”；
+4. **态势感知 1~2 句高密度简评落库**：**❌ 页面无体现**。生成的简评只存入了 `Entity.metadata.p3`、`GeneratedContentVersion` 与 `AnalysisRun`，前端没有专门渲染展示的文字插槽；
+5. **按钮状态切换与页面重载**：**✅ 交互闭环**。Loading 动效 → `✓ 已更新` → 自动重载刷新视图。
+
+### 5. 后续演进待办（P1 优先级）
+- [ ] **Phase 3 前端展示插槽挂载**：
+  - 在公司详情页 / 数字价值线页面顶部或估值走廊旁，增加“态势简评”文字胶囊（直接读取 `metadata.p3.summary`）；
+  - 若存在触发的红旗预警（`metadata.p3.redFlags`），以醒目的警戒色标签展示（如 `⚠️ 现金流背离`、`⚠️ 负债率高企`），真正把 Phase 3 的核心投研价值直观交付给用户。
+
+
 
 
 
