@@ -16,8 +16,17 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 const hasDeps = Boolean(process.env.DIRECT_URL) && Boolean(process.env.DASHSCOPE_API_KEY);
 
+interface ToolResult {
+  content: Array<{ type: string; text?: string }>;
+  details?: unknown;
+}
+
+interface TestTool {
+  execute: (id: string, params: Record<string, unknown>, context?: unknown) => Promise<ToolResult>;
+}
+
 describe.skipIf(!hasDeps)("search_wisdom golden cases (live DB + DashScope embeddings)", () => {
-  let searchWisdomTool: any;
+  let searchWisdomTool: TestTool;
 
   beforeAll(async () => {
     const mod = await import("../../services/pi-gateway/src/tools/search-wisdom.js");

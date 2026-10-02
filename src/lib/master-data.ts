@@ -237,7 +237,7 @@ export function getHoldingCompanyPath(h: HoldingRow): string | null {
   // scripts/lib/security-kind-classify.ts) — link to nothing rather than a
   // permanently-empty stub.
   if (isNonCompanySecurityKind(h.security?.kind)) return null;
-  if (h.security?.company && isExcludedEntity(h.security.company as any)) return null;
+  if (h.security?.company && isExcludedEntity(h.security.company)) return null;
   return formatCompanyUrl(h.security?.company ?? {});
 }
 

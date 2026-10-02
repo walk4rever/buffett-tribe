@@ -3,7 +3,6 @@ import {
   Layers,
   CheckCircle2,
   Clock,
-  AlertTriangle,
   Building2,
   ArrowUpRight,
   TrendingUp,

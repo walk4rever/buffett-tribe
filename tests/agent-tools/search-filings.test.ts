@@ -11,8 +11,17 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 const hasDb = Boolean(process.env.DIRECT_URL);
 
+interface ToolResult {
+  content: Array<{ type: string; text?: string }>;
+  details?: unknown;
+}
+
+interface TestTool {
+  execute: (id: string, params: Record<string, unknown>, context?: unknown) => Promise<ToolResult>;
+}
+
 describe.skipIf(!hasDb)("search_filings golden cases (live DB + R2)", () => {
-  let searchFilingsTool: any;
+  let searchFilingsTool: TestTool;
 
   beforeAll(async () => {
     const mod = await import("../../services/pi-gateway/src/tools/search-filings.js");

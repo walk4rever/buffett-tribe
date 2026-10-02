@@ -4,7 +4,6 @@ import { CompanyDisplayName } from "@/components/CompanyDisplayName";
 import { HoldingsDetailTable, type HoldingsDetailRow } from "@/components/HoldingsDetailTable";
 import { MasterAgentDialog } from "@/components/MasterAgentDialog";
 import { SiteNav } from "@/components/SiteNav";
-import { formatCompanyUrl } from "@/lib/company-data";
 import { formatUsdInYi } from "@/lib/currency";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
 import { getTribeMember, getTribeMemberColor } from "@/lib/tribe";
