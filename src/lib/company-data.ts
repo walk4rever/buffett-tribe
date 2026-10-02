@@ -1,3 +1,4 @@
+import { cache } from "react";
 import db from "@/lib/prisma";
 import { formatUsdInYi } from "@/lib/currency";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
@@ -251,7 +252,7 @@ export async function getCompanyByTicker(ticker: string) {
  * This is the only place that decides which lookup strategy a URL uses —
  * callers (the route files) don't branch on market themselves.
  */
-export async function getCompanyByIdentifier(raw: string) {
+export const getCompanyByIdentifier = cache(async (raw: string) => {
   const parsed = parseCompanyIdentifier(raw);
   if (parsed) {
     if (parsed.market === "us") {
@@ -320,7 +321,7 @@ export async function getCompanyByIdentifier(raw: string) {
       priority: true,
     },
   });
-}
+});
 
 export async function getCompanySecurities(entityId: string) {
   const rows = await db.security.findMany({
@@ -504,27 +505,27 @@ export async function getRecentHolders(entityId: string, limit = 20) {
   const holderIds = [...new Set(rows.map((r) => r.holder.id))];
   const holderQuarterMap = new Map<string, Array<{ asOfDate: Date; year: number; quarter: number }>>();
   if (holderIds.length) {
-    const holderQuarters = await Promise.all(
-      holderIds.map(async (id) => {
-        const filings = await db.extSource.findMany({
-          where: { filerEntityId: id, kind: "13f" },
-          orderBy: [{ periodYear: "asc" }, { periodQuarter: "asc" }],
-          select: { periodYear: true, periodQuarter: true, ts: true },
-        });
-        return {
-          id,
-          quarters: filings
-            .filter((f) => f.periodYear != null && f.periodQuarter != null)
-            .map((f) => ({
-              asOfDate: f.ts ?? new Date(Date.UTC(f.periodYear!, (f.periodQuarter! - 1) * 3 + 2, 31)),
-              year: f.periodYear!,
-              quarter: f.periodQuarter!,
-            })),
-        };
-      }),
-    );
-    for (const item of holderQuarters) {
-      holderQuarterMap.set(item.id, item.quarters);
+    const allFilings = await db.extSource.findMany({
+      where: { filerEntityId: { in: holderIds }, kind: "13f" },
+      orderBy: [{ periodYear: "asc" }, { periodQuarter: "asc" }],
+      select: { filerEntityId: true, periodYear: true, periodQuarter: true, ts: true },
+    });
+
+    for (const id of holderIds) {
+      holderQuarterMap.set(id, []);
+    }
+
+    for (const f of allFilings) {
+      if (f.filerEntityId && f.periodYear != null && f.periodQuarter != null) {
+        const list = holderQuarterMap.get(f.filerEntityId);
+        if (list) {
+          list.push({
+            asOfDate: f.ts ?? new Date(Date.UTC(f.periodYear, (f.periodQuarter - 1) * 3 + 2, 31)),
+            year: f.periodYear,
+            quarter: f.periodQuarter,
+          });
+        }
+      }
     }
   }
 

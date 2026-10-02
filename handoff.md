@@ -358,7 +358,7 @@ mini 机器 Hourly Cron 批处理近期偶发的 P0 失败案例，经排查全�
 * **根本原因**：美国 SEC EDGAR 对 OTC Markets（特别是 Pink Sheets 粉单市场的外国普通股和无赞助 ADR）免除递交 10-K/20-F 标准电子财务年报的法定义务；
 * **现状后果**：这类标的在 P0 阶抓取财务和 SEC 年报时 100% 报错，白白消耗批处理网络与计算开销。
 
-### 2. 深度排查：“只是避开 endsWith('Y') 吗？”
+### 2. 深度排查：”只是避开 endsWith('Y') 吗？”
 针对代码规则是否只避开 `endsWith('Y')`，我们对全库 8,072 家美股公司进行了全量数据交叉验证，**明确结论：绝对不能只避开 `endsWith('Y')`**。
 
 #### (1) 致命误杀风险（单纯判断 `endsWith('Y')`）
@@ -405,6 +405,181 @@ mini 机器 Hourly Cron 批处理近期偶发的 P0 失败案例，经排查全�
    - **P0 待处理池虚胖总数瞬间减少 1,771 家**（从 16,463 降至 14,692 家真实正规公司），大盘进度真实可控；
    - 彻底根除批处理中的无效网络 I/O 与超时报错；
    - 未来若为 OTC/ADR 标的定制直连原产国（港股/欧股）底层数据源时，可通过 `isOtc: true` 随时调出。
+
+---
+
+## 十、 价值线（Value Line）前端用户体验与金融内核深度审计（经第一性原理复核）
+
+> 记录时间：2026-10-01 21:00（初始审计） / 2026-10-02 12:30（工程与哲学复核对齐）
+
+### 1. 评估维度与审计方法
+针对公司详情页的”价值线”核心模块（`/company/[id]` 的 `valueline` tab，实现于 [`ValueLineCard.tsx`](file:///Users/rafael/R129/buffett-tribe/src/components/ValueLineCard.tsx) + [`value-line-data.ts`](file:///Users/rafael/R129/buffett-tribe/src/lib/value-line-data.ts) + [`globals.css`](file:///Users/rafael/R129/buffett-tribe/src/app/globals.css)），从真实投资决策与工程第一性原理四维交叉复核：
+1. **价值密度** - 该要素对价值投资决策是否真正有用？
+2. **事实准确性** - 计算逻辑是否严谨？是否坚守“第一层真实事实”而非模型幻觉与粗暴假设？
+3. **首屏必要性** - 核心击球区决策依据是否在首屏立即触达，还是被静态冗余信息淹没？
+4. **移动端适配与交互** - 在 320-375px 小屏设备上是否顺畅可用？触控交互是否完整？
+
+### 2. 核心发现与评分（经实测与代码复核纠偏）
+
+| 维度 | 评分 | 核心问题与事实核对 |
+|------|:---:|------------------|
+| **价值密度** | **9/10** | 核心指标（四宫格体检、价格价值走廊图、大师持仓）极具深度；**5年 CAGR 增速是识别“低 PE 价值陷阱”的第一安全绳，属于高价值密度指标，应予保留**；但公司概览段落为静态常识，不宜占据首屏。 |
+| **事实准确性** | **6/10** | 财务统计计算准确；但 **benchmark PE 全行业一刀切（统一 18x）严重失真**，**AI 生成内容存在通用 Fallback 模板**（无分析时用套话冒充个股护城河/风险，存在“误导性真实”风险）。 |
+| **首屏必要性** | **5/10** | **公司概览长文本**（200-300px）+ **大师持仓 6 张大卡片**严重侵占垂直空间，导致最核心的**走廊图与四宫格**被挤出首屏，用户需大幅下滑才能看到关键决策信息。 |
+| **移动端适配** | **6/10** | **事实纠偏**：初始审计称“未见响应式断点、布局崩溃”与代码事实不符——`globals.css` 早已实现四宫格在 640px 下单列、持仓卡片单列、财务表格粘性表头横向滑动。**真实硬伤在于：Sparkline 缺少触控拖拽事件（Touch Scrubbing），以及 SVG 固定 viewBox 等比缩放导致小屏文字缩小至 4.5px 无法辨识**。 |
+
+---
+
+### 3. 第一性原理裁决：认同与坚决否决的反模式
+
+#### ✅ 深度认同并必须采纳的项：
+1. **AI Fallback 模板去伪存真（信誉红线）**：
+   - [`value-line-data.ts:1153-1183`](file:///Users/rafael/R129/buffett-tribe/src/lib/value-line-data.ts#L1153-L1183) 中，个股未生成 `moatJson` 时会自动套用行业通用文案（如银行显示“稳固的特许经营牌照壁垒...”）。这会误导用户以为是个股深度分析。
+   - **裁决**：坚守“事实与推论严格区分”原则。未生成时明确标识“个股深度分析待生成”或留白，绝不拿通用模板冒充个股洞察。
+2. **Benchmark PE 行业差异化校准（常识修复）**：
+   - 银行/周期/科技共用 18.0x PE 基准是荒谬的（导致银行永远“极度低估”、科技永远“极度溢价”）。必须将 `sectorModelType` 真正接入估值计算中。
+3. **首屏信息架构重构（价值优先）**：
+   - 用户打开价值线是为了看“价格与价值的位置”和“四宫格体检”。概览段落默认折叠收敛，大师持仓在首屏收敛为概要胶囊，让走廊图和四宫格挺进首屏。
+4. **移动端触控交互补齐**：
+   - Sparkline 补齐 `onTouchStart` / `onTouchMove` / `onTouchEnd`，并解决 SVG 在小屏下的文字微缩问题。
+
+#### ❌ 坚决否决并废弃的反模式：
+1. **坚决废弃 P3“接入 Shiller PE / VIX 动态调整低估/高估阈值”**：
+   - **否决理由 1（违背价值投资常识）**：“买股票就是买公司”。市场恐慌大跌、VIX 飙升时，好公司被打折甩卖，**它本身就是实打实的低估，这正是价值投资者的黄金击球区**！绝不能因为全市场恐慌反而人为抬高门槛，把便宜资产判定为“不低估”。
+   - **否决理由 2（混淆宏观择时与公司内在价值）**：根据大盘情绪水位漂移估值标准，是宏观对冲或趋势动量流派的做法，与巴菲特自下而上关注个股内在价值的哲学背道而驰。
+   - **否决理由 3（违反 Musk Algorithm 第 1 步）**：无端引入复杂的宏观外部数据管线，徒增脆弱依赖与维护成本。
+2. **坚决废弃“类似 TradingView 的 BUY / SELL 交易信号”**：
+   - **否决理由**：平台定位是严肃的深度基本面投研体系（Facts → Framework → Situational Awareness），绝不做短线炒股机或荐股喊单软件。给出 BUY/SELL 信号不仅具有极高合规风险，还会彻底破坏产品的专业调性。现有的“价值击球区（折价 ~X%）/ 溢价高估区”客观中立，完全契合巴菲特棒球击球区哲学。
+3. **纠偏“5年 CAGR 属于低优先级”的判断**：
+   - 复合增速绝非次要指标，它是避免“低 PE 价值陷阱（业务萎缩导致的假便宜）”的核心过滤器。保留在报表上方单行呈现，信息密度高且不占空间。
+
+---
+
+### 4. 关键技术债务与落地重构方案
+
+#### P0 - 移动端 Sparkline 触控手势与文字适配（高优先级）
+* **触控手势补齐**：
+  - 在 [`ValueLineSparkline`](file:///Users/rafael/R129/buffett-tribe/src/components/ValueLineCard.tsx#L97) 中增加 Touch 事件，通过 `e.touches[0].clientX` 计算最近坐标点索引，实现手机上按住左右拖拽查看历史某日股价与估值差：
+  ```typescript
+  const handleTouch = (e: React.TouchEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const touchX = e.touches[0].clientX - rect.left;
+    const ratio = Math.max(0, Math.min(1, (touchX - paddingLeft) / chartW));
+    const idx = Math.round(ratio * (points.length - 1));
+    setHoverIdx(idx);
+  };
+  ```
+* **SVG 字体小屏微缩根治**：
+  - 在小屏设备下，Y 轴参考线与 X 轴年份文字改用 CSS 响应式或分离的 HTML 标签，避免因 SVG 等比缩放导致文字缩水至 4.5px 不可读。
+
+#### P1 - 首屏信息架构层次重组（高优先级）
+* **视觉层级重排**：
+  ```
+  【当前布局（主次倒置）】
+    1. 标题与核心报价
+    2. 公司概览长文本 (200-300px)
+    3. 大师持仓 6 张大卡片 (300-400px)
+    4. 价格与价值走廊图 (被挤至第二屏)
+    5. 巴菲特四宫格 (被挤至第三屏)
+
+  【重构后布局（价值与击球区直达）】
+    1. 标题、当前报价与价值击球区状态 Badge
+    2. 价格 vs 价值走廊图 (首屏核心视觉焦点)
+    3. 巴菲特四宫格体检 (首屏核心基本面抓手)
+    4. 大师持仓概要 (首屏仅展示紧凑摘要胶囊，点击平滑展开明细卡片)
+    5. 业务概览 (默认 2 行截断 + 展开全文)
+    6. 核心护城河与风险 (AI 洞察，带诚实生成状态)
+    7. 5年复合增速与多期财报矩阵 (底部深度查验)
+  ```
+
+#### P1 - AI Fallback 诚实标识机制（高优先级）
+* **改造逻辑**：
+  ```typescript
+  // value-line-data.ts
+  const isMoatGenerated = Boolean(coreMoatNote?.value);
+  const aiMoat = isMoatGenerated 
+    ? coreMoatNote!.value 
+    : "个股深度护城河分析生成中，待补充...";
+  const aiMoatStatus: "analyzed" | "pending" = isMoatGenerated ? "analyzed" : "pending";
+  ```
+* **前端展示**：若 `status === "pending"`，以微弱文字与待生成 Badge 呈现，坚决杜绝“无真实分析却显示高度自信行业模板”的欺骗性体验。
+
+#### P2 - Benchmark PE 行业差异化校准（中优先级）
+* **分层校准算法（历史中位数优先，行业基准兜底）**：
+  ```typescript
+  let benchmarkPe = 18.0;
+  if (historicalPes.length >= 2) {
+    // 优先采用公司自身历史有效 PE 中位数（最尊重该资产长期的市场真实定价）
+    benchmarkPe = median(historicalPes);
+  } else {
+    // 次新股、扭亏股、周期反转股无有效历史中位数时，按行业中枢兜底（打破 18x 一刀切）
+    switch (sectorModelType) {
+      case "bank_insurance":
+        benchmarkPe = roeAvg5Y && roeAvg5Y >= 12 ? 8.0 : 6.5;
+        break;
+      case "utilities":
+        benchmarkPe = 14.0;
+        break;
+      case "real_estate":
+        benchmarkPe = 9.0;
+        break;
+      case "cyclical":
+        benchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 10.0 : 8.0;
+        break;
+      default:
+        benchmarkPe = roeAvg5Y && roeAvg5Y > 15 ? 22.0 : 18.0;
+    }
+  }
+  benchmarkPe = Math.max(6, Math.min(42, benchmarkPe));
+  ```
+  *(注：金融/银行板块本质上应看 PB-ROE 模型，未来可进一步在走廊图中针对银行定制 PB 估值走廊)*
+
+---
+
+### 5. 后续落地路线图
+
+- [ ] **P0 - 移动端 Sparkline 触控与文字适配**：
+  - 为 SVG 走廊图增加 `onTouchStart`, `onTouchMove`, `onTouchEnd` 触控滑动支持；
+  - 优化移动端 Y 轴 reference labels 字号与边距，消除等比缩放导致的文字微缩。
+- [ ] **P1 - 首屏信息架构重组**：
+  - 将价格走廊图与巴菲特四宫格上提至首屏核心区；
+  - 公司概览段落默认 2 行截断（带“展开”按钮）；
+  - 大师持仓收敛为紧凑摘要胶囊（如“3位大师重仓持有 · 查看明细”），点击展开卡片网格。
+- [ ] **P1 - AI Fallback 诚实标识**：
+  - 区分个股真实分析与待生成状态，未生成时明确提示“深度分析生成中”，彻底杜绝行业套话冒充个股结论。
+- [ ] **P2 - Benchmark PE 行业校准**：
+  - 落实“历史有效中位数优先，行业模型分类兜底”算法，消除银行/公用事业价值线虚高问题。
+- [x] **反模式剔除（已明确否决）**：
+  - 废弃 Shiller PE / VIX 动态估值阈值方案（违背自下而上价值投资哲学）；
+  - 废弃 TradingView 式 BUY/SELL 信号建议（坚守严肃投研定位与合规底线）。
+
+---
+
+## 十、 Phase 3 态势感知极速同步更新与连接池性能根治（2026-10-02）
+
+### 1. 背景与目标
+在 Phase 2 静态研报底座之上，用户需要在公司详情页具备即时刷新的能力（查看最新股价走势、最新估值差、财务危险信号），且明确要求：
+1. **轻量极速同步等待**：不进入异步任务队列，在 2~8 秒内返回结果；
+2. **多 Ticker 协同**：支持同个实体名下的多代码同步刷新（如 GOOG/GOOGL、BRK-A/BRK-B）；
+3. **零连接池饥饿**：彻底杜绝高并发或多组件挂载下的 Prisma 连接超时。
+
+### 2. 核心架构与落地项
+1. **Phase 3 极速更新引擎 (`src/lib/phase3-update.ts`)**：
+   - 提取实体全量挂钩 Security（`securitiesAsCompany`），并发获取所有活跃 Ticker 的最新日级行情；
+   - 采用快速 Python yfinance fixture 机制（Python 脚本落盘临时 JSON 约 1.5s，Node 端直接批量事务写入 `StockPrice`），杜绝子进程嵌套与超时；
+   - 执行 5 大确定性基本面异常检测（背离、塞货、积压、虚胖、资本黑洞）；
+   - 对齐选中 Ticker 测算估值走廊击球区偏离度，生成 1~2 句高密度中文简评，持久化存入 `GeneratedContentVersion` (`phase3_snapshot`) 与 `AnalysisRun`。
+2. **同步 API 与 CLI 入口**：
+   - `POST /api/company/phase3`：同步接口，支持 `ticker` 或 `cik` 参数，直接返回最新快照；
+   - `scripts/update-company-phase3.ts`：终端一键更新脚本 `npm run update:phase3 -- --ticker XXXX`。
+3. **前端交互与按键布局 (`src/components/CompanySectionTabs.tsx` & `page.tsx`)**：
+   - 对 `onboardPhase >= 2` 的标的，在原“⚡ 深析”位置挂载 `⚡ 更新` 按钮；
+   - 支持多 Ticker 动态传参 (`selectedTicker`)，点击后展示平滑 loading 动效，成功后呈现 `✓ 已更新` 并自动刷新页面视图。
+4. **数据库连接池饥饿与 N+1 瓶颈根治**：
+   - `src/lib/prisma.ts`：URL 解析与动态参数加固，将 `.env.local` 硬编码的 `connection_limit=3` 防御性调优至 `10`，`pool_timeout` 提升至 30s；
+   - `src/lib/company-data.ts`：根治 `getRecentHolders` 中 30 次循环查询机构主体的 N+1 级联风暴，收敛为单次 `where: { filerEntityId: { in: holderIds } }` 批量查询；
+   - 引入 React 19 `cache()` 消除同一次 Server Component 渲染树中对 `getCompanyByIdentifier` 的重复调用。
+
 
 
 

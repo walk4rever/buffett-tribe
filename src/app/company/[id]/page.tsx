@@ -375,6 +375,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
           valueLineData={valueLineData}
           initialTicker={rawTicker}
           showDeepAnalysisButton={showDeepAnalysisButton}
+          onboardPhase={onboardPhase}
           companyId={company.id}
           companyName={zhName}
           initialPriority={companyPriority}

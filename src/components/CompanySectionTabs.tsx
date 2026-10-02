@@ -29,6 +29,7 @@ type CompanySectionTabsProps = {
   initialTicker?: string;
   fallbackHeader?: ReactNode;
   showDeepAnalysisButton?: boolean;
+  onboardPhase?: number;
   companyId?: string;
   companyName?: string;
   initialPriority?: number;
@@ -42,6 +43,7 @@ export function CompanySectionTabs({
   initialTicker,
   fallbackHeader,
   showDeepAnalysisButton = false,
+  onboardPhase,
   companyId,
   companyName,
   initialPriority = 0,
@@ -59,6 +61,8 @@ export function CompanySectionTabs({
   const [isDeepAnalysisQueued, setIsDeepAnalysisQueued] = useState(
     initialPriority > 0
   );
+  const [isUpdatingPhase3, setIsUpdatingPhase3] = useState(false);
+  const [isPhase3Success, setIsPhase3Success] = useState(false);
 
   useEffect(() => {
     if (initialPriority > 0) {
@@ -108,6 +112,35 @@ export function CompanySectionTabs({
       console.error("Deep analysis request error:", err);
     } finally {
       setIsPendingDeepAnalysis(false);
+    }
+  };
+
+  const handlePhase3UpdateClick = async () => {
+    if (!companyId || isUpdatingPhase3) return;
+    setIsUpdatingPhase3(true);
+    try {
+      const res = await fetch("/api/company/phase3", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: companyId,
+          ticker: selectedTicker || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setIsPhase3Success(true);
+        setTimeout(() => {
+          window.location.reload();
+        }, 600);
+      } else {
+        alert(data.error || "更新失败，请稍后重试");
+        setIsUpdatingPhase3(false);
+      }
+    } catch (err) {
+      console.error("Phase 3 update error:", err);
+      alert("网络请求失败，请稍后重试");
+      setIsUpdatingPhase3(false);
     }
   };
 
@@ -328,6 +361,38 @@ export function CompanySectionTabs({
                 <>
                   <span className="company-tabs-deep-analysis-icon" aria-hidden="true">⚡</span>
                   <span>深析</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Synchronous Phase 3 Update Button (Phase 2+ companies) */}
+          {onboardPhase !== undefined && onboardPhase >= 2 && (
+            <button
+              type="button"
+              className={`company-tabs-deep-analysis-btn ${isPhase3Success ? "company-tabs-deep-analysis-btn--queued" : ""}`}
+              onClick={handlePhase3UpdateClick}
+              disabled={isUpdatingPhase3 || isPhase3Success}
+              title={
+                isPhase3Success
+                  ? "最新数据已更新，正在刷新页面…"
+                  : `即时更新${companyName ? ` ${companyName}` : ""}最新价格与基本面态势`
+              }
+            >
+              {isPhase3Success ? (
+                <>
+                  <span className="company-tabs-deep-analysis-icon" aria-hidden="true">✓</span>
+                  <span>已更新</span>
+                </>
+              ) : isUpdatingPhase3 ? (
+                <>
+                  <span className="company-tabs-deep-analysis-spinner" aria-hidden="true" />
+                  <span>更新中…</span>
+                </>
+              ) : (
+                <>
+                  <span className="company-tabs-deep-analysis-icon" aria-hidden="true">⚡</span>
+                  <span>更新</span>
                 </>
               )}
             </button>

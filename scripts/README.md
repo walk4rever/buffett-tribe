@@ -37,6 +37,17 @@
 - 作用：全库扫描待完善公司（与 `/company` 页面同一判定：`Financial` 行数为 0），逐个调用 `onboard:company`。单个 ticker 失败会被捕获并记入汇总，不中断整批——同一容错逻辑封装在 [lib/onboard-batch-runner.ts](/Users/rafael/R129/buffett-tribe/scripts/lib/onboard-batch-runner.ts)，`onboard-alpha-investor.ts --onboard-holdings` 的循环也复用它。
 - 非断点续跑：每次运行都重新查询当前待完善列表，失败的 ticker 因为没有 `Financial` 行会自然出现在下一次的清单里。
 
+## 00b. Phase 3 公司态势感知极速同步更新入口
+
+- 文件：[update-company-phase3.ts](/Users/rafael/R129/buffett-tribe/scripts/update-company-phase3.ts)
+- 命令：`npm run update:phase3 -- --ticker XXXX`
+- 作用：针对已达 Phase 2 的公司，在 2~8 秒内完成极速轻量同步更新：
+  1. 刷新该实体所有挂钩 ticker 的实时日级行情（并发抓取，如 GOOG + GOOGL）；
+  2. 执行 5 项确定性财报核心异动检测（现金流背离、应收账款塞货、存货积压、商誉虚胖、资本黑洞）；
+  3. 测算当前价格相对于估值走廊价值击球区的偏离度；
+  4. 产出 1~2 句中文简评并持久化存储至 `GeneratedContentVersion` (`phase3_snapshot`) 与 `AnalysisRun`；
+  5. 对应前端公司详情页右上角的 `⚡ 更新` 实时同步按钮。
+
 ## 01. 13F 导入主入口
 
 - 文件：[pipeline-13f.ts](/Users/rafael/R129/buffett-tribe/scripts/pipeline-13f.ts)
