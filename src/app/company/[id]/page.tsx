@@ -18,6 +18,7 @@ import {
   formatSecurityClassLabel,
   getRecentHolders,
   getCompanyReferenceFilings,
+  type CompanyReferenceFiling,
 } from "@/lib/company-data";
 import {
   ManagementAnalysisSection,
@@ -118,6 +119,130 @@ function formatPriceFromValueAndShares(valueUsd: bigint | null, shares: bigint |
 function normalizeMeta(metadata: unknown): Record<string, string | number | boolean | null> {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return {};
   return metadata as Record<string, string | number | boolean | null>;
+}
+
+type ReferenceFilingPill = {
+  id: string;
+  label: string;
+  url: string | null;
+  filedDate: string | null;
+  quarterRank: number;
+};
+
+type ReferenceYearGroup = {
+  yearLabel: string;
+  pills: ReferenceFilingPill[];
+};
+
+function getQuarterRank(filing: CompanyReferenceFiling, form: string): number {
+  const kind = filing.kind.toLowerCase();
+  const formLower = form.toLowerCase();
+  if (
+    kind === "10k" ||
+    formLower.includes("10-k") ||
+    kind.includes("annual") ||
+    formLower.includes("20-f") ||
+    formLower.includes("40-f")
+  ) {
+    return 4;
+  }
+  if (filing.periodQuarter === 3 || kind.includes("q3")) return 3;
+  if (filing.periodQuarter === 2 || kind.includes("interim")) return 2;
+  if (filing.periodQuarter === 1 || kind.includes("q1")) return 1;
+  return 0;
+}
+
+function formatFilingPillLabel(filing: CompanyReferenceFiling, form: string): string {
+  const kind = filing.kind.toLowerCase();
+  const formTrimmed = form.trim();
+  const q = filing.periodQuarter;
+
+  if (kind === "10k" || formTrimmed.includes("10-K")) {
+    return formTrimmed.includes("/A") ? "10-K/A" : "10-K";
+  }
+  if (kind === "20f" || formTrimmed.includes("20-F")) return "20-F";
+  if (kind === "40f" || formTrimmed.includes("40-F")) return "40-F";
+  if (kind === "10q" || formTrimmed.includes("10-Q")) {
+    const qPrefix = q ? `Q${q} · ` : "";
+    return `${qPrefix}${formTrimmed.includes("/A") ? "10-Q/A" : "10-Q"}`;
+  }
+  if (kind === "cn-annual-report") return "年报";
+  if (kind === "cn-interim-report") return "半年报";
+  if (kind === "cn-quarterly-report") {
+    if (q === 1) return "一季报";
+    if (q === 3) return "三季报";
+    return "季报";
+  }
+  if (kind === "hk-annual-report") return "年报";
+  if (kind === "hk-interim-report") return "中期报告";
+  if (kind === "hk-quarterly-report") {
+    if (q === 1) return "一季度业绩";
+    if (q === 3) return "三季度业绩";
+    return "季度业绩";
+  }
+  if (kind.includes("prospectus")) return "招股说明书";
+  return formTrimmed || filing.kind.toUpperCase();
+}
+
+function groupAndFormatReferenceFilings(
+  filings: CompanyReferenceFiling[],
+  companyCik: string | null
+): ReferenceYearGroup[] {
+  const groups = new Map<string, ReferenceFilingPill[]>();
+
+  for (const filing of filings) {
+    const meta = normalizeMeta(filing.metadata);
+    const form = typeof meta.form === "string" && meta.form.trim() ? meta.form.trim() : filing.kind.toUpperCase();
+
+    const accessionNumber =
+      (typeof meta.accession === "string" && meta.accession) ||
+      (typeof meta.accessionNumber === "string" && meta.accessionNumber) ||
+      null;
+    const constructedSecUrl =
+      !filing.url && companyCik && accessionNumber
+        ? `https://www.sec.gov/cgi-bin/viewer?action=view&cik=${companyCik}&accession_number=${accessionNumber}&xbrl_type=v`
+        : null;
+    const effectiveUrl = filing.url || constructedSecUrl;
+
+    const filedDate = filing.filedAt ? filing.filedAt.toISOString().slice(0, 10) : null;
+    const year = filing.periodYear ?? (filing.filedAt ? filing.filedAt.getFullYear() : null);
+    const yearKey = year ? String(year) : (filing.kind.includes("prospectus") ? "招股/IPO" : "其他");
+
+    const pill: ReferenceFilingPill = {
+      id: filing.id,
+      label: formatFilingPillLabel(filing, form),
+      url: effectiveUrl,
+      filedDate,
+      quarterRank: getQuarterRank(filing, form),
+    };
+
+    if (!groups.has(yearKey)) groups.set(yearKey, []);
+    groups.get(yearKey)!.push(pill);
+  }
+
+  const sortedYearKeys = [...groups.keys()].sort((a, b) => {
+    const numA = Number(a);
+    const numB = Number(b);
+    if (!isNaN(numA) && !isNaN(numB)) return numB - numA;
+    if (!isNaN(numA)) return -1;
+    if (!isNaN(numB)) return 1;
+    return a.localeCompare(b);
+  });
+
+  return sortedYearKeys.map((yearKey) => {
+    const pills = groups.get(yearKey)!;
+    pills.sort((a, b) => {
+      if (a.quarterRank !== b.quarterRank) return b.quarterRank - a.quarterRank;
+      const dateA = a.filedDate ?? "";
+      const dateB = b.filedDate ?? "";
+      return dateB.localeCompare(dateA);
+    });
+
+    return {
+      yearLabel: yearKey,
+      pills,
+    };
+  });
 }
 
 function formatSignedPct(diffPct: number | null) {
@@ -268,12 +393,13 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     getRecentHolders(company.id, 30),
     getCompanySecurities(company.id),
     getCompanyAnalysis(company.id),
-    getCompanyReferenceFilings(company.id, 24),
+    getCompanyReferenceFilings(company.id, 36),
     getTribeMembers(),
     computeCompanyTtmMetrics({ entityId: company.id, ticker: company.ticker }),
     getCompanyQuarterlyFinancials(company.id, 8),
     getValueLineData(company.id, rawTicker),
   ]);
+  const referenceYearGroups = groupAndFormatReferenceFilings(referenceFilings, company.cik);
   const tribeMemberById = new Map(tribeMembers.map((m) => [m.id, m] as const));
 
   const managementArtifact = analysis?.management != null
@@ -744,67 +870,44 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                 <h3>官方报告</h3>
                 <span className="dvl-section-subtitle">招股说明书、年度报告、季度报告等监管披露文件</span>
               </div>
-              {referenceFilings.length ? (
-                <div className="company-reference-list">
-                  {referenceFilings.map((filing) => {
-                    const meta = normalizeMeta(filing.metadata);
-                    const form = typeof meta.form === "string" && meta.form.trim() ? meta.form.trim() : filing.kind.toUpperCase();
-                    const periodLabel = filing.periodYear
-                      ? `${filing.periodYear}${filing.periodQuarter ? (filing.periodQuarter === 2 && filing.kind.includes("interim") ? " H1" : ` Q${filing.periodQuarter}`) : ""}`
-                      : "—";
-
-                    // 2026-09-29: Unified external links strategy
-                    // All filings (CN/HK/US) use external links, no internal reader
-                    const accessionNumber = typeof meta.accession === "string" ? meta.accession : null;
-                    const constructedSecUrl = !filing.url && company.cik && accessionNumber
-                      ? `https://www.sec.gov/cgi-bin/viewer?action=view&cik=${company.cik}&accession_number=${accessionNumber}&xbrl_type=v`
-                      : null;
-                    const effectiveUrl = filing.url || constructedSecUrl;
-
-                    const readerBadge = effectiveUrl ? "查看原文 ↗" : null;
-
-                    const filingDate = filing.filedAt ? filing.filedAt.toISOString().slice(0, 10) : null;
-
-                    const cardHead = (
-                      <div className="company-reference-card-head">
-                        <div>
-                          <h3>
-                            {periodLabel} · {form}
-                          </h3>
-                          {filingDate ? (
-                            <span className="company-reference-card-date">{filingDate}</span>
-                          ) : null}
-                        </div>
-                        {readerBadge ? (
-                          <span className="company-reference-badge">
-                            {readerBadge}
-                          </span>
-                        ) : null}
+              {referenceYearGroups.length ? (
+                <div className="company-reference-timeline">
+                  {referenceYearGroups.map((group) => (
+                    <div key={group.yearLabel} className="company-reference-year-row">
+                      <div className="company-reference-year-label">{group.yearLabel}</div>
+                      <div className="company-reference-pills">
+                        {group.pills.map((pill) => {
+                          const tooltip = pill.filedDate
+                            ? `披露日期: ${pill.filedDate}`
+                            : "暂无披露日期";
+                          if (pill.url) {
+                            return (
+                              <a
+                                key={pill.id}
+                                className="company-reference-pill"
+                                href={pill.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={tooltip}
+                              >
+                                <span>{pill.label}</span>
+                                <span className="company-reference-pill-arrow">↗</span>
+                              </a>
+                            );
+                          }
+                          return (
+                            <span
+                              key={pill.id}
+                              className="company-reference-pill company-reference-pill--disabled"
+                              title={`${tooltip} (暂无直链)`}
+                            >
+                              <span>{pill.label}</span>
+                            </span>
+                          );
+                        })}
                       </div>
-                    );
-
-                    // All filings use external links (unified strategy)
-                    if (effectiveUrl) {
-                      return (
-                        <a
-                          key={filing.id}
-                          className="company-reference-card company-reference-card--clickable"
-                          href={effectiveUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {cardHead}
-                        </a>
-                      );
-                    }
-
-                    // Fallback: no URL
-                    return (
-                      <article key={filing.id} className="company-reference-card">
-                        {cardHead}
-                      </article>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               ) : company.cik ? (
                 <p className="company-empty">暂无 10-K 归档资料。可先运行 `import:10k` 脚本。</p>

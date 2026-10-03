@@ -8344,6 +8344,109 @@ body.layout-no-header {
   gap: 0.75rem;
 }
 
+/* ── Reference Materials: Streamlined Timeline by Year ── */
+.company-reference-timeline {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid var(--company-border-soft);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  overflow: hidden;
+}
+
+.company-reference-year-row {
+  display: flex;
+  align-items: center;
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  gap: 1.5rem;
+  transition: background-color 0.15s ease;
+}
+
+.company-reference-year-row:last-child {
+  border-bottom: none;
+}
+
+.company-reference-year-row:hover {
+  background-color: #fbfbfc;
+}
+
+.company-reference-year-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #1e293b;
+  min-width: 3.8rem;
+  flex-shrink: 0;
+  letter-spacing: -0.01em;
+}
+
+.company-reference-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1;
+}
+
+.company-reference-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.32rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #334155;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  text-decoration: none;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.company-reference-pill:hover {
+  color: #0071e3;
+  background: #f0f7ff;
+  border-color: rgba(0, 113, 227, 0.35);
+  box-shadow: 0 2px 6px rgba(0, 113, 227, 0.08);
+  transform: translateY(-0.5px);
+}
+
+.company-reference-pill-arrow {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.company-reference-pill:hover .company-reference-pill-arrow {
+  color: #0071e3;
+  transform: translate(1px, -1px);
+}
+
+.company-reference-pill--disabled {
+  opacity: 0.55;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  cursor: default;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .company-reference-year-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+  }
+  .company-reference-year-label {
+    min-width: auto;
+  }
+}
+
 .company-reference-card {
   display: block;
   border: 1px solid var(--company-border-soft);
