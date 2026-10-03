@@ -212,7 +212,7 @@ async function fetchFastTrackCandidates(limit: number, marketFilter?: Market): P
   const rows = await prisma.entity.findMany({
     where: {
       type: "company",
-      onboardPhase: { in: [0, 1] },
+      onboardPhase: { gte: 0 },
       priority: { gt: 0 },
       ...(marketFilter ? { market: marketFilter } : {}),
     },
@@ -242,7 +242,9 @@ async function fetchFastTrackCandidates(limit: number, marketFilter?: Market): P
     const meta = (r.metadata as Record<string, unknown>) || {};
     const attempts = r.onboardPhase === 0
       ? (typeof meta.onboardPhase1Attempts === "number" ? meta.onboardPhase1Attempts : 0)
-      : (typeof meta.onboardPhase2Attempts === "number" ? meta.onboardPhase2Attempts : 0);
+      : r.onboardPhase === 1
+      ? (typeof meta.onboardPhase2Attempts === "number" ? meta.onboardPhase2Attempts : 0)
+      : (typeof meta.phase3Attempts === "number" ? meta.phase3Attempts : 0);
 
     if (attempts >= 3) continue; // Skip persistent failures
 
@@ -296,7 +298,7 @@ async function fetchFastTrackCandidates(limit: number, marketFilter?: Market): P
       nameZh: typeof meta.nameZh === "string" ? meta.nameZh : undefined,
       priorityScore: 1000 + (r.priority ?? 0),
       currentPhase: r.onboardPhase,
-      targetPhase: r.onboardPhase === 0 ? 1 : 2,
+      targetPhase: r.onboardPhase === 0 ? 1 : r.onboardPhase === 1 ? 2 : 3,
       isFastTrack: true,
     });
   }
@@ -468,6 +470,9 @@ async function fetchStandardCandidates(
   if (phaseFilter === "2") {
     return fetchPool(2, totalSlots, excludeIds);
   }
+  if (phaseFilter === "3") {
+    return [];
+  }
 
   // Dual-drive balance: 1/3 P1->P2 (deep analysis, ~5 of 15), 2/3 P0->P1 (base profiling, ~10 of 15)
   // Prioritizes rapid clearance of the 15,000+ P0 stubs while steadily advancing P2
@@ -547,18 +552,21 @@ async function main() {
   try {
     let candidateList: CandidateCompany[] = [];
 
-    // 1. Fetch Fast-Track expedited companies first (Phase 0 and Phase 1)
-    const fastTrackList = await fetchFastTrackCandidates(
+    // 1. Fetch Fast-Track expedited companies first (Phase 0, Phase 1, Phase 2)
+    let fastTrackList = await fetchFastTrackCandidates(
       batchSize,
       targetMarket === "all" ? undefined : (targetMarket as Market)
     );
+    if (phaseFilter) {
+      fastTrackList = fastTrackList.filter((c) => String(c.targetPhase) === phaseFilter);
+    }
     const excludeIds = new Set(fastTrackList.map((c) => c.id));
     const remainingSlots = Math.max(0, batchSize - fastTrackList.length);
 
     let regularList: CandidateCompany[] = [];
 
     // 2. Supplement remaining slots with standard dual-drive companies (P1->P2 and P0->P1)
-    if (!priorityOnly && remainingSlots > 0) {
+    if (!priorityOnly && remainingSlots > 0 && phaseFilter !== "3") {
       regularList = await fetchStandardCandidates(targetMarket, remainingSlots, excludeIds, phaseFilter);
     }
 
@@ -569,7 +577,7 @@ async function main() {
       const c = candidateList[i];
       const displayName = c.nameZh ? `${c.canonicalName} (${c.nameZh})` : c.canonicalName;
       const tag = c.isFastTrack ? "[⚡ FAST-TRACK]" : "[STANDARD]   ";
-      const phaseTag = c.currentPhase === 0 ? "[P0→P1 基础建档]" : "[P1→P2 深度分析]";
+      const phaseTag = c.targetPhase === 3 ? "[P2→P3 深度处理]" : c.currentPhase === 0 ? "[P0→P1 基础建档]" : "[P1→P2 深度分析]";
       logMessage(`  [${(i + 1).toString().padStart(2, " ")}] ${tag} ${phaseTag} [${c.market.toUpperCase()}] ${c.ticker.padEnd(10)} - ${displayName}`);
     }
 
@@ -594,25 +602,31 @@ async function main() {
     for (let i = 0; i < candidateList.length; i++) {
       const company = candidateList[i];
       const startMs = Date.now();
-      const phaseTag = company.currentPhase === 0 ? "P0→P1" : "P1→P2";
+      const phaseTag = company.targetPhase === 3 ? "P2→P3" : company.currentPhase === 0 ? "P0→P1" : "P1→P2";
       const targetPhaseStr = String(company.targetPhase);
 
       logMessage(`\n>>> [${i + 1}/${candidateList.length}] Processing [${phaseTag}] ${company.ticker} (${company.market.toUpperCase()})...`);
 
       try {
+        const cmd = "npm";
+        const args =
+          company.targetPhase === 3
+            ? ["run", "process:phase3", "--", "--ticker", company.ticker, "--market", company.market]
+            : [
+                "run",
+                "onboard:company",
+                "--",
+                "--ticker",
+                company.ticker,
+                "--market",
+                company.market,
+                "--phase",
+                targetPhaseStr,
+              ];
+
         const { exitCode, timedOut } = await runCommandWithTimeout(
-          "npm",
-          [
-            "run",
-            "onboard:company",
-            "--",
-            "--ticker",
-            company.ticker,
-            "--market",
-            company.market,
-            "--phase",
-            targetPhaseStr,
-          ],
+          cmd,
+          args,
           companyTimeoutMs
         );
 
@@ -621,7 +635,7 @@ async function main() {
         }
 
         if (exitCode !== 0) {
-          throw new Error(`onboard:company exited with status code ${exitCode}`);
+          throw new Error(`${args.join(" ")} exited with status code ${exitCode}`);
         }
 
         // Reset priority after completion of the requested phase
@@ -629,7 +643,10 @@ async function main() {
           try {
             await prisma.entity.update({
               where: { id: company.id },
-              data: { priority: 0 },
+              data: {
+                priority: 0,
+                priorityRequestedAt: null,
+              },
             });
           } catch (pErr) {
             console.error(`Failed to reset priority for ${company.ticker}:`, pErr);
@@ -656,7 +673,22 @@ async function main() {
             });
             if (entity) {
               const meta = (entity.metadata as Record<string, unknown>) || {};
-              if (company.currentPhase === 0) {
+              if (company.targetPhase === 3) {
+                const attempts = ((meta.phase3Attempts as number) || 0) + 1;
+                await prisma.entity.update({
+                  where: { id: company.id },
+                  data: {
+                    priority: attempts >= 3 ? 0 : Math.max(0, company.priorityScore - 1000),
+                    priorityRequestedAt: attempts >= 3 ? null : undefined,
+                    metadata: {
+                      ...meta,
+                      phase3Attempts: attempts,
+                      phase3LastError: errMsg,
+                      phase3LastAttemptAt: new Date().toISOString(),
+                    },
+                  },
+                });
+              } else if (company.currentPhase === 0) {
                 const attempts = ((meta.onboardPhase1Attempts as number) || 0) + 1;
                 await prisma.entity.update({
                   where: { id: company.id },

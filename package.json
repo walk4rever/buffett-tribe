@@ -38,6 +38,7 @@
     "onboard:phase2": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/onboard-company.ts --phase 2",
     "onboard:phase3": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/update-company-phase3.ts",
     "update:phase3": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/update-company-phase3.ts",
+    "process:phase3": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/process-company-phase3-deep.ts",
     "onboard:csi300": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/batch-onboard-csi300.ts",
     "onboard:hk": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/batch-onboard-hk.ts",
     "seed:master-universe": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/seed-master-universe.ts",

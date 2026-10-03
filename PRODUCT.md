@@ -2,7 +2,7 @@
 
 # 价值部落 · Value Tribe — 产品设计文档
 
-> 最后更新：2026-09-30（v0.46.5）
+> 最后更新：2026-10-03（v0.46.9）
 
 ---
 
@@ -1112,7 +1112,16 @@ Apple HIG 精简风格：
 
 ---
 
-## 当前实现状态（v0.46.5）
+## 当前实现状态（v0.46.9）
+
+### v0.46.9 变更（2026-10-03）
+
+- **定期财报 Phase 3 快速通道与深度处理管线（P2→P3 深度更新机制）**：
+  - **前台极速探查与即时返回**：在 `src/lib/phase3-update.ts` 中实现轻量外部财报探测机制（美股 SEC EDGAR submissions、A 股巨潮资讯/akshare、港股披露易）。前台用户点击 Phase 3 更新时，在 ~2 秒内自动发现最新季报/年报并写入 `ExtSource` 链接，参考资料 Tab 即刻展示最新财报链接与阅读徽标，不阻塞等待繁重的分析切片；
+  - **快速通道自动入队与 VIP 优先占位**：若探测到新季报/年报或显式指定 `enqueueP3`，自动将实体写入快速通道（`priority = 100`, `metadata.p3Pending = true`），与 P0→P1、P1→P2 共享 15 家优先批次槽位；
+  - **后台 Phase 3 深度处理 Worker（`npm run process:phase3`）**：新增 `scripts/process-company-phase3-deep.ts`，专门负责 P2→P3 深度数据闭环——美股自动导入 10-Q 季度财务事实与 10-K 全文；A 股与港股自动调用 Python akshare 提取财务三表指标；深度处理完毕后重新计算 Situational 财务与估值指标，并清理排队状态；
+  - **优先级调度器多阶段打通**：`scripts/pipeline-priority-worker.ts` 全面升级，支持从 `onboardPhase >= 0` 统一提取快速通道候选，将 P2 公司的加急请求智能识别为 `targetPhase: 3`（控制台展示为 `[P2→P3 深度处理]`）并在 15 个批量槽位中优先分流调度执行；失败时记录 `phase3Attempts` 而不污染其 Phase 状态；
+  - **美股季度财报导入引擎优化**：重构 `scripts/import-us-quarterly-financials.ts`，修复同一 10-Q 内同期可比数据覆盖当期事实的 bug（严格按 `periodEnd` 对齐）；增加 `ExtSource` 预加载缓存消除重复 SEC 索引网络请求；单条 upsert 重构为事务批处理提升吞吐；单例 Prisma 根治连接池泄漏。
 
 ### v0.46.5 变更（2026-09-30）
 

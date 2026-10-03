@@ -13,6 +13,7 @@ export interface Phase3UpdateOptions {
   entityId?: string;
   ticker?: string;
   dryRun?: boolean;
+  enqueueP3?: boolean;
 }
 
 export interface Phase3UpdateResult {
@@ -35,6 +36,9 @@ export interface Phase3UpdateResult {
   summary: string;
   updatedAt: string;
   durationMs: number;
+  newFilingsCount?: number;
+  newFilings?: Array<{ kind: string; form: string; periodLabel: string; filingDate: string; url: string }>;
+  p3Enqueued?: boolean;
   error?: string;
 }
 
@@ -371,6 +375,646 @@ function buildSituationalSummary(params: {
   return `${name}${valText}${healthText}`;
 }
 
+const SEC_HEADERS = {
+  "User-Agent": "buffett-tribe research walkklaw@gmail.com",
+  Accept: "application/json",
+};
+
+interface SyncIncrementalFilingsResult {
+  newFilingsCount: number;
+  newFilings: Array<{
+    kind: string;
+    form: string;
+    periodLabel: string;
+    filingDate: string;
+    url: string;
+  }>;
+}
+
+function computeFiscalPeriod(reportDateStr: string, fye = "1231", form = "10-Q") {
+  const [yStr, mStr] = reportDateStr.split("-");
+  const rYear = parseInt(yStr, 10);
+  const rMonth = parseInt(mStr, 10);
+  const fEndMonth = parseInt(fye.slice(0, 2), 10) || 12;
+
+  let fiscalYear = rYear;
+  if (fEndMonth !== 12 && rMonth > fEndMonth) {
+    fiscalYear = rYear + 1;
+  }
+
+  let monthDiff = (rMonth - fEndMonth + 12) % 12;
+  if (monthDiff === 0) monthDiff = 12;
+
+  let quarter: number | null = Math.round(monthDiff / 3);
+  if (quarter === 0) quarter = 4;
+
+  if (form.startsWith("10-K") || form.startsWith("20-F") || form.startsWith("40-F")) {
+    quarter = null;
+  }
+
+  return { fiscalYear, quarter };
+}
+
+const CHINESE_YEAR_MAP: Record<string, number> = {
+  "二零二零": 2020, "二零二一": 2021, "二零二二": 2022, "二零二三": 2023,
+  "二零二四": 2024, "二零二五": 2025, "二零二六": 2026, "二零二七": 2027,
+};
+
+function extractHkYear(title: string): number | null {
+  for (const [k, v] of Object.entries(CHINESE_YEAR_MAP)) {
+    if (title.includes(k)) return v;
+  }
+  const m = title.match(/(?:20\d{2})/);
+  return m ? parseInt(m[0], 10) : null;
+}
+
+const CN_ANNUAL_RE = /^.*?(\d{4})年?年度报告$/;
+const CN_INTERIM_RE = /^.*?(\d{4})年?半年度报告$/;
+const CN_Q1_RE = /^.*?(\d{4})年?第一季度报告$/;
+const CN_Q3_RE = /^.*?(\d{4})年?第三季度报告$/;
+const HK_EXCLUDE_RE = /補充|補遺|澄清|股東特別大會|通函|董事會會議召開日期|股份發行人的證券變動月報表|摘要|建议|委任|变更/i;
+
+async function syncUsIncrementalFilings(
+  company: {
+    id: string;
+    cik: string | null;
+    canonicalName: string;
+    metadata: unknown;
+  },
+  dryRun = false
+): Promise<SyncIncrementalFilingsResult> {
+  const result: SyncIncrementalFilingsResult = { newFilingsCount: 0, newFilings: [] };
+  if (!company.cik) return result;
+
+  try {
+    const paddedCik = company.cik.padStart(10, "0");
+    const cleanCik = parseInt(company.cik, 10).toString();
+
+    const existing = await prisma.extSource.findMany({
+      where: {
+        filerEntityId: company.id,
+        kind: { in: ["10k", "10q", "20f", "40f"] },
+      },
+      select: { accessionNumber: true },
+    });
+    const existingAccessions = new Set(existing.map((e) => e.accessionNumber).filter(Boolean));
+
+    const res = await fetch(`https://data.sec.gov/submissions/CIK${paddedCik}.json`, {
+      headers: SEC_HEADERS,
+      signal: AbortSignal.timeout(4000),
+    });
+
+    if (!res.ok) {
+      console.warn(`[phase3-update] SEC submissions fetch returned ${res.status} for CIK ${company.cik}`);
+      return result;
+    }
+
+    const data = await res.json();
+    const fye = data.fiscalYearEnd || (company.metadata as Record<string, unknown>)?.fiscalYearEnd || "1231";
+    const recent = data?.filings?.recent;
+    if (!recent || !Array.isArray(recent.form)) return result;
+
+    const toUpsert: Array<{
+      kind: string;
+      form: string;
+      accessionNumber: string;
+      periodYear: number;
+      periodQuarter: number | null;
+      filedAt: Date;
+      reportDate: string;
+      url: string;
+      primaryDoc: string;
+      periodLabel: string;
+    }> = [];
+
+    const targetForms = new Set(["10-Q", "10-Q/A", "10-K", "10-K/A", "20-F", "20-F/A", "40-F", "40-F/A"]);
+
+    for (let i = 0; i < recent.form.length; i++) {
+      const form = recent.form[i];
+      if (!targetForms.has(form)) continue;
+
+      const accn = recent.accessionNumber[i];
+      if (!accn) continue;
+
+      if (existingAccessions.has(accn)) break;
+      if (toUpsert.length >= 8) break;
+
+      const filingDate = recent.filingDate[i];
+      const reportDate = recent.reportDate[i] || filingDate;
+      const primaryDoc = recent.primaryDocument[i] || "";
+      const { fiscalYear, quarter } = computeFiscalPeriod(reportDate, String(fye), form);
+
+      const kind = form.startsWith("10-Q")
+        ? "10q"
+        : form.startsWith("20-F")
+        ? "20f"
+        : form.startsWith("40-F")
+        ? "40f"
+        : "10k";
+
+      const accnClean = accn.replace(/-/g, "");
+      const url = primaryDoc
+        ? `https://www.sec.gov/Archives/edgar/data/${cleanCik}/${accnClean}/${primaryDoc}`
+        : `https://www.sec.gov/cgi-bin/viewer?action=view&cik=${cleanCik}&accession_number=${accn}&xbrl_type=v`;
+
+      const periodLabel = fiscalYear ? `${fiscalYear}${quarter ? ` Q${quarter}` : ""}` : "—";
+
+      toUpsert.push({
+        kind,
+        form,
+        accessionNumber: accn,
+        periodYear: fiscalYear,
+        periodQuarter: quarter,
+        filedAt: new Date(filingDate),
+        reportDate,
+        url,
+        primaryDoc,
+        periodLabel,
+      });
+    }
+
+    if (toUpsert.length > 0 && !dryRun) {
+      for (const item of toUpsert) {
+        await prisma.extSource.upsert({
+          where: {
+            ExtSource_filer_accession_unique: {
+              filerEntityId: company.id,
+              accessionNumber: item.accessionNumber,
+            },
+          },
+          create: {
+            kind: item.kind,
+            filerEntityId: company.id,
+            accessionNumber: item.accessionNumber,
+            periodYear: item.periodYear,
+            periodQuarter: item.periodQuarter,
+            filedAt: item.filedAt,
+            url: item.url,
+            metadata: {
+              form: item.form,
+              accession: item.accessionNumber,
+              accessionNumber: item.accessionNumber,
+              primaryDocument: item.primaryDoc,
+              reportDate: item.reportDate,
+              filedAt: item.filedAt.toISOString().slice(0, 10),
+              source: "sec-submissions-fast",
+            },
+          },
+          update: {
+            kind: item.kind,
+            periodYear: item.periodYear,
+            periodQuarter: item.periodQuarter,
+            filedAt: item.filedAt,
+            url: item.url,
+          },
+        });
+      }
+    }
+
+    result.newFilingsCount = toUpsert.length;
+    result.newFilings = toUpsert.map((u) => ({
+      kind: u.kind,
+      form: u.form,
+      periodLabel: u.periodLabel,
+      filingDate: u.filedAt.toISOString().slice(0, 10),
+      url: u.url,
+    }));
+  } catch (err) {
+    console.warn(`[phase3-update] US filing sync error for ${company.canonicalName}:`, err);
+  }
+
+  return result;
+}
+
+async function syncCnIncrementalFilings(
+  company: {
+    id: string;
+    code: string | null;
+    ticker: string | null;
+    canonicalName: string;
+  },
+  dryRun = false
+): Promise<SyncIncrementalFilingsResult> {
+  const result: SyncIncrementalFilingsResult = { newFilingsCount: 0, newFilings: [] };
+  const rawCode = (company.code || company.ticker?.split(".")[0] || "").trim();
+  if (!rawCode || !/^\d{1,6}$/.test(rawCode)) return result;
+  const code = rawCode.padStart(6, "0");
+  const orgId = code.startsWith("6")
+    ? `gssh0${code}`
+    : code.startsWith("0") || code.startsWith("3")
+    ? `gssz0${code}`
+    : `gsbj${code}`;
+
+  try {
+    const existing = await prisma.extSource.findMany({
+      where: {
+        filerEntityId: company.id,
+        kind: { in: ["cn-annual-report", "cn-interim-report", "cn-quarterly-report"] },
+      },
+      select: { accessionNumber: true },
+    });
+    const existingAccessions = new Set(existing.map((e) => e.accessionNumber).filter(Boolean));
+
+    const fromDate = new Date(Date.now() - 540 * 86400000).toISOString().slice(0, 10);
+    const toDate = new Date().toISOString().slice(0, 10);
+    const queryUrl = "http://www.cninfo.com.cn/new/hisAnnouncement/query";
+    const body = new URLSearchParams({
+      pageNum: "1",
+      pageSize: "50",
+      column: "szse",
+      tabName: "fulltext",
+      plate: "",
+      stock: `${code},${orgId}`,
+      searchkey: "",
+      category: "category_ndbg_szsh;category_bndbg_szsh;category_yjdbg_szsh;category_sjdbg_szsh",
+      seDate: `${fromDate}~${toDate}`,
+      isHLtitle: "false",
+    });
+
+    const res = await fetch(queryUrl, {
+      method: "POST",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: body.toString(),
+      signal: AbortSignal.timeout(4000),
+    });
+
+    if (!res.ok) {
+      console.warn(`[phase3-update] cninfo returned status ${res.status} for ${code}`);
+      return result;
+    }
+
+    const data = await res.json();
+    const announcements = data.announcements || [];
+    const toUpsert: Array<{
+      kind: string;
+      form: string;
+      accessionNumber: string;
+      periodYear: number;
+      periodQuarter: number | null;
+      filedAt: Date;
+      url: string;
+      title: string;
+      periodLabel: string;
+    }> = [];
+
+    for (const item of announcements) {
+      const title = String(item.announcementTitle || "");
+      const adjunct = String(item.adjunctUrl || "");
+      if (!adjunct || /摘要|英文版|英文|取消|更正|提示性公告/i.test(title)) continue;
+
+      let periodYear: number | null = null;
+      let periodQuarter: number | null = null;
+      let kind = "";
+      let form = "";
+
+      const mAnnual = title.match(CN_ANNUAL_RE);
+      const mInterim = title.match(CN_INTERIM_RE);
+      const mQ1 = title.match(CN_Q1_RE);
+      const mQ3 = title.match(CN_Q3_RE);
+
+      if (mAnnual) {
+        periodYear = parseInt(mAnnual[1], 10);
+        periodQuarter = null;
+        kind = "cn-annual-report";
+        form = "年度报告";
+      } else if (mInterim) {
+        periodYear = parseInt(mInterim[1], 10);
+        periodQuarter = 2;
+        kind = "cn-interim-report";
+        form = "半年度报告";
+      } else if (mQ1) {
+        periodYear = parseInt(mQ1[1], 10);
+        periodQuarter = 1;
+        kind = "cn-quarterly-report";
+        form = "一季度报告";
+      } else if (mQ3) {
+        periodYear = parseInt(mQ3[1], 10);
+        periodQuarter = 3;
+        kind = "cn-quarterly-report";
+        form = "三季度报告";
+      } else {
+        continue;
+      }
+
+      const qLabel = periodQuarter === 2 ? "h1" : periodQuarter ? `q${periodQuarter}` : "";
+      const accessionNumber = qLabel ? `${kind}-${periodYear}-${qLabel}` : `${kind}-${periodYear}`;
+
+      if (existingAccessions.has(accessionNumber)) continue;
+      if (toUpsert.length >= 8) break;
+
+      const url = adjunct.startsWith("http") ? adjunct : `http://static.cninfo.com.cn/${adjunct}`;
+      const filedAt = item.announcementTime ? new Date(item.announcementTime) : new Date();
+      const periodLabel = `${periodYear}${periodQuarter ? (periodQuarter === 2 ? " H1" : ` Q${periodQuarter}`) : ""}`;
+
+      toUpsert.push({
+        kind,
+        form,
+        accessionNumber,
+        periodYear,
+        periodQuarter,
+        filedAt,
+        url,
+        title,
+        periodLabel,
+      });
+    }
+
+    if (toUpsert.length > 0 && !dryRun) {
+      for (const item of toUpsert) {
+        await prisma.extSource.upsert({
+          where: {
+            ExtSource_filer_accession_unique: {
+              filerEntityId: company.id,
+              accessionNumber: item.accessionNumber,
+            },
+          },
+          create: {
+            kind: item.kind,
+            filerEntityId: company.id,
+            accessionNumber: item.accessionNumber,
+            periodYear: item.periodYear,
+            periodQuarter: item.periodQuarter,
+            filedAt: item.filedAt,
+            url: item.url,
+            metadata: {
+              code,
+              form: item.form,
+              title: item.title,
+              market: "cn",
+              ticker: company.ticker,
+              source: "cninfo-fast",
+            },
+          },
+          update: {
+            kind: item.kind,
+            periodYear: item.periodYear,
+            periodQuarter: item.periodQuarter,
+            filedAt: item.filedAt,
+            url: item.url,
+          },
+        });
+      }
+    }
+
+    result.newFilingsCount = toUpsert.length;
+    result.newFilings = toUpsert.map((u) => ({
+      kind: u.kind,
+      form: u.form,
+      periodLabel: u.periodLabel,
+      filingDate: u.filedAt.toISOString().slice(0, 10),
+      url: u.url,
+    }));
+  } catch (err) {
+    console.warn(`[phase3-update] CN filing sync error for ${company.canonicalName}:`, err);
+  }
+
+  return result;
+}
+
+async function syncHkIncrementalFilings(
+  company: {
+    id: string;
+    code: string | null;
+    ticker: string | null;
+    canonicalName: string;
+    metadata: unknown;
+  },
+  dryRun = false
+): Promise<SyncIncrementalFilingsResult> {
+  const result: SyncIncrementalFilingsResult = { newFilingsCount: 0, newFilings: [] };
+  const rawCode = (company.code || company.ticker?.split(".")[0] || "").replace(/^0+/, "");
+  if (!rawCode) return result;
+  const normalizedCode = rawCode.padStart(5, "0");
+
+  try {
+    const existing = await prisma.extSource.findMany({
+      where: {
+        filerEntityId: company.id,
+        kind: { in: ["hk-annual-report", "hk-interim-report", "hk-quarterly-report"] },
+      },
+      select: { accessionNumber: true },
+    });
+    const existingAccessions = new Set(existing.map((e) => e.accessionNumber).filter(Boolean));
+
+    // 1. Resolve stockId (use cached from metadata if available)
+    const meta = (company.metadata && typeof company.metadata === "object" ? company.metadata : {}) as Record<string, unknown>;
+    let stockId = typeof meta.hkexStockId === "string" || typeof meta.hkexStockId === "number" ? String(meta.hkexStockId) : null;
+
+    if (!stockId) {
+      const prefixUrl = `https://www1.hkexnews.hk/search/prefix.do?callback=callback&lang=ZH&type=A&name=${normalizedCode}&market=SEHK`;
+      const r1 = await fetch(prefixUrl, {
+        headers: { "User-Agent": "Mozilla/5.0" },
+        signal: AbortSignal.timeout(6000),
+      });
+      const text1 = await r1.text();
+      const m1 = text1.trim().match(/^callback\(([\s\S]*)\);?$/);
+      if (!m1) return result;
+      const payload1 = JSON.parse(m1[1]);
+      const stock = payload1.stockInfo?.find((s: Record<string, unknown>) => String(s.code).padStart(5, "0") === normalizedCode);
+      if (!stock?.stockId) return result;
+      stockId = String(stock.stockId);
+      // Persist to entity metadata for future instant lookups
+      if (!dryRun) {
+        prisma.entity.update({
+          where: { id: company.id },
+          data: { metadata: { ...meta, hkexStockId: stockId } },
+        }).catch(() => {});
+      }
+    }
+
+    // 2. Query titleSearchServlet
+    const fromDate = new Date(Date.now() - 540 * 86400000).toISOString().slice(0, 10).replace(/-/g, "");
+    const toDate = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const queryUrl = "https://www1.hkexnews.hk/search/titleSearchServlet.do";
+    const params = new URLSearchParams({
+      sortDir: "0",
+      sortByRecordDate: "on",
+      category: "0",
+      market: "SEHK",
+      stockId,
+      documentType: "-1",
+      t1code: "40000",
+      t2Gcode: "-2",
+      t2code: "-2",
+      from: fromDate,
+      to: toDate,
+      lang: "ZH",
+      title: "",
+    });
+
+    const r2 = await fetch(`${queryUrl}?${params.toString()}`, {
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        Referer: "https://www1.hkexnews.hk/search/titlesearch.xhtml?lang=zh",
+      },
+      signal: AbortSignal.timeout(6500),
+    });
+    const data2 = await r2.json();
+    const items = typeof data2.result === "string" ? JSON.parse(data2.result) : (data2.result || []);
+
+    const toUpsert: Array<{
+      kind: string;
+      form: string;
+      accessionNumber: string;
+      periodYear: number;
+      periodQuarter: number | null;
+      filedAt: Date;
+      url: string;
+      title: string;
+      periodLabel: string;
+    }> = [];
+
+    for (const item of items) {
+      const title = String(item.TITLE || "");
+      if (HK_EXCLUDE_RE.test(title)) continue;
+
+      let kind = "";
+      let form = "";
+      let periodQuarter: number | null = null;
+
+      if (/年報|年度報告|Annual Report/i.test(title)) {
+        kind = "hk-annual-report";
+        form = "年報";
+        periodQuarter = null;
+      } else if (/中期報告|半年度報告|Interim Report/i.test(title)) {
+        kind = "hk-interim-report";
+        form = "中期報告";
+        periodQuarter = 2;
+      } else if (/第一季度|第一季|First Quarter/i.test(title)) {
+        kind = "hk-quarterly-report";
+        form = "第一季度業績";
+        periodQuarter = 1;
+      } else if (/第三季度|第三季|Third Quarter/i.test(title)) {
+        kind = "hk-quarterly-report";
+        form = "第三季度業績";
+        periodQuarter = 3;
+      } else {
+        continue;
+      }
+
+      const year = extractHkYear(title);
+      if (!year) continue;
+
+      const qLabel = periodQuarter === 2 ? "h1" : periodQuarter ? `q${periodQuarter}` : "";
+      const accessionNumber = qLabel ? `${kind}-${year}-${qLabel}` : `${kind}-${year}`;
+
+      if (existingAccessions.has(accessionNumber)) continue;
+      if (toUpsert.length >= 8) break;
+
+      const fileLink = String(item.FILE_LINK || "");
+      const url = fileLink.startsWith("http") ? fileLink : `https://www1.hkexnews.hk${fileLink}`;
+
+      let filedAt = new Date();
+      if (item.DATE_TIME) {
+        const parts = String(item.DATE_TIME).split(" ")[0].split("/");
+        if (parts.length === 3) {
+          filedAt = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        }
+      }
+
+      const periodLabel = `${year}${periodQuarter ? (periodQuarter === 2 ? " H1" : ` Q${periodQuarter}`) : ""}`;
+
+      toUpsert.push({
+        kind,
+        form,
+        accessionNumber,
+        periodYear: year,
+        periodQuarter,
+        filedAt,
+        url,
+        title,
+        periodLabel,
+      });
+    }
+
+    if (toUpsert.length > 0 && !dryRun) {
+      for (const item of toUpsert) {
+        await prisma.extSource.upsert({
+          where: {
+            ExtSource_filer_accession_unique: {
+              filerEntityId: company.id,
+              accessionNumber: item.accessionNumber,
+            },
+          },
+          create: {
+            kind: item.kind,
+            filerEntityId: company.id,
+            accessionNumber: item.accessionNumber,
+            periodYear: item.periodYear,
+            periodQuarter: item.periodQuarter,
+            filedAt: item.filedAt,
+            url: item.url,
+            metadata: {
+              code: normalizedCode,
+              form: item.form,
+              title: item.title,
+              market: "hk",
+              ticker: company.ticker,
+              source: "hkex-fast",
+            },
+          },
+          update: {
+            kind: item.kind,
+            periodYear: item.periodYear,
+            periodQuarter: item.periodQuarter,
+            filedAt: item.filedAt,
+            url: item.url,
+          },
+        });
+      }
+    }
+
+    result.newFilingsCount = toUpsert.length;
+    result.newFilings = toUpsert.map((u) => ({
+      kind: u.kind,
+      form: u.form,
+      periodLabel: u.periodLabel,
+      filingDate: u.filedAt.toISOString().slice(0, 10),
+      url: u.url,
+    }));
+  } catch (err) {
+    console.warn(`[phase3-update] HK filing sync error for ${company.canonicalName}:`, err);
+  }
+
+  return result;
+}
+
+async function syncIncrementalFilingLinks(
+  company: {
+    id: string;
+    cik: string | null;
+    market: string | null;
+    code: string | null;
+    ticker: string | null;
+    canonicalName: string;
+    metadata: unknown;
+  },
+  dryRun = false
+): Promise<SyncIncrementalFilingsResult> {
+  const market = (company.market || (company.cik ? "us" : "")).toLowerCase();
+  let result: SyncIncrementalFilingsResult = { newFilingsCount: 0, newFilings: [] };
+
+  if (market === "us") {
+    result = await syncUsIncrementalFilings(company, dryRun);
+  } else if (market === "cn") {
+    result = await syncCnIncrementalFilings(company, dryRun);
+  } else if (market === "hk") {
+    result = await syncHkIncrementalFilings(company, dryRun);
+  }
+
+  if (result.newFilingsCount > 0) {
+    console.log(
+      `[phase3-update] [${market.toUpperCase()}] Synced ${result.newFilingsCount} new filing link(s) for ${company.canonicalName}:`,
+      result.newFilings.map((f) => `${f.periodLabel} (${f.form})`).join(", ")
+    );
+  }
+
+  return result;
+}
+
 /**
  * Main Phase 3 Update Executor
  * - Refreshes stock price snapshot
@@ -406,8 +1050,13 @@ export async function runPhase3Update(
       id: true,
       ticker: true,
       canonicalName: true,
+      cik: true,
+      market: true,
+      code: true,
       sector: true,
       onboardPhase: true,
+      priority: true,
+      priorityRequestedAt: true,
       metadata: true,
       securitiesAsCompany: {
         select: { ticker: true },
@@ -452,10 +1101,22 @@ export async function runPhase3Update(
   const meta = (entity.metadata as Record<string, unknown>) || {};
   const nameZh = typeof meta.nameZh === "string" ? meta.nameZh : null;
 
-  // 2. Refresh Stock Prices for ALL tickers of this company in parallel
-  const priceResults = await Promise.all(
-    distinctTickers.map((t) => fetchAndUpsertRecentPrices(t, dryRun))
-  );
+  // 2. Parallel: Refresh Stock Prices for ALL tickers + Discover & Link Incremental Filings (US/CN/HK)
+  const [priceResults, filingsSyncResult] = await Promise.all([
+    Promise.all(distinctTickers.map((t) => fetchAndUpsertRecentPrices(t, dryRun))),
+    syncIncrementalFilingLinks(
+      {
+        id: entity.id,
+        cik: entity.cik,
+        market: entity.market,
+        code: entity.code,
+        ticker: entity.ticker,
+        canonicalName: entity.canonicalName,
+        metadata: entity.metadata,
+      },
+      dryRun
+    ),
+  ]);
 
   const primaryPriceInfo =
     priceResults.find((p) => p.ticker === primaryTicker) ??
@@ -505,30 +1166,51 @@ export async function runPhase3Update(
 
   const nowIso = new Date().toISOString();
 
-  // 6. Update Entity metadata (unless dryRun)
+  // 6. Update Entity metadata & Enqueue Fast-Track P3 Task (if new filings discovered or requested)
+  const shouldEnqueueP3 =
+    (filingsSyncResult.newFilingsCount > 0 || Boolean(options.enqueueP3)) && entity.onboardPhase >= 2;
+  const nextPriority = shouldEnqueueP3 ? Math.max(entity.priority ?? 0, 100) : undefined;
+  const nextPriorityRequestedAt = shouldEnqueueP3 ? new Date() : undefined;
+
+  const nextMeta: Record<string, unknown> = {
+    ...meta,
+    lastP3UpdateAt: nowIso,
+    ...(shouldEnqueueP3
+      ? {
+          fastTrack: true,
+          p3Pending: true,
+          p3PendingReason: filingsSyncResult.newFilingsCount > 0 ? "new_filings_detected" : "manual_enqueue",
+          p3PendingFilings: filingsSyncResult.newFilings,
+          p3PendingAt: nowIso,
+        }
+      : {}),
+    p3: {
+      updatedAt: nowIso,
+      primaryTicker,
+      refreshedTickers: distinctTickers,
+      latestPrice,
+      priceDate: primaryPriceInfo.priceDate,
+      valuationStatus,
+      valuationDiffPct,
+      currentPe,
+      benchmarkPe,
+      redFlags: healthInfo.redFlags,
+      fundamentalHealth: healthInfo.fundamentalHealth,
+      summary,
+      newFilingsCount: filingsSyncResult.newFilingsCount,
+      latestFilingsSyncAt: nowIso,
+      p3Enqueued: shouldEnqueueP3,
+    },
+  };
+
   if (!dryRun) {
     await prisma.entity.update({
       where: { id: entity.id },
       data: {
         updatedAt: new Date(),
-        metadata: {
-          ...meta,
-          lastP3UpdateAt: nowIso,
-          p3: {
-            updatedAt: nowIso,
-            primaryTicker,
-            refreshedTickers: distinctTickers,
-            latestPrice,
-            priceDate: primaryPriceInfo.priceDate,
-            valuationStatus,
-            valuationDiffPct,
-            currentPe,
-            benchmarkPe,
-            redFlags: healthInfo.redFlags,
-            fundamentalHealth: healthInfo.fundamentalHealth,
-            summary,
-          },
-        } as unknown as Prisma.InputJsonValue,
+        ...(nextPriority != null ? { priority: nextPriority } : {}),
+        ...(nextPriorityRequestedAt != null ? { priorityRequestedAt: nextPriorityRequestedAt } : {}),
+        metadata: nextMeta as unknown as Prisma.InputJsonValue,
       },
     });
   }
@@ -553,6 +1235,9 @@ export async function runPhase3Update(
     redFlags: healthInfo.redFlags,
     fundamentalHealth: healthInfo.fundamentalHealth,
     summary,
+    newFilingsCount: filingsSyncResult.newFilingsCount,
+    newFilings: filingsSyncResult.newFilings,
+    p3Enqueued: shouldEnqueueP3,
     updatedAt: nowIso,
     durationMs,
   };

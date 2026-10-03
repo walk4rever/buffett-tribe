@@ -86,7 +86,10 @@
     - 在 `scripts/fetch-cn-hk-financials-ak.py` 中将 A 股资产负债表 `实收资本(或股本)`、`股本` 映射至 `CommonStockSharesOutstanding`（面值 1 元即股数，完整覆盖 2020 至今各季度与年度），港股通过 `stock_hk_financial_indicator_em` 提取最新已发行股本；
     - A 股通过 `ak.stock_repurchase_em()` 自动抓取并汇总各财年真实已回购金额写入 `ShareRepurchaseAmt`；港股已通过 `stock_financial_hk_report_em` 接入现金流量表回购股份；
     - 在 `src/lib/value-line-data.ts` 与 `src/components/ValueLineCard.tsx` 中增加 `totalBuyback5Y` 与 `buybackAmountLabel`（如贵州茅台 `5年累计回购 ¥90.0亿`、五粮液 `5年累计回购 ¥11.0亿`、泡泡玛特 `5年累计回购 HK$10.5亿`、苹果 `5年累计回购 $4,385.8亿`），并在财务趋势表与四宫格第三格高亮展示；实测回填验证 600519、000858、000560、09992 全绿。
-  - [ ] **P1.2 美股 10-Q 季报与滚动 TTM 数据接入**：在 Phase 1 导入管线中按需补充近 4 季 10-Q，点亮财务分析 Tab 中美股季报与 TTM 指标。
+  - [x] **P1.2 美股 10-Q 季报与定期财报 Phase 3 快速通道深度闭环（2026-10-03 已完成）**：
+    - 前台点击 Phase 3 刷新时轻量探查 SEC EDGAR、巨潮资讯与披露易，2 秒内将最新季报/年报以直链形式写入 `ExtSource` 并展示在参考资料 Tab，不阻塞用户交互；
+    - 探查到新财报后自动将实体入队快速通道（`priority = 100`, `metadata.p3Pending = true`）；
+    - `scripts/pipeline-priority-worker.ts` 将其作为 `[P2→P3 深度处理]` 分流至 `scripts/process-company-phase3-deep.ts`，全自动抽取 10-Q 报表指标与 10-K 全文、重算 Situational 动态估值指标，并清理排队状态。实测耐克（NKE）与泡泡玛特（9992.HK）全链路通过。
   - [ ] **P1.3 A 股存量历史数据全量回补（backfill-cn-repurchase）执行中断复盘与待解技术卡点**（2026-09-27）：
     - **当前已回补进度**：
       - 股票回购（`ShareRepurchaseAmt`）：**已完成 135 行，覆盖 67 家公司**（东方财富 5,523 条全市场回购明细缓存已全量匹配入库并写入）。

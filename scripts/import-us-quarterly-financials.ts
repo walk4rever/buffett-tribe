@@ -9,11 +9,12 @@
  *   node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-us-quarterly-financials.ts --all
  */
 
-import { PrismaClient } from "@prisma/client";
+import { pathToFileURL } from "node:url";
+import prisma from "@/lib/prisma";
 import { getCompanyFacts, LINE_ITEMS } from "./lib/annual-report-import-core";
 import { archiveFilingArtifact, fetchFilingIndexFiles, fetchSecText } from "./lib/filing-archive";
 
-const db = new PrismaClient();
+const db = prisma;
 
 function getArg(flag: string): string | undefined {
   const args = process.argv.slice(2);
@@ -24,38 +25,6 @@ function hasFlag(flag: string): boolean {
   return process.argv.slice(2).includes(flag);
 }
 
-/**
- * Build SEC filing URL with fallback strategy:
- * 1. Try to fetch primary document name from filing index
- * 2. Build direct Archives URL if found
- * 3. Fallback to SEC viewer URL
- */
-async function buildFilingUrl(cik: string, accession: string, formType: string): Promise<string> {
-  const paddedCik = cik.padStart(10, "0");
-
-  try {
-    // Try to get primary document name from filing index
-    const { files } = await fetchFilingIndexFiles(paddedCik, accession);
-
-    // Find primary document (10-Q, 10-K, etc.)
-    const primaryDoc = files.find(f =>
-      f.category === "attachment" &&
-      f.description?.toLowerCase().includes(formType.toLowerCase()) &&
-      (f.documentName.endsWith('.htm') || f.documentName.endsWith('.html'))
-    );
-
-    if (primaryDoc) {
-      // Use direct Archives URL (more reliable)
-      const accessionPath = accession.replace(/-/g, "");
-      return `https://www.sec.gov/Archives/edgar/data/${paddedCik}/${accessionPath}/${primaryDoc.documentName}`;
-    }
-  } catch {
-    console.warn(`  Warning: Could not fetch filing index for ${accession}, using viewer URL`);
-  }
-
-  // Fallback to SEC viewer URL
-  return `https://www.sec.gov/cgi-bin/viewer?action=view&cik=${cik}&accession_number=${accession}&xbrl_type=v`;
-}
 
 type QuarterFiling = {
   accn: string;
@@ -69,7 +38,7 @@ export async function importUsQuarterlyFinancialsForEntity(
   entityId: string,
   cik: string,
   ticker: string,
-  options?: { archiveHtml?: boolean; archiveFromYear?: number },
+  options?: { archiveHtml?: boolean; archiveFromYear?: number; fromYear?: number },
 ) {
   const paddedCik = cik.padStart(10, "0");
   const facts = await getCompanyFacts(paddedCik);
@@ -96,7 +65,7 @@ export async function importUsQuarterlyFinancialsForEntity(
               const existing = filingsByQuarter.get(key);
               const filed = r.filed ?? "0000-00-00";
               const end = r.end ?? "";
-              if (!existing || (r.filed && r.filed > existing.filedAt)) {
+              if (!existing || (r.filed && r.filed > existing.filedAt) || (r.filed === existing.filedAt && end > existing.periodEnd)) {
                 filingsByQuarter.set(key, {
                   accn: r.accn,
                   fy: r.fy,
@@ -112,64 +81,76 @@ export async function importUsQuarterlyFinancialsForEntity(
     }
   }
 
-  const sortedFilings = [...filingsByQuarter.values()].sort((a, b) => {
-    if (a.fy !== b.fy) return a.fy - b.fy;
-    return a.fp.localeCompare(b.fp);
-  });
+  const minYear = options?.fromYear ?? 2020;
+  const sortedFilings = [...filingsByQuarter.values()]
+    .filter((f) => f.fy >= minYear)
+    .sort((a, b) => {
+      if (a.fy !== b.fy) return a.fy - b.fy;
+      return a.fp.localeCompare(b.fp);
+    });
 
   if (!sortedFilings.length) {
     console.log(`  ${ticker} (${cik}): no 10-Q filings discovered in SEC CompanyFacts.`);
     return 0;
   }
 
+  // Pre-load existing ExtSource records to avoid redundant DB / network index lookups
+  const existingSources = await db.extSource.findMany({
+    where: { filerEntityId: entityId },
+    select: { id: true, accessionNumber: true, url: true },
+  });
+  const existingSourceMap = new Map(existingSources.map((s) => [s.accessionNumber, s]));
+
   // YTD cash-flow values for calculating discrete quarter values:
   // Map `${fy}-${fp}-${lineItem}` -> cumulative YTD value
   const ytdValues = new Map<string, number>();
 
-  let totalUpserted = 0;
+  const financialRowsToInsert: Array<{
+    entityId: string;
+    sourceId: string;
+    periodEnd: Date;
+    periodType: string;
+    lineItem: string;
+    value: number;
+    unit: string | null;
+  }> = [];
 
   for (const filing of sortedFilings) {
     const quarterNum = filing.fp === "Q1" ? 1 : filing.fp === "Q2" ? 2 : 3;
 
-    // Build URL with fallback strategy
-    const filingUrl = await buildFilingUrl(cik, filing.accn, "10-Q");
-
-    // Upsert ExtSource
-    const extSource = await db.extSource.upsert({
-      where: {
-        ExtSource_filer_accession_unique: {
+    // Use cached/existing ExtSource if available, else create ExtSource
+    const existing = existingSourceMap.get(filing.accn);
+    let extSourceId: string;
+    if (existing) {
+      extSourceId = existing.id;
+    } else {
+      const filingUrl = `https://www.sec.gov/cgi-bin/viewer?action=view&cik=${cik}&accession_number=${filing.accn}&xbrl_type=v`;
+      const created = await db.extSource.create({
+        data: {
+          kind: "10q",
           filerEntityId: entityId,
           accessionNumber: filing.accn,
+          periodYear: filing.fy,
+          periodQuarter: quarterNum,
+          filedAt: filing.filedAt ? new Date(filing.filedAt) : null,
+          url: filingUrl,
+          metadata: {
+            ticker,
+            form: "10-Q",
+            fy: filing.fy,
+            fp: filing.fp,
+            periodEnd: filing.periodEnd,
+          },
         },
-      },
-      create: {
-        kind: "10q",
-        filerEntityId: entityId,
-        accessionNumber: filing.accn,
-        periodYear: filing.fy,
-        periodQuarter: quarterNum,
-        filedAt: filing.filedAt ? new Date(filing.filedAt) : null,
-        url: filingUrl,
-        metadata: {
-          ticker,
-          form: "10-Q",
-          fy: filing.fy,
-          fp: filing.fp,
-          periodEnd: filing.periodEnd,
-        },
-      },
-      update: {
-        periodYear: filing.fy,
-        periodQuarter: quarterNum,
-        filedAt: filing.filedAt ? new Date(filing.filedAt) : null,
-        url: filingUrl,
-      },
-    });
+      });
+      extSourceId = created.id;
+      existingSourceMap.set(filing.accn, created);
+    }
 
     if (options?.archiveHtml && (!options.archiveFromYear || filing.fy >= options.archiveFromYear)) {
       try {
         const existingArtifact = await db.filingArtifact.findFirst({
-          where: { sourceId: extSource.id, kind: "primary_html" },
+          where: { sourceId: extSourceId, kind: "primary_html" },
           select: { id: true },
         });
         if (!existingArtifact) {
@@ -182,7 +163,7 @@ export async function importUsQuarterlyFinancialsForEntity(
           if (primaryDoc) {
             const html = await fetchSecText(primaryDoc.url);
             await archiveFilingArtifact(db, {
-              sourceId: extSource.id,
+              sourceId: extSourceId,
               kind: "primary_html",
               cik: paddedCik,
               accession: filing.accn,
@@ -192,7 +173,7 @@ export async function importUsQuarterlyFinancialsForEntity(
               sourceUrl: primaryDoc.url,
             });
             await db.extSource.update({
-              where: { id: extSource.id },
+              where: { id: extSourceId },
               data: { url: primaryDoc.url },
             });
             console.log(`    archived 10-Q HTML for ${ticker} ${filing.fy} ${filing.fp} (${primaryDoc.documentName})`);
@@ -214,7 +195,7 @@ export async function importUsQuarterlyFinancialsForEntity(
           if (!concept?.units) continue;
 
           for (const [unit, rows] of Object.entries(concept.units)) {
-            const matching = rows.filter((r) => r.accn === filing.accn && r.val != null);
+            const matching = rows.filter((r) => r.accn === filing.accn && r.end === filing.periodEnd && r.val != null);
             if (!matching.length) continue;
 
             if (item.periodType === "instant") {
@@ -272,33 +253,35 @@ export async function importUsQuarterlyFinancialsForEntity(
       const periodEndDate = new Date(filing.periodEnd);
       if (Number.isNaN(periodEndDate.getTime())) continue;
 
-      await db.financial.upsert({
-        where: {
-          entityId_periodEnd_periodType_lineItem: {
-            entityId,
-            periodEnd: periodEndDate,
-            periodType: filing.fp,
-            lineItem: item.key,
-          },
-        },
-        create: {
-          entityId,
-          sourceId: extSource.id,
-          periodEnd: periodEndDate,
-          periodType: filing.fp,
-          lineItem: item.key,
-          value: candidateVal,
-          unit: candidateUnit,
-        },
-        update: {
-          sourceId: extSource.id,
-          value: candidateVal,
-          unit: candidateUnit,
-        },
+      financialRowsToInsert.push({
+        entityId,
+        sourceId: extSourceId,
+        periodEnd: periodEndDate,
+        periodType: filing.fp,
+        lineItem: item.key,
+        value: candidateVal,
+        unit: candidateUnit,
       });
-
-      totalUpserted++;
     }
+  }
+
+  let totalUpserted = 0;
+  if (financialRowsToInsert.length > 0) {
+    const periodEnds = Array.from(new Set(financialRowsToInsert.map((r) => r.periodEnd.toISOString()))).map((iso) => new Date(iso));
+    await db.$transaction([
+      db.financial.deleteMany({
+        where: {
+          entityId,
+          periodEnd: { in: periodEnds },
+          periodType: { in: ["Q1", "Q2", "Q3"] },
+        },
+      }),
+      db.financial.createMany({
+        data: financialRowsToInsert,
+        skipDuplicates: true,
+      }),
+    ]);
+    totalUpserted = financialRowsToInsert.length;
   }
 
   console.log(
@@ -351,8 +334,10 @@ async function main() {
   console.log("Done.");
 }
 
-main().catch(async (err) => {
-  console.error(err);
-  await db.$disconnect();
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(async (err) => {
+    console.error(err);
+    await db.$disconnect();
+    process.exit(1);
+  });
+}
