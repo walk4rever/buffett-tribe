@@ -473,6 +473,10 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   const showDeepAnalysisButton = onboardPhase === 1;
   const companyPriority = company.priority ?? 0;
 
+  // A 股与港股因暂无 13F/公募外资大师持仓数据，默认隐藏该 Tab（若未来接入真实持仓则自动显示）
+  const isCnHk = company.market === "cn" || company.market === "hk";
+  const showHoldingsTab = !isCnHk || holders.holders.length > 0;
+
   const allTabs = [
     { id: "valueline",  label: "价值线",  desc: "数字价值线核心全景" },
     { id: "business",   label: "商业模式", desc: "九宫格商业模式画布",  ...(!businessCanvas  ? { disabled: true } : {}) },
@@ -480,7 +484,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     { id: "value",      label: "竞争优势", desc: "护城河雷达与资本回报", ...(!hasRealMoat    ? { disabled: true } : {}) },
     { id: "management", label: "资本配置", desc: "资本回报与股东回报纪律",  ...(!hasManagement  ? { disabled: true } : {}) },
     { id: "valuation",  label: "估值分析", desc: "历史分位与情景推演",  ...(!hasValuation   ? { disabled: true } : {}) },
-    { id: "holdings",   label: "大师持仓", desc: "13F顶尖机构季度动向" },
+    ...(showHoldingsTab ? [{ id: "holdings", label: "大师持仓", desc: "13F顶尖机构季度动向" }] : []),
     { id: "references", label: "参考资料", desc: "官方SEC 10-K年报原文" },
   ];
 
@@ -760,113 +764,115 @@ export default async function CompanyPage({ params, searchParams }: Props) {
             </section>
 
             {/* Tab 6: Master Holdings (13F) */}
-            <section className="company-section" data-tab-panel="holdings">
-              {hasManagement && managementArtifact ? (
-                <MasterViewsSection artifact={managementArtifact} />
-              ) : null}
+            {showHoldingsTab ? (
+              <section className="company-section" data-tab-panel="holdings">
+                {hasManagement && managementArtifact ? (
+                  <MasterViewsSection artifact={managementArtifact} />
+                ) : null}
 
-              <div className="company-financial-trend-head">
-                <h3>大师持仓（13F 全量历史明细）</h3>
-                <span className="dvl-section-subtitle">追踪顶级价值投资者建仓成本、仓位占比与季度加减仓动向</span>
-              </div>
-              {holders.holders.length ? (
-                <>
-                  <div className="company-holders-table-wrap">
-                    <table className="company-holders-table">
-                      <thead>
-                        <tr>
-                          <th className="holdings-th">机构<br/><span className="holdings-th-en">Holder</span></th>
-                          <th className="holdings-th">证券<br/><span className="holdings-th-en">Ticker</span></th>
-                          <th className="holdings-th holdings-th--num">仓位<br/><span className="holdings-th-en">% of Portfolio</span></th>
-                          <th className="holdings-th">近期动作<br/><span className="holdings-th-en">Recent Activity</span></th>
-                          <th className="holdings-th holdings-th--num">动作季度<br/><span className="holdings-th-en">Activity Quarter</span></th>
-                          <th className="holdings-th holdings-th--num">持股<br/><span className="holdings-th-en">Shares</span></th>
-                          <th className="holdings-th holdings-th--num">申报价<br/><span className="holdings-th-en">Reported Price*</span></th>
-                          <th className="holdings-th holdings-th--num">市值（亿）<br/><span className="holdings-th-en">Value</span></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {holders.holders.map((h, i) => {
-                          const member = h.tribeId ? tribeMemberById.get(h.tribeId) ?? null : null;
-                          const holderName = member?.nameZh ?? h.holderName;
-                          const prevHolder = i > 0 ? holders.holders[i - 1] : null;
-                          const isFirstOfGroup = !prevHolder || prevHolder.holderName !== h.holderName;
-                          const secRow = securities.find((s) => s.ticker?.toUpperCase() === h.ticker?.toUpperCase());
-                          const classLabel = secRow ? formatSecurityClassLabel(secRow) : null;
-                          return (
-                            <tr
-                              key={`${h.id}-${h.ticker ?? "unknown"}-${h.sourceYear ?? "unknown"}-${h.sourceQuarter ?? "unknown"}-${i}`}
-                              className={h.isSoldOut ? "company-holders-row--soldout" : ""}
-                            >
-                              <td className="holdings-td holdings-td--num company-holders-holder">
-                                {isFirstOfGroup ? (
-                                  h.tribeId ? (
-                                    <Link href={`/master/${h.tribeId}`} className="company-holder-link company-holder-link--name">
-                                      <strong>{holderName}</strong>
-                                    </Link>
-                                  ) : (
-                                    <strong>{holderName}</strong>
-                                  )
-                                ) : (
-                                  <span />
-                                )}
-                              </td>
-                              <td className="holdings-td holdings-td--num company-holders-stock">
-                                <strong>{h.ticker ?? "—"}</strong>
-                                {classLabel ? <span className="holdings-stock-class">{classLabel}</span> : null}
-                              </td>
-                              <td className="holdings-td holdings-td--num">
-                                {h.percent != null ? `${h.percent.toFixed(2)}%` : "—"}
-                              </td>
-                              <td className="holdings-td holdings-td--act">
-                                {h.activity === "SoldOut" ? (
-                                  <span className="holdings-activity-soldout">Sold Out</span>
-                                ) : h.activity === "New" ? (
-                                  <span className="holdings-activity-new">New</span>
-                                ) : h.activity === "Added" ? (
-                                  <span className="holdings-activity-delta holdings-activity-delta--up">
-                                    ↑ {formatSignedPct(h.shareDeltaPct)}
-                                  </span>
-                                ) : h.activity === "Reduced" ? (
-                                  <span className="holdings-activity-delta holdings-activity-delta--down">
-                                    ↓ {formatSignedPct(h.shareDeltaPct)}
-                                  </span>
-                                ) : (
-                                  <span className="holdings-activity-delta">—</span>
-                                )}
-                              </td>
-                              <td className="holdings-td holdings-td--num">
-                                {h.sourceYear != null && h.sourceQuarter != null
-                                  ? `${h.sourceYear} Q${h.sourceQuarter}`
-                                  : "—"}
-                              </td>
-                              <td className="holdings-td holdings-td--num">
-                                {formatShares(h.shares)}
-                              </td>
-                              <td className="holdings-td holdings-td--num">
-                                {formatPriceFromValueAndShares(h.valueUsd, h.shares)}
-                              </td>
-                              <td className="holdings-td holdings-td--num">
-                                {formatMoney(h.valueUsd == null ? null : String(h.valueUsd))}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  <p className="company-footnote">
-                    * 申报价按 SEC 13F 申报市值除以申报股数推算，供建仓成本区间参考。Sold Out 行的仓位、持股、申报价和市值为清仓前最后一次披露的持仓数据。
-                  </p>
-                </>
-              ) : (
-                <div className="company-empty">
-                  {company.market === "us" || company.cik
-                    ? "暂无部落大师 13F 重仓记录。"
-                    : "当前 13F 披露体系主要覆盖美股标的，A 股与港股大师持仓（公募/外资）后续接入中。"}
+                <div className="company-financial-trend-head">
+                  <h3>大师持仓（13F 全量历史明细）</h3>
+                  <span className="dvl-section-subtitle">追踪顶级价值投资者建仓成本、仓位占比与季度加减仓动向</span>
                 </div>
-              )}
-            </section>
+                {holders.holders.length ? (
+                  <>
+                    <div className="company-holders-table-wrap">
+                      <table className="company-holders-table">
+                        <thead>
+                          <tr>
+                            <th className="holdings-th">机构<br/><span className="holdings-th-en">Holder</span></th>
+                            <th className="holdings-th">证券<br/><span className="holdings-th-en">Ticker</span></th>
+                            <th className="holdings-th holdings-th--num">仓位<br/><span className="holdings-th-en">% of Portfolio</span></th>
+                            <th className="holdings-th">近期动作<br/><span className="holdings-th-en">Recent Activity</span></th>
+                            <th className="holdings-th holdings-th--num">动作季度<br/><span className="holdings-th-en">Activity Quarter</span></th>
+                            <th className="holdings-th holdings-th--num">持股<br/><span className="holdings-th-en">Shares</span></th>
+                            <th className="holdings-th holdings-th--num">申报价<br/><span className="holdings-th-en">Reported Price*</span></th>
+                            <th className="holdings-th holdings-th--num">市值（亿）<br/><span className="holdings-th-en">Value</span></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {holders.holders.map((h, i) => {
+                            const member = h.tribeId ? tribeMemberById.get(h.tribeId) ?? null : null;
+                            const holderName = member?.nameZh ?? h.holderName;
+                            const prevHolder = i > 0 ? holders.holders[i - 1] : null;
+                            const isFirstOfGroup = !prevHolder || prevHolder.holderName !== h.holderName;
+                            const secRow = securities.find((s) => s.ticker?.toUpperCase() === h.ticker?.toUpperCase());
+                            const classLabel = secRow ? formatSecurityClassLabel(secRow) : null;
+                            return (
+                              <tr
+                                key={`${h.id}-${h.ticker ?? "unknown"}-${h.sourceYear ?? "unknown"}-${h.sourceQuarter ?? "unknown"}-${i}`}
+                                className={h.isSoldOut ? "company-holders-row--soldout" : ""}
+                              >
+                                <td className="holdings-td holdings-td--num company-holders-holder">
+                                  {isFirstOfGroup ? (
+                                    h.tribeId ? (
+                                      <Link href={`/master/${h.tribeId}`} className="company-holder-link company-holder-link--name">
+                                        <strong>{holderName}</strong>
+                                      </Link>
+                                    ) : (
+                                      <strong>{holderName}</strong>
+                                    )
+                                  ) : (
+                                    <span />
+                                  )}
+                                </td>
+                                <td className="holdings-td holdings-td--num company-holders-stock">
+                                  <strong>{h.ticker ?? "—"}</strong>
+                                  {classLabel ? <span className="holdings-stock-class">{classLabel}</span> : null}
+                                </td>
+                                <td className="holdings-td holdings-td--num">
+                                  {h.percent != null ? `${h.percent.toFixed(2)}%` : "—"}
+                                </td>
+                                <td className="holdings-td holdings-td--act">
+                                  {h.activity === "SoldOut" ? (
+                                    <span className="holdings-activity-soldout">Sold Out</span>
+                                  ) : h.activity === "New" ? (
+                                    <span className="holdings-activity-new">New</span>
+                                  ) : h.activity === "Added" ? (
+                                    <span className="holdings-activity-delta holdings-activity-delta--up">
+                                      ↑ {formatSignedPct(h.shareDeltaPct)}
+                                    </span>
+                                  ) : h.activity === "Reduced" ? (
+                                    <span className="holdings-activity-delta holdings-activity-delta--down">
+                                      ↓ {formatSignedPct(h.shareDeltaPct)}
+                                    </span>
+                                  ) : (
+                                    <span className="holdings-activity-delta">—</span>
+                                  )}
+                                </td>
+                                <td className="holdings-td holdings-td--num">
+                                  {h.sourceYear != null && h.sourceQuarter != null
+                                    ? `${h.sourceYear} Q${h.sourceQuarter}`
+                                    : "—"}
+                                </td>
+                                <td className="holdings-td holdings-td--num">
+                                  {formatShares(h.shares)}
+                                </td>
+                                <td className="holdings-td holdings-td--num">
+                                  {formatPriceFromValueAndShares(h.valueUsd, h.shares)}
+                                </td>
+                                <td className="holdings-td holdings-td--num">
+                                  {formatMoney(h.valueUsd == null ? null : String(h.valueUsd))}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="company-footnote">
+                      * 申报价按 SEC 13F 申报市值除以申报股数推算，供建仓成本区间参考。Sold Out 行的仓位、持股、申报价和市值为清仓前最后一次披露的持仓数据。
+                    </p>
+                  </>
+                ) : (
+                  <div className="company-empty">
+                    {company.market === "us" || company.cik
+                      ? "暂无部落大师 13F 重仓记录。"
+                      : "当前 13F 披露体系主要覆盖美股标的，A 股与港股大师持仓（公募/外资）后续接入中。"}
+                  </div>
+                )}
+              </section>
+            ) : null}
 
             {/* Tab 7: Reference Materials */}
             <section className="company-section" data-tab-panel="references">
