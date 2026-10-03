@@ -844,18 +844,32 @@ async function main() {
   if (!failed) {
     const finalEntity = await prisma.entity.findFirst({
       where: { type: "company", ticker: { equals: ticker, mode: "insensitive" } },
-      select: { id: true, metadata: true, market: true },
+      select: { id: true, canonicalName: true, sector: true, metadata: true, market: true, sectorModelType: true },
     });
     if (finalEntity) {
       const meta = (finalEntity.metadata as Record<string, unknown>) || {};
       const currentPhase = typeof meta.onboardPhase === "number" ? meta.onboardPhase : 0;
       const targetPhase = phaseArg === "2" || phaseArg === "all" ? 2 : 1;
       const nextPhase = Math.max(currentPhase, targetPhase);
+
+      // Calculate sectorModelType if not already set or forced
+      let sectorModelType = finalEntity.sectorModelType;
+      if ((!sectorModelType || force) && nextPhase >= 1) {
+        const { detectSectorModel7 } = await import("../src/lib/sector-classification");
+        const industry = typeof meta.industry === "string" ? meta.industry : null;
+        const nameZh = typeof meta.nameZh === "string" ? meta.nameZh : "";
+        const fullName = [finalEntity.canonicalName, nameZh].filter(Boolean).join(" ");
+        const result = detectSectorModel7(finalEntity.sector, industry, fullName);
+        sectorModelType = result.type;
+        console.log(`[Sector Classification] ${finalEntity.canonicalName}${nameZh ? ` (${nameZh})` : ""} → ${result.label} (${result.type})`);
+      }
+
       await prisma.entity.update({
         where: { id: finalEntity.id },
         data: {
           market: finalEntity.market ?? market,
           onboardPhase: nextPhase,
+          sectorModelType: sectorModelType || undefined,
           metadata: {
             ...meta,
             onboardPhase: nextPhase,
