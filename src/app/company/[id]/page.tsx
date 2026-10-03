@@ -22,6 +22,7 @@ import {
 } from "@/lib/company-data";
 import {
   ManagementAnalysisSection,
+  MasterViewsSection,
   ValuationAnalysisSection,
   parseManagementPayload,
   parseValuationPayload,
@@ -477,13 +478,13 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     { id: "business",   label: "商业分析", desc: "九宫格商业模式画布",  ...(!businessCanvas  ? { disabled: true } : {}) },
     { id: "financial",  label: "财务分析", desc: "核心三张表与杜邦分解" },
     { id: "value",      label: "价值分析", desc: "护城河雷达与资本回报", ...(!hasRealMoat    ? { disabled: true } : {}) },
-    { id: "management", label: "管理分析", desc: "治理结构与资本配置",  ...(!hasManagement  ? { disabled: true } : {}) },
+    { id: "management", label: "资本配置", desc: "资本回报与股东回报纪律",  ...(!hasManagement  ? { disabled: true } : {}) },
     { id: "valuation",  label: "估值分析", desc: "历史分位与情景推演",  ...(!hasValuation   ? { disabled: true } : {}) },
     { id: "holdings",   label: "大师持仓", desc: "13F顶尖机构季度动向" },
     { id: "references", label: "参考资料", desc: "官方SEC 10-K年报原文" },
   ];
 
-  // Phase 1 时过滤掉 disabled 的 tab（商业分析、价值分析、管理分析、估值分析）
+  // Phase 1 时过滤掉 disabled 的 tab（商业分析、价值分析、资本配置、估值分析）
   const visibleTabs = showDeepAnalysisButton
     ? allTabs.filter(tab => !tab.disabled)
     : allTabs;
@@ -704,23 +705,23 @@ export default async function CompanyPage({ params, searchParams }: Props) {
               </div>
             </section>
 
-            {/* Tab 4: Management Analysis */}
+            {/* Tab 4: Capital Allocation */}
             <section className="company-section" data-tab-panel="management">
               {hasManagement && managementArtifact ? (
                 <ManagementAnalysisSection artifact={managementArtifact} usFiling={Boolean(company.cik)} />
               ) : (
                 <div className="company-placeholder-grid">
                   <article className="company-placeholder-card">
-                    <h3>管理层与董事会</h3>
-                    <p>后续可接入 CEO、CFO、董事会结构、任职履历与关键股权激励信息。</p>
+                    <h3>回购与分红纪律</h3>
+                    <p>后续可接入历史回购注销、股息率、分红率与股本变化追踪。</p>
                   </article>
                   <article className="company-placeholder-card">
-                    <h3>资本配置</h3>
-                    <p>后续可补充回购、并购、分红、投资回报率与管理层执行纪律的长期跟踪。</p>
+                    <h3>资本配置与再投资</h3>
+                    <p>后续可补充并购、资本开支、投资回报率（ROIC/ROE）与再投资纪律的长期跟踪。</p>
                   </article>
                   <article className="company-placeholder-card">
-                    <h3>组织与文化</h3>
-                    <p>后续可接入管理层访谈、股东信、10-K 讨论区和公司治理相关证据。</p>
+                    <h3>股东利益一致性</h3>
+                    <p>后续可接入股权激励稀释、管理层利益捆绑与长期激励机制评估。</p>
                   </article>
                 </div>
               )}
@@ -752,7 +753,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                   </article>
                   <article className="company-placeholder-card">
                     <h3>估值判断</h3>
-                    <p>后续可把价格历史、财务趋势和管理分析合成一个统一的估值结论。</p>
+                    <p>后续可把价格历史、财务趋势和资本配置合成一个统一的估值结论。</p>
                   </article>
                 </div>
               )}
@@ -760,6 +761,10 @@ export default async function CompanyPage({ params, searchParams }: Props) {
 
             {/* Tab 6: Master Holdings (13F) */}
             <section className="company-section" data-tab-panel="holdings">
+              {hasManagement && managementArtifact ? (
+                <MasterViewsSection artifact={managementArtifact} />
+              ) : null}
+
               <div className="company-financial-trend-head">
                 <h3>大师持仓（13F 全量历史明细）</h3>
                 <span className="dvl-section-subtitle">追踪顶级价值投资者建仓成本、仓位占比与季度加减仓动向</span>

@@ -1,5 +1,5 @@
 /**
- * Server-rendered sections for the LLM-generated 管理分析 / 估值分析 tabs.
+ * Server-rendered sections for the LLM-generated 资本配置 / 估值分析 / 大师视角 tabs.
  * Payloads come from CompanyAnalysis.management / CompanyAnalysis.valuation.
  * All numbers in the valuation payload were computed in code; the LLM only
  * wrote the narratives.
@@ -201,7 +201,7 @@ export function ManagementAnalysisSection({ artifact, usFiling }: { artifact: Ge
   return (
     <>
       <div className="company-financial-trend-head">
-        <h3>管理层总评</h3>
+        <h3>资本配置总评</h3>
         <GenMeta artifact={artifact} />
       </div>
       <div className="company-text-card">
@@ -209,27 +209,9 @@ export function ManagementAnalysisSection({ artifact, usFiling }: { artifact: Ge
       </div>
 
       <div className="company-financial-trend-head">
-        <h3>资本配置{data.capitalAllocation.score != null ? ` · ${data.capitalAllocation.score}/10` : ""}</h3>
+        <h3>资本配置行为{data.capitalAllocation.score != null ? ` · ${data.capitalAllocation.score}/10` : ""}</h3>
       </div>
       <CardGrid cards={data.capitalAllocation.cards} />
-
-      {data.masterViews.length > 0 ? (
-        <>
-          <div className="company-financial-trend-head">
-            <h3>大师视角</h3>
-          </div>
-          <div className="company-placeholder-grid company-placeholder-grid--two">
-            {data.masterViews.map((view) => (
-              <article key={view.master} className="company-placeholder-card">
-                <h3>{view.master}</h3>
-                <p>{view.view}</p>
-                {view.evidence ? <p className="company-gen-evidence">{view.evidence}</p> : null}
-                {view.sourceRef ? <p className="company-gen-source">来源：{view.sourceRef}</p> : null}
-              </article>
-            ))}
-          </div>
-        </>
-      ) : null}
 
       {data.alignment.cards.length > 0 ? (
         <>
@@ -259,6 +241,33 @@ export function ManagementAnalysisSection({ artifact, usFiling }: { artifact: Ge
         以上内容由 AI 基于{usFiling ? "SEC 公开文件" : "公司年报"}、财务数据与股东信生成，不构成任何投资建议。
       </p>
     </>
+  );
+}
+
+export function MasterViewsSection({ artifact }: { artifact: GeneratedArtifact }) {
+  const data = parseManagementPayload(artifact.payload);
+  if (!data || !data.masterViews.length) return null;
+
+  return (
+    <div className="company-master-views-block" style={{ marginBottom: "2.2rem" }}>
+      <div className="company-financial-trend-head">
+        <div>
+          <h3>大师视角</h3>
+          <span className="dvl-section-subtitle">提炼致股东信、历史评价及 13F 调仓动向中的投资逻辑</span>
+        </div>
+        <GenMeta artifact={artifact} />
+      </div>
+      <div className="company-placeholder-grid company-placeholder-grid--two">
+        {data.masterViews.map((view) => (
+          <article key={view.master} className="company-placeholder-card">
+            <h3>{view.master}</h3>
+            <p>{view.view}</p>
+            {view.evidence ? <p className="company-gen-evidence">{view.evidence}</p> : null}
+            {view.sourceRef ? <p className="company-gen-source">来源：{view.sourceRef}</p> : null}
+          </article>
+        ))}
+      </div>
+    </div>
   );
 }
 

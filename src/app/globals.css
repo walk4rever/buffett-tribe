@@ -8203,7 +8203,7 @@ body.layout-no-header {
   line-height: 1.62;
 }
 
-/* ── Generated tab content (管理分析 / 估值分析) ── */
+/* ── Generated tab content (资本配置 / 估值分析) ── */
 .company-placeholder-grid--two {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
