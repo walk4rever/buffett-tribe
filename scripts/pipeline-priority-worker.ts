@@ -246,7 +246,15 @@ async function fetchFastTrackCandidates(limit: number, marketFilter?: Market): P
       ? (typeof meta.onboardPhase2Attempts === "number" ? meta.onboardPhase2Attempts : 0)
       : (typeof meta.phase3Attempts === "number" ? meta.phase3Attempts : 0);
 
-    if (attempts >= 3) continue; // Skip persistent failures
+    if (attempts >= 3) {
+      if ((r.priority ?? 0) > 0) {
+        await prisma.entity.update({
+          where: { id: r.id },
+          data: { priority: 0, priorityRequestedAt: null },
+        }).catch(() => {});
+      }
+      continue; // Skip persistent failures
+    }
 
     let ticker = r.ticker?.trim() ?? "";
     const m = (r.market?.toLowerCase() ?? "us") as Market;
@@ -694,6 +702,8 @@ async function main() {
                   where: { id: company.id },
                   data: {
                     onboardPhase: attempts >= 3 ? -1 : 0,
+                    priority: attempts >= 3 ? 0 : (company.isFastTrack ? Math.max(0, company.priorityScore - 1000) : undefined),
+                    priorityRequestedAt: attempts >= 3 ? null : undefined,
                     metadata: {
                       ...meta,
                       onboardPhase1Attempts: attempts,
@@ -708,6 +718,8 @@ async function main() {
                 await prisma.entity.update({
                   where: { id: company.id },
                   data: {
+                    priority: attempts >= 3 ? 0 : (company.isFastTrack ? Math.max(0, company.priorityScore - 1000) : undefined),
+                    priorityRequestedAt: attempts >= 3 ? null : undefined,
                     metadata: {
                       ...meta,
                       onboardPhase2Attempts: attempts,

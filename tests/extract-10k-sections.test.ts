@@ -205,4 +205,39 @@ describe("extractTargetSections", () => {
     expect(sections.item_4_company_information?.content).not.toContain("Risk factor disclosure");
     expect(sections.item_19_exhibits?.content).toContain("Exhibit disclosure");
   });
+
+  it("extracts 10-K sections from TOC table linking to internal anchor elements (e.g. INTC / MCD pattern)", () => {
+    const html = `
+      <html>
+        <body>
+          <div>
+            <table>
+              <tr><th>Item Number</th><th>Item</th><th>Page</th></tr>
+              <tr><td>Item 1.</td><td>Business</td><td><a href="#sec_item1">3</a></td></tr>
+              <tr><td>Item 1A.</td><td>Risk Factors</td><td><a href="#sec_item1a">15</a></td></tr>
+              <tr><td>Item 7.</td><td>Management's Discussion and Analysis</td><td><a href="#sec_item7">30</a></td></tr>
+            </table>
+          </div>
+          <div id="sec_item1"></div>
+          <div><p>The company designs and manufactures microprocessors and semiconductor platforms.</p></div>
+          <div id="sec_item1a"></div>
+          <div><p>The semiconductor industry faces technological transition and global supply chain risks.</p></div>
+          <div id="sec_item7"></div>
+          <div><p>Total net revenue increased 12 percent year over year driven by cloud demand.</p></div>
+        </body>
+      </html>
+    `;
+
+    const sections = extractTargetSections(html, undefined, "10k");
+
+    expect(Object.keys(sections)).toEqual([
+      "item_1_business",
+      "item_1a_risk_factors",
+      "item_7_mda",
+    ]);
+    expect(sections.item_1_business?.content).toContain("designs and manufactures microprocessors");
+    expect(sections.item_1a_risk_factors?.content).toContain("technological transition");
+    expect(sections.item_7_mda?.content).toContain("net revenue increased 12 percent");
+  });
 });
+

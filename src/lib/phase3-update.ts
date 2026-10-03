@@ -1182,6 +1182,7 @@ export async function runPhase3Update(
           p3PendingReason: filingsSyncResult.newFilingsCount > 0 ? "new_filings_detected" : "manual_enqueue",
           p3PendingFilings: filingsSyncResult.newFilings,
           p3PendingAt: nowIso,
+          phase3Attempts: 0,
         }
       : {}),
     p3: {

@@ -1097,6 +1097,102 @@ function extractViaTocAnchors(
   return result;
 }
 
+function extractViaTocTableAnchors(
+  $: CheerioAPI,
+  html: string,
+  template: FilingTemplate,
+  sourceUrl?: string,
+): Record<string, ExtractedSection> {
+  const sectionsByItem = new Map(
+    template.sections
+      .filter((section) => section.itemNum)
+      .map((section) => [section.itemNum!, section])
+  );
+  const sectionsByKey = new Map(template.sections.map((section) => [section.key, section]));
+
+  const tocCandidates: Array<{ itemNum: string; anchorId: string; page?: number }> = [];
+
+  $("table").each((_, table) => {
+    const tableText = $(table).text().toLowerCase();
+    // Quick check to see if this table looks like a TOC table
+    if (!tableText.includes("item 1") && !tableText.includes("item 1a")) return;
+
+    let activeItemNum: string | null = null;
+
+    $(table).find("tr").each((_, tr) => {
+      const cells = $(tr)
+        .children("td,th")
+        .toArray()
+        .map((cell) => normalizeHeadingText($(cell).text()));
+      const trText = cells.join(" ");
+
+      const itemMatch = trText.match(/\bitem\s+(\d+[a-z]?)\b/i);
+      if (itemMatch) {
+        activeItemNum = itemMatch[1].toUpperCase();
+      }
+
+      if (!activeItemNum || !sectionsByItem.has(activeItemNum)) return;
+
+      $(tr).find("a[href^='#']").each((_, a) => {
+        const href = $(a).attr("href") ?? "";
+        const anchorId = href.replace(/^#/, "").trim();
+        const linkText = $(a).text().trim();
+        const pageNum = parseInt(linkText, 10);
+        if (anchorId) {
+          tocCandidates.push({
+            itemNum: activeItemNum!,
+            anchorId,
+            page: isNaN(pageNum) ? undefined : pageNum,
+          });
+        }
+      });
+    });
+  });
+
+  if (tocCandidates.length < 3) return {};
+
+  const itemToAnchor = new Map<string, string>();
+  const items = Array.from(new Set(tocCandidates.map((c) => c.itemNum)));
+  for (const itemNum of items) {
+    const forItem = tocCandidates.filter((c) => c.itemNum === itemNum);
+    forItem.sort((a, b) => {
+      if (a.page !== undefined && b.page !== undefined) return a.page - b.page;
+      return 0;
+    });
+    itemToAnchor.set(itemNum, forItem[0].anchorId);
+  }
+
+  const boundaries: Array<{ key: string; itemNum: string; anchorId: string; position: number }> = [];
+  for (const [itemNum, anchorId] of itemToAnchor.entries()) {
+    const section = sectionsByItem.get(itemNum);
+    if (!section) continue;
+    const position = findAnchorPosition(html, anchorId);
+    if (position >= 0) {
+      boundaries.push({ key: section.key, itemNum, anchorId, position });
+    }
+  }
+
+  boundaries.sort((a, b) => a.position - b.position);
+  const deduped = boundaries.filter(
+    (b, idx, arr) => idx === arr.findIndex((x) => x.position === b.position || x.key === b.key)
+  );
+
+  if (!deduped.length) return {};
+
+  const result: Record<string, ExtractedSection> = {};
+  for (let i = 0; i < deduped.length; i++) {
+    const current = deduped[i];
+    const next = deduped[i + 1];
+    const fragment = html.slice(current.position, next ? next.position : html.length);
+    const section = sectionsByKey.get(current.key);
+    if (!section) continue;
+    const extracted = extractSectionFromFragment(fragment, current.key, sourceUrl);
+    if (extracted) result[current.key] = extracted;
+  }
+
+  return result;
+}
+
 function resolveRelativeUrls(html: string, sourceUrl: string): string {
   try {
     const base = new URL(sourceUrl);
@@ -1167,7 +1263,13 @@ export function extractTargetSections(
     })
     .sort((a, b) => a.blockIndex - b.blockIndex);
 
-  if (!unique.length) return {};
+  if (!unique.length) {
+    const tocTableResult = extractViaTocTableAnchors($, html, template, sourceUrl);
+    if (Object.keys(tocTableResult).length >= 3) {
+      return tocTableResult;
+    }
+    return {};
+  }
 
   const result: Record<string, ExtractedSection> = {};
 

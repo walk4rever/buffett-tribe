@@ -118,6 +118,9 @@ export async function POST(request: NextRequest) {
       fastTrack: true,
       fastTrackRequestedAt: new Date().toISOString(),
       fastTrackRequests: ((currentMeta.fastTrackRequests as number) || 0) + 1,
+      ...(entity.onboardPhase === 0 ? { onboardPhase1Attempts: 0 } : {}),
+      ...(entity.onboardPhase === 1 ? { onboardPhase2Attempts: 0 } : {}),
+      ...(entity.onboardPhase >= 2 ? { phase3Attempts: 0 } : {}),
     };
 
     await prisma.entity.update({
