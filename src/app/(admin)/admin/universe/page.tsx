@@ -354,6 +354,7 @@ export default async function AdminUniversePage() {
                   day: "2-digit",
                   hour: "2-digit",
                   minute: "2-digit",
+                  hour12: false,
                   timeZone: "Asia/Shanghai",
                 }).format(new Date(c.updatedAt));
                 const url = formatCompanyUrl(c);

@@ -175,6 +175,8 @@ export default async function AdminOverviewPage() {
                 day: "2-digit",
                 hour: "2-digit",
                 minute: "2-digit",
+                hour12: false,
+                timeZone: "Asia/Shanghai",
               }).format(new Date(u.createdAt));
 
               return (
@@ -225,6 +227,7 @@ export default async function AdminOverviewPage() {
                   day: "2-digit",
                   hour: "2-digit",
                   minute: "2-digit",
+                  hour12: false,
                   timeZone: "Asia/Shanghai",
                 }).format(new Date(c.updatedAt));
                 const url = formatCompanyUrl(c);

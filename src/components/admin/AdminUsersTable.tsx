@@ -205,6 +205,7 @@ export function AdminUsersTable({ initialUsers }: { initialUsers: UserRow[] }) {
                         year: "numeric",
                         month: "2-digit",
                         day: "2-digit",
+                        timeZone: "Asia/Shanghai",
                       }).format(new Date(user.createdAt))
                     : "—";
 
