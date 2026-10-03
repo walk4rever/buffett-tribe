@@ -71,7 +71,7 @@ export default async function AdminUniversePage() {
       prisma.entity.count({
         where: {
           type: "company",
-          onboardPhase: { in: [0, 1] },
+          onboardPhase: { gte: 0 },
           priority: { gt: 0 },
         },
       }),

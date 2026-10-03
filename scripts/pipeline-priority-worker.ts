@@ -577,7 +577,7 @@ async function main() {
       const c = candidateList[i];
       const displayName = c.nameZh ? `${c.canonicalName} (${c.nameZh})` : c.canonicalName;
       const tag = c.isFastTrack ? "[⚡ FAST-TRACK]" : "[STANDARD]   ";
-      const phaseTag = c.targetPhase === 3 ? "[P2→P3 深度处理]" : c.currentPhase === 0 ? "[P0→P1 基础建档]" : "[P1→P2 深度分析]";
+      const phaseTag = c.targetPhase === 3 ? "[P2→P3 持续更新]" : c.currentPhase === 0 ? "[P0→P1 基础建档]" : "[P1→P2 深度分析]";
       logMessage(`  [${(i + 1).toString().padStart(2, " ")}] ${tag} ${phaseTag} [${c.market.toUpperCase()}] ${c.ticker.padEnd(10)} - ${displayName}`);
     }
 

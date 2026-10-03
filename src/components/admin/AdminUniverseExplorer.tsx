@@ -65,10 +65,16 @@ export function AdminUniverseExplorer({
 
   const phaseBadge = (item: ExplorerItem) => {
     const inFastTrack =
-      (item.onboardPhase === 0 || item.onboardPhase === 1) &&
+      typeof item.onboardPhase === "number" &&
+      item.onboardPhase >= 0 &&
       (item.isFastTrack || (item.priority && item.priority > 0));
     if (inFastTrack) {
-      const leg = item.onboardPhase === 0 ? "P0→P1 基础建档" : "P1→P2 深度分析";
+      const leg =
+        item.onboardPhase === 0
+          ? "P0→P1 基础建档"
+          : item.onboardPhase === 1
+          ? "P1→P2 深度分析"
+          : "P2→P3 持续更新";
       return (
         <span
           className="admin-badge admin-badge--blue"
