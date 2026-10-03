@@ -475,16 +475,16 @@ export default async function CompanyPage({ params, searchParams }: Props) {
 
   const allTabs = [
     { id: "valueline",  label: "价值线",  desc: "数字价值线核心全景" },
-    { id: "business",   label: "商业分析", desc: "九宫格商业模式画布",  ...(!businessCanvas  ? { disabled: true } : {}) },
+    { id: "business",   label: "商业模式", desc: "九宫格商业模式画布",  ...(!businessCanvas  ? { disabled: true } : {}) },
     { id: "financial",  label: "财务分析", desc: "核心三张表与杜邦分解" },
-    { id: "value",      label: "价值分析", desc: "护城河雷达与资本回报", ...(!hasRealMoat    ? { disabled: true } : {}) },
+    { id: "value",      label: "竞争优势", desc: "护城河雷达与资本回报", ...(!hasRealMoat    ? { disabled: true } : {}) },
     { id: "management", label: "资本配置", desc: "资本回报与股东回报纪律",  ...(!hasManagement  ? { disabled: true } : {}) },
     { id: "valuation",  label: "估值分析", desc: "历史分位与情景推演",  ...(!hasValuation   ? { disabled: true } : {}) },
     { id: "holdings",   label: "大师持仓", desc: "13F顶尖机构季度动向" },
     { id: "references", label: "参考资料", desc: "官方SEC 10-K年报原文" },
   ];
 
-  // Phase 1 时过滤掉 disabled 的 tab（商业分析、价值分析、资本配置、估值分析）
+  // Phase 1 时过滤掉 disabled 的 tab（商业模式、竞争优势、资本配置、估值分析）
   const visibleTabs = showDeepAnalysisButton
     ? allTabs.filter(tab => !tab.disabled)
     : allTabs;
@@ -556,7 +556,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                     <h3>十维评分</h3>
                     <p>10 Point Radar</p>
                   </div>
-                  <svg viewBox="0 0 336 336" className="company-radar-svg" aria-label="价值分析十维蜘蛛图">
+                  <svg viewBox="0 0 336 336" className="company-radar-svg" aria-label="竞争优势十维蜘蛛图">
                     {radarRings.map((ring) => {
                       const ringPoints = radarPoints
                         .map((point) => {
