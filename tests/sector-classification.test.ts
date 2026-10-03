@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { detectSectorModel7, SectorModelType7 } from "../src/lib/sector-classification";
+import {
+  detectSectorModel7,
+  getSectorModel7Info,
+  SectorModelType7,
+} from "../src/lib/sector-classification";
 
 describe("detectSectorModel7", () => {
   const testCases: Array<{
@@ -77,4 +81,23 @@ describe("detectSectorModel7", () => {
       expect(result.type).toBe(tc.expected);
     });
   }
+
+  it("provides valid config for all 7 sectors via getSectorModel7Info", () => {
+    const allTypes: SectorModelType7[] = [
+      "consumer_brand",
+      "technology",
+      "industrial",
+      "bank_insurance",
+      "utilities",
+      "cyclical",
+      "conglomerate",
+    ];
+    for (const t of allTypes) {
+      const info = getSectorModel7Info(t);
+      expect(info.type).toBe(t);
+      expect(info.label.length).toBeGreaterThan(0);
+      expect(info.benchmarkPE).toBeGreaterThan(0);
+      expect(info.cagrMetrics.length).toBeGreaterThan(0);
+    }
+  });
 });

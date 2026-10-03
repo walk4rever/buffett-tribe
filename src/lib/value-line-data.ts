@@ -12,6 +12,12 @@ import {
 import { getTribeMembers } from "@/lib/tribe";
 import { getLatestPortfolioValueUsd } from "@/lib/master-data";
 import { formatUsdInYi } from "@/lib/currency";
+import {
+  SectorModelType7,
+  detectSectorModel7,
+  getSectorModel7Info,
+  SECTOR_MODEL_7_CONFIG,
+} from "@/lib/sector-classification";
 
 function parseNum(items: Record<string, string | number> | undefined, key: string): number | null {
   if (!items) return null;
@@ -86,12 +92,7 @@ export type ValueLineSecurityOption = {
   valuationDiffPct: number | null;
 };
 
-export type SectorModelType =
-  | "general"
-  | "bank_insurance"
-  | "real_estate"
-  | "utilities"
-  | "cyclical";
+export type SectorModelType = SectorModelType7;
 
 export function detectSectorModel(
   sectorRaw?: string | null,
@@ -101,87 +102,11 @@ export function detectSectorModel(
   type: SectorModelType;
   label: string;
 } {
-  const text = `${sectorRaw ?? ""} ${industryRaw ?? ""} ${nameRaw ?? ""}`.toLowerCase();
-
-  // 1. 房地产优先于普通金融 (如香港 GICS 经常将地产归在 Financials)
-  if (
-    text.includes("real estate") ||
-    text.includes("reit") ||
-    text.includes("property") ||
-    text.includes("地产") ||
-    text.includes("房地") ||
-    text.includes("物业")
-  ) {
-    return { type: "real_estate", label: "房地产模型" };
-  }
-
-  // 2. 银行与保险 / 金融中介
-  if (
-    text.includes("bank") ||
-    text.includes("insurance") ||
-    text.includes("life insurance") ||
-    text.includes("credit") ||
-    text.includes("financial") ||
-    text.includes("capital market") ||
-    text.includes("securities") ||
-    text.includes("asset management") ||
-    text.includes("银行") ||
-    text.includes("保险") ||
-    text.includes("寿险") ||
-    text.includes("券商") ||
-    text.includes("证券") ||
-    text.includes("信托") ||
-    text.includes("金融")
-  ) {
-    return { type: "bank_insurance", label: "银行与保险模型" };
-  }
-
-  // 3. 公用事业与特许基建
-  if (
-    text.includes("utilities") ||
-    text.includes("utility") ||
-    text.includes("electric") ||
-    text.includes("water supply") ||
-    text.includes("gas utility") ||
-    text.includes("hydropower") ||
-    text.includes("公用事业") ||
-    text.includes("电力") ||
-    text.includes("水务") ||
-    text.includes("燃气") ||
-    text.includes("热力") ||
-    text.includes("水电") ||
-    text.includes("电网")
-  ) {
-    return { type: "utilities", label: "公用事业特许模型" };
-  }
-
-  // 4. 强周期资源 (能源/矿产/大宗商品材料/航运)
-  if (
-    text.includes("energy") ||
-    text.includes("materials") ||
-    text.includes("mining") ||
-    text.includes("metals") ||
-    text.includes("oil & gas") ||
-    text.includes("petroleum") ||
-    text.includes("coal") ||
-    text.includes("steel") ||
-    text.includes("chemical") ||
-    text.includes("shipping") ||
-    text.includes("能源") ||
-    text.includes("采掘") ||
-    text.includes("石油") ||
-    text.includes("天然气") ||
-    text.includes("煤炭") ||
-    text.includes("钢铁") ||
-    text.includes("有色") ||
-    text.includes("化工") ||
-    text.includes("航运") ||
-    text.includes("海运")
-  ) {
-    return { type: "cyclical", label: "强周期资源模型" };
-  }
-
-  return { type: "general", label: "标准工商业模型" };
+  const info = detectSectorModel7(sectorRaw, industryRaw, nameRaw);
+  return {
+    type: info.type,
+    label: info.label,
+  };
 }
 
 export type ValueLineData = {
@@ -295,6 +220,7 @@ export async function getValueLineData(
     code: true,
     canonicalName: true,
     sector: true,
+    sectorModelType: true,
     market: true,
     cik: true,
     metadata: true,
@@ -451,8 +377,14 @@ export async function getValueLineData(
 
   const isNetCash = debtToAssetsRatio != null ? debtToAssetsRatio < 40 : false;
 
-  // Sector Model Adaptive Framework (Banking/Insurance vs Real Estate vs Utilities vs Cyclical vs General)
-  const sectorModel = detectSectorModel(entity.sector, industry, nameZh ?? entity.canonicalName);
+  // Sector Model Adaptive Framework (7-way classification)
+  let sectorModel: { type: SectorModelType7; label: string; benchmarkPE: number; cagrMetrics: string[] };
+  const rawModelType = entity.sectorModelType as SectorModelType7 | null;
+  if (rawModelType && rawModelType in SECTOR_MODEL_7_CONFIG) {
+    sectorModel = getSectorModel7Info(rawModelType);
+  } else {
+    sectorModel = detectSectorModel7(entity.sector, industry, nameZh ?? entity.canonicalName);
+  }
   const sectorModelType = sectorModel.type;
   const sectorModelLabel = sectorModel.label;
 
@@ -493,6 +425,12 @@ export async function getValueLineData(
       metric1BadgeClass = "vl-badge--neutral";
       metric1SubText = "随行业供需景气周期大幅波动";
     }
+  } else if (sectorModelType === "conglomerate") {
+    metric1SubText = "长期复合资本回报率 · 多元实体与投资组合";
+  } else if (sectorModelType === "technology") {
+    metric1SubText = "轻资产高资本回报 · 研发与规模效应驱动";
+  } else if (sectorModelType === "consumer_brand") {
+    metric1SubText = "消费心智与定价权 · 稳健抗周期复利回报";
   }
 
   // ── Metric 2: Cash Conversion ──
@@ -520,15 +458,6 @@ export async function getValueLineData(
     metric2MainNum =
       cashConversionRatio != null ? `${cashConversionRatio}x` : "—";
     metric2SubText = "特许权持续现金流入 · 高折旧充沛现金流";
-  } else if (sectorModelType === "real_estate") {
-    metric2Title = "销售回款与现金流";
-    metric2Badge =
-      cashConversionRatio && cashConversionRatio >= 1 ? "回款良性" : "在建存货沉淀";
-    metric2BadgeClass =
-      cashConversionRatio && cashConversionRatio >= 1 ? "vl-badge--cash" : "vl-badge--neutral";
-    metric2MainNum =
-      cashConversionRatio != null ? `${cashConversionRatio}x` : "—";
-    metric2SubText = "经营现金流 / 净利润 (拿地与交房周期影响)";
   } else if (sectorModelType === "cyclical") {
     metric2Title = "周期现金造血";
     metric2Badge =
@@ -538,6 +467,12 @@ export async function getValueLineData(
     metric2MainNum =
       cashConversionRatio != null ? `${cashConversionRatio}x` : "—";
     metric2SubText = "经营现金流 / 净利润 (随大宗商品价格剧烈联动)";
+  } else if (sectorModelType === "conglomerate") {
+    metric2Title = "综合现金造血";
+    metric2Badge = cashConversionRatio && cashConversionRatio >= 1 ? "多元现金流" : "稳健现金";
+    metric2BadgeClass = "vl-badge--cash";
+    metric2MainNum = cashConversionRatio != null ? `${cashConversionRatio}x` : "—";
+    metric2SubText = "多元经营实体分红现金回流与保费浮存金";
   }
 
   // ── Metric 4: Balance Sheet & Safety ──
@@ -552,13 +487,6 @@ export async function getValueLineData(
     metric4Badge = "特许资金杠杆";
     metric4BadgeClass = "vl-badge--neutral";
     metric4SubText = "负债主体为客户存款/保单准备金 · 核心看流动性与资本充足率";
-  } else if (sectorModelType === "real_estate") {
-    metric4Title = "负债结构与去化偿债";
-    metric4Badge =
-      debtToAssetsRatio && debtToAssetsRatio > 75 ? "高周转杠杆" : "适度杠杆";
-    metric4BadgeClass =
-      debtToAssetsRatio && debtToAssetsRatio > 75 ? "vl-badge--alert" : "vl-badge--neutral";
-    metric4SubText = "包含大量预收购房款(合同负债) · 重点关注真实现金短债比";
   } else if (sectorModelType === "utilities") {
     metric4Title = "资本结构与项目债";
     metric4Badge = "长期特许项目债";
@@ -577,6 +505,11 @@ export async function getValueLineData(
         ? "vl-badge--alert"
         : "vl-badge--neutral";
     metric4SubText = "需具备穿越大宗商品低谷期的充沛偿债与现金安全垫";
+  } else if (sectorModelType === "conglomerate") {
+    metric4Title = "资本实力与流动性储备";
+    metric4Badge = isNetCash ? "巨额现金储备" : "稳健资本底座";
+    metric4BadgeClass = "vl-badge--cash";
+    metric4SubText = "手握充沛现金与流动性 · 具备逆周期资本配置能力";
   } else if (debtToAssetsRatio != null) {
     if (debtToAssetsRatio < 35 || isNetCash) {
       metric4Badge = "净现金充沛";
@@ -746,7 +679,7 @@ export async function getValueLineData(
     }
   }
 
-  let benchmarkPe = 18.0;
+  let benchmarkPe = sectorModel.benchmarkPE ?? 18.0;
   if (historicalPes.length >= 2) {
     historicalPes.sort((a, b) => a - b);
     const mid = Math.floor(historicalPes.length / 2);
@@ -755,12 +688,34 @@ export async function getValueLineData(
         ? (historicalPes[mid - 1] + historicalPes[mid]) / 2
         : historicalPes[mid];
     benchmarkPe = Number(median.toFixed(1));
-  } else if (roeAvg5Y != null && roeAvg5Y > 15) {
-    benchmarkPe = 22.0;
-  } else if (roeAvg5Y != null && roeAvg5Y < 8) {
-    benchmarkPe = 14.0;
+  } else {
+    // 次新股、扭亏股、周期反转股无有效历史中位数时，按行业中枢兜底（打破 18x 一刀切）
+    switch (sectorModelType) {
+      case "bank_insurance":
+        benchmarkPe = roeAvg5Y && roeAvg5Y >= 12 ? 8.0 : 6.5;
+        break;
+      case "utilities":
+        benchmarkPe = 14.0;
+        break;
+      case "cyclical":
+        benchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 10.0 : 8.0;
+        break;
+      case "consumer_brand":
+        benchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 24.0 : roeAvg5Y && roeAvg5Y >= 12 ? 20.0 : 16.0;
+        break;
+      case "technology":
+        benchmarkPe = roeAvg5Y && roeAvg5Y >= 20 ? 28.0 : roeAvg5Y && roeAvg5Y >= 12 ? 22.0 : 18.0;
+        break;
+      case "conglomerate":
+        benchmarkPe = 18.0;
+        break;
+      case "industrial":
+      default:
+        benchmarkPe = roeAvg5Y && roeAvg5Y > 15 ? 18.0 : 15.0;
+        break;
+    }
   }
-  benchmarkPe = Math.max(10, Math.min(38, benchmarkPe));
+  benchmarkPe = Math.max(6, Math.min(42, benchmarkPe));
 
   // Build security options
   const oneYearAgo = new Date();

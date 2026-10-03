@@ -455,11 +455,12 @@ export function ValueLineHeader({
             <span className="vl-ticker-badge">{selectedTicker || data.ticker}</span>
           )}
           {data.exchange ? <span className="vl-exchange-badge">{data.exchange}</span> : null}
-          {data.sector ? <span className="vl-sector-badge">{data.sector}</span> : null}
-          {data.sectorModelType !== "general" ? (
-            <span className="vl-sector-model-badge" title={`已适配${data.sectorModelLabel}专属评估口径`}>
+          {data.sectorModelLabel ? (
+            <span className="vl-sector-badge" title={data.sector ? `原始行业: ${data.sector}` : undefined}>
               {data.sectorModelLabel}
             </span>
+          ) : data.sector ? (
+            <span className="vl-sector-badge">{data.sector}</span>
           ) : null}
           {valuationStatusBadge}
         </div>

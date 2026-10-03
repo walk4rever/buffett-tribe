@@ -19,6 +19,57 @@ export interface SectorModel7Info {
   cagrMetrics: string[];
 }
 
+export const SECTOR_MODEL_7_CONFIG: Record<
+  SectorModelType7,
+  { label: string; benchmarkPE: number; cagrMetrics: string[] }
+> = {
+  consumer_brand: {
+    label: "消费品牌",
+    benchmarkPE: 22,
+    cagrMetrics: ["营收", "净利润", "自由现金流"],
+  },
+  technology: {
+    label: "科技平台",
+    benchmarkPE: 25,
+    cagrMetrics: ["营收", "净利润", "自由现金流"],
+  },
+  industrial: {
+    label: "工业制造",
+    benchmarkPE: 16,
+    cagrMetrics: ["营收", "净利润", "自由现金流"],
+  },
+  bank_insurance: {
+    label: "银行保险",
+    benchmarkPE: 8,
+    cagrMetrics: ["营收", "净利润", "总资产"],
+  },
+  utilities: {
+    label: "公用事业",
+    benchmarkPE: 14,
+    cagrMetrics: ["营收", "净利润", "自由现金流"],
+  },
+  cyclical: {
+    label: "强周期资源",
+    benchmarkPE: 10,
+    cagrMetrics: ["营收", "净利润", "自由现金流"],
+  },
+  conglomerate: {
+    label: "多元化控股",
+    benchmarkPE: 18,
+    cagrMetrics: ["营收", "净利润", "账面价值"],
+  },
+};
+
+export function getSectorModel7Info(type: SectorModelType7): SectorModel7Info {
+  const conf = SECTOR_MODEL_7_CONFIG[type] ?? SECTOR_MODEL_7_CONFIG.industrial;
+  return {
+    type,
+    label: conf.label,
+    benchmarkPE: conf.benchmarkPE,
+    cagrMetrics: conf.cagrMetrics,
+  };
+}
+
 export function detectSectorModel7(
   sectorRaw?: string | null,
   industryRaw?: string | null,

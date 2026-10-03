@@ -504,34 +504,11 @@ mini 机器 Hourly Cron 批处理近期偶发的 P0 失败案例，经排查全�
   ```
 * **前端展示**：若 `status === "pending"`，以微弱文字与待生成 Badge 呈现，坚决杜绝“无真实分析却显示高度自信行业模板”的欺骗性体验。
 
-#### P2 - Benchmark PE 行业差异化校准（中优先级）
-* **分层校准算法（历史中位数优先，行业基准兜底）**：
-  ```typescript
-  let benchmarkPe = 18.0;
-  if (historicalPes.length >= 2) {
-    // 优先采用公司自身历史有效 PE 中位数（最尊重该资产长期的市场真实定价）
-    benchmarkPe = median(historicalPes);
-  } else {
-    // 次新股、扭亏股、周期反转股无有效历史中位数时，按行业中枢兜底（打破 18x 一刀切）
-    switch (sectorModelType) {
-      case "bank_insurance":
-        benchmarkPe = roeAvg5Y && roeAvg5Y >= 12 ? 8.0 : 6.5;
-        break;
-      case "utilities":
-        benchmarkPe = 14.0;
-        break;
-      case "real_estate":
-        benchmarkPe = 9.0;
-        break;
-      case "cyclical":
-        benchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 10.0 : 8.0;
-        break;
-      default:
-        benchmarkPe = roeAvg5Y && roeAvg5Y > 15 ? 22.0 : 18.0;
-    }
-  }
-  benchmarkPe = Math.max(6, Math.min(42, benchmarkPe));
-  ```
+#### P2 - Benchmark PE 行业差异化校准（已完成于 v0.46.10）
+* **分层校准算法（历史中位数优先，行业基准兜底）**已完整接入 `src/lib/value-line-data.ts` 与 `src/components/ValueLineCard.tsx`：
+  1. 优先读取持久化的 `entity.sectorModelType`，次新股/无有效历史 PE 时按 7 大行业基准中枢兜底并结合 5 年 ROE 弹性调谐；
+  2. 走廊截断区间更新为 `[6, 42]`（彻底纠正银行保险最低 10x 的限制）；
+  3. 页面左上角标签统一显示 7 大行业中文标签（如 `SPCX` 后面为 `科技平台`，`BAC` 后面为 `银行保险`），彻底剔除冗余重复的次级模型 Badge。
   *(注：金融/银行板块本质上应看 PB-ROE 模型，未来可进一步在走廊图中针对银行定制 PB 估值走廊)*
 
 ---
