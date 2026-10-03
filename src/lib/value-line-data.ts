@@ -230,9 +230,9 @@ export type ValueLineData = {
   businessEssence: string;
 
   // AI Moat & Risk Insights
-  aiMoat: string;
-  aiRisk: string;
-  moatStrength: string;
+  aiMoat: string | null;
+  aiRisk: string | null;
+  moatStrength: string | null;
 
   // Value Triad & Capital Allocation (The Buffett Quadrant)
   annuals: ValueLineAnnualData[];
@@ -1150,38 +1150,14 @@ export async function getValueLineData(
   const coreMoatNote = moatJson?.notes?.find(
     (n) => n.label.includes("护城河") || n.enLabel === "Core Moat"
   );
-  const defaultMoat =
-    sectorModelType === "bank_insurance"
-      ? "稳固的特许经营牌照壁垒、低成本资金沉淀与风控承保能力"
-      : sectorModelType === "utilities"
-        ? "区域独占特许经营权、自然垄断与刚性抗周期护城河"
-        : sectorModelType === "real_estate"
-          ? "核心土储区位优势、稳健财务信用与高质交付运营能力"
-          : sectorModelType === "cyclical"
-            ? "核心资源区位禀赋、极低开采/冶炼边际成本曲线优势"
-            : roeStability === "stellar"
-              ? "长期卓越 ROE 构筑深厚经济特许权与稳定定价权"
-              : "具备行业壁垒与客户转换成本优势";
-  const aiMoat = coreMoatNote?.value ?? defaultMoat;
+  const aiMoat = coreMoatNote?.value ?? null;
 
   const coreRiskNote = moatJson?.notes?.find(
     (n) => n.label.includes("最脆弱") || n.label.includes("风险") || n.enLabel === "Weakest Link"
   );
-  const defaultRisk =
-    sectorModelType === "bank_insurance"
-      ? "需关注利差变动、信用资产质量及宏观流动性环境"
-      : sectorModelType === "utilities"
-        ? "需关注电价/公用事业费率核定、来水及燃料成本、大额资本开支周期"
-        : sectorModelType === "real_estate"
-          ? "需关注地产销售去化周期、再融资偿债压力及行业政策调控"
-          : sectorModelType === "cyclical"
-            ? "警惕大宗商品高位回落、行业产能过剩扩张及宏观需求下行冲击"
-            : debtToAssetsRatio && debtToAssetsRatio > 65
-              ? "总负债率偏高，需警惕再融资与宏观加息周期"
-              : "需密切关注行业竞争格局重塑与再投资资本回报率";
-  const aiRisk = coreRiskNote?.value ?? defaultRisk;
+  const aiRisk = coreRiskNote?.value ?? null;
 
-  const moatStrength = moatJson?.summary?.strength ?? (roeStability === "stellar" ? "强" : "中");
+  const moatStrength = moatJson?.summary?.strength ?? null;
 
   const revStr = latestAnnual?.revenue ? formatMoney(String(latestAnnual.revenue)) : null;
   const fallbackSummary = `${nameZh ?? entity.canonicalName} 是一家${exchange ? `在 ${exchange} 上市的` : "公开上市的"}${entity.sector ?? "优质"}企业${industry ? `，细分行业为 ${industry}` : ""}。以定期财报与合规披露为基础，聚焦其商业壁垒与资本回报能力。`;

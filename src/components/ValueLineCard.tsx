@@ -746,27 +746,29 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
       </section>
 
       {/* ── 5. AI Briefing: 30-Second Executive Insight (Dual Column) ── */}
-      <section className="vl-ai-briefing">
-        <div className="vl-briefing-col vl-briefing-col--moat">
-          <div className="vl-briefing-head">
-            <span className="vl-briefing-badge vl-briefing-badge--moat">
-              核心护城河 · {data.moatStrength}
-            </span>
+      {data.aiMoat && data.aiRisk ? (
+        <section className="vl-ai-briefing">
+          <div className="vl-briefing-col vl-briefing-col--moat">
+            <div className="vl-briefing-head">
+              <span className="vl-briefing-badge vl-briefing-badge--moat">
+                核心护城河{data.moatStrength ? ` · ${data.moatStrength}` : ""}
+              </span>
+            </div>
+            <p className="vl-briefing-content">{data.aiMoat}</p>
           </div>
-          <p className="vl-briefing-content">{data.aiMoat}</p>
-        </div>
 
-        <div className="vl-briefing-divider" />
+          <div className="vl-briefing-divider" />
 
-        <div className="vl-briefing-col vl-briefing-col--risk">
-          <div className="vl-briefing-head">
-            <span className="vl-briefing-badge vl-briefing-badge--risk">
-              关键风险
-            </span>
+          <div className="vl-briefing-col vl-briefing-col--risk">
+            <div className="vl-briefing-head">
+              <span className="vl-briefing-badge vl-briefing-badge--risk">
+                关键风险
+              </span>
+            </div>
+            <p className="vl-briefing-content">{data.aiRisk}</p>
           </div>
-          <p className="vl-briefing-content">{data.aiRisk}</p>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       {/* ── 6. Growth CAGR & Collapsible Financial Matrix ── */}
       <section className="vl-growth-bar">
