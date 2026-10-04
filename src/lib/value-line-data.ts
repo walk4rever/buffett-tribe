@@ -739,12 +739,45 @@ export async function getValueLineData(
   let benchmarkPe = sectorModel.benchmarkPE ?? 18.0;
   if (historicalPes.length >= 2) {
     historicalPes.sort((a, b) => a - b);
-    const mid = Math.floor(historicalPes.length / 2);
-    const median =
-      historicalPes.length % 2 === 0
-        ? (historicalPes[mid - 1] + historicalPes[mid]) / 2
-        : historicalPes[mid];
-    benchmarkPe = Number(median.toFixed(1));
+
+    // Remove outliers using IQR method for cyclical/volatile stocks
+    if (historicalPes.length >= 4) {
+      const q1Index = Math.floor(historicalPes.length * 0.25);
+      const q3Index = Math.floor(historicalPes.length * 0.75);
+      const q1 = historicalPes[q1Index];
+      const q3 = historicalPes[q3Index];
+      const iqr = q3 - q1;
+      const lowerBound = q1 - 1.5 * iqr;
+      const upperBound = q3 + 1.5 * iqr;
+
+      const filteredPes = historicalPes.filter(pe => pe >= lowerBound && pe <= upperBound);
+
+      // Only use filtered if we still have enough data points
+      if (filteredPes.length >= 2) {
+        const mid = Math.floor(filteredPes.length / 2);
+        const median =
+          filteredPes.length % 2 === 0
+            ? (filteredPes[mid - 1] + filteredPes[mid]) / 2
+            : filteredPes[mid];
+        benchmarkPe = Number(median.toFixed(1));
+      } else {
+        // Fallback to simple median if filtering removes too much
+        const mid = Math.floor(historicalPes.length / 2);
+        const median =
+          historicalPes.length % 2 === 0
+            ? (historicalPes[mid - 1] + historicalPes[mid]) / 2
+            : historicalPes[mid];
+        benchmarkPe = Number(median.toFixed(1));
+      }
+    } else {
+      // Not enough data for IQR, use simple median
+      const mid = Math.floor(historicalPes.length / 2);
+      const median =
+        historicalPes.length % 2 === 0
+          ? (historicalPes[mid - 1] + historicalPes[mid]) / 2
+          : historicalPes[mid];
+      benchmarkPe = Number(median.toFixed(1));
+    }
   } else {
     // 次新股、扭亏股、周期反转股无有效历史中位数时，按行业中枢兜底（打破 18x 一刀切）
     switch (sectorModelType) {
@@ -761,9 +794,21 @@ export async function getValueLineData(
       case "consumer_brand":
         benchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 24.0 : roeAvg5Y && roeAvg5Y >= 12 ? 20.0 : 16.0;
         break;
+      case "healthcare":
+        benchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 22.0 : roeAvg5Y && roeAvg5Y >= 12 ? 18.0 : 15.0;
+        break;
       case "software_platform":
       case "semiconductor_hardware":
         benchmarkPe = roeAvg5Y && roeAvg5Y >= 20 ? 28.0 : roeAvg5Y && roeAvg5Y >= 12 ? 22.0 : 18.0;
+        break;
+      case "capital_markets":
+        benchmarkPe = roeAvg5Y && roeAvg5Y >= 20 ? 24.0 : roeAvg5Y && roeAvg5Y >= 15 ? 20.0 : 16.0;
+        break;
+      case "real_estate":
+        benchmarkPe = 12.0; // PE less relevant for REITs; NAV/PB more appropriate
+        break;
+      case "telecommunications":
+        benchmarkPe = 14.0; // Utility-like, stable dividend payers
         break;
       case "conglomerate":
         benchmarkPe = 18.0;
