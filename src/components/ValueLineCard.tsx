@@ -541,7 +541,6 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
           <div className="vl-overview-head">
             <div className="vl-overview-title-wrap">
               <span className="vl-overview-badge">公司概览</span>
-              <span className="vl-overview-sub">业务本质 · 主打产品 · 营收结构</span>
             </div>
           </div>
           <div className="vl-overview-body">
@@ -746,80 +745,123 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
         </div>
       </section>
 
-      {/* ── 6. Growth CAGR & Collapsible Financial Matrix ── */}
-      <section className="vl-growth-bar">
-        <div className="vl-growth-cagr-group">
-          <div className="vl-cagr-item">
-            <span className="vl-cagr-label">5年营收复合增速 (CAGR)</span>
-            <strong className="vl-cagr-val">
-              {data.revenueCagrLabel ?? (data.revenueCagr5Y != null ? `${data.revenueCagr5Y > 0 ? "+" : ""}${data.revenueCagr5Y}%` : "—")}
-            </strong>
-          </div>
-          <span className="vl-dot-divider">·</span>
-          <div className="vl-cagr-item">
-            <span className="vl-cagr-label">5年净利复合增速 (CAGR)</span>
-            <strong className="vl-cagr-val">
-              {data.netIncomeCagrLabel ?? (data.netIncomeCagr5Y != null ? `${data.netIncomeCagr5Y > 0 ? "+" : ""}${data.netIncomeCagr5Y}%` : "—")}
-            </strong>
-          </div>
-        </div>
-      </section>
+      {/* ── 6. Long-Term Growth Metrics: 4-Way CAGR Dashboard ── */}
+      <section className="vl-card-triad vl-card-quadrant">
+          {/* Metric 1: Revenue CAGR (non-financial) or Net Income CAGR (financial) */}
+          {data.sectorModelType === "banks" || data.sectorModelType === "insurance" ? (
+            <div className="vl-triad-box">
+              <div className="vl-triad-head">
+                <span className="vl-triad-title">净利润增长</span>
+                <span className={`vl-triad-badge ${data.netIncomeCagr5Y != null && data.netIncomeCagr5Y >= 15 ? "vl-badge--stellar" : data.netIncomeCagr5Y != null && data.netIncomeCagr5Y >= 10 ? "vl-badge--solid" : data.netIncomeCagr5Y != null && data.netIncomeCagr5Y < 0 ? "vl-badge--alert" : "vl-badge--neutral"}`}>
+                  {data.netIncomeCagr5Y != null && data.netIncomeCagr5Y >= 15 ? "高速增长" : data.netIncomeCagr5Y != null && data.netIncomeCagr5Y >= 10 ? "稳健增长" : data.netIncomeCagr5Y != null && data.netIncomeCagr5Y >= 5 ? "温和增长" : data.netIncomeCagr5Y != null && data.netIncomeCagr5Y < 0 ? "净利衰退" : "增长平稳"}
+                </span>
+              </div>
+              <div className="vl-triad-body">
+                <span className="vl-triad-main-num">
+                  {data.netIncomeCagrLabel ?? (data.netIncomeCagr5Y != null ? `${data.netIncomeCagr5Y > 0 ? "+" : ""}${data.netIncomeCagr5Y}%` : "—")}
+                </span>
+                <span className="vl-triad-sub-text">5年复合增速 (CAGR)</span>
+              </div>
+            </div>
+          ) : (
+            <div className="vl-triad-box">
+              <div className="vl-triad-head">
+                <span className="vl-triad-title">营收增长</span>
+                <span className={`vl-triad-badge ${data.revenueCagr5Y != null && data.revenueCagr5Y >= 15 ? "vl-badge--stellar" : data.revenueCagr5Y != null && data.revenueCagr5Y >= 10 ? "vl-badge--solid" : data.revenueCagr5Y != null && data.revenueCagr5Y < 0 ? "vl-badge--alert" : "vl-badge--neutral"}`}>
+                  {data.revenueCagr5Y != null && data.revenueCagr5Y >= 15 ? "高速增长" : data.revenueCagr5Y != null && data.revenueCagr5Y >= 10 ? "稳健增长" : data.revenueCagr5Y != null && data.revenueCagr5Y >= 5 ? "温和增长" : data.revenueCagr5Y != null && data.revenueCagr5Y < 0 ? "营收衰退" : "增长平稳"}
+                </span>
+              </div>
+              <div className="vl-triad-body">
+                <span className="vl-triad-main-num">
+                  {data.revenueCagrLabel ?? (data.revenueCagr5Y != null ? `${data.revenueCagr5Y > 0 ? "+" : ""}${data.revenueCagr5Y}%` : "—")}
+                </span>
+                <span className="vl-triad-sub-text">5年复合增速 (CAGR)</span>
+              </div>
+            </div>
+          )}
 
-      {data.annuals.length > 0 ? (
-        <section className="vl-card-table-wrap">
-          <table className="vl-matrix-table">
-            <thead>
-              <tr>
-                <th>财务科目 (FY)</th>
-                {data.annuals.map((a) => (
-                  <th key={a.year}>{a.year}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="vl-td-row-name">营业收入 (Revenue)</td>
-                {data.annuals.map((a) => (
-                  <td key={`rev-${a.year}`}>{formatCompactNumber(a.revenue)}</td>
-                ))}
-              </tr>
-              <tr>
-                <td className="vl-td-row-name">净利润 (Net Income)</td>
-                {data.annuals.map((a) => (
-                  <td key={`net-${a.year}`} className={a.netIncome && a.netIncome < 0 ? "vl-num--neg" : ""}>
-                    {formatCompactNumber(a.netIncome)}
-                  </td>
-                ))}
-              </tr>
-              <tr>
-                <td className="vl-td-row-name">经营现金流 (OCF)</td>
-                {data.annuals.map((a) => (
-                  <td key={`ocf-${a.year}`}>{formatCompactNumber(a.operatingCashFlow)}</td>
-                ))}
-              </tr>
-              <tr>
-                <td className="vl-td-row-name">净资产收益率 (ROE)</td>
-                {data.annuals.map((a) => (
-                  <td
-                    key={`roe-${a.year}`}
-                    className={
-                      a.roe && a.roe >= 20 ? "vl-num--high" : a.roe && a.roe < 0 ? "vl-num--neg" : ""
-                    }
-                  >
-                    {a.roe != null ? `${a.roe}%` : "—"}
-                  </td>
-                ))}
-              </tr>
-              <tr>
-                <td className="vl-td-row-name">每股收益 (EPS)</td>
-                {data.annuals.map((a) => (
-                  <td key={`eps-${a.year}`}>${a.eps ? a.eps.toFixed(2) : "—"}</td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
-        </section>
-      ) : null}
+          {/* Metric 2: EPS CAGR (financial) or Net Income CAGR (non-financial) */}
+          {data.sectorModelType === "banks" || data.sectorModelType === "insurance" ? (
+            <div className="vl-triad-box">
+              <div className="vl-triad-head">
+                <span className="vl-triad-title">每股收益增长</span>
+                <span className={`vl-triad-badge ${data.epsCagr5Y != null && data.epsCagr5Y >= 15 ? "vl-badge--stellar" : data.epsCagr5Y != null && data.epsCagr5Y >= 10 ? "vl-badge--solid" : data.epsCagr5Y != null && data.epsCagr5Y < 0 ? "vl-badge--alert" : "vl-badge--neutral"}`}>
+                  {data.epsCagr5Y != null && data.epsCagr5Y >= 15 ? "高速增长" : data.epsCagr5Y != null && data.epsCagr5Y >= 10 ? "稳健增长" : data.epsCagr5Y != null && data.epsCagr5Y >= 5 ? "温和增长" : data.epsCagr5Y != null && data.epsCagr5Y < 0 ? "EPS衰退" : "增长平稳"}
+                </span>
+              </div>
+              <div className="vl-triad-body">
+                <span className="vl-triad-main-num">
+                  {data.epsCagrLabel ?? (data.epsCagr5Y != null ? `${data.epsCagr5Y > 0 ? "+" : ""}${data.epsCagr5Y}%` : "—")}
+                </span>
+                <span className="vl-triad-sub-text">5年复合增速 (CAGR)</span>
+              </div>
+            </div>
+          ) : (
+            <div className="vl-triad-box">
+              <div className="vl-triad-head">
+                <span className="vl-triad-title">净利润增长</span>
+                <span className={`vl-triad-badge ${data.netIncomeCagr5Y != null && data.netIncomeCagr5Y >= 15 ? "vl-badge--stellar" : data.netIncomeCagr5Y != null && data.netIncomeCagr5Y >= 10 ? "vl-badge--solid" : data.netIncomeCagr5Y != null && data.netIncomeCagr5Y < 0 ? "vl-badge--alert" : "vl-badge--neutral"}`}>
+                  {data.netIncomeCagr5Y != null && data.netIncomeCagr5Y >= 15 ? "高速增长" : data.netIncomeCagr5Y != null && data.netIncomeCagr5Y >= 10 ? "稳健增长" : data.netIncomeCagr5Y != null && data.netIncomeCagr5Y >= 5 ? "温和增长" : data.netIncomeCagr5Y != null && data.netIncomeCagr5Y < 0 ? "净利衰退" : "增长平稳"}
+                </span>
+              </div>
+              <div className="vl-triad-body">
+                <span className="vl-triad-main-num">
+                  {data.netIncomeCagrLabel ?? (data.netIncomeCagr5Y != null ? `${data.netIncomeCagr5Y > 0 ? "+" : ""}${data.netIncomeCagr5Y}%` : "—")}
+                </span>
+                <span className="vl-triad-sub-text">5年复合增速 (CAGR)</span>
+              </div>
+            </div>
+          )}
+
+          {/* Metric 3: Total Assets CAGR (financial) or Free Cash Flow CAGR (non-financial) */}
+          {data.sectorModelType === "banks" || data.sectorModelType === "insurance" ? (
+            <div className="vl-triad-box">
+              <div className="vl-triad-head">
+                <span className="vl-triad-title">总资产增长</span>
+                <span className={`vl-triad-badge ${data.assetsCagr5Y != null && data.assetsCagr5Y >= 12 ? "vl-badge--stellar" : data.assetsCagr5Y != null && data.assetsCagr5Y >= 8 ? "vl-badge--solid" : data.assetsCagr5Y != null && data.assetsCagr5Y < 0 ? "vl-badge--alert" : "vl-badge--neutral"}`}>
+                  {data.assetsCagr5Y != null && data.assetsCagr5Y >= 12 ? "快速扩张" : data.assetsCagr5Y != null && data.assetsCagr5Y >= 8 ? "稳健扩张" : data.assetsCagr5Y != null && data.assetsCagr5Y >= 3 ? "温和扩张" : data.assetsCagr5Y != null && data.assetsCagr5Y < 0 ? "资产萎缩" : "规模平稳"}
+                </span>
+              </div>
+              <div className="vl-triad-body">
+                <span className="vl-triad-main-num">
+                  {data.assetsCagrLabel ?? (data.assetsCagr5Y != null ? `${data.assetsCagr5Y > 0 ? "+" : ""}${data.assetsCagr5Y}%` : "—")}
+                </span>
+                <span className="vl-triad-sub-text">5年复合增速 (CAGR) · 业务规模扩张</span>
+              </div>
+            </div>
+          ) : (
+            <div className="vl-triad-box">
+              <div className="vl-triad-head">
+                <span className="vl-triad-title">自由现金流增长</span>
+                <span className={`vl-triad-badge ${data.freeCashFlowCagr5Y != null && data.freeCashFlowCagr5Y >= 15 ? "vl-badge--cash" : data.freeCashFlowCagr5Y != null && data.freeCashFlowCagr5Y >= 10 ? "vl-badge--solid" : data.freeCashFlowCagr5Y != null && data.freeCashFlowCagr5Y < 0 ? "vl-badge--alert" : "vl-badge--neutral"}`}>
+                  {data.freeCashFlowCagr5Y != null && data.freeCashFlowCagr5Y >= 15 ? "充沛增长" : data.freeCashFlowCagr5Y != null && data.freeCashFlowCagr5Y >= 10 ? "稳健增长" : data.freeCashFlowCagr5Y != null && data.freeCashFlowCagr5Y >= 5 ? "温和增长" : data.freeCashFlowCagr5Y != null && data.freeCashFlowCagr5Y < 0 ? "现金流衰退" : "增长平稳"}
+                </span>
+              </div>
+              <div className="vl-triad-body">
+                <span className="vl-triad-main-num">
+                  {data.freeCashFlowCagrLabel ?? (data.freeCashFlowCagr5Y != null ? `${data.freeCashFlowCagr5Y > 0 ? "+" : ""}${data.freeCashFlowCagr5Y}%` : "—")}
+                </span>
+                <span className="vl-triad-sub-text">5年复合增速 (CAGR) · 真金白银增长</span>
+              </div>
+            </div>
+          )}
+
+          {/* Metric 4: Shareholders Equity CAGR (all companies) */}
+          <div className="vl-triad-box">
+            <div className="vl-triad-head">
+              <span className="vl-triad-title">股东权益增长</span>
+              <span className={`vl-triad-badge ${data.equityCagr5Y != null && data.equityCagr5Y >= 12 ? "vl-badge--stellar" : data.equityCagr5Y != null && data.equityCagr5Y >= 8 ? "vl-badge--solid" : data.equityCagr5Y != null && data.equityCagr5Y < 0 ? "vl-badge--alert" : "vl-badge--neutral"}`}>
+                {data.equityCagr5Y != null && data.equityCagr5Y >= 12 ? "高速复利" : data.equityCagr5Y != null && data.equityCagr5Y >= 8 ? "稳健复利" : data.equityCagr5Y != null && data.equityCagr5Y >= 3 ? "温和复利" : data.equityCagr5Y != null && data.equityCagr5Y < 0 ? "权益侵蚀" : "复利平稳"}
+              </span>
+            </div>
+            <div className="vl-triad-body">
+              <span className="vl-triad-main-num">
+                {data.equityCagrLabel ?? (data.equityCagr5Y != null ? `${data.equityCagr5Y > 0 ? "+" : ""}${data.equityCagr5Y}%` : "—")}
+              </span>
+              <span className="vl-triad-sub-text">5年复合增速 (CAGR) · 内在价值增长</span>
+            </div>
+          </div>
+      </section>
     </div>
   );
 }

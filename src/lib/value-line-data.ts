@@ -205,11 +205,19 @@ export type ValueLineData = {
   buybackAmountLabel: string | null;    // e.g. "5年累计回购 ¥89.9亿"
   safetyLabel: string;                  // "手握净现金 / 低负债" | "负债适度受控" | "高杠杆警惕"
 
-  // 5-Year CAGR
+  // 5-Year CAGR (4 Core Growth Metrics)
   revenueCagr5Y: number | null;
   revenueCagrLabel?: string | null;
   netIncomeCagr5Y: number | null;
   netIncomeCagrLabel?: string | null;
+  freeCashFlowCagr5Y: number | null;
+  freeCashFlowCagrLabel?: string | null;
+  equityCagr5Y: number | null;
+  equityCagrLabel?: string | null;
+  epsCagr5Y: number | null;
+  epsCagrLabel?: string | null;
+  assetsCagr5Y: number | null;
+  assetsCagrLabel?: string | null;
 
   // Deep Dive Status & Company Narrative Profile
   hasDeepDive: boolean;
@@ -566,22 +574,31 @@ export async function getValueLineData(
       : null;
 
   let revenueCagr5Y: number | null = null;
-  let revenueCagrLabel: string | null = null;
+  const revenueCagrLabel: string | null = null;
   let netIncomeCagr5Y: number | null = null;
   let netIncomeCagrLabel: string | null = null;
+  let freeCashFlowCagr5Y: number | null = null;
+  let freeCashFlowCagrLabel: string | null = null;
+  let equityCagr5Y: number | null = null;
+  const equityCagrLabel: string | null = null;
+  let epsCagr5Y: number | null = null;
+  const epsCagrLabel: string | null = null;
+  let assetsCagr5Y: number | null = null;
+  const assetsCagrLabel: string | null = null;
+
+  const isFinancial = sectorModelType === "banks" || sectorModelType === "insurance";
 
   if (recentAnnuals.length >= 2) {
     const firstA = recentAnnuals[0];
     const lastA = recentAnnuals[recentAnnuals.length - 1];
     const span = Math.max(1, lastA.year - firstA.year);
 
-    if (firstA.revenue && lastA.revenue && firstA.revenue > 0 && lastA.revenue > 0) {
+    // Revenue CAGR (only for non-financial)
+    if (!isFinancial && firstA.revenue && lastA.revenue && firstA.revenue > 0 && lastA.revenue > 0) {
       revenueCagr5Y = Number((((lastA.revenue / firstA.revenue) ** (1 / span) - 1) * 100).toFixed(1));
-      if (revenueCagr5Y < -20 && (sectorModelType === "banks" || sectorModelType === "insurance")) {
-        revenueCagrLabel = "会计准则口径调整 (IFRS 17)";
-      }
     }
 
+    // Net Income CAGR (all companies)
     if (firstA.netIncome != null && lastA.netIncome != null) {
       if (firstA.netIncome > 0 && lastA.netIncome > 0) {
         netIncomeCagr5Y = Number((((lastA.netIncome / firstA.netIncome) ** (1 / span) - 1) * 100).toFixed(1));
@@ -592,6 +609,34 @@ export async function getValueLineData(
       } else if (firstA.netIncome < 0 && lastA.netIncome < 0) {
         netIncomeCagrLabel = lastA.netIncome > firstA.netIncome ? "持续减亏" : "持续亏损";
       }
+    }
+
+    // EPS CAGR (only for financial)
+    if (isFinancial && firstA.eps != null && lastA.eps != null && firstA.eps > 0 && lastA.eps > 0) {
+      epsCagr5Y = Number((((lastA.eps / firstA.eps) ** (1 / span) - 1) * 100).toFixed(1));
+    }
+
+    // Total Assets CAGR (only for financial)
+    if (isFinancial && firstA.totalAssets != null && lastA.totalAssets != null && firstA.totalAssets > 0 && lastA.totalAssets > 0) {
+      assetsCagr5Y = Number((((lastA.totalAssets / firstA.totalAssets) ** (1 / span) - 1) * 100).toFixed(1));
+    }
+
+    // Free Cash Flow CAGR (only for non-financial)
+    if (!isFinancial && firstA.freeCashFlow != null && lastA.freeCashFlow != null) {
+      if (firstA.freeCashFlow > 0 && lastA.freeCashFlow > 0) {
+        freeCashFlowCagr5Y = Number((((lastA.freeCashFlow / firstA.freeCashFlow) ** (1 / span) - 1) * 100).toFixed(1));
+      } else if (firstA.freeCashFlow <= 0 && lastA.freeCashFlow > 0) {
+        freeCashFlowCagrLabel = "扭负为正";
+      } else if (firstA.freeCashFlow > 0 && lastA.freeCashFlow <= 0) {
+        freeCashFlowCagrLabel = "由正转负";
+      } else if (firstA.freeCashFlow < 0 && lastA.freeCashFlow < 0) {
+        freeCashFlowCagrLabel = "持续为负";
+      }
+    }
+
+    // Shareholders Equity CAGR (all companies)
+    if (firstA.shareholdersEquity != null && lastA.shareholdersEquity != null && firstA.shareholdersEquity > 0 && lastA.shareholdersEquity > 0) {
+      equityCagr5Y = Number((((lastA.shareholdersEquity / firstA.shareholdersEquity) ** (1 / span) - 1) * 100).toFixed(1));
     }
   }
 
@@ -1214,6 +1259,14 @@ export async function getValueLineData(
     revenueCagrLabel,
     netIncomeCagr5Y,
     netIncomeCagrLabel,
+    freeCashFlowCagr5Y,
+    freeCashFlowCagrLabel,
+    equityCagr5Y,
+    equityCagrLabel,
+    epsCagr5Y,
+    epsCagrLabel,
+    assetsCagr5Y,
+    assetsCagrLabel,
 
     hasDeepDive,
     overview,

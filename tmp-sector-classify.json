@@ -1,0 +1,42 @@
+{
+  "promptVersion": "sector13-v3",
+  "generatedAt": "2026-10-04T06:06:51.069Z",
+  "dryRun": false,
+  "total": 1,
+  "records": [
+    {
+      "id": "cmsh4caoc0002rsnrqmp8b3j2",
+      "ticker": "SPCX",
+      "market": "us",
+      "name": "SPACE EXPLORATION TECHNOLOGIES CORP",
+      "nameZh": "太空探索技术",
+      "previousType": "telecommunications",
+      "outcome": "classified",
+      "type": "telecommunications",
+      "confidence": 0.7,
+      "reason": "核心收入来自自建卫星星座向164国提供连接服务，属卫星通信运营；资本开支/营收699.5%、资产/营收22.6，重资本侵蚀现金流，符合电信特征。",
+      "evidenceUsed": [
+        "overview",
+        "fingerprint",
+        "industry_field"
+      ],
+      "needsReview": false,
+      "inputsHash": "66100e4afc807c24",
+      "overview": "太空探索技术公司（SpaceX）是一家总部位于美国德克萨斯州的综合性航天与人工智能企业。公司核心业务涵盖卫星互联网连接服务、太空探索及AI计算基础设施，通过自主建设的大型卫星星座为全球164个国家和地区的客户提供连接服务。2026年收购xAI后，公司进一步整合AI技术，推出前沿大模型Grok，并建设COLOSSUS系列算力设施，以支持模型训练与推理。公司致力于推动人类成为多行星物种，同时利用AI拓展对宇宙的认知，在航天与AI交叉领域占据领先地位。",
+      "fingerprint": {
+        "periodLabel": "Q22025",
+        "periods": 1,
+        "revenue": 4071000000,
+        "revenueYoY": null,
+        "netMargin": -0.2476,
+        "grossMargin": null,
+        "roe": -0.2073,
+        "assetToRevenue": 22.6183,
+        "liabilitiesToAssets": 0.5512,
+        "capexToRevenue": 6.9948,
+        "cashConversion": -3.4385,
+        "isLossMaking": true
+      }
+    }
+  ]
+}
