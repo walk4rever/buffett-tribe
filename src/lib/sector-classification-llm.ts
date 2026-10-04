@@ -259,7 +259,7 @@ function parseJsonLoose(raw: string): Record<string, unknown> {
 /**
  * 校验并归一化 LLM 响应。
  *
- * 与 classify-existing-companies 的旧规则不同，这里**不提供兜底类别**：
+ * 这里**不提供兜底类别**：
  * 响应里出现非法类型直接抛错，由调用方决定重试或标记失败。悄悄改成 industrial
  * 正是旧方案污染数据的方式。
  */

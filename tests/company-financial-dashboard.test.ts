@@ -168,6 +168,28 @@ describe("buildCompanyFinancialDashboard", () => {
     expect(dashboard.template).toBe("real_estate");
   });
 
+  it("treats persisted legacy types as missing and uses industry metadata", () => {
+    const bankDashboard = buildCompanyFinancialDashboard(
+      {
+        sector: "Financials",
+        metadata: { industry: "Commercial Bank" },
+        sectorModelType: "unsupported" as never,
+      },
+      generalFinancials,
+    );
+    const realEstateDashboard = buildCompanyFinancialDashboard(
+      {
+        sector: "Financials",
+        metadata: { industry: "Real Estate" },
+        sectorModelType: "also-unsupported" as never,
+      },
+      generalFinancials,
+    );
+
+    expect(bankDashboard.template).toBe("bank");
+    expect(realEstateDashboard.template).toBe("real_estate");
+  });
+
   it("uses up to ten actual years for trends and five for the detail table", () => {
     const dashboard = buildCompanyFinancialDashboard(
       { sector: "Technology", metadata: {}, sectorModelType: "industrial" },

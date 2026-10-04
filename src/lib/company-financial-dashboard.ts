@@ -4,7 +4,7 @@ import {
   calculateReturnOnAverageBalance,
 } from "@/lib/financial-math";
 import { FINANCIAL_DATA_START_YEAR } from "@/lib/financial-period";
-import type { SectorModelType13 } from "@/lib/sector-classification";
+import { isSectorModelType13, type SectorModelType13 } from "@/lib/sector-classification";
 
 export type FinancialYearItems = {
   year: number;
@@ -136,12 +136,14 @@ function formatMetricValue(value: number | null, kind: MetricKind, currency: str
 
 function classifyFinancialTemplate(company: CompanyFinancialContext): FinancialTemplate {
   const sectorModelType = company.sectorModelType;
-  if (sectorModelType === "banks") return "bank";
-  if (sectorModelType === "insurance") return "insurance";
-  if (sectorModelType === "capital_markets") return "capital_markets";
-  if (sectorModelType === "real_estate") return "real_estate";
-  if (sectorModelType === "conglomerate") return "conglomerate";
-  if (sectorModelType) return "operating";
+  if (isSectorModelType13(sectorModelType)) {
+    if (sectorModelType === "banks") return "bank";
+    if (sectorModelType === "insurance") return "insurance";
+    if (sectorModelType === "capital_markets") return "capital_markets";
+    if (sectorModelType === "real_estate") return "real_estate";
+    if (sectorModelType === "conglomerate") return "conglomerate";
+    return "operating";
+  }
 
   const meta = normalizeMeta(company.metadata);
   const sic = typeof meta.sic === "string" ? meta.sic : String(meta.sic ?? "");

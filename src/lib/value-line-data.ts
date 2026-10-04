@@ -17,10 +17,8 @@ import {
   calculateReturnOnAverageBalance,
 } from "@/lib/financial-math";
 import {
-  SectorModelType13,
-  getSectorModel13Info,
-  isSectorModelType13,
-  detectSectorModel7,
+  type SectorModelType13,
+  getExplicitSectorModel13Info,
 } from "@/lib/sector-classification";
 
 function parseNum(items: Record<string, string | number> | undefined, key: string): number | null {
@@ -96,34 +94,6 @@ export type ValueLineSecurityOption = {
   valuationDiffPct: number | null;
 };
 
-export type SectorModelType = SectorModelType13;
-
-export function detectSectorModel(
-  sectorRaw?: string | null,
-  industryRaw?: string | null,
-  nameRaw?: string | null,
-): {
-  type: SectorModelType;
-  label: string;
-  benchmarkPE: number;
-  cagrMetrics: string[];
-} {
-  // 降级：如果没有 LLM 分类结果，用规则兜底
-  const fallback = detectSectorModel7(sectorRaw, industryRaw, nameRaw);
-  // 7类映射到13类
-  const map7to13: Record<string, SectorModelType13> = {
-    consumer_brand: "consumer_brand",
-    technology: "software_platform",
-    industrial: "industrial",
-    bank_insurance: "banks",
-    utilities: "utilities",
-    cyclical: "energy_materials",
-    conglomerate: "conglomerate",
-  };
-  const type13 = map7to13[fallback.type] || "industrial";
-  return getSectorModel13Info(type13);
-}
-
 export type ValueLineData = {
   entityId: string;
   ticker: string;
@@ -141,8 +111,8 @@ export type ValueLineData = {
   selectedTicker: string;
 
   // Sector Adaptive Model
-  sectorModelType: SectorModelType;
-  sectorModelLabel: string;
+  sectorModelType: SectorModelType13 | null;
+  sectorModelLabel: string | null;
   cyclicalWarning: { title: string; message: string } | null;
 
   // Market & Pricing (Active Security)
@@ -159,7 +129,7 @@ export type ValueLineData = {
 
   // Value Line Corridor (Price vs. Earnings Corridor)
   valueLinePoints: Array<{ date: string; value: number }>;
-  benchmarkPe: number;
+  benchmarkPe: number | null;
   valuationStatus: "undervalued" | "fair" | "overvalued" | "insufficient";
   valuationDiffPct: number | null;
 
@@ -401,17 +371,10 @@ export async function getValueLineData(
 
   const isNetCash = debtToAssetsRatio != null ? debtToAssetsRatio < 40 : false;
 
-  // Sector Model Adaptive Framework (7-way classification)
-  let sectorModel: { type: SectorModelType13; label: string; benchmarkPE: number; cagrMetrics: string[] };
-  const rawModelType = entity.sectorModelType as SectorModelType13 | null;
-  if (rawModelType && isSectorModelType13(rawModelType)) {
-    sectorModel = getSectorModel13Info(rawModelType);
-  } else {
-    // 降级：用规则判断
-    sectorModel = detectSectorModel(entity.sector, industry, nameZh ?? entity.canonicalName);
-  }
-  const sectorModelType = sectorModel.type;
-  const sectorModelLabel = sectorModel.label;
+  // Only an explicitly persisted 13-way classification selects adaptive valuation logic.
+  const sectorModel = getExplicitSectorModel13Info(entity.sectorModelType);
+  const sectorModelType = sectorModel?.type ?? null;
+  const sectorModelLabel = sectorModel?.label ?? null;
 
   // ── Metric 1: 5-Year ROE ──
   const metric1Title = "5年 ROE 均值";
@@ -741,7 +704,7 @@ export async function getValueLineData(
     }
   }
 
-  let benchmarkPe = sectorModel.benchmarkPE ?? 18.0;
+  let benchmarkPe = sectorModel?.benchmarkPE ?? null;
   if (historicalPes.length >= 2) {
     historicalPes.sort((a, b) => a - b);
 
@@ -783,8 +746,8 @@ export async function getValueLineData(
           : historicalPes[mid];
       benchmarkPe = Number(median.toFixed(1));
     }
-  } else {
-    // 次新股、扭亏股、周期反转股无有效历史中位数时，按行业中枢兜底（打破 18x 一刀切）
+  } else if (sectorModelType) {
+    // Use a category-specific PE anchor only when a 13-way classification exists.
     switch (sectorModelType) {
       case "banks":
       case "insurance":
@@ -819,12 +782,13 @@ export async function getValueLineData(
         benchmarkPe = 18.0;
         break;
       case "industrial":
-      default:
         benchmarkPe = roeAvg5Y && roeAvg5Y > 15 ? 18.0 : 15.0;
         break;
     }
   }
-  benchmarkPe = Math.max(6, Math.min(42, benchmarkPe));
+  if (benchmarkPe != null) {
+    benchmarkPe = Math.max(6, Math.min(42, benchmarkPe));
+  }
 
   // Build security options
   const oneYearAgo = new Date();
@@ -867,19 +831,23 @@ export async function getValueLineData(
         close: Number(p.close),
       }));
 
-    const valueLinePoints = pricePoints.map((p) => {
+    const valuationBenchmarkPe = benchmarkPe;
+    const valueLinePoints =
+      valuationBenchmarkPe == null
+        ? []
+        : pricePoints.map((p) => {
       const pointYear = parseInt(p.date.slice(0, 4), 10);
       const clampedYear = Math.max(minAvailableYear, Math.min(maxAvailableYear, pointYear));
       const rawEpsVal =
         epsByYear.get(clampedYear) ??
         epsByYear.get(maxAvailableYear) ??
-        (latestPrice != null ? latestPrice / benchmarkPe : 1);
+        (latestPrice != null ? latestPrice / valuationBenchmarkPe : 1);
       
       const epsVal = secEps != null && latestEps != null && latestEps > 0
         ? rawEpsVal * (secEps / latestEps)
         : rawEpsVal;
 
-      const val = Number((epsVal * benchmarkPe).toFixed(2));
+      const val = Number((epsVal * valuationBenchmarkPe).toFixed(2));
       return {
         date: p.date,
         value: val,

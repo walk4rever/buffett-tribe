@@ -36,8 +36,10 @@ import { callJsonLLM, findCompanies, getArg, hasFlag } from "./lib/company-gener
 import {
   SECTOR_MODEL_13_CONFIG,
   SECTOR_MODEL_13_TYPES,
+  isSectorModelType13,
   type SectorModelType13,
 } from "../src/lib/sector-classification";
+import { shouldSkipSectorClassification } from "../src/lib/sector-classification-state";
 import { computeSectorFingerprint, type FinancialRowInput, type SectorFingerprint } from "../src/lib/sector-fingerprint";
 import {
   SECTOR_CLASSIFY_PROMPT_VERSION,
@@ -71,7 +73,7 @@ interface CandidateRow {
   exchange: string | null;
   overview: string | null;
   sectorModelType: string | null;
-  prevhash: string | null;
+  sectorModelMetadata: unknown;
   prevsource: string | null;
 }
 
@@ -109,7 +111,7 @@ interface ClassificationRecord {
   name: string;
   nameZh: string | null;
   previousType: string | null;
-  outcome: string;
+  outcome: "classified" | "unknown" | "error";
   type: SectorModelType13 | null;
   confidence: number;
   reason: string;
@@ -127,7 +129,7 @@ const CANDIDATE_SELECT = `
   e.metadata->>'nameZh' AS namezh,
   e.metadata->>'exchange' AS exchange,
   e."sectorModelType" AS "sectorModelType",
-  e.metadata->'sectorModel'->>'inputsHash' AS prevhash,
+  e.metadata->'sectorModel' AS "sectorModelMetadata",
   e.metadata->'sectorModel'->>'source' AS prevsource,
   a.overview
 `;
@@ -351,6 +353,16 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T,
 }
 
 async function writeClassification(record: ClassificationRecord): Promise<void> {
+  if (record.outcome === "error") {
+    throw new Error(`Refusing to persist failed classification for ${record.ticker ?? record.name}`);
+  }
+  if (
+    (record.outcome === "classified" && !isSectorModelType13(record.type)) ||
+    (record.outcome === "unknown" && record.type !== null)
+  ) {
+    throw new Error(`Inconsistent classification result for ${record.ticker ?? record.name}`);
+  }
+
   const metadata = {
     type: record.type,
     label: record.type ? SECTOR_MODEL_13_CONFIG[record.type].label : null,
@@ -379,7 +391,7 @@ async function writeClassification(record: ClassificationRecord): Promise<void> 
   );
 }
 
-async function main() {
+async function main(): Promise<boolean> {
   const isDryRun = hasFlag("--dry-run");
   const force = hasFlag("--force");
   const market = getArg("--market") ?? null;
@@ -422,17 +434,32 @@ async function main() {
   });
 
   const skipped = prepared.filter(
-    (item) => !force && item.candidate.prevhash === item.inputsHash && item.candidate.prevsource !== "human",
+    (item) =>
+      shouldSkipSectorClassification(
+        item.candidate.sectorModelType,
+        item.candidate.sectorModelMetadata,
+        item.inputsHash,
+        force,
+      ),
   );
   const pending = prepared.filter((item) => !skipped.includes(item));
 
-  const humanLocked = prepared.filter((item) => item.candidate.prevsource === "human");
+  const humanLocked = prepared.filter(
+    (item) =>
+      item.candidate.prevsource === "human" &&
+      shouldSkipSectorClassification(
+        item.candidate.sectorModelType,
+        item.candidate.sectorModelMetadata,
+        item.inputsHash,
+        force,
+      ),
+  );
   console.log(
     `待分类：${pending.length} 家　跳过（证据未变）：${skipped.length} 家${humanLocked.length > 0 ? `（其中人工锁定 ${humanLocked.length}）` : ""}`,
   );
   if (pending.length === 0) {
     console.log("无待分类项，退出。");
-    return;
+    return false;
   }
 
   // ── 3. LLM 分类 ──
@@ -522,10 +549,11 @@ async function main() {
   if (reviewQueue.length > 10) console.log(`  … 其余 ${reviewQueue.length - 10} 家见 ${outFile}`);
   console.log(`${isDryRun ? "[DRY-RUN] 未写库" : `已写库 ${writable.length} 家`}；结果落盘：${outFile}`);
   console.log(`耗时 ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
+  return errors.length > 0;
 }
 
 main()
-  .then(() => prisma.$disconnect().then(() => process.exit(0)))
+  .then((hasErrors) => prisma.$disconnect().then(() => process.exit(hasErrors ? 1 : 0)))
   .catch(async (error) => {
     console.error("❌ 分类失败：", error);
     await prisma.$disconnect();

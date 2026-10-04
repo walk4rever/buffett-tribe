@@ -70,6 +70,7 @@ process.on("SIGTERM", async () => {
 
 import { CN_HK_SEEDS } from "./lib/cn-hk-company-seeds";
 import { resolveCnCurrency, resolveHkCurrencyFromAnnualReport, resolveHkCurrencyViaYfinance } from "./lib/cn-hk-currency-resolve";
+import { getPersistedSectorClassificationStatus } from "../src/lib/sector-classification-state";
 
 type Market = "us" | "cn" | "hk";
 
@@ -101,6 +102,7 @@ type Step = {
   label: string;
   skip?: boolean;
   run: () => Promise<void>;
+  revalidateOnResume?: boolean;
   // stepStartedAt lets a step's verify distinguish "this run actually wrote
   // something" from "the entity already had this artifact from a prior run" —
   // see verifyCompanyAnalysisField. Only matters with --force: generate:*.ts
@@ -562,23 +564,16 @@ async function main() {
     id: "classify_sector",
     label: "13 类行业分类（sectorModelType）",
     skip: skipGeneration,
-    run: () => runNpmScript("classify:sector", ["--company", ticker]),
+    revalidateOnResume: true,
+    run: () => runNpmScript("classify:sector", ["--company", ticker, ...(force ? ["--force"] : [])]),
     verify: async (entityId) => {
       const entity = await prisma.entity.findUnique({
         where: { id: entityId },
         select: { sectorModelType: true, metadata: true },
       });
-      // 已有 sectorModelType 且 source=llm（v3）或 inputsHash 存在
-      if (entity?.sectorModelType) {
-        const sectorModel = entity.metadata && typeof entity.metadata === "object" && "sectorModel" in entity.metadata
-          ? (entity.metadata as { sectorModel?: unknown }).sectorModel
-          : null;
-        const source = sectorModel && typeof sectorModel === "object" && "source" in sectorModel
-          ? (sectorModel as { source?: string }).source
-          : null;
-        return source === "llm";
-      }
-      return false;
+      return (
+        getPersistedSectorClassificationStatus(entity?.sectorModelType, entity?.metadata) !== "invalid"
+      );
     },
   };
 
@@ -825,9 +820,21 @@ async function main() {
     }
 
     if (checkpoint.completed[step.id]) {
-      console.log(`${prefix} — already completed at ${checkpoint.completed[step.id]!.completedAt}`);
-      summary.push({ step: step.id, label: step.label, status: "already_done" });
-      continue;
+      let shouldRerun = false;
+      if (step.revalidateOnResume && !dryRun) {
+        const entityId = await findEntityId(ticker);
+        shouldRerun = force || !entityId || !(await step.verify(entityId, runStartedAt));
+        if (shouldRerun) {
+          delete checkpoint.completed[step.id];
+          await saveCheckpoint(checkpoint);
+          console.warn(`${prefix} — stored result is stale or forced; rerunning classification`);
+        }
+      }
+      if (!shouldRerun) {
+        console.log(`${prefix} — already completed at ${checkpoint.completed[step.id]!.completedAt}`);
+        summary.push({ step: step.id, label: step.label, status: "already_done" });
+        continue;
+      }
     }
 
     if (dryRun) {
@@ -871,7 +878,7 @@ async function main() {
   if (!failed) {
     const finalEntity = await prisma.entity.findFirst({
       where: { type: "company", ticker: { equals: ticker, mode: "insensitive" } },
-      select: { id: true, canonicalName: true, sector: true, metadata: true, market: true, sectorModelType: true },
+      select: { id: true, metadata: true, market: true },
     });
     if (finalEntity) {
       const meta = (finalEntity.metadata as Record<string, unknown>) || {};
@@ -879,24 +886,11 @@ async function main() {
       const targetPhase = phaseArg === "2" || phaseArg === "all" ? 2 : 1;
       const nextPhase = Math.max(currentPhase, targetPhase);
 
-      // Calculate sectorModelType if not already set or forced
-      let sectorModelType = finalEntity.sectorModelType;
-      if ((!sectorModelType || force) && nextPhase >= 1) {
-        const { detectSectorModel7 } = await import("../src/lib/sector-classification");
-        const industry = typeof meta.industry === "string" ? meta.industry : null;
-        const nameZh = typeof meta.nameZh === "string" ? meta.nameZh : "";
-        const fullName = [finalEntity.canonicalName, nameZh].filter(Boolean).join(" ");
-        const result = detectSectorModel7(finalEntity.sector, industry, fullName);
-        sectorModelType = result.type;
-        console.log(`[Sector Classification] ${finalEntity.canonicalName}${nameZh ? ` (${nameZh})` : ""} → ${result.label} (${result.type})`);
-      }
-
       await prisma.entity.update({
         where: { id: finalEntity.id },
         data: {
           market: finalEntity.market ?? market,
           onboardPhase: nextPhase,
-          sectorModelType: sectorModelType || undefined,
           metadata: {
             ...meta,
             onboardPhase: nextPhase,

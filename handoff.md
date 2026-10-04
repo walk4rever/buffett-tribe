@@ -791,10 +791,12 @@ const limit = process.env.PRISMA_CONNECTION_LIMIT ?? '50'
 
 
 
-## 十四、 行业分类升级：7 类规则 → 10 类 LLM 分类（2026-10-04 决议，待落地）
+## 十四、 行业分类升级历史：规则分类 → LLM 分类（2026-10-04 决议）
+
+> 状态更新（2026-10-05）：本节的 10 类草案已演进为当前 13 类实现。旧规则分类器及其映射已从运行代码删除；请求时只读取显式 13 类分类，不再按行业关键词推断。未分类且没有可用公司历史 PE 的标的，不生成价值线估值走廊。以下内容保留为决策过程记录，不代表当前分类配置。
 
 ### 1. 背景：为什么要改
-v0.46.10 上线的 7 类规则分类（`src/lib/sector-classification.ts` 的 `detectSectorModel7`）在随机抽样 100 家（1,909 家中）对比中暴露出结构性问题：
+v0.46.10 上线的 7 类关键词分类在随机抽样 100 家（1,909 家中）对比中暴露出结构性问题：
 
 * **分类轴混杂**：消费、科技按商业模式分；银行保险、公用事业、强周期按财务特征分；「工业制造」是兜底。凡行业名没有关键词的都掉进兜底。
 * **没有医药类**：美股 `Health Care` 全被塞进 `consumer_brand`（如 SOLV、WST、AZN、BMY、BNTX）；A 股/港股医药（000953、000931、0512.HK、0460.HK）反而被误分到 `technology`。
@@ -846,21 +848,12 @@ v0.46.10 上线的 7 类规则分类（`src/lib/sector-classification.ts` 的 `d
 2. **输出受限**：只能从上表 10 个 key 中选；返回 JSON：`{ "type": "<key>", "confidence": 0-1, "reason": "<一句话依据>" }`。
 3. **低温度 + 固定 prompt**，保证同一家公司重跑结果一致。
 4. **结果固化入库**：写入 `Entity.sectorModelType`；页面只读库，**不在请求时调用 LLM**。理由与置信度存 `metadata.sectorModel`（`{ reason, confidence, source: "llm", at }`），便于审计。
-5. **不一致进复核队列**：LLM 结果与旧规则结果不同、或置信度低于阈值（建议 0.7）的，输出分歧清单由人工复核，**不静默落库**。
-6. **规则保留**：`detectSectorModel7` 不删除，作为 LLM 调用失败时的兜底，以及与 LLM 对照的信号。需同步更新其取值到新的 10 类。
+5. **历史规则对照要求（已废弃）**：旧方案曾要求将 LLM 结果与规则结果对比；规则分类器已删除，当前不存在这类对照或分歧队列。
+6. **后续清理（2026-10-05 已完成）**：删除规则分类器及规则到 LLM 类别的映射；LLM 分类失败或无有效类型时保持未分类，不猜测类别。
 7. **事实 vs 推断**：`reason` 只写能从输入事实推出的依据，不得编造公司业务细节（沿用「零幻觉」承诺）。
 
-### 4. 落地步骤（待执行）
-1. 新增 LLM 分类模块（例如 `src/lib/sector-classification-llm.ts`），统一 prompt、枚举校验、JSON 解析与重试。
-2. 新增批处理脚本，对 `onboardPhase >= 1` 的 1,909 家全库重分；支持 `--dry-run`，并输出「旧规则 vs LLM」分歧清单。注意 Supabase 连接池限制（`connection_limit=3`），并发需节流；查询用原生 SQL 取 `metadata->>'industry'` 等字段，避免拉取整个 `metadata`。
-3. 人工抽查分歧清单（重点：医药、教育、半导体设备、支付平台、SEC 归 Financials 的非金融公司），通过后落库。
-4. 修改 `scripts/onboard-company.ts` 的 Phase 1 逻辑，调用同一分类函数，使新公司 P0→P1 时自动用 LLM 分类（失败回退规则）。
-5. 同步更新依赖该字段的下游：
-   * `src/lib/sector-classification.ts` 的 `SectorModelType7` / `SECTOR_MODEL_7_CONFIG`（标签、`benchmarkPE`、`cagrMetrics`）扩为 10 类；
-   * `src/lib/value-line-data.ts`：`benchmarkPe` 兜底 switch、四宫格 Metric 1/2/4 文案需补 `healthcare`、`real_estate`、`energy_materials`、`semiconductor_hardware`、`software_platform` 的分支（`real_estate` 此前 v0.46.10 已删除了对应分支，需恢复地产的现金流/负债文案）；
-   * `src/components/ValueLineCard.tsx` 标签显示；
-   * `tests/sector-classification.test.ts` 回归用例（含本次抽样发现的误判：COKE、EMR、DLB、HIVE、KSPI、ONTO、NVMI、GOTU、000953、0512.HK、000981、000526 等）。
-6. 全库重分后同步 mini（`git pull`，并确认 `prisma generate`）。
+### 4. 当前实现（2026-10-05）
+本节早期列出的 10 类方案和实施步骤均为历史记录，已由当前 13 类实现取代，不再作为待办执行。分类由 LLM 写入并校验明确的 13 类值；分类失败或无有效类别时保持未分类。代码中不保留旧关键词分类器、分类兜底或旧类别映射，价值线也只读取显式分类。
 
 ### 5. 风险与待决
 * **基准 PE 中枢需重新标定**：新类别（医药、半导体、地产、能源材料）的 `benchmarkPE` 兜底值目前只是初步设想，落地时需基于历史数据校准，不能直接沿用旧值。
