@@ -3,6 +3,7 @@ import db from "@/lib/prisma";
 import { formatUsdInYi } from "@/lib/currency";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
 import { normalizeTicker } from "@/lib/ticker";
+import { FINANCIAL_DATA_START_YEAR } from "@/lib/financial-period";
 import { Prisma } from "@prisma/client";
 
 export function normalizeCompanyCik(cikRaw: string | null | undefined) {
@@ -406,7 +407,11 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
   const familyIds = await getEntityFamilyIds(entityId);
   const rows = await retryOnce(async () =>
     db.financial.findMany({
-      where: { entityId: { in: familyIds }, periodType: "FY" },
+      where: {
+        entityId: { in: familyIds },
+        periodType: "FY",
+        periodEnd: { gte: new Date(Date.UTC(FINANCIAL_DATA_START_YEAR, 0, 1)) },
+      },
       orderBy: [{ periodEnd: "desc" }, { lineItem: "asc" }],
       select: {
         id: true,

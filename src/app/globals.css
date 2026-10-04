@@ -7935,68 +7935,21 @@ body.layout-no-header {
   line-height: 1.72;
 }
 
-.company-kpi-grid {
+.company-financial-dashboard-root {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.6rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.1rem;
+  min-width: 0;
 }
 
-.company-kpi-card {
-  border: 1px solid var(--company-border-soft);
-  background: linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%);
-  border-radius: 10px;
-  padding: 0.65rem 0.72rem;
+.company-financial-history {
+  min-width: 0;
 }
 
-.company-kpi-card p {
-  margin: 0;
-  font-size: 0.68rem;
+.company-financial-context {
+  margin: -0.25rem 0 0.8rem;
   color: var(--company-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-}
-
-.company-kpi-card strong {
-  display: block;
-  margin-top: 0.32rem;
-  font-size: 1.05rem;
-  color: var(--company-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.company-kpi-card span {
-  display: block;
-  margin-top: 0.22rem;
-  font-size: 0.68rem;
-  color: #64748b;
-}
-
-.company-long-term-trends {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0.55rem;
-  margin-top: 0.7rem;
-}
-
-.company-long-term-trends article {
-  border: 1px solid #dbe5f0;
-  background: #f8fbff;
-  border-radius: 10px;
-  padding: 0.58rem 0.68rem;
-}
-
-.company-long-term-trends span,
-.company-long-term-trends small {
-  display: block;
-  font-size: 0.68rem;
-  color: #64748b;
-}
-
-.company-long-term-trends strong {
-  display: block;
-  margin: 0.18rem 0;
-  font-size: 0.92rem;
-  color: var(--company-text);
+  font-size: 0.74rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -8020,70 +7973,108 @@ body.layout-no-header {
   color: var(--company-text-secondary);
 }
 
-.company-ttm-banner {
+.company-financial-trend-head > div {
+  min-width: 0;
+}
+
+.company-financial-trend-head p {
+  margin: 0.22rem 0 0;
+  color: var(--company-text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.company-financial-trend-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.company-financial-trend-card {
+  min-width: 0;
+  padding: 0.68rem 0.75rem 0.48rem;
+  border: 1px solid var(--company-border-soft);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.company-financial-trend-card-head {
   display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  margin-bottom: 0.75rem;
-  padding: 0.45rem 0.75rem;
-  background: rgba(0, 113, 227, 0.05);
-  border: 1px solid rgba(0, 113, 227, 0.15);
-  border-radius: 8px;
-  font-size: 0.75rem;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
 }
 
-.company-ttm-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.15rem 0.45rem;
-  background: var(--apple-blue, #0071e3);
-  color: #fff;
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 0.68rem;
-  letter-spacing: 0.02em;
+.company-financial-trend-card-head h4 {
+  margin: 0;
+  color: var(--company-text-secondary);
+  font-size: 0.73rem;
+  font-weight: 550;
 }
 
-.company-ttm-desc {
+.company-financial-trend-card-head strong {
+  min-width: 0;
   color: var(--company-text);
+  font-size: clamp(0.82rem, 1.2vw, 0.98rem);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.company-financial-trend-latest {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--company-text-secondary);
+  font-size: 0.64rem;
+}
+
+.company-financial-sparkline {
+  display: block;
+  width: 100%;
+  height: 3.25rem;
+  margin-top: 0.28rem;
+  overflow: visible;
+}
+
+.company-financial-sparkline-guide {
+  fill: none;
+  stroke: #e2e8f0;
+  stroke-width: 1;
+}
+
+.company-financial-sparkline-line {
+  fill: none;
+  stroke: #316b9c;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.company-financial-sparkline-point {
+  fill: #ffffff;
+  stroke: #316b9c;
+  stroke-width: 1.8;
+  vector-effect: non-scaling-stroke;
+}
+
+.company-financial-trend-years {
+  display: flex;
+  justify-content: space-between;
+  color: #8491a2;
+  font-size: 0.61rem;
   font-variant-numeric: tabular-nums;
 }
 
-.company-financial-trend-title-row {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-}
-
-.company-view-toggle {
-  display: inline-flex;
-  padding: 2px;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 7px;
-  gap: 2px;
-}
-
-.company-view-toggle-btn {
-  padding: 0.2rem 0.6rem;
-  font-size: 0.72rem;
-  font-weight: 500;
+.company-financial-method-note {
+  margin: 0.55rem 0 0;
   color: var(--company-text-secondary);
-  background: transparent;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: all 0.15s ease;
+  font-size: 0.7rem;
+  line-height: 1.5;
 }
 
-.company-view-toggle-btn:hover {
-  color: var(--company-text);
-}
-
-.company-view-toggle-btn--active {
-  background: #fff;
-  color: var(--company-text);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  font-weight: 600;
+.company-financial-empty {
+  margin-top: 0.25rem;
 }
 
 .company-split {
@@ -10035,6 +10026,44 @@ body.layout-no-header {
   top: 0;
 }
 
+.company-financial-table-wrap {
+  width: 100%;
+  min-width: 0;
+  overscroll-behavior-inline: contain;
+}
+
+.company-financial-table {
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+}
+
+.company-financial-table th:not(:first-child),
+.company-financial-table td {
+  min-width: 7.6rem;
+  white-space: nowrap;
+}
+
+.company-financial-table th:first-child,
+.company-financial-table tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 9.5rem;
+  text-align: left;
+  background: var(--company-surface, #fff);
+}
+
+.company-financial-table thead th:first-child {
+  z-index: 3;
+  background: #eef2f7;
+}
+
+.company-financial-table tbody th {
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
 .company-holders {
   display: grid;
   gap: 0.3rem;
@@ -10156,8 +10185,7 @@ body.layout-no-header {
     grid-template-columns: 1fr;
   }
 
-  .company-kpi-grid,
-  .company-long-term-trends {
+  .company-financial-trend-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -10258,9 +10286,22 @@ body.layout-no-header {
     grid-template-columns: 94px 1fr;
   }
 
-  .company-kpi-grid,
-  .company-long-term-trends {
-    grid-template-columns: 1fr;
+  .company-financial-trend-head {
+    align-items: flex-start;
+  }
+
+  .company-financial-trend-card {
+    padding: 0.58rem;
+  }
+
+  .company-financial-trend-card-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.14rem;
+  }
+
+  .company-financial-trend-card-head strong {
+    text-align: left;
   }
 
   .bmc-grid {
@@ -10334,6 +10375,40 @@ body.layout-no-header {
 
   .company-table th {
     position: static;
+  }
+
+  .company-financial-table {
+    min-width: 47.5rem;
+    table-layout: auto;
+  }
+
+  .company-financial-table th,
+  .company-financial-table td {
+    padding: 0.5rem 0.62rem;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+
+  .company-financial-table th:not(:first-child),
+  .company-financial-table td {
+    min-width: 7.6rem;
+  }
+
+  .company-financial-table th:first-child,
+  .company-financial-table tbody th {
+    position: sticky;
+    left: 0;
+    min-width: 9.5rem;
+  }
+
+  .company-financial-table thead th:first-child {
+    z-index: 3;
+  }
+
+  .company-financial-table tbody th {
+    z-index: 1;
   }
 
   .company-reference-card-head {
@@ -20063,6 +20138,7 @@ a.insight-entity-chip:hover {
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
+  letter-spacing: normal;
 }
 
 .value-line-card::before {
@@ -20158,14 +20234,14 @@ a.insight-entity-chip:hover {
 }
 
 .vl-ticker-pill-btn .vl-ticker-class {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 500;
   opacity: 0.85;
 }
 
 .vl-exchange-badge,
 .vl-sector-badge {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 500;
   color: #4b5563;
   background: #f3f4f6;
@@ -20175,7 +20251,7 @@ a.insight-entity-chip:hover {
 }
 
 .vl-sector-model-badge {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #4f46e5;
   background: rgba(79, 70, 229, 0.07);
@@ -20227,7 +20303,7 @@ a.insight-entity-chip:hover {
 }
 
 .vl-status-chip {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   padding: 0.18rem 0.55rem;
   border-radius: 6px;
@@ -20348,8 +20424,8 @@ a.insight-entity-chip:hover {
 }
 
 .vl-price-sub {
-  font-size: 0.72rem;
-  color: #9ca3af;
+  font-size: 0.75rem;
+  color: #6b7280;
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -20420,7 +20496,6 @@ a.insight-entity-chip:hover {
   font-weight: 600; /* ✓ Icon Fix: 强化字重 */
   padding: 0.2rem 0.55rem;
   border-radius: 5px;
-  letter-spacing: 0.04em;
   text-transform: uppercase; /* ✓ Icon Fix: 大写强化层级 */
   display: inline-flex;
   align-items: center;
@@ -20431,10 +20506,9 @@ a.insight-entity-chip:hover {
 }
 
 .vl-overview-sub {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   color: #6b7280;
   font-weight: 500;
-  letter-spacing: 0.02em;
 }
 
 .vl-overview-body {
@@ -20445,10 +20519,9 @@ a.insight-entity-chip:hover {
 
 .vl-overview-para {
   margin: 0;
-  font-size: 0.875rem; /* ✓ P1 Fix: 0.86rem (13.76px) → 0.875rem (14px) Apple Caption */
-  line-height: 1.43; /* ✓ P1 Fix: 1.65 → 1.43 (Apple Caption 标准行高) */
+  font-size: 0.875rem;
+  line-height: 1.6;
   color: #374151;
-  letter-spacing: -0.224px; /* ✓ P1 Fix: 添加 Apple Caption 标准负字间距 */
   text-align: justify;
 }
 
@@ -20482,7 +20555,7 @@ a.insight-entity-chip:hover {
   font-size: 0.875rem; /* ✓ Icon Fix: 0.82rem → 0.875rem (14px Apple Caption Bold) */
   font-weight: 600; /* ✓ Icon Fix: 700 → 600 强化无图标后的层级 */
   color: #1d1d1f; /* ✓ P0 Fix: 琥珀色文字 → Apple Near Black */
-  letter-spacing: -0.224px; /* ✓ Icon Fix: 添加 Apple Caption 标准字间距 */
+  letter-spacing: normal;
 }
 
 .vl-master-section-icon {
@@ -20495,8 +20568,8 @@ a.insight-entity-chip:hover {
 }
 
 .vl-master-section-hint {
-  font-size: 0.7rem;
-  color: rgba(0, 0, 0, 0.48); /* ✓ P0 Fix: 琥珀色 → Apple Secondary */
+  font-size: 0.75rem;
+  color: #6b7280;
   font-weight: 500;
   opacity: 1; /* ✓ P0 Fix: 移除额外的 opacity */
 }
@@ -20561,7 +20634,7 @@ a.insight-entity-chip:hover {
 }
 
 .vl-master-quarter-badge {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #4b5563;
   background: #f3f4f6;
@@ -20589,7 +20662,7 @@ a.insight-entity-chip:hover {
 }
 
 .vl-master-metric-label {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: #6b7280;
   font-weight: 500;
   white-space: nowrap;
@@ -20616,7 +20689,7 @@ a.insight-entity-chip:hover {
 
 .vl-master-class-tag {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #0071e3;
   background: rgba(0, 113, 227, 0.08);
@@ -20644,11 +20717,11 @@ a.insight-entity-chip:hover {
 
 .vl-master-act-badge {
   font-family: var(--font-geist-mono, ui-monospace, monospace);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;
-  letter-spacing: -0.01em;
+  letter-spacing: normal;
 }
 
 .vl-master-act-badge--new {
@@ -20699,22 +20772,22 @@ a.insight-entity-chip:hover {
 
 .vl-master-firm-text {
   font-size: 0.75rem; /* ✓ Icon Fix: 12px - Apple Micro */
-  color: rgba(0, 0, 0, 0.48); /* ✓ Icon Fix: Apple Secondary */
+  color: #6b7280;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: 400; /* ✓ Icon Fix: 500 → 400 更符合 Apple */
-  letter-spacing: -0.12px; /* ✓ Icon Fix: Apple Micro 标准字间距 */
+  letter-spacing: normal;
   min-width: 0;
   flex: 1;
 }
 
 .vl-master-aum-text {
-  font-size: 0.72rem;
-  color: rgba(0, 0, 0, 0.52);
+  font-size: 0.75rem;
+  color: #6b7280;
   font-weight: 500;
   white-space: nowrap;
-  letter-spacing: -0.1px;
+  letter-spacing: normal;
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
 }
@@ -20805,7 +20878,7 @@ a.insight-entity-chip:hover {
 }
 
 .vl-valuation-pill {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 700;
   padding: 0.12rem 0.45rem;
   border-radius: 4px;
@@ -20832,8 +20905,8 @@ a.insight-entity-chip:hover {
 }
 
 .vl-sparkline-cur-date {
-  color: #9ca3af;
-  font-size: 0.72rem;
+  color: #6b7280;
+  font-size: 0.75rem;
 }
 
 .vl-sparkline-range {
@@ -20906,20 +20979,18 @@ a.insight-entity-chip:hover {
 }
 
 .vl-triad-title {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #86868b;
+  color: #6b7280;
 }
 
 .vl-triad-badge {
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   font-weight: 600;
   padding: 0.15rem 0.45rem;
   border-radius: 4px;
   white-space: nowrap;
-  letter-spacing: 0.01em;
 }
 
 .vl-badge--stellar {
@@ -20955,8 +21026,8 @@ a.insight-entity-chip:hover {
 }
 
 .vl-triad-main-num {
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 1.625rem;
+  font-weight: 600;
   color: #1d1d1f;
   letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
@@ -20964,10 +21035,10 @@ a.insight-entity-chip:hover {
 }
 
 .vl-triad-sub-text {
-  font-size: 0.72rem;
-  color: #86868b;
+  font-size: 0.75rem;
+  color: #6b7280;
   font-weight: 500;
-  line-height: 1.3;
+  line-height: 1.45;
 }
 
 /* 5. AI 30-Second Executive Briefing */
@@ -21015,7 +21086,7 @@ a.insight-entity-chip:hover {
   padding: 0.2rem 0.55rem; /* ✓ Icon Fix: 增加 padding 强化存在感 */
   border-radius: 5px;
   display: inline-flex;
-  letter-spacing: -0.12px; /* ✓ Icon Fix: Apple Micro 标准字间距 */
+  letter-spacing: normal;
 }
 
 .vl-briefing-badge--risk {
@@ -21027,7 +21098,7 @@ a.insight-entity-chip:hover {
   padding: 0.2rem 0.55rem; /* ✓ Icon Fix: 增加 padding */
   border-radius: 5px;
   display: inline-flex;
-  letter-spacing: -0.12px; /* ✓ Icon Fix: Apple Micro 标准字间距 */
+  letter-spacing: normal;
 }
 
 .vl-briefing-content {
@@ -21196,7 +21267,7 @@ a.insight-entity-chip:hover {
   }
   .vl-price-metrics {
     justify-content: flex-start;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
   }
   .vl-company-overview-pane {
     padding: 0.8rem 0.9rem;
@@ -21208,7 +21279,7 @@ a.insight-entity-chip:hover {
     gap: 0.35rem;
   }
   .vl-overview-para {
-    font-size: 0.82rem;
+    font-size: 0.875rem;
     line-height: 1.6;
   }
   .vl-master-holdings-section {
@@ -21226,7 +21297,7 @@ a.insight-entity-chip:hover {
     min-width: 0;
   }
   .vl-master-act-badge {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
   }
   .vl-sparkline-legend {
     flex-direction: column;
@@ -21239,6 +21310,9 @@ a.insight-entity-chip:hover {
   }
   .vl-triad-box {
     padding: 0.75rem 0.85rem;
+  }
+  .vl-triad-main-num {
+    font-size: 1.5rem;
   }
   .vl-ai-briefing {
     flex-direction: column;
@@ -21844,7 +21918,3 @@ a.insight-entity-chip:hover {
     font-size: 0.75rem;
   }
 }
-
-
-
-

@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { FINANCIAL_DATA_START_YEAR } from "@/lib/financial-period";
 
 /**
  * Valuation metrics computed from Financial (FY line items) + StockPrice.
@@ -110,7 +111,11 @@ export function computeFcf(ocf: number | null, capex: number | null): number | n
 
 export async function fetchAnnualFundamentals(entityId: string): Promise<AnnualFundamentals[]> {
   const rows = await prisma.financial.findMany({
-    where: { entityId, periodType: "FY" },
+    where: {
+      entityId,
+      periodType: "FY",
+      periodEnd: { gte: new Date(Date.UTC(FINANCIAL_DATA_START_YEAR, 0, 1)) },
+    },
     select: { periodEnd: true, lineItem: true, value: true },
     orderBy: { periodEnd: "asc" },
   });

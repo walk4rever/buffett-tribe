@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import { FINANCIAL_DATA_START_YEAR } from "@/lib/financial-period";
 import { computeValuationMetrics } from "@/lib/valuation-metrics";
 
 export interface Phase3RedFlag {
@@ -251,7 +252,11 @@ async function detectFundamentalHealth(
   const redFlags: Phase3RedFlag[] = [];
 
   const rows = await prisma.financial.findMany({
-    where: { entityId, periodType: "FY" },
+    where: {
+      entityId,
+      periodType: "FY",
+      periodEnd: { gte: new Date(Date.UTC(FINANCIAL_DATA_START_YEAR, 0, 1)) },
+    },
     orderBy: { periodEnd: "desc" },
     select: { lineItem: true, value: true, periodEnd: true },
     take: 30,

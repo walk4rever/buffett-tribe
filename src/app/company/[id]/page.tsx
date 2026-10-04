@@ -32,7 +32,6 @@ import { StockPriceChartLazy } from "@/components/StockPriceChartLazy";
 import { buildCompanyFinancialDashboard } from "@/lib/company-financial-dashboard";
 import { formatShares } from "@/lib/master-data";
 import { CompanyFinancialDashboardComponent } from "@/components/CompanyFinancialDashboard";
-import { computeCompanyTtmMetrics, getCompanyQuarterlyFinancials } from "@/lib/ttm-metrics";
 import { getValueLineData } from "@/lib/value-line-data";
 
 export const dynamic = "force-dynamic";
@@ -385,19 +384,15 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     analysis,
     referenceFilings,
     tribeMembers,
-    ttmMetrics,
-    quarterlyFinancials,
     valueLineData,
   ] = await Promise.all([
-    getCompanyFinancials(company.id, 5),
+    getCompanyFinancials(company.id, 10),
     getFinancialsCurrency(company.id),
     getRecentHolders(company.id, 30),
     getCompanySecurities(company.id),
     getCompanyAnalysis(company.id),
     getCompanyReferenceFilings(company.id, 36),
     getTribeMembers(),
-    computeCompanyTtmMetrics({ entityId: company.id, ticker: company.ticker }),
-    getCompanyQuarterlyFinancials(company.id, 8),
     getValueLineData(company.id, rawTicker),
   ]);
   const referenceYearGroups = groupAndFormatReferenceFilings(referenceFilings, company.cik);
@@ -466,7 +461,11 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   const radarRings = [0.25, 0.5, 0.75, 1];
   const initialTabId = typeof rawTab === "string" ? rawTab.trim() : "";
 
-  const dashboard = buildCompanyFinancialDashboard(company, financials, financialsCurrency);
+  const dashboard = buildCompanyFinancialDashboard(
+    { ...company, sectorModelType: valueLineData?.sectorModelType ?? null },
+    financials,
+    financialsCurrency,
+  );
 
   // Phase 1 公司：只显示可用 tab + 深度分析按钮，不显示灰色锁住的 tab
   const onboardPhase = company.onboardPhase ?? 0;
@@ -480,7 +479,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   const allTabs = [
     { id: "valueline",  label: "价值线",  desc: "数字价值线核心全景" },
     { id: "business",   label: "商业模式", desc: "九宫格商业模式画布",  ...(!businessCanvas  ? { disabled: true } : {}) },
-    { id: "financial",  label: "财务分析", desc: "核心三张表与杜邦分解" },
+    { id: "financial",  label: "财务分析", desc: "年度趋势与明细" },
     { id: "value",      label: "竞争优势", desc: "护城河雷达与资本回报", ...(!hasRealMoat    ? { disabled: true } : {}) },
     { id: "management", label: "资本配置", desc: "资本回报与股东回报纪律",  ...(!hasManagement  ? { disabled: true } : {}) },
     { id: "valuation",  label: "估值分析", desc: "历史分位与情景推演",  ...(!hasValuation   ? { disabled: true } : {}) },
@@ -541,14 +540,6 @@ export default async function CompanyPage({ params, searchParams }: Props) {
               <CompanyFinancialDashboardComponent
                 dashboard={dashboard}
                 financials={financials}
-                quarterlyFinancials={quarterlyFinancials}
-                ttmMetrics={ttmMetrics}
-                currency={financialsCurrency}
-                emptyMessage={
-                  company.cik
-                    ? "暂无 10-K 年报结构化数据。可先运行 `import:10k` 脚本。"
-                    : "暂无结构化财务数据，A 股/港股财务数据接入规划中。"
-                }
               />
             </section>
 

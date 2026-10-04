@@ -13,6 +13,10 @@ import { getTribeMembers } from "@/lib/tribe";
 import { getLatestPortfolioValueUsd } from "@/lib/master-data";
 import { formatUsdInYi } from "@/lib/currency";
 import {
+  calculateFreeCashFlow,
+  calculateReturnOnAverageBalance,
+} from "@/lib/financial-math";
+import {
   SectorModelType13,
   getSectorModel13Info,
   isSectorModelType13,
@@ -317,14 +321,16 @@ export async function getValueLineData(
 
   // 1. Fetch Multi-Year Financials first to establish earnings base & benchmark PE
   const financials = await getCompanyFinancials(entity.id, 7);
+  const financialsByYear = new Map(financials.map((financial) => [financial.year, financial]));
 
   const annuals: ValueLineAnnualData[] = financials
     .map((f) => {
       const rev = parseNum(f.items, "Revenue");
       const net = parseNum(f.items, "NetIncome");
       const ocf = parseNum(f.items, "OperatingCashFlow");
-      const capex = parseNum(f.items, "CapEx") ?? 0;
+      const capex = parseNum(f.items, "CapEx");
       const equity = parseNum(f.items, "ShareholdersEquity");
+      const priorEquity = parseNum(financialsByYear.get(f.year - 1)?.items, "ShareholdersEquity");
       const assets = parseNum(f.items, "TotalAssets");
       const liabilities = parseNum(f.items, "TotalLiabilities");
       const epsRaw = parseNum(f.items, "EPSDiluted") ?? parseNum(f.items, "EPSBasic");
@@ -343,11 +349,10 @@ export async function getValueLineData(
       const eps =
         epsRaw ?? (net != null && shares != null && shares > 0 ? Number((net / shares).toFixed(2)) : null);
 
-      // ROE is only meaningful if equity > 0
-      const roe =
-        net != null && equity != null && equity > 0 ? Number(((net / equity) * 100).toFixed(1)) : null;
+      const roeValue = calculateReturnOnAverageBalance(net, priorEquity, equity);
+      const roe = roeValue == null ? null : Number((roeValue * 100).toFixed(1));
 
-      const fcf = ocf != null ? ocf - capex : null;
+      const fcf = calculateFreeCashFlow(ocf, capex);
 
       return {
         year: f.year,
