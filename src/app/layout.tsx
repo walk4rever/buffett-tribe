@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Providers } from "@/components/Providers";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import { BRAND_FULL, BRAND_ZH } from "@/lib/brand";
+import { BRAND_FULL } from "@/lib/brand";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -23,11 +23,6 @@ export default function RootLayout({
             <main className="site-main">
               {children}
             </main>
-            <footer className="site-footer">
-              <p className="site-footer-text">
-                买股票就是买公司。{BRAND_ZH}用投资大师的框架帮你理解一家公司，不构成任何投资建议。
-              </p>
-            </footer>
             </div>
           </ErrorBoundary>
         </Providers>
