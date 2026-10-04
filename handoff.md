@@ -790,3 +790,83 @@ const limit = process.env.PRISMA_CONNECTION_LIMIT ?? '50'
 ---
 
 
+
+## 十四、 行业分类升级：7 类规则 → 10 类 LLM 分类（2026-10-04 决议，待落地）
+
+### 1. 背景：为什么要改
+v0.46.10 上线的 7 类规则分类（`src/lib/sector-classification.ts` 的 `detectSectorModel7`）在随机抽样 100 家（1,909 家中）对比中暴露出结构性问题：
+
+* **分类轴混杂**：消费、科技按商业模式分；银行保险、公用事业、强周期按财务特征分；「工业制造」是兜底。凡行业名没有关键词的都掉进兜底。
+* **没有医药类**：美股 `Health Care` 全被塞进 `consumer_brand`（如 SOLV、WST、AZN、BMY、BNTX）；A 股/港股医药（000953、000931、0512.HK、0460.HK）反而被误分到 `technology`。
+* **关键词误命中**：中文名/行业名里的「科技」「智」「高科」把汽车（000981、0564.HK）、教育（000526）误判为科技。
+* **行业名无关键词掉进兜底**：COKE（饮料）、GOTU（教育）、ONTO / NVMI（半导体设备）、KSPI（支付电商）、MSCI 等落入 `industrial`；DLB（专利授权）、HIVE（比特币矿企）因 SEC 归 Financials 被误分到 `bank_insurance`。
+* **地产与能源材料混在 `cyclical`**：两者估值逻辑不同（净资产 / 分红 vs 大宗价格周期）。
+
+### 2. 决议一：分类标准 = 估值逻辑是否不同，扩为 10 类
+字段 `Entity.sectorModelType`（String?，不改 schema，仅扩取值）。
+
+| 取值（建议 key） | 中文标签 | 估值逻辑 | 备注 |
+|---|---|---|---|
+| `consumer_brand` | 消费品牌 | 品牌、定价权 | 食品饮料、日化、服饰、零售、酒店餐饮、教育培训 |
+| `healthcare` | 医药健康 | 管线、专利悬崖 | **新增**；制药、生物科技、医疗器械、医疗服务 |
+| `software_platform` | 科技软件与平台 | 高增长、轻资产 | 软件、互联网、电商、数字支付 |
+| `semiconductor_hardware` | 半导体与硬件 | 周期 + 技术 | **新增**；芯片、设备、消费电子、通信设备 |
+| `industrial` | 工业制造 | 订单周期 | 机械、航空航天、运输、建筑工程、汽车制造 |
+| `bank_insurance` | 银行保险 | PB-ROE | 银行、保险、券商、资管 |
+| `real_estate` | 地产与 REITs | 净资产、分红 | **拆自 `cyclical`**；开发商、物业、REITs |
+| `energy_materials` | 能源与材料 | 大宗价格周期 | 原 `cyclical` 去掉地产；油气、煤炭、矿业、化工、钢铁 |
+| `utilities` | 公用事业与电信 | 特许经营、股息 | 电力、燃气、水务、**电信运营商**（中国移动、联通、电信、TELUS 等；标签由「公用事业」改名） |
+| `conglomerate` | 多元化控股 | 折价、净资产 | 保持不变 |
+
+* 迁移映射（旧 → 新）：`technology` 需拆为 `software_platform` / `semiconductor_hardware`；`cyclical` 需拆为 `real_estate` / `energy_materials`；`consumer_brand` 中医药部分迁至 `healthcare`；其余沿用。这些拆分无法机械映射，**以 LLM 重分结果为准**。
+* 半导体是否独立为一类标注为「可选」，用户已同意 10 类，按 10 类落地。
+
+#### 2.1 抽样验证结论（随机 100 家，2026-10-04）
+* 100 家均能归入这 10 类，无一家完全无处可放；其中 14 家为勉强归入（边界案例）：东方传媒 0018、HIVE、MSCI、EXPO、ROL、东莞控股 000828、NLY、KSPI、FIGR、XMTR、CPNG、DOCS、力宝华润 0156、富豪国际 0078。
+* 边界案例是 LLM 分类的难点，必须依赖「置信度 + 复核队列」，不能静默落库。
+
+#### 2.2 边界归属规则（写入 LLM prompt）
+以「估值逻辑」为准，而非行业名称：
+
+* **电信运营商 → `utilities`**：重资本、牌照式特许经营、现金流稳定、以股息和自由现金流估值（如中国移动）。
+* **传媒与娱乐 → `consumer_brand`**：估值靠 IP 与品牌，乐园、衍生品、内容为主要收入（如迪士尼、东方传媒 0018）。
+* **按净资产估值的抵押贷款 REIT → `bank_insurance`**（如 NLY）；持有实体物业的 REITs → `real_estate`。
+* **高速公路、港口等基建**：港口、物流归 `industrial`；纯特许收费公路是否归 `utilities` 存在争议，由 LLM 给置信度，低置信度进复核。
+* 数据服务、咨询、害虫防治等专业服务：暂归最近类别（`software_platform` / `industrial`），数量少，不单独设类。
+* 数字资产相关（如比特币矿企 HIVE）：暂归 `software_platform`，数量少，不单独设类。
+
+#### 2.3 决议：不增设第 11 类「通信与传媒」
+曾考虑增设，但电信运营商（看股息与自由现金流，像公用事业）与传媒内容（看 IP 与增长，像消费品牌）估值逻辑不同，合并会让标签失去意义，违背「分类标准是估值逻辑」的原则。因此保持 10 类，仅将 `utilities` 的中文标签改为「公用事业与电信」，并在 LLM prompt 中写明上述 2.2 规则。全库重分后若发现电信 / 传媒数量很大且归属别扭，再复议。
+
+
+### 3. 决议二：分类交给 LLM，规则降级为兜底与对照
+**必须遵守的约束**（避免 LLM 分类变成黑箱）：
+
+1. **输入给足事实**：公司名（中英文）、SEC/GICS `sector`、`industry` 原文、已有业务简介（`overview`，若有）。禁止只给名字让模型猜。
+2. **输出受限**：只能从上表 10 个 key 中选；返回 JSON：`{ "type": "<key>", "confidence": 0-1, "reason": "<一句话依据>" }`。
+3. **低温度 + 固定 prompt**，保证同一家公司重跑结果一致。
+4. **结果固化入库**：写入 `Entity.sectorModelType`；页面只读库，**不在请求时调用 LLM**。理由与置信度存 `metadata.sectorModel`（`{ reason, confidence, source: "llm", at }`），便于审计。
+5. **不一致进复核队列**：LLM 结果与旧规则结果不同、或置信度低于阈值（建议 0.7）的，输出分歧清单由人工复核，**不静默落库**。
+6. **规则保留**：`detectSectorModel7` 不删除，作为 LLM 调用失败时的兜底，以及与 LLM 对照的信号。需同步更新其取值到新的 10 类。
+7. **事实 vs 推断**：`reason` 只写能从输入事实推出的依据，不得编造公司业务细节（沿用「零幻觉」承诺）。
+
+### 4. 落地步骤（待执行）
+1. 新增 LLM 分类模块（例如 `src/lib/sector-classification-llm.ts`），统一 prompt、枚举校验、JSON 解析与重试。
+2. 新增批处理脚本，对 `onboardPhase >= 1` 的 1,909 家全库重分；支持 `--dry-run`，并输出「旧规则 vs LLM」分歧清单。注意 Supabase 连接池限制（`connection_limit=3`），并发需节流；查询用原生 SQL 取 `metadata->>'industry'` 等字段，避免拉取整个 `metadata`。
+3. 人工抽查分歧清单（重点：医药、教育、半导体设备、支付平台、SEC 归 Financials 的非金融公司），通过后落库。
+4. 修改 `scripts/onboard-company.ts` 的 Phase 1 逻辑，调用同一分类函数，使新公司 P0→P1 时自动用 LLM 分类（失败回退规则）。
+5. 同步更新依赖该字段的下游：
+   * `src/lib/sector-classification.ts` 的 `SectorModelType7` / `SECTOR_MODEL_7_CONFIG`（标签、`benchmarkPE`、`cagrMetrics`）扩为 10 类；
+   * `src/lib/value-line-data.ts`：`benchmarkPe` 兜底 switch、四宫格 Metric 1/2/4 文案需补 `healthcare`、`real_estate`、`energy_materials`、`semiconductor_hardware`、`software_platform` 的分支（`real_estate` 此前 v0.46.10 已删除了对应分支，需恢复地产的现金流/负债文案）；
+   * `src/components/ValueLineCard.tsx` 标签显示；
+   * `tests/sector-classification.test.ts` 回归用例（含本次抽样发现的误判：COKE、EMR、DLB、HIVE、KSPI、ONTO、NVMI、GOTU、000953、0512.HK、000981、000526 等）。
+6. 全库重分后同步 mini（`git pull`，并确认 `prisma generate`）。
+
+### 5. 风险与待决
+* **基准 PE 中枢需重新标定**：新类别（医药、半导体、地产、能源材料）的 `benchmarkPE` 兜底值目前只是初步设想，落地时需基于历史数据校准，不能直接沿用旧值。
+* **成本**：全库约 1,909 家，单次 LLM 调用成本低；新公司入库时的增量成本可忽略。
+* **LLM 随机性**：靠固定 prompt、低温度、落库固化控制；重分时需对比前后结果，防止无意义的类别抖动。
+* **前一轮遗留问题**：SOLV 被分到 `consumer_brand` 的问题将在本次升级中一并解决（归入 `healthcare`）。
+* **mini 批次遗留失败项**（与分类无关，另行处理）：0621.HK（港股财报缺 `Revenue` 条目，映射表未覆盖）、0016.HK / 000507.SZ（估值分析 LLM 输出 JSON 格式错误）、0625.HK（年报 ExtSource 步骤失败）。
+
+---

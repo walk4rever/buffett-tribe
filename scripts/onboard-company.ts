@@ -83,6 +83,7 @@ type StepId =
   | "import_annual_report"
   | "slice_annual_report"
   | "generate_company_profile"
+  | "classify_sector"
   | "generate_business_model"
   | "generate_value_analysis"
   | "generate_management_analysis"
@@ -557,6 +558,30 @@ async function main() {
       (await verifyCompanyAnalysisField(entityId, "profile", stepStartedAt, force)),
   };
 
+  const classifySectorStep: Step = {
+    id: "classify_sector",
+    label: "13 类行业分类（sectorModelType）",
+    skip: skipGeneration,
+    run: () => runNpmScript("classify:sector", ["--company", ticker]),
+    verify: async (entityId) => {
+      const entity = await prisma.entity.findUnique({
+        where: { id: entityId },
+        select: { sectorModelType: true, metadata: true },
+      });
+      // 已有 sectorModelType 且 source=llm（v3）或 inputsHash 存在
+      if (entity?.sectorModelType) {
+        const sectorModel = entity.metadata && typeof entity.metadata === "object" && "sectorModel" in entity.metadata
+          ? (entity.metadata as { sectorModel?: unknown }).sectorModel
+          : null;
+        const source = sectorModel && typeof sectorModel === "object" && "source" in sectorModel
+          ? (sectorModel as { source?: string }).source
+          : null;
+        return source === "llm";
+      }
+      return false;
+    },
+  };
+
   // Phase 2 analysis steps: 4 separate mature scripts for each dimension
   // (generate:business-model, generate:value-analysis, generate:management-analysis, generate:valuation-analysis)
   // Note: generate-company-analysis-unified is deprecated because valuation
@@ -733,6 +758,7 @@ async function main() {
       createUsAnnualExtSourceStep,  // NEW: Create ExtSource at P1
       importPriceStep,
       generateOverviewStep,
+      classifySectorStep,  // NEW: 13类分类，依赖 overview
       syncNameMapStep,
     ];
     const phase2Steps: Step[] = [
@@ -760,6 +786,7 @@ async function main() {
       importPriceStep,
       importFinancialsStep,
       generateOverviewStep,
+      classifySectorStep,  // NEW: 13类分类，依赖 overview
       syncNameMapStep,
     ];
     const phase2Steps: Step[] = [

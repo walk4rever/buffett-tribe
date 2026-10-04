@@ -13,10 +13,10 @@ import { getTribeMembers } from "@/lib/tribe";
 import { getLatestPortfolioValueUsd } from "@/lib/master-data";
 import { formatUsdInYi } from "@/lib/currency";
 import {
-  SectorModelType7,
+  SectorModelType13,
+  getSectorModel13Info,
+  isSectorModelType13,
   detectSectorModel7,
-  getSectorModel7Info,
-  SECTOR_MODEL_7_CONFIG,
 } from "@/lib/sector-classification";
 
 function parseNum(items: Record<string, string | number> | undefined, key: string): number | null {
@@ -92,7 +92,7 @@ export type ValueLineSecurityOption = {
   valuationDiffPct: number | null;
 };
 
-export type SectorModelType = SectorModelType7;
+export type SectorModelType = SectorModelType13;
 
 export function detectSectorModel(
   sectorRaw?: string | null,
@@ -101,12 +101,23 @@ export function detectSectorModel(
 ): {
   type: SectorModelType;
   label: string;
+  benchmarkPE: number;
+  cagrMetrics: string[];
 } {
-  const info = detectSectorModel7(sectorRaw, industryRaw, nameRaw);
-  return {
-    type: info.type,
-    label: info.label,
+  // 降级：如果没有 LLM 分类结果，用规则兜底
+  const fallback = detectSectorModel7(sectorRaw, industryRaw, nameRaw);
+  // 7类映射到13类
+  const map7to13: Record<string, SectorModelType13> = {
+    consumer_brand: "consumer_brand",
+    technology: "software_platform",
+    industrial: "industrial",
+    bank_insurance: "banks",
+    utilities: "utilities",
+    cyclical: "energy_materials",
+    conglomerate: "conglomerate",
   };
+  const type13 = map7to13[fallback.type] || "industrial";
+  return getSectorModel13Info(type13);
 }
 
 export type ValueLineData = {
@@ -378,12 +389,13 @@ export async function getValueLineData(
   const isNetCash = debtToAssetsRatio != null ? debtToAssetsRatio < 40 : false;
 
   // Sector Model Adaptive Framework (7-way classification)
-  let sectorModel: { type: SectorModelType7; label: string; benchmarkPE: number; cagrMetrics: string[] };
-  const rawModelType = entity.sectorModelType as SectorModelType7 | null;
-  if (rawModelType && rawModelType in SECTOR_MODEL_7_CONFIG) {
-    sectorModel = getSectorModel7Info(rawModelType);
+  let sectorModel: { type: SectorModelType13; label: string; benchmarkPE: number; cagrMetrics: string[] };
+  const rawModelType = entity.sectorModelType as SectorModelType13 | null;
+  if (rawModelType && isSectorModelType13(rawModelType)) {
+    sectorModel = getSectorModel13Info(rawModelType);
   } else {
-    sectorModel = detectSectorModel7(entity.sector, industry, nameZh ?? entity.canonicalName);
+    // 降级：用规则判断
+    sectorModel = detectSectorModel(entity.sector, industry, nameZh ?? entity.canonicalName);
   }
   const sectorModelType = sectorModel.type;
   const sectorModelLabel = sectorModel.label;
@@ -405,7 +417,7 @@ export async function getValueLineData(
   let metric1SubText =
     roeMin5Y != null ? `5年最低 ${roeMin5Y}%` : "年化资本回报";
 
-  if (sectorModelType === "bank_insurance") {
+  if (sectorModelType === "banks" || sectorModelType === "insurance") {
     if (roeAvg5Y != null && roeAvg5Y >= 11) {
       metric1Badge = "稳健利差回报";
       metric1BadgeClass = "vl-badge--cash";
@@ -415,7 +427,7 @@ export async function getValueLineData(
     metric1Badge = "特许稳健回报";
     metric1BadgeClass = "vl-badge--cash";
     metric1SubText = "受监管核准资产回报 · 刚需抗周期";
-  } else if (sectorModelType === "cyclical") {
+  } else if (sectorModelType === "energy_materials") {
     if (roeAvg5Y != null && roeAvg5Y >= 18) {
       metric1Badge = "景气高点回报";
       metric1BadgeClass = "vl-badge--alert";
@@ -427,7 +439,7 @@ export async function getValueLineData(
     }
   } else if (sectorModelType === "conglomerate") {
     metric1SubText = "长期复合资本回报率 · 多元实体与投资组合";
-  } else if (sectorModelType === "technology") {
+  } else if (sectorModelType === "software_platform" || sectorModelType === "semiconductor_hardware") {
     metric1SubText = "轻资产高资本回报 · 研发与规模效应驱动";
   } else if (sectorModelType === "consumer_brand") {
     metric1SubText = "消费心智与定价权 · 稳健抗周期复利回报";
@@ -442,7 +454,7 @@ export async function getValueLineData(
     cashConversionRatio != null ? `${cashConversionRatio}x` : "—";
   let metric2SubText = "经营现金流 / 净利润";
 
-  if (sectorModelType === "bank_insurance") {
+  if (sectorModelType === "banks" || sectorModelType === "insurance") {
     metric2Title = "资金营运与息差";
     metric2Badge = "特许资金运作";
     metric2BadgeClass = "vl-badge--neutral";
@@ -458,7 +470,7 @@ export async function getValueLineData(
     metric2MainNum =
       cashConversionRatio != null ? `${cashConversionRatio}x` : "—";
     metric2SubText = "特许权持续现金流入 · 高折旧充沛现金流";
-  } else if (sectorModelType === "cyclical") {
+  } else if (sectorModelType === "energy_materials") {
     metric2Title = "周期现金造血";
     metric2Badge =
       cashConversionRatio && cashConversionRatio >= 1 ? "高景气现金回流" : "资本开支吸收";
@@ -482,7 +494,7 @@ export async function getValueLineData(
   const metric4MainNum = debtToAssetsRatio != null ? `${debtToAssetsRatio}%` : "—";
   let metric4SubText = "负债稳健可控";
 
-  if (sectorModelType === "bank_insurance") {
+  if (sectorModelType === "banks" || sectorModelType === "insurance") {
     metric4Title = "资本结构与偿付准备";
     metric4Badge = "特许资金杠杆";
     metric4BadgeClass = "vl-badge--neutral";
@@ -492,7 +504,7 @@ export async function getValueLineData(
     metric4Badge = "长期特许项目债";
     metric4BadgeClass = "vl-badge--neutral";
     metric4SubText = "特许基础设施长期贷款 · 充沛现金流全额覆盖利息支出";
-  } else if (sectorModelType === "cyclical") {
+  } else if (sectorModelType === "energy_materials") {
     metric4Title = "资产负债与周期防御";
     metric4Badge = isNetCash
       ? "手握充沛现金"
@@ -565,7 +577,7 @@ export async function getValueLineData(
 
     if (firstA.revenue && lastA.revenue && firstA.revenue > 0 && lastA.revenue > 0) {
       revenueCagr5Y = Number((((lastA.revenue / firstA.revenue) ** (1 / span) - 1) * 100).toFixed(1));
-      if (revenueCagr5Y < -20 && sectorModelType === "bank_insurance") {
+      if (revenueCagr5Y < -20 && (sectorModelType === "banks" || sectorModelType === "insurance")) {
         revenueCagrLabel = "会计准则口径调整 (IFRS 17)";
       }
     }
@@ -691,19 +703,21 @@ export async function getValueLineData(
   } else {
     // 次新股、扭亏股、周期反转股无有效历史中位数时，按行业中枢兜底（打破 18x 一刀切）
     switch (sectorModelType) {
-      case "bank_insurance":
+      case "banks":
+      case "insurance":
         benchmarkPe = roeAvg5Y && roeAvg5Y >= 12 ? 8.0 : 6.5;
         break;
       case "utilities":
         benchmarkPe = 14.0;
         break;
-      case "cyclical":
+      case "energy_materials":
         benchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 10.0 : 8.0;
         break;
       case "consumer_brand":
         benchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 24.0 : roeAvg5Y && roeAvg5Y >= 12 ? 20.0 : 16.0;
         break;
-      case "technology":
+      case "software_platform":
+      case "semiconductor_hardware":
         benchmarkPe = roeAvg5Y && roeAvg5Y >= 20 ? 28.0 : roeAvg5Y && roeAvg5Y >= 12 ? 22.0 : 18.0;
         break;
       case "conglomerate":
@@ -871,7 +885,7 @@ export async function getValueLineData(
   // Cyclical Peak Alert Banner: warn against low PE trap at peak earnings
   let cyclicalWarning: ValueLineData["cyclicalWarning"] = null;
   if (
-    sectorModelType === "cyclical" &&
+    sectorModelType === "energy_materials" &&
     peRatio != null &&
     peRatio > 0 &&
     peRatio <= 9 &&

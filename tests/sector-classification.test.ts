@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  SECTOR_MODEL_13_CONFIG,
+  SECTOR_MODEL_13_TYPES,
   detectSectorModel7,
+  getSectorModel13Info,
   getSectorModel7Info,
+  isSectorModelType13,
   SectorModelType7,
 } from "../src/lib/sector-classification";
 
@@ -98,6 +102,63 @@ describe("detectSectorModel7", () => {
       expect(info.label.length).toBeGreaterThan(0);
       expect(info.benchmarkPE).toBeGreaterThan(0);
       expect(info.cagrMetrics.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("SECTOR_MODEL_13_CONFIG（估值逻辑分类）", () => {
+  it("恰好 13 类，key 与 type 一致", () => {
+    expect(SECTOR_MODEL_13_TYPES).toHaveLength(13);
+    expect(new Set(SECTOR_MODEL_13_TYPES).size).toBe(13);
+    for (const type of SECTOR_MODEL_13_TYPES) {
+      expect(SECTOR_MODEL_13_CONFIG[type].type).toBe(type);
+    }
+  });
+
+  it("13 类是 GICS 11 的五处偏离后的结果（净 +2）", () => {
+    // Energy + Materials 合并、CD + CS 合并、Financials 拆三类、IT 拆两类、新增控股
+    expect(SECTOR_MODEL_13_TYPES).toContain("energy_materials");
+    expect(SECTOR_MODEL_13_TYPES).toContain("banks");
+    expect(SECTOR_MODEL_13_TYPES).toContain("insurance");
+    expect(SECTOR_MODEL_13_TYPES).toContain("capital_markets");
+    expect(SECTOR_MODEL_13_TYPES).toContain("software_platform");
+    expect(SECTOR_MODEL_13_TYPES).toContain("semiconductor_hardware");
+    // 被拆掉的旧类不应残留
+    expect(SECTOR_MODEL_13_TYPES).not.toContain("technology");
+    expect(SECTOR_MODEL_13_TYPES).not.toContain("cyclical");
+    expect(SECTOR_MODEL_13_TYPES).not.toContain("bank_insurance");
+  });
+
+  it("每类都有唯一标签、合理 PE 种子值与可读定义", () => {
+    const labels = new Set<string>();
+    for (const type of SECTOR_MODEL_13_TYPES) {
+      const info = getSectorModel13Info(type);
+      expect(info.label.length).toBeGreaterThan(0);
+      expect(labels.has(info.label)).toBe(false);
+      labels.add(info.label);
+      expect(info.benchmarkPE).toBeGreaterThanOrEqual(8);
+      expect(info.benchmarkPE).toBeLessThanOrEqual(40);
+      expect(info.cagrMetrics.length).toBeGreaterThan(0);
+      // definition 是 prompt 的唯一来源，必须说清「装什么」和估值锚
+      expect(info.definition.length).toBeGreaterThan(40);
+      expect(info.definition).toContain("装：");
+    }
+  });
+
+  it("估值锚互不相同的类，倍数也不相同", () => {
+    // banks 用 PB-ROE、capital_markets 用收费型轻资产倍数，两者不能同桶（这是拆分的理由）
+    expect(SECTOR_MODEL_13_CONFIG.banks.benchmarkPE).toBeLessThan(
+      SECTOR_MODEL_13_CONFIG.capital_markets.benchmarkPE,
+    );
+    expect(SECTOR_MODEL_13_CONFIG.energy_materials.benchmarkPE).toBeLessThan(
+      SECTOR_MODEL_13_CONFIG.software_platform.benchmarkPE,
+    );
+  });
+
+  it("isSectorModelType13 只接受 13 个 key", () => {
+    for (const type of SECTOR_MODEL_13_TYPES) expect(isSectorModelType13(type)).toBe(true);
+    for (const invalid of ["technology", "cyclical", "bank_insurance", "unknown", "", null, undefined, 7]) {
+      expect(isSectorModelType13(invalid)).toBe(false);
     }
   });
 });
