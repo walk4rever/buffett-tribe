@@ -20903,11 +20903,6 @@ a.insight-entity-chip:hover {
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
-  margin-bottom: 1.5rem;
-}
-
-.vl-card-quadrant:last-of-type {
-  margin-bottom: 0;
 }
 
 .vl-triad-box {
