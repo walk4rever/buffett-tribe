@@ -2,7 +2,6 @@
   --header-height: 48px;
   --site-nav-height: 48px;
   --workspace-panel-header-height: 52px;
-  --site-footer-height: 44px;
 
   /* ── Apple palette ── */
   --apple-black: #000000;
@@ -14656,31 +14655,6 @@ body {
 .cc-skeleton--metric-label { height: 10px; width: 60%; border-radius: 4px; }
 .cc-skeleton--metric-value { height: 14px; width: 80%; border-radius: 4px; }
 
-/* Site footer */
-.site-footer {
-  min-height: var(--site-footer-height);
-  padding: 0.25rem 1.5rem;
-  border-top: 0.5px solid var(--secondary);
-  background: #fbfbfd;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-}
-
-.site-footer-text {
-  font-size: 0.72rem;
-  color: var(--stone-gray);
-  margin: 0;
-  line-height: 1.5;
-}
-
-/* Hide footer on /agent page */
-body:has(.agent-workspace) .site-footer {
-  display: none;
-}
-
 /* ════════════════════════════════
    PDF Reader — sample document view
    ════════════════════════════════ */
@@ -14818,7 +14792,7 @@ body:has(.agent-workspace) .site-footer {
 
 @media (max-width: 640px) {
   .pdf-reader-stage {
-    height: calc(100dvh - var(--site-nav-height) - var(--site-footer-height) - 250px);
+    height: calc(100dvh - var(--site-nav-height) - 250px);
     min-height: 540px;
     border-radius: 18px;
   }
