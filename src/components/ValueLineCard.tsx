@@ -538,11 +538,6 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
       {/* ── 1. Company Overview: Merged Identity, Products & Revenue Model ── */}
       {data.overview || data.businessSummary ? (
         <section className="vl-company-overview-pane" aria-label="公司概览">
-          <div className="vl-overview-head">
-            <div className="vl-overview-title-wrap">
-              <span className="vl-overview-badge">公司概览</span>
-            </div>
-          </div>
           <div className="vl-overview-body">
             <p className="vl-overview-para">{data.overview ?? data.businessSummary}</p>
           </div>
