@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { buildCompanyFinancialDashboard } from "@/lib/company-financial-dashboard";
+import { isSectorModelType13 } from "@/lib/sector-classification";
 import { normalizeTicker } from "@/lib/ticker";
 import { SECTION_ALIASES } from "./filing-section-aliases";
 import { Prisma } from "@prisma/client";
@@ -51,6 +52,7 @@ export type CompanyTarget = {
   ticker: string | null;
   cik: string | null;
   sector: string | null;
+  sectorModelType: string | null;
   metadata: Prisma.JsonValue;
 };
 
@@ -99,7 +101,7 @@ export function jsonObject(value: unknown): Record<string, unknown> | null {
 }
 
 export async function findCompanies(query?: string): Promise<CompanyTarget[]> {
-  const select = { id: true, canonicalName: true, ticker: true, cik: true, sector: true, metadata: true } satisfies Prisma.EntitySelect;
+  const select = { id: true, canonicalName: true, ticker: true, cik: true, sector: true, sectorModelType: true, metadata: true } satisfies Prisma.EntitySelect;
 
   if (!query) {
     return prisma.entity.findMany({
@@ -330,12 +332,14 @@ export async function fetchLatestFilingEvidence(entityId: string): Promise<Filin
 export function buildFinancialDashboardText(params: {
   sector: string | null;
   metadata: Record<string, unknown> | null;
+  sectorModelType?: string | null;
   financials: FinancialYear[];
 }) {
   const dashboard = buildCompanyFinancialDashboard(
     {
       sector: params.sector,
       metadata: params.metadata,
+      sectorModelType: isSectorModelType13(params.sectorModelType) ? params.sectorModelType : null,
     },
     params.financials.map((f) => ({
       year: f.year,
@@ -344,9 +348,16 @@ export function buildFinancialDashboardText(params: {
     })),
   );
 
+  const cardLines =
+    dashboard.latestYear != null && dashboard.rows.length > 0
+      ? dashboard.rows
+          .map((row) => `${row.zhLabel}: ${row.values[dashboard.latestYear!] ?? "—"}`)
+          .join("\n")
+      : "—";
+
   return {
     latestYear: dashboard.latestYear,
-    cardLines: dashboard.cards.map((card) => `${card.label}: ${card.value}`).join("\n"),
+    cardLines,
   };
 }
 

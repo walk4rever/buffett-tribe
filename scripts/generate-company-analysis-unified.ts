@@ -99,12 +99,14 @@ function buildPrompt(params: {
   ticker: string | null;
   cik: string | null;
   sector: string | null;
+  sectorModelType?: string | null;
   metadata: Record<string, unknown> | null;
   financials: Awaited<ReturnType<typeof fetchFinancials>>;
   filingEvidence: Awaited<ReturnType<typeof fetchLatestFilingEvidence>> | null;
 }) {
   const dashboard = buildFinancialDashboardText({
     sector: params.sector,
+    sectorModelType: params.sectorModelType,
     metadata: params.metadata,
     financials: params.financials,
   });
@@ -238,6 +240,7 @@ async function main() {
       ticker: company.ticker,
       cik: company.cik,
       sector: company.sector,
+      sectorModelType: company.sectorModelType,
       metadata: (company.metadata as Record<string, unknown> | null) ?? null,
       financials,
       filingEvidence,

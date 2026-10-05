@@ -3,6 +3,7 @@ import {
   buildCompanyFinancialDashboard,
   type FinancialYearItems,
 } from "@/lib/company-financial-dashboard";
+import { buildFinancialDashboardText } from "../scripts/lib/company-generation";
 
 function financialYear(year: number, items: Record<string, string>): FinancialYearItems {
   return {
@@ -307,5 +308,39 @@ describe("buildCompanyFinancialDashboard", () => {
     expect(dashboard.latestYear).toBeNull();
     expect(dashboard.trends).toEqual([]);
     expect(dashboard.rows).toEqual([]);
+  });
+});
+
+describe("buildFinancialDashboardText", () => {
+  it("formats key metric lines from latest financial year", () => {
+    const text = buildFinancialDashboardText({
+      sector: "Technology",
+      metadata: null,
+      financials: [
+        {
+          year: 2025,
+          items: {
+            Revenue: "1000000000",
+            NetIncome: "200000000",
+            OperatingIncome: "250000000",
+          },
+        },
+      ],
+    });
+
+    expect(text.latestYear).toBe(2025);
+    expect(text.cardLines).toContain("营收:");
+    expect(text.cardLines).toContain("净利润:");
+  });
+
+  it("handles empty financials gracefully without throwing", () => {
+    const text = buildFinancialDashboardText({
+      sector: "Technology",
+      metadata: null,
+      financials: [],
+    });
+
+    expect(text.latestYear).toBeNull();
+    expect(text.cardLines).toBe("—");
   });
 });
