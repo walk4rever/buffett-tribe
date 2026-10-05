@@ -179,11 +179,34 @@ export function AdminInsightCompanyLinks() {
       setSelectedArticle((current) =>
         current?.id === selectedArticle.id ? { ...current, companies: savedCompanies } : current,
       );
-      setArticles((current) =>
-        current.map((article) =>
-          article.id === selectedArticle.id ? { ...article, companies: savedCompanies } : article,
-        ),
-      );
+
+      // Refetch the article list to reflect the saved associations
+      try {
+        const params = new URLSearchParams({
+          type: "posts",
+          page: String(articlePage),
+        });
+        const listResponse = await fetch(`/api/admin/insight-company-links?${params}`);
+        if (listResponse.ok) {
+          const listData = (await listResponse.json()) as {
+            posts: ArticleOption[];
+            page: number;
+            total: number;
+            totalPages: number;
+          };
+          setArticles(listData.posts);
+          setArticleTotal(listData.total);
+          setArticleTotalPages(listData.totalPages);
+        }
+      } catch {
+        // Fallback: update only in-memory articles if refetch fails
+        setArticles((current) =>
+          current.map((article) =>
+            article.id === selectedArticle.id ? { ...article, companies: savedCompanies } : article,
+          ),
+        );
+      }
+
       setNotice({ kind: "success", text: "关联已保存" });
     } catch (error) {
       setNotice({
