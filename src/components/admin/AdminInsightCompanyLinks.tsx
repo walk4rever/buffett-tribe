@@ -186,7 +186,9 @@ export function AdminInsightCompanyLinks() {
           type: "posts",
           page: String(articlePage),
         });
-        const listResponse = await fetch(`/api/admin/insight-company-links?${params}`);
+        const listResponse = await fetch(`/api/admin/insight-company-links?${params}`, {
+          cache: "no-store",
+        });
         if (listResponse.ok) {
           const listData = (await listResponse.json()) as {
             posts: ArticleOption[];
