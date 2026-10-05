@@ -213,7 +213,15 @@ async function main() {
       where: { market: "us", type: "company" },
       select: { cik: true, ticker: true, onboardPhase: true },
     });
-    const existingCiks = new Set(existingUs.map((c) => c.cik).filter(Boolean));
+    const existingCiks = new Set<string>();
+    for (const c of existingUs) {
+      if (c.cik) {
+        existingCiks.add(c.cik);
+        const unpadded = c.cik.replace(/^0+/, "");
+        if (unpadded) existingCiks.add(unpadded);
+        existingCiks.add(c.cik.padStart(10, "0"));
+      }
+    }
     const existingTickers = new Set(existingUs.map((c) => c.ticker?.toUpperCase()).filter(Boolean));
     console.log(`Existing US companies in DB: ${existingUs.length}`);
 

@@ -18,6 +18,7 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import { hasChineseText, issuerKey, normalizeEnglishName } from "../src/lib/company-name-map";
 import { normalizeTicker } from "../src/lib/ticker";
+import { normalizeCik } from "../src/lib/cik";
 import { translateCompanyNameToZh, upsertNameMapEntries } from "./lib/company-name-zh";
 
 const db = new PrismaClient();
@@ -97,7 +98,9 @@ async function getTickerCikMap() {
   const map = new Map<string, { cik: string; title: string }>();
   const tickerByIssuer = new Map<string, string>();
   for (const item of Object.values(data)) {
-    map.set(item.ticker.toUpperCase(), { cik: String(item.cik_str), title: item.title });
+    const cik = normalizeCik(item.cik_str);
+    if (!cik) continue;
+    map.set(item.ticker.toUpperCase(), { cik, title: item.title });
     tickerByIssuer.set(issuerMatchKey(item.title), item.ticker.toUpperCase());
   }
   return { tickerMap: map, tickerByIssuer };

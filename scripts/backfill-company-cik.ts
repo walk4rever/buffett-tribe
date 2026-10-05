@@ -16,6 +16,7 @@
  *   npm run backfill:company-cik
  */
 import prisma from "@/lib/prisma";
+import { normalizeCik } from "@/lib/cik";
 
 const dryRun = process.argv.includes("--dry-run");
 const USER_AGENT = "buffett-tribe research walkklaw@gmail.com";
@@ -31,7 +32,8 @@ async function main() {
   const data = (await res.json()) as Record<string, SecTickerEntry>;
   const byTicker = new Map<string, string>();
   for (const entry of Object.values(data)) {
-    byTicker.set(entry.ticker.toUpperCase(), String(entry.cik_str));
+    const norm = normalizeCik(entry.cik_str);
+    if (norm) byTicker.set(entry.ticker.toUpperCase(), norm);
   }
   console.log(`Loaded ${byTicker.size} ticker -> CIK mappings.`);
 

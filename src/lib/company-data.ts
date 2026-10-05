@@ -4,20 +4,17 @@ import { formatUsdInYi } from "@/lib/currency";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
 import { normalizeTicker } from "@/lib/ticker";
 import { FINANCIAL_DATA_START_YEAR } from "@/lib/financial-period";
+import { normalizeCik, unpadCik, getCikLookupVariants } from "@/lib/cik";
 import { Prisma } from "@prisma/client";
 
 export function normalizeCompanyCik(cikRaw: string | null | undefined) {
-  const digits = String(cikRaw ?? "").replace(/\D/g, "");
-  if (!digits) return null;
-  const normalized = String(Number(digits));
-  if (!normalized || normalized === "0" || Number.isNaN(Number(normalized))) return null;
-  return normalized;
+  return unpadCik(cikRaw);
 }
 
 export function formatCompanyCikSlug(cikRaw: string | null | undefined) {
-  const cik = normalizeCompanyCik(cikRaw);
+  const cik = normalizeCik(cikRaw);
   if (!cik) return null;
-  return `us-${cik.padStart(10, "0")}`;
+  return `us-${cik}`;
 }
 
 export function formatCompanyCikUrl(cikRaw: string | null | undefined) {
@@ -42,9 +39,9 @@ export function formatCompanySlug(entity: {
   code?: string | null;
 }): string | null {
   if (entity.market === "us" || entity.cik) {
-    const cik = normalizeCompanyCik(entity.cik ?? entity.code);
+    const cik = normalizeCik(entity.cik ?? entity.code);
     if (!cik) return null;
-    return `us-${cik.padStart(10, "0")}`;
+    return `us-${cik}`;
   }
   if (entity.market && entity.code) {
     return `${entity.market.toLowerCase()}-${entity.code}`;
@@ -83,13 +80,13 @@ export function parseCompanyIdentifier(raw: string): CompanyIdentifier | null {
   if (marketMatch) {
     const market = marketMatch[1].toLowerCase() as "us" | "cn" | "hk";
     if (market === "us") {
-      const cik = normalizeCompanyCik(marketMatch[2]);
+      const cik = normalizeCik(marketMatch[2]);
       return cik ? { market: "us", cik } : null;
     }
     return { market, code: marketMatch[2] };
   }
   // Backward-compatibility: CIK0001652044 or bare numeric digits
-  const legacyCik = normalizeCompanyCik(trimmed);
+  const legacyCik = normalizeCik(trimmed);
   return legacyCik ? { market: "us", cik: legacyCik } : null;
 }
 
@@ -143,14 +140,13 @@ async function retryOnce<T>(fn: () => Promise<T>) {
 }
 
 export async function getCompanyByCik(cikRaw: string) {
-  const unpadded = normalizeCompanyCik(cikRaw);
-  if (!unpadded) return null;
-  const padded = unpadded.padStart(10, "0");
+  const variants = getCikLookupVariants(cikRaw);
+  if (variants.length === 0) return null;
 
   const entity = await db.entity.findFirst({
     where: {
       type: "company",
-      cik: { in: [unpadded, padded] },
+      cik: { in: variants },
     },
     select: {
       id: true,

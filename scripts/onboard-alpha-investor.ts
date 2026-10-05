@@ -116,9 +116,9 @@ function normalizeId(value: string | undefined): string {
 }
 
 function normalizeCik(value: string | undefined): string {
-  const cik = value?.trim().replace(/^0+/, "") ?? "";
-  if (!/^\d+$/.test(cik)) throw new Error(`Invalid --cik "${value}". Expected digits only, e.g. 2045724.`);
-  return cik;
+  const digits = value?.trim().replace(/^CIK/i, "").replace(/\D/g, "") ?? "";
+  if (!digits || digits === "0") throw new Error(`Invalid --cik "${value}". Expected digits only, e.g. 2045724.`);
+  return digits.padStart(10, "0");
 }
 
 function deriveInitials(name: string): string {

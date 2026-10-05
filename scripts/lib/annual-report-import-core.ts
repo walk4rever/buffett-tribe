@@ -6,6 +6,7 @@
 import { PrismaClient } from "@prisma/client";
 import * as cheerio from "cheerio";
 import { hasChineseText, issuerKey, normalizeEnglishName } from "../../src/lib/company-name-map";
+import { normalizeCik, getCikLookupVariants } from "../../src/lib/cik";
 import { translateCompanyNameToZh, upsertNameMapEntries } from "./company-name-zh";
 import {
   mapSectorFromSic,
@@ -689,9 +690,12 @@ export function decimalFromNumber(value: number) {
 }
 
 export async function upsertCompanyEntity(cik: string, ticker: string, title: string, profile: SecCompanyProfile) {
+  const normCik = normalizeCik(cik) ?? cik;
+  const variants = getCikLookupVariants(cik);
+
   // 1. Find by CIK (any type)
   const byCik = await db.entity.findFirst({
-    where: { cik },
+    where: { cik: { in: variants } },
     select: { id: true, metadata: true, type: true, cik: true, sector: true },
   });
 
@@ -781,12 +785,12 @@ export async function upsertCompanyEntity(cik: string, ticker: string, title: st
             type: needsTypeUpgrade ? "company" : target.type,
             market: target.market ?? "us",
             canonicalName: title,
-            cik: canSetCik ? cik : target.cik,
+            cik: canSetCik ? normCik : target.cik,
             ticker,
             sector,
             metadata: {
               ...nextMeta,
-              ...(canSetCik ? {} : { secCik: cik }),
+              ...(canSetCik ? {} : { secCik: normCik }),
             },
           },
         });
@@ -794,7 +798,7 @@ export async function upsertCompanyEntity(cik: string, ticker: string, title: st
     : await (async () => {
         // CIK may already be occupied by a non-company entity (e.g. master/filer).
         // Keep SEC CIK in metadata to avoid unique-key collision on Entity.cik.
-        const createCik = byCik == null ? cik : null;
+        const createCik = byCik == null ? normCik : null;
         return db.entity.create({
           data: {
             type: "company",
@@ -805,7 +809,7 @@ export async function upsertCompanyEntity(cik: string, ticker: string, title: st
             sector,
             metadata: {
               ...nextMeta,
-              ...(createCik ? {} : { secCik: cik }),
+              ...(createCik ? {} : { secCik: normCik }),
             },
           },
         });
@@ -815,7 +819,7 @@ export async function upsertCompanyEntity(cik: string, ticker: string, title: st
   // Berkshire/buffett), link it back so future runs never have to guess via
   // scoring again — see TODO.md「Filer / Company 拆分」.
   await db.filer.updateMany({
-    where: { filerCik: cik, companyEntityId: null },
+    where: { filerCik: { in: variants }, companyEntityId: null },
     data: { companyEntityId: resolved.id },
   });
 

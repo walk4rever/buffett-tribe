@@ -20,6 +20,7 @@ import {
   type SectorModelType13,
   getExplicitSectorModel13Info,
 } from "@/lib/sector-classification";
+import { getCikLookupVariants } from "@/lib/cik";
 
 function parseNum(items: Record<string, string | number> | undefined, key: string): number | null {
   if (!items) return null;
@@ -235,7 +236,7 @@ export async function getValueLineData(
       entity = await db.entity.findFirst({
         where: {
           type: "company",
-          cik: { in: [parsed.cik, parsed.cik.padStart(10, "0")] },
+          cik: { in: getCikLookupVariants(parsed.cik) },
         },
         select: entitySelect,
       });
@@ -249,6 +250,7 @@ export async function getValueLineData(
 
   if (!entity) {
     const upper = trimmed.toUpperCase();
+    const cikVariants = getCikLookupVariants(trimmed);
     entity = await db.entity.findFirst({
       where: {
         type: "company",
@@ -256,7 +258,7 @@ export async function getValueLineData(
           { ticker: upper },
           { code: upper },
           { id: trimmed },
-          { cik: trimmed.replace(/^(CIK|US-)/i, "").replace(/^0+/, "") },
+          ...(cikVariants.length > 0 ? [{ cik: { in: cikVariants } }] : []),
         ],
       },
       select: entitySelect,

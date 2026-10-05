@@ -179,7 +179,7 @@ def extract(args: argparse.Namespace) -> dict[str, Any]:
         "tool": "edgartools",
         "toolVersion": _safe_get(sys.modules.get("edgar"), "__version__"),
         "ticker": ticker,
-        "cik": str(_safe_get(company, "cik")),
+        "cik": str(_safe_get(company, "cik") or "").zfill(10) if str(_safe_get(company, "cik") or "").isdigit() else str(_safe_get(company, "cik") or ""),
         "title": _safe_get(company, "name") or _safe_get(company, "display_name") or ticker,
         "profile": profile,
         "filings": selected,

@@ -16,6 +16,7 @@
 
 import { XMLParser } from "fast-xml-parser";
 import prisma from "@/lib/prisma";
+import { normalizeCik, getCikLookupVariants } from "@/lib/cik";
 import { getTrackedFilers, type FilerConfig } from "./lib/13f-import-core";
 
 const USER_AGENT = "buffett-tribe research walkklaw@gmail.com";
@@ -32,14 +33,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 function padCik(cik: string): string {
-  return cik.padStart(10, "0");
-}
-
-// Entity.cik is stored unpadded (e.g. "1513845", not "0001513845" — see other
-// Entity rows) — normalize any CIK pulled from filing XML to that convention
-// before storing/matching, distinct from padCik's use for SEC API URLs.
-function normalizeCik(cik: string): string {
-  return cik.replace(/^0+/, "") || "0";
+  return normalizeCik(cik) ?? cik.padStart(10, "0");
 }
 
 type SecSubmissionsResponse = {
@@ -301,8 +295,8 @@ async function importFiler(filer: FilerConfig, fromYear: number): Promise<void> 
         continue;
       }
 
-      const issuerEntity = await prisma.entity.findUnique({
-        where: { cik: parsed.issuerCik },
+      const issuerEntity = await prisma.entity.findFirst({
+        where: { cik: { in: getCikLookupVariants(parsed.issuerCik) } },
         select: { id: true },
       });
 
