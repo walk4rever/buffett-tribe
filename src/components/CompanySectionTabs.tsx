@@ -253,7 +253,7 @@ export function CompanySectionTabs({
         fallbackHeader
       ) : null}
 
-      {/* ── 2. Unified 8-Tab Navigation Bar ── */}
+      {/* ── 2. Company Analysis Tabs ── */}
       <div className="company-tabs-head">
         <div className="company-tabs-bar-wrap">
           {/* Left edge fade hint */}
@@ -397,6 +397,7 @@ export function CompanySectionTabs({
               )}
             </button>
           )}
+
         </div>
       </div>
 

@@ -57,7 +57,7 @@ export default async function FilingReaderPage({ params }: Props) {
 
   const zhName = getCompanyNameZh(company.metadata);
   const displayCompany = zhName ?? company.canonicalName;
-  const backHref = `${canonicalUrl}?tab=references`;
+  const backHref = `${canonicalUrl}#company-references`;
 
   // CN/HK filings: redirect to external link (PDF artifacts removed in cleanup)
   const isCnHkFiling = filing.kind.startsWith('cn-') || filing.kind.startsWith('hk-');

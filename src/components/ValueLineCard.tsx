@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { MasterHoldingCards } from "@/components/MasterHoldingCards";
 import type { ValueLineData, ValueLineSecurityOption } from "@/lib/value-line-data";
 
 /**
@@ -502,12 +501,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
         </section>
       ) : null}
 
-      {/* ── 2. Tribe Superinvestor Holdings Cards (Top 3) ── */}
-      {data.topHolders.length > 0 ? (
-        <MasterHoldingCards holders={data.topHolders} />
-      ) : null}
-
-      {/* ── 3. True Value Line Composite Chart (Price vs Earnings Value Line) ── */}
+      {/* ── 2. True Value Line Composite Chart (Price vs Earnings Value Line) ── */}
       <section className="vl-card-chart-block">
         <ValueLineSparkline
           points={curPricePoints}
@@ -525,7 +519,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
         ) : null}
       </section>
 
-      {/* ── 4. The Buffett Quadrant: 巴菲特价值体检精密四宫格 ── */}
+      {/* ── 3. The Buffett Quadrant: 巴菲特价值体检精密四宫格 ── */}
       <section className="vl-card-triad vl-card-quadrant">
         {/* Metric 1: ROE */}
         <div className="vl-triad-box">
@@ -616,7 +610,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
         </div>
       </section>
 
-      {/* ── 6. Long-Term Growth Metrics: 4-Way CAGR Dashboard ── */}
+      {/* ── 4. Long-Term Growth Metrics: 4-Way CAGR Dashboard ── */}
       <section className="vl-card-triad vl-card-quadrant">
           {/* Metric 1: Revenue CAGR (non-financial) or Net Income CAGR (financial) */}
           {data.sectorModelType === "banks" || data.sectorModelType === "insurance" ? (

@@ -493,7 +493,6 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     { id: "management", label: "资本配置", desc: "资本回报与股东回报纪律",  ...(!hasManagement  ? { disabled: true } : {}) },
     { id: "valuation",  label: "估值分析", desc: "历史分位与情景推演",  ...(!hasValuation   ? { disabled: true } : {}) },
     ...(showHoldingsTab ? [{ id: "holdings", label: "大师持仓", desc: "13F顶尖机构季度动向" }] : []),
-    { id: "references", label: "参考资料", desc: "官方SEC 10-K年报原文" },
   ];
 
   // Phase 1 时过滤掉 disabled 的 tab（商业模式、竞争优势、资本配置、估值分析）
@@ -507,7 +506,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
       <CompanyAgentDialog companyName={zhName} ticker={company.ticker} />
 
       <div className="company-wrap dvl-wrap">
-        {/* ── Unified 8-Tab Workspace (价值线 + 7 Deep-Dive dimensions) ── */}
+        {/* ── Company Analysis Workspace ── */}
         <CompanySectionTabs
           tabs={visibleTabs}
           initialTabId={initialTabId || "valueline"}
@@ -768,7 +767,6 @@ export default async function CompanyPage({ params, searchParams }: Props) {
               <section className="company-section" data-tab-panel="holdings">
                 <MasterHoldingCards
                   holders={valueLineData?.topHolders ?? []}
-                  showTrends
                   title="大师持仓"
                   hint="13F 持仓季度变化"
                 />
@@ -870,109 +868,114 @@ export default async function CompanyPage({ params, searchParams }: Props) {
               </section>
             ) : null}
 
-            {/* Tab 7: Reference Materials */}
-            <section className="company-section" data-tab-panel="references">
-              {/* Region 1: Official Filings */}
-              <div className="company-financial-trend-head">
-                <h3>官方报告</h3>
-                <span className="dvl-section-subtitle">招股说明书、年度报告、季度报告等监管披露文件</span>
-              </div>
-              {referenceYearGroups.length ? (
-                <div className="company-reference-timeline">
-                  {referenceYearGroups.map((group) => (
-                    <div key={group.yearLabel} className="company-reference-year-row">
-                      <div className="company-reference-year-label">{group.yearLabel}</div>
-                      <div className="company-reference-pills">
-                        {group.pills.map((pill) => {
-                          const tooltip = pill.filedDate
-                            ? `披露日期: ${pill.filedDate}`
-                            : "暂无披露日期";
-                          if (pill.url) {
-                            return (
-                              <a
-                                key={pill.id}
-                                className="company-reference-pill"
-                                href={pill.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title={tooltip}
-                              >
-                                <span>{pill.label}</span>
-                                <span className="company-reference-pill-arrow">↗</span>
-                              </a>
-                            );
-                          }
-                          return (
-                            <span
-                              key={pill.id}
-                              className="company-reference-pill company-reference-pill--disabled"
-                              title={`${tooltip} (暂无直链)`}
-                            >
-                              <span>{pill.label}</span>
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
+        </CompanySectionTabs>
+
+        <section
+          id="company-references"
+          className="company-section company-reference-section"
+          tabIndex={-1}
+        >
+          <div className="company-bottom-section-heading">
+            <h2>官方公告</h2>
+            <span>招股书 · 年报 · 季报</span>
+          </div>
+          {referenceYearGroups.length ? (
+            <div className="company-reference-timeline">
+              {referenceYearGroups.map((group) => (
+                <div key={group.yearLabel} className="company-reference-year-row">
+                  <div className="company-reference-year-label">{group.yearLabel}</div>
+                  <div className="company-reference-pills">
+                    {group.pills.map((pill) => {
+                      const tooltip = pill.filedDate
+                        ? `披露日期: ${pill.filedDate}`
+                        : "暂无披露日期";
+                      if (pill.url) {
+                        return (
+                          <a
+                            key={pill.id}
+                            className="company-reference-pill"
+                            href={pill.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={tooltip}
+                          >
+                            <span>{pill.label}</span>
+                            <span className="company-reference-pill-arrow">↗</span>
+                          </a>
+                        );
+                      }
+                      return (
+                        <span
+                          key={pill.id}
+                          className="company-reference-pill company-reference-pill--disabled"
+                          title={`${tooltip} (暂无直链)`}
+                        >
+                          <span>{pill.label}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
                 </div>
-              ) : company.cik ? (
-                <p className="company-empty">暂无 10-K 归档资料。可先运行 `import:10k` 脚本。</p>
-              ) : (
-                <p className="company-empty">
-                  {company.market === "cn"
-                    ? "A 股年报原文暂未接入，可前往"
-                    : "港股年报原文暂未接入，可前往"}{" "}
-                  <a
-                    href={company.market === "cn" ? "http://www.cninfo.com.cn/" : "https://www.hkexnews.hk/index.htm"}
-                    target="_blank"
-                    rel="noopener noreferrer"
+              ))}
+            </div>
+          ) : company.cik ? (
+            <p className="company-empty">暂无可用的官方报告。</p>
+          ) : (
+            <p className="company-empty">
+              {company.market === "cn"
+                ? "A 股年报原文暂未接入，可前往"
+                : "港股年报原文暂未接入，可前往"}{" "}
+              <a
+                href={company.market === "cn" ? "http://www.cninfo.com.cn/" : "https://www.hkexnews.hk/index.htm"}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {company.market === "cn" ? "巨潮资讯网" : "披露易 HKEXnews"}
+              </a>
+              {" "}搜索「{company.code}」查看原文。
+            </p>
+          )}
+        </section>
+
+        <section className="company-section company-related-section">
+          <div className="company-bottom-section-heading">
+            <h2>相关文章</h2>
+          </div>
+          {relatedInsights.length ? (
+            <div className="company-related-insights">
+              {relatedInsights.map((article) => {
+                const formattedDate = article.publishedAt
+                  ? new Intl.DateTimeFormat("zh-CN", {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                    }).format(article.publishedAt)
+                  : null;
+
+                return (
+                  <Link
+                    key={article.slug}
+                    href={`/insights/${article.slug}`}
+                    className="home-insight-card company-related-insight-card"
                   >
-                    {company.market === "cn" ? "巨潮资讯网" : "披露易 HKEXnews"}
-                  </a>
-                  {" "}搜索「{company.code}」查看原文。
-                </p>
-              )}
-
-              <div className="company-financial-trend-head" style={{ marginTop: "1.75rem" }}>
-                <h3>相关文章</h3>
-              </div>
-              {relatedInsights.length ? (
-                <div className="company-related-insights">
-                  {relatedInsights.map((article) => {
-                    const formattedDate = article.publishedAt
-                      ? new Intl.DateTimeFormat("zh-CN", {
-                          year: "numeric",
-                          month: "2-digit",
-                          day: "2-digit",
-                        }).format(article.publishedAt)
-                      : null;
-
-                    return (
-                      <Link
-                        key={article.slug}
-                        href={`/insights/${article.slug}`}
-                        className="home-insight-card company-related-insight-card"
-                      >
-                        <div className="home-insight-card-head">
-                          <span className="home-insight-source">{article.source || BRAND_EN}</span>
-                          {formattedDate && (
-                            <span className="home-insight-date">{formattedDate}</span>
-                          )}
-                        </div>
-                        <h4 className="home-insight-title">{article.title}</h4>
-                        {article.description && (
-                          <p className="home-insight-desc">{article.description}</p>
-                        )}
-                      </Link>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="company-empty">暂无相关文章。</p>
-              )}
-            </section>
-          </CompanySectionTabs>
+                    <div className="home-insight-card-head">
+                      <span className="home-insight-source">{article.source || BRAND_EN}</span>
+                      {formattedDate && (
+                        <span className="home-insight-date">{formattedDate}</span>
+                      )}
+                    </div>
+                    <h4 className="home-insight-title">{article.title}</h4>
+                    {article.description && (
+                      <p className="home-insight-desc">{article.description}</p>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="company-empty">暂无相关文章。</p>
+          )}
+        </section>
       </div>
     </div>
   );

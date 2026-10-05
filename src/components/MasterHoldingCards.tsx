@@ -49,12 +49,10 @@ function HolderActivity({ holder }: { holder: ValueLineHolder }) {
 
 export function MasterHoldingCards({
   holders,
-  showTrends = false,
   title = "大师持仓",
   hint = "部落重仓与仓位明细",
 }: {
   holders: ValueLineHolder[];
-  showTrends?: boolean;
   title?: string;
   hint?: string;
 }) {
@@ -69,9 +67,7 @@ export function MasterHoldingCards({
         <span className="vl-master-section-hint">{hint}</span>
       </div>
 
-      <div
-        className={`vl-master-cards-grid${showTrends ? " vl-master-cards-grid--trends" : " vl-master-cards-grid--summary"}`}
-      >
+      <div className="vl-master-cards-grid vl-master-cards-grid--trends">
         {holders.map((holder, index) => {
           const shortFirm = formatShortFirmName(holder.firmName ?? holder.name);
           const displayName = holder.investorName || holder.name;
@@ -81,7 +77,7 @@ export function MasterHoldingCards({
           return (
             <article
               key={`${holder.tribeId ?? holder.name}-${holder.quarterLabel ?? ""}-${index}`}
-              className={`vl-master-holder-card${showTrends ? " vl-master-holder-card--trend" : ""}`}
+              className="vl-master-holder-card vl-master-holder-card--trend"
             >
               <div className="vl-master-card-main">
                 <div className="vl-master-card-header">
@@ -139,7 +135,7 @@ export function MasterHoldingCards({
                   </div>
                 ) : null}
               </div>
-              {showTrends ? <MasterHolderTrendChart holder={holder} /> : null}
+              <MasterHolderTrendChart holder={holder} />
             </article>
           );
         })}

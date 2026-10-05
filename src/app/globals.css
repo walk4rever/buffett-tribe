@@ -7919,10 +7919,6 @@ body.layout-no-header {
   box-shadow: none;
 }
 
-.company-tabs-panel > .company-section[data-tab-panel="references"] {
-  padding-bottom: 1.5rem;
-}
-
 .company-text-card {
   border: 1px solid var(--company-border-soft);
   background: linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%);
@@ -8338,6 +8334,37 @@ body.layout-no-header {
   gap: 0.75rem;
 }
 
+.company-reference-section {
+  scroll-margin-top: 5rem;
+}
+
+.company-reference-section,
+.company-related-section {
+  padding: 1.2rem 1.3rem 1.4rem;
+}
+
+.company-bottom-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin: 0 0 1.25rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--company-border-soft);
+}
+
+.company-bottom-section-heading h2 {
+  margin: 0;
+  color: var(--company-text);
+  font-size: 1.08rem;
+  font-weight: 700;
+}
+
+.company-bottom-section-heading span {
+  color: var(--company-text-secondary);
+  font-size: 0.78rem;
+}
+
 /* ── Reference Materials: Streamlined Timeline by Year ── */
 .company-reference-timeline {
   display: grid;
@@ -8426,6 +8453,18 @@ body.layout-no-header {
 }
 
 @media (max-width: 640px) {
+  .company-reference-section,
+  .company-related-section {
+    padding: 0.95rem 0.85rem 1rem;
+  }
+
+  .company-bottom-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-bottom: 1rem;
+  }
+
   .company-reference-timeline {
     grid-template-columns: 1fr;
   }
@@ -20512,10 +20551,6 @@ a.insight-entity-chip:hover {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  background: #ffffff; /* ✓ P0 Fix: 移除琥珀色渐变，纯白背景 */
-  border: 1px solid rgba(0, 0, 0, 0.08); /* ✓ P0 Fix: 琥珀色边框 → 灰色 */
-  border-radius: 12px;
-  padding: 0.85rem 1.1rem;
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -20576,45 +20611,6 @@ a.insight-entity-chip:hover {
 
 .vl-master-cards-grid--trends {
   grid-template-columns: minmax(0, 1fr);
-}
-
-.vl-master-cards-grid--summary .vl-master-holder-card {
-  padding: 0;
-}
-
-.vl-master-cards-grid--summary .vl-master-card-main {
-  gap: 0.4rem;
-  padding: 0.5rem 0.75rem;
-}
-
-.vl-master-cards-grid--summary .vl-master-card-metrics {
-  display: flex;
-  align-items: stretch;
-  gap: 0.35rem;
-  padding: 0.45rem 0.5rem;
-}
-
-.vl-master-cards-grid--summary .vl-master-metric-cell {
-  min-width: 0;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.2rem;
-}
-
-.vl-master-cards-grid--summary .vl-master-metric-sep {
-  display: block;
-  align-self: stretch;
-  height: auto;
-}
-
-.vl-master-cards-grid--summary .vl-master-metric-val {
-  font-size: 0.95rem;
-  line-height: 1.2;
-}
-
-.vl-master-cards-grid--summary .vl-master-act-badge {
-  font-size: 0.78rem;
 }
 
 .vl-master-holder-card--trend {
@@ -21421,9 +21417,6 @@ a.insight-entity-chip:hover {
   .vl-overview-para {
     font-size: 0.875rem;
     line-height: 1.6;
-  }
-  .vl-master-holdings-section {
-    padding: 0.75rem 0.85rem;
   }
   .vl-master-cards-grid {
     grid-template-columns: 1fr;
@@ -22482,7 +22475,6 @@ a.insight-entity-chip:hover {
 
 .company-related-insight-card {
   min-width: 0;
-  height: 100%;
   padding: 0.75rem 0.85rem;
   gap: 0.4rem;
 }

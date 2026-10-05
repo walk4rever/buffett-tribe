@@ -259,7 +259,7 @@ export function FilingReader({ company, filing }: FilingReaderProps) {
     <div className="filing-reader">
       <div className="filing-reader-bar">
         <div className="filing-reader-bar-left">
-          <Link href={`${companyUrl}?tab=references`} className="filing-reader-back" aria-label="返回年度报告">
+          <Link href={`${companyUrl}#company-references`} className="filing-reader-back" aria-label="返回公司页">
             <ChevronLeft size={15} />
           </Link>
           <div className="filing-reader-bar-copy">
