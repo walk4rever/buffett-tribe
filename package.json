@@ -107,8 +107,6 @@
     "generate:overview": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-company-profile.ts",
     "generate:overview:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-company-profile.ts --dry-run",
     "classify:sector": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/classify-sector.ts",
-    "generate:unified-analysis": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-company-analysis-unified.ts",
-    "generate:unified-analysis:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-company-analysis-unified.ts --dry-run",
     "generate:company-profile": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-company-profile.ts",
     "generate:company-profile:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-company-profile.ts --dry-run",
     "generate:business-model": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-business-model.ts",
