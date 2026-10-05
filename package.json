@@ -1,6 +1,6 @@
 {
   "name": "buffett-tribe",
-  "version": "0.46.11",
+  "version": "0.46.12",
   "private": true,
   "type": "module",
   "scripts": {
@@ -106,7 +106,6 @@
     "generate:portfolio-insight:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-portfolio-insight.ts --dry-run",
     "generate:overview": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-company-profile.ts",
     "generate:overview:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-company-profile.ts --dry-run",
-    "classify:sector": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/classify-sector.ts",
     "generate:company-profile": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-company-profile.ts",
     "generate:company-profile:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-company-profile.ts --dry-run",
     "generate:business-model": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-business-model.ts",
