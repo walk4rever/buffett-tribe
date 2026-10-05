@@ -20,6 +20,7 @@ import {
 import {
   calculateFreeCashFlow,
   calculateReturnOnAverageBalance,
+  normalizeAnnualsStockSplits,
 } from "@/lib/financial-math";
 import {
   type SectorModelType13,
@@ -301,7 +302,7 @@ export async function getValueLineData(
   const financials = await getCompanyFinancials(entity.id, 7);
   const financialsByYear = new Map(financials.map((financial) => [financial.year, financial]));
 
-  const annuals: ValueLineAnnualData[] = financials
+  const rawAnnuals: ValueLineAnnualData[] = financials
     .map((f) => {
       const rev = parseNum(f.items, "Revenue");
       const net = parseNum(f.items, "NetIncome");
@@ -349,6 +350,9 @@ export async function getValueLineData(
       };
     })
     .sort((a, b) => a.year - b.year);
+
+  // Normalize historical shares & EPS for stock splits so older years are on the latest share basis
+  const annuals: ValueLineAnnualData[] = normalizeAnnualsStockSplits(rawAnnuals);
 
   // Value Triad & Capital Allocation Metrics
   const recentAnnuals = annuals.slice(-5);
