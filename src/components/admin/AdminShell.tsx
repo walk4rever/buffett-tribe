@@ -10,6 +10,7 @@ import {
   Megaphone,
   LogOut,
   Building2,
+  Newspaper,
 } from "lucide-react";
 import { BtLogoMark } from "@/components/BtLogoMark";
 import { BRAND_EN } from "@/lib/brand";
@@ -24,6 +25,7 @@ const NAV_ITEMS: ReadonlyArray<NavItem> = [
   { href: "/admin", label: "总览", icon: LayoutDashboard },
   { href: "/admin/universe", label: "公司", icon: Building2 },
   { href: "/admin/users", label: "用户", icon: Users },
+  { href: "/admin/insights", label: "文章", icon: Newspaper },
   { href: "/admin/announcements", label: "发布", icon: Megaphone },
 ];
 

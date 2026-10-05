@@ -12,6 +12,7 @@ import { extractHeadings } from "@/lib/extract-headings";
 import { addHeadingIds } from "@/lib/add-heading-ids";
 import { markdownToHtml } from "@/lib/markdown-to-html";
 import { BRAND_EN } from "@/lib/brand";
+import { formatCompanyUrl } from "@/lib/company-data";
 
 export const dynamic = "force-dynamic";
 
@@ -54,8 +55,37 @@ export default async function InsightDetailPage({ params }: Props) {
           <header className="insight-detail-head">
             <h1>{post.title}</h1>
             <div className="insight-detail-meta">
-              <span>{post.sourceUrl ? <a href={post.sourceUrl} target="_blank" rel="noopener noreferrer">{post.source || "来源"}</a> : post.source || BRAND_EN}</span>
-              <span>{dateLabel}</span>
+              <div className="insight-detail-meta-main">
+                <span>
+                  {post.sourceUrl ? (
+                    <a href={post.sourceUrl} target="_blank" rel="noopener noreferrer">
+                      {post.source || "来源"}
+                    </a>
+                  ) : (
+                    post.source || BRAND_EN
+                  )}
+                </span>
+                <span>{dateLabel}</span>
+              </div>
+              {relatedEntities.length > 0 && (
+                <div className="insight-detail-meta-companies">
+                  {relatedEntities.map((entity) => {
+                    const meta = (entity.metadata ?? {}) as { nameZh?: string };
+                    const nameZh = meta.nameZh ?? entity.canonicalName;
+                    const href = formatCompanyUrl(entity);
+
+                    return href ? (
+                      <Link key={entity.id} href={href} className="insight-entity-chip">
+                        {nameZh}
+                      </Link>
+                    ) : (
+                      <span key={entity.id} className="insight-entity-chip">
+                        {nameZh}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             {post.description ? <p className="insight-detail-desc">{post.description}</p> : null}
           </header>
@@ -65,31 +95,6 @@ export default async function InsightDetailPage({ params }: Props) {
             content={post.contentRaw}
             format={format}
           />
-
-          {relatedEntities.length > 0 && (
-            <aside className="insight-related-entities">
-              <h2 className="insight-related-entities-title">相关公司</h2>
-              <div className="insight-related-entities-list">
-                {relatedEntities.map((entity) => {
-                  const meta = (entity.metadata ?? {}) as { nameZh?: string };
-                  const nameZh = meta.nameZh ?? entity.canonicalName;
-                  const href = entity.cik ? `/company/cik-${entity.cik}` : null;
-                  const ticker = entity.ticker ?? entity.code;
-                  return href ? (
-                    <a key={entity.id} href={href} className="insight-entity-chip">
-                      {ticker && <span className="insight-entity-ticker">{ticker}</span>}
-                      <span>{nameZh}</span>
-                    </a>
-                  ) : (
-                    <span key={entity.id} className="insight-entity-chip">
-                      {ticker && <span className="insight-entity-ticker">{ticker}</span>}
-                      <span>{nameZh}</span>
-                    </span>
-                  );
-                })}
-              </div>
-            </aside>
-          )}
 
           <nav className="insight-detail-nav" aria-label="文章导航">
             {adjacent.newer ? (
@@ -165,8 +170,16 @@ async function getInsightPost(slug: string) {
 
 async function getEntitiesByIds(ids: string[]) {
   return prisma.entity.findMany({
-    where: { id: { in: ids } },
-    select: { id: true, canonicalName: true, ticker: true, cik: true, code: true, metadata: true },
+    where: { id: { in: ids }, type: "company" },
+    select: {
+      id: true,
+      canonicalName: true,
+      ticker: true,
+      cik: true,
+      market: true,
+      code: true,
+      metadata: true,
+    },
   });
 }
 

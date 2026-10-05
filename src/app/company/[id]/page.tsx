@@ -33,6 +33,7 @@ import { buildCompanyFinancialDashboard } from "@/lib/company-financial-dashboar
 import { formatShares } from "@/lib/master-data";
 import { CompanyFinancialDashboardComponent } from "@/components/CompanyFinancialDashboard";
 import { getValueLineData } from "@/lib/value-line-data";
+import { BRAND_EN } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -395,6 +396,15 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     getTribeMembers(),
     getValueLineData(company.id, rawTicker),
   ]);
+  const relatedInsights = await db.insightPost.findMany({
+    where: { status: "published", entityIds: { has: company.id } },
+    select: { slug: true, title: true, description: true, source: true, publishedAt: true },
+    orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
+    take: 20,
+  }).catch((error: unknown) => {
+    console.error("[company-page] Failed to load related insights", error);
+    return [];
+  });
   const referenceYearGroups = groupAndFormatReferenceFilings(referenceFilings, company.cik);
   const tribeMemberById = new Map(tribeMembers.map((m) => [m.id, m] as const));
 
@@ -929,13 +939,43 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                 </p>
               )}
 
-              {/* Region 2: Additional References (placeholder for future /insights articles, research, etc.) */}
-              <div className="company-financial-trend-head" style={{ marginTop: "3rem" }}>
-                <h3>其他资料</h3>
+              <div className="company-financial-trend-head" style={{ marginTop: "1.75rem" }}>
+                <h3>相关文章</h3>
               </div>
-              <div className="company-empty">
-                暂无关联的投资洞察文章。未来将展示 /insights 中提及该公司的分析内容。
-              </div>
+              {relatedInsights.length ? (
+                <div className="company-related-insights">
+                  {relatedInsights.map((article) => {
+                    const formattedDate = article.publishedAt
+                      ? new Intl.DateTimeFormat("zh-CN", {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                        }).format(article.publishedAt)
+                      : null;
+
+                    return (
+                      <Link
+                        key={article.slug}
+                        href={`/insights/${article.slug}`}
+                        className="home-insight-card company-related-insight-card"
+                      >
+                        <div className="home-insight-card-head">
+                          <span className="home-insight-source">{article.source || BRAND_EN}</span>
+                          {formattedDate && (
+                            <span className="home-insight-date">{formattedDate}</span>
+                          )}
+                        </div>
+                        <h4 className="home-insight-title">{article.title}</h4>
+                        {article.description && (
+                          <p className="home-insight-desc">{article.description}</p>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="company-empty">暂无相关文章。</p>
+              )}
             </section>
           </CompanySectionTabs>
       </div>
