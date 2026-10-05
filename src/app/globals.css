@@ -22100,6 +22100,14 @@ a.insight-entity-chip:hover {
   box-shadow: 0 2px 14px rgba(0, 0, 0, 0.02);
 }
 
+.admin-insight-links-panel:last-child {
+  position: sticky;
+  top: 1rem;
+  align-self: flex-start;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
+
 .admin-insight-links-panel-head {
   display: flex;
   align-items: center;
