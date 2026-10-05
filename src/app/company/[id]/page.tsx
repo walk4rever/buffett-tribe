@@ -939,7 +939,8 @@ export default async function CompanyPage({ params, searchParams }: Props) {
 
         <section className="company-section company-related-section">
           <div className="company-bottom-section-heading">
-            <h2>相关文章</h2>
+            <h2>深度洞见</h2>
+            <span>公司分析 · 相关文章</span>
           </div>
           {relatedInsights.length ? (
             <div className="company-related-insights">
