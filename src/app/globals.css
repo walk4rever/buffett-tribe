@@ -22089,6 +22089,7 @@ a.insight-entity-chip:hover {
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   gap: 1rem;
   min-width: 0;
+  align-items: start;
 }
 
 .admin-insight-links-panel {
