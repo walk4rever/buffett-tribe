@@ -2,42 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import type { ValueLineData, ValueLineHolder, ValueLineSecurityOption } from "@/lib/value-line-data";
-
-export function renderHolderActivity(h: ValueLineHolder) {
-  if (h.activity === "SoldOut") {
-    return <span className="vl-master-act-badge vl-master-act-badge--soldout">清仓</span>;
-  }
-  if (h.activity === "New") {
-    return <span className="vl-master-act-badge vl-master-act-badge--new">新进</span>;
-  }
-  if (h.activity === "Added") {
-    const delta =
-      h.shareDeltaPct != null && Number.isFinite(h.shareDeltaPct)
-        ? `+${Math.abs(h.shareDeltaPct).toFixed(1)}%`
-        : "";
-    return (
-      <span className="vl-master-act-badge vl-master-act-badge--up" title={`增持 ${delta}`}>
-        ↑ {delta || "增持"}
-      </span>
-    );
-  }
-  if (h.activity === "Reduced") {
-    const delta =
-      h.shareDeltaPct != null && Number.isFinite(h.shareDeltaPct)
-        ? `-${Math.abs(h.shareDeltaPct).toFixed(1)}%`
-        : "";
-    return (
-      <span className="vl-master-act-badge vl-master-act-badge--down" title={`减持 ${delta}`}>
-        ↓ {delta || "减持"}
-      </span>
-    );
-  }
-  if (h.activity === "Unchanged") {
-    return <span className="vl-master-act-badge vl-master-act-badge--flat">持平</span>;
-  }
-  return <span className="vl-master-act-badge vl-master-act-badge--flat">—</span>;
-}
+import { MasterHoldingCards } from "@/components/MasterHoldingCards";
+import type { ValueLineData, ValueLineSecurityOption } from "@/lib/value-line-data";
 
 /**
  * 根据市场返回货币符号和代码
@@ -63,14 +29,6 @@ export function formatCompactNumber(val: number | null | undefined, prefix = "$"
   if (abs >= 1e6) return `${sign}${prefix}${(abs / 1e6).toFixed(1)}M`;
   if (abs >= 1e3) return `${sign}${prefix}${(abs / 1e3).toFixed(1)}K`;
   return `${sign}${prefix}${abs.toFixed(2)}`;
-}
-
-export function formatShortFirmName(raw: string | undefined | null): string {
-  if (!raw) return "";
-  return raw
-    .replace(/,\s*(INC|LLC|L\.P\.|LP|CORP|CO\.|PLC|LTD)\.?$/i, "")
-    .replace(/\s+(INC|LLC|L\.P\.|LP|CORP|PLC|LTD)\.?$/i, "")
-    .trim();
 }
 
 /**
@@ -544,91 +502,9 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
         </section>
       ) : null}
 
-      {/* ── 2. Tribe Superinvestor Holdings Cards (Top 6) ── */}
+      {/* ── 2. Tribe Superinvestor Holdings Cards (Top 3) ── */}
       {data.topHolders.length > 0 ? (
-        <section className="vl-master-holdings-section" aria-label="大师持仓">
-          <div className="vl-master-section-head">
-            <div className="vl-master-title-group">
-              <span className="vl-master-section-title">大师持仓</span>
-            </div>
-            <span className="vl-master-section-hint">部落重仓与仓位明细</span>
-          </div>
-
-          <div className="vl-master-cards-grid">
-            {data.topHolders.map((h, idx) => {
-              const shortFirm = formatShortFirmName(h.firmName ?? h.name);
-              const displayName = h.investorName || h.name;
-              const hasDistinctFirm =
-                Boolean(shortFirm) &&
-                shortFirm.toLowerCase() !== displayName.toLowerCase();
-
-              return (
-                <div
-                  key={`${h.tribeId ?? h.name}-${h.quarterLabel ?? ""}-${idx}`}
-                  className="vl-master-holder-card"
-                >
-                  <div className="vl-master-card-header">
-                    <div className="vl-master-card-person">
-                      {h.tribeId ? (
-                        <Link
-                          href={`/master/${h.tribeId}`}
-                          className="vl-master-person-link"
-                        >
-                          <span className="vl-master-person-name">{displayName}</span>
-                        </Link>
-                      ) : (
-                        <span className="vl-master-person-name">{displayName}</span>
-                      )}
-                    </div>
-                    {h.quarterLabel ? (
-                      <span className="vl-master-quarter-badge">{h.quarterLabel}</span>
-                    ) : null}
-                  </div>
-
-                  <div className="vl-master-card-metrics">
-                    <div className="vl-master-metric-cell">
-                      <span className="vl-master-metric-label">仓位</span>
-                      <div className="vl-master-weight-wrap">
-                        <span className="vl-master-metric-val vl-master-metric-weight">
-                          {h.weightPct != null ? `${h.weightPct}%` : "—"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="vl-master-metric-sep" />
-                    <div className="vl-master-metric-cell">
-                      <span className="vl-master-metric-label">金额</span>
-                      <span className="vl-master-metric-val vl-master-metric-value">
-                        {h.valueLabel ?? "—"}
-                      </span>
-                    </div>
-                    <div className="vl-master-metric-sep" />
-                    <div className="vl-master-metric-cell">
-                      <span className="vl-master-metric-label">动作</span>
-                      <div className="vl-master-act-wrap">
-                        {renderHolderActivity(h)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {hasDistinctFirm || h.aumLabel ? (
-                    <div className="vl-master-firm-tag" title={h.name}>
-                      {hasDistinctFirm ? (
-                        <span className="vl-master-firm-text">{shortFirm}</span>
-                      ) : (
-                        <span className="vl-master-firm-empty" />
-                      )}
-                      {h.aumLabel ? (
-                        <span className="vl-master-aum-text" title={`13F 申报组合市值 ${h.aumLabel}`}>
-                          {h.aumLabel}
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        </section>
+        <MasterHoldingCards holders={data.topHolders} />
       ) : null}
 
       {/* ── 3. True Value Line Composite Chart (Price vs Earnings Value Line) ── */}

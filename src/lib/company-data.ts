@@ -5,6 +5,11 @@ import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-acti
 import { normalizeTicker } from "@/lib/ticker";
 import { FINANCIAL_DATA_START_YEAR } from "@/lib/financial-period";
 import { normalizeCik, unpadCik, getCikLookupVariants } from "@/lib/cik";
+import {
+  buildMasterHolderTrends,
+  type MasterHolderTrendGroup,
+  type MasterHolderTrendPoint,
+} from "@/lib/master-holding-trends";
 import { Prisma } from "@prisma/client";
 
 export function normalizeCompanyCik(cikRaw: string | null | undefined) {
@@ -497,7 +502,7 @@ export async function getRecentHolders(entityId: string, limit = 20) {
   );
 
   if (!rows.length) {
-    return { holders: [] as HolderRow[] };
+    return { holders: [] as HolderRow[], securityIds: securityScope.profileIds };
   }
 
   // Find each holder's filing timeline across ALL holdings.
@@ -659,7 +664,82 @@ export async function getRecentHolders(entityId: string, limit = 20) {
     return Number(b.valueUsd ?? BigInt(0)) - Number(a.valueUsd ?? BigInt(0));
   });
 
-  return { holders: holders.slice(0, limit) };
+  return { holders: holders.slice(0, limit), securityIds: securityScope.profileIds };
+}
+
+export async function getCompanyHolderTrends(
+  groups: readonly MasterHolderTrendGroup[],
+  securityIds: readonly string[],
+): Promise<Map<string, MasterHolderTrendPoint[]>> {
+  const emptyResult = () => new Map(groups.map(({ key }) => [key, [] as MasterHolderTrendPoint[]]));
+  const holderIds = [...new Set(groups.flatMap((group) => group.holderIds))];
+  const scopedSecurityIds = [...new Set(securityIds)];
+  if (!holderIds.length || !scopedSecurityIds.length) return emptyResult();
+
+  try {
+    const [filings, rows] = await Promise.all([
+      retryOnce(() =>
+        db.extSource.findMany({
+          where: {
+            filerEntityId: { in: holderIds },
+            kind: "13f",
+            periodYear: { not: null },
+            periodQuarter: { not: null },
+          },
+          select: { filerEntityId: true, periodYear: true, periodQuarter: true },
+        }),
+      ),
+      retryOnce(() =>
+        db.holding.findMany({
+          where: {
+            holderEntityId: { in: holderIds },
+            securityId: { in: scopedSecurityIds },
+            source: { is: { kind: "13f" } },
+          },
+          select: {
+            holderEntityId: true,
+            securityId: true,
+            putCall: true,
+            percentOfPortfolio: true,
+            shares: true,
+            valueUsd: true,
+            security: { select: { ticker: true } },
+            source: { select: { periodYear: true, periodQuarter: true } },
+          },
+        }),
+      ),
+    ]);
+
+    return buildMasterHolderTrends(
+      groups,
+      filings.flatMap((filing) =>
+        filing.filerEntityId && filing.periodYear != null && filing.periodQuarter != null
+          ? [{
+              holderId: filing.filerEntityId,
+              year: filing.periodYear,
+              quarter: filing.periodQuarter,
+            }]
+          : [],
+      ),
+      rows.flatMap((row) =>
+        row.source.periodYear != null && row.source.periodQuarter != null
+          ? [{
+              holderId: row.holderEntityId,
+              securityKey: normalizeTicker(row.security.ticker) ?? row.securityId,
+              putCall: row.putCall,
+              year: row.source.periodYear,
+              quarter: row.source.periodQuarter,
+              weightPct: row.percentOfPortfolio,
+              sharesNumber: row.shares == null ? null : Number(row.shares),
+              valueUsd: row.valueUsd == null ? null : Number(row.valueUsd),
+            }]
+          : [],
+      ),
+    );
+  } catch (err) {
+    logDbFallback("getCompanyHolderTrends", err);
+    return emptyResult();
+  }
 }
 
 export function formatMoney(v: string | number | bigint | null) {

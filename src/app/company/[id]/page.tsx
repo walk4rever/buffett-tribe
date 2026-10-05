@@ -5,6 +5,7 @@ import { CompanyBusinessCanvas, type BusinessCanvasData } from "@/components/Com
 import { CompanySectionTabs } from "@/components/CompanySectionTabs";
 import { CompanyAgentDialog } from "@/components/CompanyAgentDialog";
 import { SiteNav } from "@/components/SiteNav";
+import { MasterHoldingCards } from "@/components/MasterHoldingCards";
 import db from "@/lib/prisma";
 import { getTribeMembers } from "@/lib/tribe";
 import {
@@ -15,14 +16,12 @@ import {
   getFinancialsCurrency,
   getCompanySecurities,
   formatCompanyUrl,
-  formatSecurityClassLabel,
   getRecentHolders,
   getCompanyReferenceFilings,
   type CompanyReferenceFiling,
 } from "@/lib/company-data";
 import {
   ManagementAnalysisSection,
-  MasterViewsSection,
   ValuationAnalysisSection,
   parseManagementPayload,
   parseValuationPayload,
@@ -767,13 +766,16 @@ export default async function CompanyPage({ params, searchParams }: Props) {
             {/* Tab 6: Master Holdings (13F) */}
             {showHoldingsTab ? (
               <section className="company-section" data-tab-panel="holdings">
-                {hasManagement && managementArtifact ? (
-                  <MasterViewsSection artifact={managementArtifact} />
-                ) : null}
+                <MasterHoldingCards
+                  holders={valueLineData?.topHolders ?? []}
+                  showTrends
+                  title="大师持仓"
+                  hint="13F 持仓季度变化"
+                />
 
                 <div className="company-financial-trend-head">
-                  <h3>大师持仓（13F 全量历史明细）</h3>
-                  <span className="dvl-section-subtitle">追踪顶级价值投资者建仓成本、仓位占比与季度加减仓动向</span>
+                  <h3>最新持仓明细</h3>
+                  <span className="dvl-section-subtitle">最近披露 · 清仓记录为清仓前持仓</span>
                 </div>
                 {holders.holders.length ? (
                   <>
@@ -782,7 +784,6 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                         <thead>
                           <tr>
                             <th className="holdings-th">机构<br/><span className="holdings-th-en">Holder</span></th>
-                            <th className="holdings-th">证券<br/><span className="holdings-th-en">Ticker</span></th>
                             <th className="holdings-th holdings-th--num">仓位<br/><span className="holdings-th-en">% of Portfolio</span></th>
                             <th className="holdings-th">近期动作<br/><span className="holdings-th-en">Recent Activity</span></th>
                             <th className="holdings-th holdings-th--num">动作季度<br/><span className="holdings-th-en">Activity Quarter</span></th>
@@ -797,8 +798,6 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                             const holderName = member?.nameZh ?? h.holderName;
                             const prevHolder = i > 0 ? holders.holders[i - 1] : null;
                             const isFirstOfGroup = !prevHolder || prevHolder.holderName !== h.holderName;
-                            const secRow = securities.find((s) => s.ticker?.toUpperCase() === h.ticker?.toUpperCase());
-                            const classLabel = secRow ? formatSecurityClassLabel(secRow) : null;
                             return (
                               <tr
                                 key={`${h.id}-${h.ticker ?? "unknown"}-${h.sourceYear ?? "unknown"}-${h.sourceQuarter ?? "unknown"}-${i}`}
@@ -816,10 +815,6 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                                   ) : (
                                     <span />
                                   )}
-                                </td>
-                                <td className="holdings-td holdings-td--num company-holders-stock">
-                                  <strong>{h.ticker ?? "—"}</strong>
-                                  {classLabel ? <span className="holdings-stock-class">{classLabel}</span> : null}
                                 </td>
                                 <td className="holdings-td holdings-td--num">
                                   {h.percent != null ? `${h.percent.toFixed(2)}%` : "—"}
@@ -862,7 +857,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
                       </table>
                     </div>
                     <p className="company-footnote">
-                      * 申报价按 SEC 13F 申报市值除以申报股数推算，供建仓成本区间参考。Sold Out 行的仓位、持股、申报价和市值为清仓前最后一次披露的持仓数据。
+                      申报价 = SEC 13F 申报市值 ÷ 股数，仅供成本参考；清仓行显示清仓前最后一次披露数据。
                     </p>
                   </>
                 ) : (

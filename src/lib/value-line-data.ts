@@ -4,6 +4,7 @@ import {
   formatDvlUrl,
   formatMoney,
   formatSecurityClassLabel,
+  getCompanyHolderTrends,
   getCompanyFinancials,
   getCompanySecurities,
   getRecentHolders,
@@ -12,6 +13,10 @@ import {
 import { getTribeMembers } from "@/lib/tribe";
 import { getLatestPortfolioValueUsd } from "@/lib/master-data";
 import { formatUsdInYi } from "@/lib/currency";
+import {
+  selectTopMasterHolders,
+  type MasterHolderTrendPoint,
+} from "@/lib/master-holding-trends";
 import {
   calculateFreeCashFlow,
   calculateReturnOnAverageBalance,
@@ -72,6 +77,7 @@ export type ValueLineHolder = {
   shareClassLabel?: string | null;
   breakdownText?: string | null;
   breakdown?: ValueLineHolderBreakdownItem[];
+  trend?: MasterHolderTrendPoint[];
 };
 
 export type ValueLineSecurityOption = {
@@ -964,34 +970,17 @@ export async function getValueLineData(
 
   // 3. Tribe Superinvestor Holders (aggregated with multi-ticker class breakdown)
   const [holdersRes, tribeMembers] = await Promise.all([
-    getRecentHolders(entity.id, 20),
+    getRecentHolders(entity.id, 1000),
     getTribeMembers(),
   ]);
   const tribeMap = new Map(tribeMembers.map((m) => [m.id, m]));
 
-  const distinctTribeIds = [
-    ...new Set(
-      (holdersRes.holders ?? [])
-        .map((h) => h.tribeId)
-        .filter((id): id is string => Boolean(id))
-    ),
-  ];
-  const aumEntries = await Promise.all(
-    distinctTribeIds.map(async (tribeId) => {
-      try {
-        const val = await getLatestPortfolioValueUsd(tribeId);
-        return [tribeId, val ? `AUM $${formatUsdInYi(val)}` : null] as const;
-      } catch {
-        return [tribeId, null] as const;
-      }
-    })
-  );
-  const aumMap = new Map(aumEntries);
-
   type GroupedHolder = {
+    key: string;
     name: string;
     investorName: string;
     firmName?: string;
+    holderIds: Set<string>;
     tribeId: string | null;
     activity?: string | null;
     shareDeltaPct?: number | null;
@@ -1032,9 +1021,11 @@ export async function getValueLineData(
 
     if (!holderGroups.has(groupKey)) {
       holderGroups.set(groupKey, {
+        key: groupKey,
         name: h.holderName,
         investorName,
         firmName,
+        holderIds: new Set([h.id]),
         tribeId: h.tribeId,
         activity: h.activity ?? null,
         shareDeltaPct: h.shareDeltaPct ?? null,
@@ -1061,7 +1052,9 @@ export async function getValueLineData(
       }
     }
 
-    holderGroups.get(groupKey)!.items.push({
+    const currentGroup = holderGroups.get(groupKey)!;
+    currentGroup.holderIds.add(h.id);
+    currentGroup.items.push({
       ticker: h.ticker ?? "",
       classLabel,
       shares: h.shares ? Number(h.shares) : null,
@@ -1071,7 +1064,11 @@ export async function getValueLineData(
     });
   }
 
-  const aggregatedHolders: ValueLineHolder[] = [];
+  type RankedValueLineHolder = ValueLineHolder & {
+    groupKey: string;
+    holderIds: string[];
+  };
+  const aggregatedHolders: RankedValueLineHolder[] = [];
   for (const group of holderGroups.values()) {
     const totalShares = group.items.reduce((sum, it) => sum + (it.shares ?? 0), 0);
     const totalWeight = group.items.reduce((sum, it) => sum + (it.weightPct ?? 0), 0);
@@ -1102,9 +1099,9 @@ export async function getValueLineData(
       }
     }
 
-    const aumLabel = group.tribeId ? aumMap.get(group.tribeId) ?? null : null;
-
     aggregatedHolders.push({
+      groupKey: group.key,
+      holderIds: [...group.holderIds],
       name: group.name,
       investorName: group.investorName,
       firmName: group.firmName,
@@ -1118,42 +1115,40 @@ export async function getValueLineData(
       activity: group.activity,
       shareDeltaPct: group.shareDeltaPct,
       tribeId: group.tribeId,
-      aumLabel,
       shareClassLabel,
       breakdownText,
       breakdown,
     });
   }
 
-  // Multi-tier sorting:
-  // 1. Active holding before SoldOut
-  // 2. Most recent quarter first (sourceYear, sourceQuarter)
-  // 3. Holding weight % descending
-  // 4. Holding market value USD descending
-  aggregatedHolders.sort((a, b) => {
-    const aSoldOut = a.activity === "SoldOut";
-    const bSoldOut = b.activity === "SoldOut";
-    if (aSoldOut !== bSoldOut) {
-      return aSoldOut ? 1 : -1;
-    }
-
-    const aQuarterScore = (a.sourceYear ?? 0) * 4 + (a.sourceQuarter ?? 0);
-    const bQuarterScore = (b.sourceYear ?? 0) * 4 + (b.sourceQuarter ?? 0);
-    if (aQuarterScore !== bQuarterScore) {
-      return bQuarterScore - aQuarterScore;
-    }
-
-    const aWeight = a.weightPct ?? 0;
-    const bWeight = b.weightPct ?? 0;
-    if (Math.abs(bWeight - aWeight) > 0.001) {
-      return bWeight - aWeight;
-    }
-
-    const aValue = a.valueUsd ?? 0;
-    const bValue = b.valueUsd ?? 0;
-    return bValue - aValue;
+  const rankedHolders = selectTopMasterHolders(aggregatedHolders, 3);
+  const [holderTrends, aumEntries] = await Promise.all([
+    getCompanyHolderTrends(
+      rankedHolders.map(({ groupKey, holderIds }) => ({ key: groupKey, holderIds })),
+      holdersRes.securityIds,
+    ),
+    Promise.all(
+      [...new Set(rankedHolders.map((holder) => holder.tribeId).filter((id): id is string => Boolean(id)))]
+        .map(async (tribeId) => {
+          try {
+            const val = await getLatestPortfolioValueUsd(tribeId);
+            return [tribeId, val ? `AUM $${formatUsdInYi(val)}` : null] as const;
+          } catch {
+            return [tribeId, null] as const;
+          }
+        }),
+    ),
+  ]);
+  const aumMap = new Map(aumEntries);
+  const topHolders: ValueLineHolder[] = rankedHolders.map((rankedHolder) => {
+    const { groupKey, holderIds, ...holder } = rankedHolder;
+    void holderIds;
+    return {
+      ...holder,
+      aumLabel: holder.tribeId ? aumMap.get(holder.tribeId) ?? null : null,
+      trend: holderTrends.get(groupKey) ?? [],
+    };
   });
-  const topHolders = aggregatedHolders.slice(0, 6);
 
   // 4. AI Business Essence, Moat & Risk Insights
   const analysis = entity.analyses[0] ?? null;
