@@ -4145,14 +4145,14 @@ body.layout-no-header {
 .home-nav-logo {
   grid-area: logo;
   justify-self: start;
-  font-size: 1.0625rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--apple-white);
-  letter-spacing: -0.374px;
+  letter-spacing: 0;
   text-decoration: none;
   display: flex;
   align-items: center;
-  gap: 0.625rem;
+  gap: 0.5rem;
   opacity: 1;
   transition: opacity 0.15s;
 }
@@ -4162,8 +4162,8 @@ body.layout-no-header {
 }
 
 .home-nav-logo-img {
-  width: 22px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
 }
 
@@ -4190,7 +4190,6 @@ body.layout-no-header {
   font-weight: 400;
   color: rgba(255, 255, 255, 0.8);
   text-decoration: none;
-  letter-spacing: -0.12px;
   transition: color 0.15s;
 }
 
@@ -4256,16 +4255,18 @@ body.layout-no-header {
 }
 
 .home-nav-login {
+  box-sizing: border-box;
   font-size: 0.75rem;
   font-weight: 400;
   background: var(--apple-blue);
   color: var(--apple-white);
   border: none;
   border-radius: 980px;
-  padding: 8px 16px;
-  min-height: 36px;
+  padding: 0 12px;
+  height: 30px;
+  min-height: 30px;
+  line-height: 1;
   cursor: pointer;
-  letter-spacing: -0.12px;
   transition: background 0.15s;
   text-decoration: none;
   display: inline-flex;

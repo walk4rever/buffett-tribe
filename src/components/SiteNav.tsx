@@ -19,7 +19,7 @@ export function SiteNav() {
     <nav className="home-nav">
       <div className="home-nav-in">
         <Link href="/" className="home-nav-logo">
-          <BtLogoMark />
+          <BtLogoMark className="home-nav-logo-img" />
           {BRAND_EN}
         </Link>
         <div className="home-nav-center" aria-label="部落成员与入口">
