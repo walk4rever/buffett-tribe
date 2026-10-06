@@ -7437,8 +7437,10 @@ body.layout-no-header {
   position: sticky;
   top: 0.45rem;
   z-index: 4;
-  padding: 0;
+  padding: 0 0 0.65rem;
+  margin-bottom: 0.65rem;
   border: 0;
+  border-bottom: 1px solid var(--company-border-soft);
   border-radius: 0;
   background: transparent;
   backdrop-filter: none;
@@ -7620,21 +7622,21 @@ body.layout-no-header {
   border: 1px solid rgba(255, 149, 0, 0.3);
   background: rgba(255, 149, 0, 0.08);
   border-radius: 999px;
-  height: 32px;
-  padding: 0 0.7rem;
+  height: 30px;
+  padding: 0 0.55rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
+  gap: 0.28rem;
   color: #ff9500;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;
   transition: all 0.16s ease;
   user-select: none;
   -webkit-user-select: none;
-  margin-left: 0.5rem;
+  margin-left: 0;
 }
 
 .company-tabs-deep-analysis-btn:hover:not(:disabled) {
@@ -7666,7 +7668,7 @@ body.layout-no-header {
 
 .company-tabs-deep-analysis-icon {
   display: inline-block;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   flex-shrink: 0;
 }
 
@@ -20198,6 +20200,14 @@ a.insight-entity-chip:hover {
   box-sizing: border-box;
 }
 
+.vl-title-action-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
 .vl-card-badges {
   display: flex;
   align-items: center;
@@ -20379,12 +20389,20 @@ a.insight-entity-chip:hover {
 
 .vl-card-title {
   margin: 0;
+  min-width: 0;
   font-size: 1.75rem; /* ✓ P1 Fix: 1.45rem (23.2px) → 1.75rem (28px) Apple Tile Heading */
   font-weight: 400; /* ✓ P1 Fix: 700 → 400 (Apple Tile Heading 标准权重) */
   line-height: 1.14; /* ✓ P1 Fix: 1.25 → 1.14 (Apple 标题紧凑行高) */
   letter-spacing: 0.196px; /* ✓ P1 Fix: Apple Tile Heading 标准字间距 */
   word-break: break-word;
   overflow-wrap: break-word;
+}
+
+.vl-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
 }
 
 .vl-title-link {
@@ -21495,11 +21513,9 @@ a.insight-entity-chip:hover {
     background: rgba(251, 251, 253, 0.92);
     backdrop-filter: saturate(180%) blur(20px);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
-    padding: 0.45rem 0;
-    margin: 0 -0.85rem;
-    padding-left: 0.85rem;
-    padding-right: 0.85rem;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 0.45rem 0.85rem 0.6rem;
+    margin: 0 -0.85rem 0.6rem;
+    border-bottom: 1px solid var(--company-border-soft);
   }
   .company-tabs-bar-wrap {
     gap: 0.4rem;

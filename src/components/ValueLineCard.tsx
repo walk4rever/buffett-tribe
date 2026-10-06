@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import type { ValueLineData, ValueLineSecurityOption } from "@/lib/value-line-data";
 
 /**
@@ -352,6 +353,7 @@ export interface ValueLineHeaderProps {
   selectedTicker: string;
   activeSecurity?: ValueLineSecurityOption | null;
   onSelectTicker: (ticker: string) => void;
+  actions?: ReactNode;
 }
 
 export function ValueLineHeader({
@@ -359,6 +361,7 @@ export function ValueLineHeader({
   selectedTicker,
   activeSecurity,
   onSelectTicker,
+  actions,
 }: ValueLineHeaderProps) {
   const curPrice = activeSecurity ? activeSecurity.latestPrice : data.latestPrice;
   const curPe = activeSecurity ? activeSecurity.peRatio : data.peRatio;
@@ -422,14 +425,17 @@ export function ValueLineHeader({
           {valuationStatusBadge}
         </div>
 
-        <h2 className="vl-card-title">
-          <Link href={data.href} className="vl-title-link">
-            <span className="vl-title-zh">{data.nameZh ?? data.canonicalName}</span>
-            {data.nameZh && data.canonicalName !== data.nameZh ? (
-              <span className="vl-title-en">{data.canonicalName}</span>
-            ) : null}
-          </Link>
-        </h2>
+        <div className="vl-title-action-row">
+          <h2 className="vl-card-title">
+            <Link href={data.href} className="vl-title-link">
+              <span className="vl-title-zh">{data.nameZh ?? data.canonicalName}</span>
+              {data.nameZh && data.canonicalName !== data.nameZh ? (
+                <span className="vl-title-en">{data.canonicalName}</span>
+              ) : null}
+            </Link>
+          </h2>
+          {actions ? <div className="vl-title-actions">{actions}</div> : null}
+        </div>
       </div>
 
       {/* Pricing & Key Ratios */}

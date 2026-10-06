@@ -238,6 +238,72 @@ export function CompanySectionTabs({
     panels.find((panel) => panel.props["data-tab-panel"] === activeTab) ??
     panels[0] ??
     null;
+  const companyHeaderActions =
+    showDeepAnalysisButton || (onboardPhase !== undefined && onboardPhase >= 2) ? (
+      <>
+        {showDeepAnalysisButton && (
+          <button
+            type="button"
+            className={`company-tabs-deep-analysis-btn ${isDeepAnalysisQueued ? "company-tabs-deep-analysis-btn--queued" : ""}`}
+            onClick={handleDeepAnalysisClick}
+            disabled={isPendingDeepAnalysis || isDeepAnalysisQueued}
+            title={
+              isDeepAnalysisQueued
+                ? "已加入深度分析优先队列"
+                : `申请优先深度分析${companyName ? ` ${companyName}` : ""}`
+            }
+          >
+            {isDeepAnalysisQueued ? (
+              <>
+                <span className="company-tabs-deep-analysis-icon" aria-hidden="true">✓</span>
+                <span>已排队</span>
+              </>
+            ) : isPendingDeepAnalysis ? (
+              <>
+                <span className="company-tabs-deep-analysis-spinner" aria-hidden="true" />
+                <span>排队中…</span>
+              </>
+            ) : (
+              <>
+                <span className="company-tabs-deep-analysis-icon" aria-hidden="true">⚡</span>
+                <span>深析</span>
+              </>
+            )}
+          </button>
+        )}
+
+        {onboardPhase !== undefined && onboardPhase >= 2 && (
+          <button
+            type="button"
+            className={`company-tabs-deep-analysis-btn ${isPhase3Success ? "company-tabs-deep-analysis-btn--queued" : ""}`}
+            onClick={handlePhase3UpdateClick}
+            disabled={isUpdatingPhase3 || isPhase3Success}
+            title={
+              isPhase3Success
+                ? "最新数据已更新，正在刷新页面…"
+                : `即时更新${companyName ? ` ${companyName}` : ""}最新价格与基本面态势`
+            }
+          >
+            {isPhase3Success ? (
+              <>
+                <span className="company-tabs-deep-analysis-icon" aria-hidden="true">✓</span>
+                <span>已更新</span>
+              </>
+            ) : isUpdatingPhase3 ? (
+              <>
+                <span className="company-tabs-deep-analysis-spinner" aria-hidden="true" />
+                <span>更新中…</span>
+              </>
+            ) : (
+              <>
+                <span className="company-tabs-deep-analysis-icon" aria-hidden="true">⚡</span>
+                <span>更新</span>
+              </>
+            )}
+          </button>
+        )}
+      </>
+    ) : null;
 
   return (
     <article className="value-line-card dvl-workspace-card">
@@ -248,6 +314,7 @@ export function CompanySectionTabs({
           selectedTicker={selectedTicker}
           activeSecurity={activeSecurity}
           onSelectTicker={handleTickerSelect}
+          actions={companyHeaderActions}
         />
       ) : fallbackHeader ? (
         fallbackHeader
@@ -333,70 +400,6 @@ export function CompanySectionTabs({
             </svg>
             <span className="company-tabs-matrix-badge">{tabs.length}</span>
           </button>
-
-          {/* Deep Analysis Button (Phase 1 only) */}
-          {showDeepAnalysisButton && (
-            <button
-              type="button"
-              className={`company-tabs-deep-analysis-btn ${isDeepAnalysisQueued ? "company-tabs-deep-analysis-btn--queued" : ""}`}
-              onClick={handleDeepAnalysisClick}
-              disabled={isPendingDeepAnalysis || isDeepAnalysisQueued}
-              title={
-                isDeepAnalysisQueued
-                  ? "已加入深度分析优先队列"
-                  : `申请优先深度分析${companyName ? ` ${companyName}` : ""}`
-              }
-            >
-              {isDeepAnalysisQueued ? (
-                <>
-                  <span className="company-tabs-deep-analysis-icon" aria-hidden="true">✓</span>
-                  <span>已排队</span>
-                </>
-              ) : isPendingDeepAnalysis ? (
-                <>
-                  <span className="company-tabs-deep-analysis-spinner" aria-hidden="true" />
-                  <span>排队中…</span>
-                </>
-              ) : (
-                <>
-                  <span className="company-tabs-deep-analysis-icon" aria-hidden="true">⚡</span>
-                  <span>深析</span>
-                </>
-              )}
-            </button>
-          )}
-
-          {/* Synchronous Phase 3 Update Button (Phase 2+ companies) */}
-          {onboardPhase !== undefined && onboardPhase >= 2 && (
-            <button
-              type="button"
-              className={`company-tabs-deep-analysis-btn ${isPhase3Success ? "company-tabs-deep-analysis-btn--queued" : ""}`}
-              onClick={handlePhase3UpdateClick}
-              disabled={isUpdatingPhase3 || isPhase3Success}
-              title={
-                isPhase3Success
-                  ? "最新数据已更新，正在刷新页面…"
-                  : `即时更新${companyName ? ` ${companyName}` : ""}最新价格与基本面态势`
-              }
-            >
-              {isPhase3Success ? (
-                <>
-                  <span className="company-tabs-deep-analysis-icon" aria-hidden="true">✓</span>
-                  <span>已更新</span>
-                </>
-              ) : isUpdatingPhase3 ? (
-                <>
-                  <span className="company-tabs-deep-analysis-spinner" aria-hidden="true" />
-                  <span>更新中…</span>
-                </>
-              ) : (
-                <>
-                  <span className="company-tabs-deep-analysis-icon" aria-hidden="true">⚡</span>
-                  <span>更新</span>
-                </>
-              )}
-            </button>
-          )}
 
         </div>
       </div>
