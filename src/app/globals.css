@@ -4198,9 +4198,7 @@ body.layout-no-header {
   color: var(--apple-white);
 }
 
-/* Compound selector (not a bare .home-nav-link--active) so this outranks the
-   later Graphite Pro override that recolors plain .home-nav-link, same reason
-   as the .home-nav-link--disabled rule below. */
+/* Compound selector keeps the active state above the Graphite Pro link color. */
 .home-nav-link.home-nav-link--active {
   color: var(--apple-white);
   font-weight: 600;
@@ -4218,17 +4216,33 @@ body.layout-no-header {
   background: #2997ff;
 }
 
-/* Placeholder nav entries for not-yet-built pages (20孔, 活动). Compound
-   selector (not a bare .home-nav-link--disabled) so this outranks the later
-   Graphite Pro override that recolors plain .home-nav-link. */
-.home-nav-link.home-nav-link--disabled {
-  color: rgba(255, 255, 255, 0.32);
-  cursor: not-allowed;
-  pointer-events: none;
+.home-nav-search {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 30px;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.88);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
 
-.home-nav-link.home-nav-link--disabled:hover {
-  color: rgba(255, 255, 255, 0.32);
+.home-nav-search:hover,
+.home-nav-search[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #fff;
+}
+
+.home-nav-search:focus-visible {
+  outline: 2px solid #2997ff;
+  outline-offset: 2px;
 }
 
 .home-nav-divider {
@@ -4261,6 +4275,202 @@ body.layout-no-header {
 .home-nav-login:hover {
   background: #0077ed;
   color: var(--apple-white);
+}
+
+.site-search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: min(14vh, 7rem) 1rem 1rem;
+  background: rgba(10, 14, 22, 0.56);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.site-search-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 620px);
+  max-height: min(76vh, 680px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+  color: #1d1d1f;
+}
+
+.site-search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 58px;
+  padding: 0 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.site-search-input-icon {
+  flex: 0 0 auto;
+  color: #667085;
+}
+
+.site-search-input {
+  width: 100%;
+  min-width: 0;
+  height: 56px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #1d1d1f;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.site-search-input::placeholder {
+  color: #8a8f98;
+}
+
+.site-search-clear,
+.site-search-escape {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  color: #667085;
+  cursor: pointer;
+}
+
+.site-search-clear {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: #f2f4f7;
+}
+
+.site-search-escape {
+  min-width: 34px;
+  height: 26px;
+  padding: 0 0.35rem;
+  border: 1px solid #d0d5dd;
+  border-radius: 5px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.75rem;
+}
+
+.site-search-results {
+  overflow-y: auto;
+  min-height: 92px;
+  padding: 0.35rem 0.5rem;
+}
+
+.site-search-hint {
+  margin: 0;
+  padding: 1.25rem 0.75rem;
+  color: #667085;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.site-search-group {
+  padding: 0.5rem 0;
+}
+
+.site-search-group + .site-search-group {
+  border-top: 1px solid #eaecf0;
+}
+
+.site-search-group-title {
+  margin: 0;
+  padding: 0.35rem 0.6rem;
+  color: #667085;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.site-search-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-search-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 48px;
+  padding: 0.5rem 0.6rem;
+  border-radius: 7px;
+  color: #1d1d1f;
+  text-decoration: none;
+}
+
+.site-search-result:hover,
+.site-search-result--active {
+  background: #f2f6fc;
+  color: #0958b5;
+}
+
+.site-search-result > svg {
+  flex: 0 0 auto;
+  color: #98a2b3;
+}
+
+.site-search-result-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.site-search-result-title {
+  overflow: hidden;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-search-result-subtitle {
+  overflow: hidden;
+  color: #667085;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-search-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  min-height: 40px;
+  padding: 0 1rem;
+  border-top: 1px solid #eaecf0;
+  color: #667085;
+  font-size: 0.75rem;
+}
+
+.site-search-footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.site-search-footer kbd {
+  min-width: 18px;
+  padding: 0.08rem 0.25rem;
+  border: 1px solid #d0d5dd;
+  border-radius: 4px;
+  background: #fff;
+  font: inherit;
+  text-align: center;
 }
 
 /* ── Signals strip — dark section ── */
@@ -5544,6 +5754,28 @@ body.layout-no-header {
 
   .home-nav-center .home-nav-link {
     font-size: 0.72rem;
+  }
+
+  .home-nav-search {
+    min-height: 28px;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.72rem;
+  }
+
+  .site-search-overlay {
+    padding: 0.75rem;
+    align-items: flex-start;
+  }
+
+  .site-search-dialog {
+    max-height: calc(100vh - 1.5rem);
+    margin-top: 3.25rem;
+  }
+
+  .site-search-footer {
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0 0.5rem;
   }
 }
 

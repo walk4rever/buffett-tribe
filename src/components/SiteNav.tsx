@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { BtLogoMark } from "@/components/BtLogoMark";
+import { SiteSearch } from "@/components/SiteSearch";
 import { BRAND_EN } from "@/lib/brand";
 
 export function SiteNav() {
@@ -58,9 +59,7 @@ export function SiteNav() {
           >
             打孔
           </Link>
-          <span className="home-nav-link home-nav-link--disabled" aria-disabled="true">
-            活动
-          </span>
+          <SiteSearch />
         </div>
         <div className="home-nav-right">
           {session ? (

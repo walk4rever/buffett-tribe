@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.46.13] - 2026-10-06
+
+### Added
+- Header 新增全站搜索，按「大师 / 公司 / 洞见」分组展示结果，支持键盘快捷键、方向键选择与回车跳转。
+
+### Changed
+- 将未启用的「活动」导航入口替换为全站搜索。
+
 ## [v0.46.11] - 2026-10-05
 
 ### Added
