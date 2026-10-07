@@ -266,7 +266,7 @@ export function buildFullEmailHtml(options: BuildEmailOptions): string {
                   </a>
                 </td>
                 <td style="vertical-align:middle;padding-right:12px;white-space:nowrap;">
-                  <a href="${baseUrl}" style="text-decoration:none;font-size:17px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+                  <a href="${baseUrl}" style="text-decoration:none;font-size:14px;font-weight:600;color:#ffffff;letter-spacing:-0.2px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
                     Value-Tribe
                   </a>
                 </td>

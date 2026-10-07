@@ -54,9 +54,20 @@ function buildHtml(name: string | null): string {
 <div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:12px;overflow:hidden;border:0.5px solid #e0e0e0;">
 
   <!-- Header -->
-  <div style="background:#0f172a;padding:28px 36px;">
-    <div style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">Value Tribe</div>
-    <div style="font-size:12px;color:#94a3b8;margin-top:4px;letter-spacing:0.5px;">知识库 + Agent 驱动的价值投资研究平台</div>
+  <div style="background:#0f172a;padding:24px 32px;">
+    <table border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+      <tr>
+        <td style="vertical-align:middle;padding-right:12px;line-height:0;">
+          <a href="${BASE_URL}" style="text-decoration:none;display:inline-block;">
+            <img src="${BASE_URL}/logo-white.svg" width="24" height="24" alt="Value Tribe" style="display:block;border:0;outline:none;text-decoration:none;" />
+          </a>
+        </td>
+        <td style="vertical-align:middle;">
+          <div style="font-size:14px;font-weight:600;color:#ffffff;letter-spacing:-0.2px;">Value Tribe</div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:2px;letter-spacing:0.5px;">知识库 + Agent 驱动的价值投资研究平台</div>
+        </td>
+      </tr>
+    </table>
   </div>
 
   <!-- Body -->

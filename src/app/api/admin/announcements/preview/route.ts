@@ -12,11 +12,13 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { subject = "", markdown = "", preheader = "", mockName = "张三" } = body;
 
+    const origin = new URL(req.url).origin;
     const html = buildFullEmailHtml({
       subject: subject || "产品发布通知",
       markdown: markdown || "",
       preheader,
       user: { name: mockName, email: "preview@example.com" },
+      baseUrl: origin,
     });
 
     return NextResponse.json({ html });

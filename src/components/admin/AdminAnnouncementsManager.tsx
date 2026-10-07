@@ -143,14 +143,18 @@ export function AdminAnnouncementsManager({
     return selectedUserIds.size;
   }, [recipientMode, initialUsers.length, selectedUserIds.size]);
 
-  // Live rendered HTML for preview iframe
+  // Live rendered HTML for preview iframe (use current origin in browser so local dev previews local assets)
   const renderedHtml = useMemo(() => {
+    const previewOrigin =
+      typeof window !== "undefined" && window.location.origin
+        ? window.location.origin
+        : "https://vt.air7fun.com";
     return buildFullEmailHtml({
       subject: subject || "产品发布通知",
       markdown: markdown || "",
       preheader: preheader || undefined,
       user: { name: "投资朋友", email: "user@example.com" },
-      baseUrl: "https://vt.air7fun.com",
+      baseUrl: previewOrigin,
     });
   }, [subject, markdown, preheader]);
 

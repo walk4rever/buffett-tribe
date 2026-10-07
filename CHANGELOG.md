@@ -4,7 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [v0.46.13] - 2026-10-06
+## [v0.47.0] - 2026-10-08
+
+### Added
+- **品牌形象统一与 Logo 升级（Air7.fun 体系）**：
+  - 引入 Air7.fun 统一品牌的“7 in flight / A”起飞折线与 Squircle 矢量构图，全面替代旧版图标；
+  - 采用本站严格的 Apple 设计语言（Apple Blue `#0071e3` 底色配纯白 `#ffffff` 起飞折线与横杠）；
+  - 全站资产同步更新：全站矢量 Logo（`public/logo.svg`、`public/logo-white.svg`）、高精抗锯齿透明底 Favicon（`src/app/icon.svg`、`src/app/icon.png`、`public/logo-white.png`）及场景对比预览页（`public/logo-preview.html`）。
+
+### Changed
+- **导航栏与邮件排版比例优化**：
+  - 顶部导航栏（`SiteNav`）品牌字样 `Value-Tribe` 字号从 `1rem` 调小至 `0.84rem`（约 13.5px），字重设为 `500`，字距采用微负 `-0.01em`，与 24px 微标形成和谐视觉比例；
+  - 邮件模版系统（`src/lib/email-template.tsx`）与公告发送脚本（`scripts/send-announcement.ts`）头部 `Value-Tribe` 品牌字号从 17px/18px 粗体收敛至 14px Semibold（600），与新版 Logo 视觉体量完美对齐；
+  - 管理后台发布页（`AdminAnnouncementsManager`）邮件实时预览改用动态 `window.location.origin` 解析本地资源，解决本地预览加载线上旧版 Logo 的问题。
+
 
 ### Added
 - Header 新增全站搜索，按「大师 / 公司 / 洞见」分组展示结果，支持键盘快捷键、方向键选择与回车跳转。
