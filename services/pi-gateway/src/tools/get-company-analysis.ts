@@ -44,6 +44,7 @@ async function findEntity(company: string): Promise<EntityRow | null> {
         OR "canonicalName" ILIKE $2
         OR metadata->>'nameZh' ILIKE $2
         OR metadata->>'nameEnShort' ILIKE $2
+        OR array_to_string(aliases, ' ') ILIKE $2
      ORDER BY (UPPER(ticker) = UPPER($1)) DESC
      LIMIT 1`,
     [company, `%${company}%`],

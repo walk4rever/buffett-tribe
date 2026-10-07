@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { getAdminSession } from "@/lib/admin-auth";
 import {
@@ -58,28 +59,23 @@ export async function GET(request: Request) {
   if (type === "companies") {
     if (!query) return NextResponse.json({ companies: [] });
 
-    const companies = await prisma.entity.findMany({
-      where: {
-        type: "company",
-        OR: [
-          { canonicalName: { contains: query, mode: "insensitive" } },
-          { ticker: { contains: query, mode: "insensitive" } },
-          { code: { contains: query, mode: "insensitive" } },
-          { metadata: { path: ["nameZh"], string_contains: query } },
-        ],
-      },
-      select: {
-        id: true,
-        canonicalName: true,
-        ticker: true,
-        cik: true,
-        market: true,
-        code: true,
-        metadata: true,
-      },
-      orderBy: [{ canonicalName: "asc" }],
-      take: MAX_COMPANY_RESULTS,
-    });
+    const pattern = `%${query}%`;
+    const upperPattern = `%${query.toUpperCase()}%`;
+    const companies = await prisma.$queryRaw<CompanyRecord[]>(Prisma.sql`
+      SELECT id, "canonicalName", ticker, cik, market, code, metadata
+      FROM "Entity"
+      WHERE type = 'company'
+        AND (
+          "canonicalName" ILIKE ${pattern}
+          OR ticker ILIKE ${upperPattern}
+          OR code ILIKE ${upperPattern}
+          OR (metadata->>'nameZh') ILIKE ${pattern}
+          OR (metadata->>'nameEnShort') ILIKE ${upperPattern}
+          OR array_to_string(aliases, ' ') ILIKE ${pattern}
+        )
+      ORDER BY "canonicalName" ASC
+      LIMIT ${MAX_COMPANY_RESULTS}
+    `);
 
     return NextResponse.json({ companies: companies.map(companyOption) });
   }

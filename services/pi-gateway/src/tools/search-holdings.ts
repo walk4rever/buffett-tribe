@@ -39,7 +39,14 @@ async function queryHoldings(
   if (company != null) {
     params.push(company.toUpperCase());
     params.push(`%${company}%`);
-    filters.push(`(UPPER(ce.ticker) = $${params.length - 1} OR UPPER(s.ticker) = $${params.length - 1} OR ce."canonicalName" ILIKE $${params.length})`);
+    filters.push(`(
+      UPPER(ce.ticker) = $${params.length - 1}
+      OR UPPER(s.ticker) = $${params.length - 1}
+      OR ce."canonicalName" ILIKE $${params.length}
+      OR ce.metadata->>'nameZh' ILIKE $${params.length}
+      OR ce.metadata->>'nameEnShort' ILIKE $${params.length}
+      OR array_to_string(ce.aliases, ' ') ILIKE $${params.length}
+    )`);
   }
 
   // If no year/quarter specified, default to the most recent available quarter

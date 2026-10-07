@@ -32,34 +32,35 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const pattern = `%${query}%`;
+    const upperPattern = `%${query.toUpperCase()}%`;
     const contains = { contains: query, mode: "insensitive" as const };
     const [members, companyRows, insightRows] = await Promise.all([
       getTribeMembers(),
-      prisma.entity.findMany({
-        where: {
-          type: "company",
-          onboardPhase: { gte: 1 },
-          OR: [
-            { canonicalName: contains },
-            { ticker: contains },
-            { code: contains },
-            { aliases: { has: query } },
-            { metadata: { path: ["nameZh"], string_contains: query } },
-            { metadata: { path: ["nameEnShort"], string_contains: query } },
-          ],
-        },
-        select: {
-          id: true,
-          canonicalName: true,
-          ticker: true,
-          code: true,
-          market: true,
-          cik: true,
-          metadata: true,
-          aliases: true,
-        },
-        take: 20,
-      }),
+      prisma.$queryRaw<Array<{
+        id: string;
+        canonicalName: string;
+        ticker: string | null;
+        code: string | null;
+        market: string | null;
+        cik: string | null;
+        metadata: unknown;
+        aliases: string[];
+      }>>(Prisma.sql`
+        SELECT id, "canonicalName", ticker, code, market, cik, metadata, aliases
+        FROM "Entity"
+        WHERE type = 'company'
+          AND "onboardPhase" >= 1
+          AND (
+            ticker ILIKE ${upperPattern}
+            OR code ILIKE ${upperPattern}
+            OR "canonicalName" ILIKE ${pattern}
+            OR (metadata->>'nameZh') ILIKE ${pattern}
+            OR (metadata->>'nameEnShort') ILIKE ${upperPattern}
+            OR array_to_string(aliases, ' ') ILIKE ${pattern}
+          )
+        LIMIT 20
+      `),
       prisma.insightPost.findMany({
         where: {
           status: "published",
@@ -103,8 +104,8 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => {
         const aMeta = (a.metadata ?? {}) as { nameZh?: string; nameEnShort?: string };
         const bMeta = (b.metadata ?? {}) as { nameZh?: string; nameEnShort?: string };
-        return relevanceScore(query, [a.ticker, a.code, aMeta.nameZh, a.canonicalName]) -
-          relevanceScore(query, [b.ticker, b.code, bMeta.nameZh, b.canonicalName]);
+        return relevanceScore(query, [a.ticker, a.code, aMeta.nameZh, a.canonicalName, ...(a.aliases ?? [])]) -
+          relevanceScore(query, [b.ticker, b.code, bMeta.nameZh, b.canonicalName, ...(b.aliases ?? [])]);
       })
       .map((company) => {
         const metadata = (company.metadata ?? {}) as { nameZh?: string; nameEnShort?: string };

@@ -24,12 +24,14 @@ import {
   prisma,
   toJsonValue,
 } from "./lib/company-generation";
+import { sanitizeAliases } from "./lib/company-aliases";
 
-const SYSTEM_PROMPT = `你是价值投资研究员，为上市公司撰写统一精炼的公司概览。
+const SYSTEM_PROMPT = `你是价值投资研究员，为上市公司撰写统一精炼的公司概览，并提取常用商业品牌名。
 
 输出要求（JSON 格式）：
 {
-  "overview": "严格不超过3句话的中文概览（总字数 100-120 字）。"
+  "overview": "严格不超过3句话的中文概览（总字数 100-120 字）。",
+  "aliases": ["大众公认的核心商业品牌名、英文俗称或中文简称数组，如无特殊品牌名或与公司原名一致则填空数组 []"]
 }
 
 三句话规范：
@@ -42,9 +44,10 @@ const SYSTEM_PROMPT = `你是价值投资研究员，为上市公司撰写统一
 - 如提供了财务数据，必须引用真实最新财年年份与营收；如未提供财务数据，不得臆造具体数值，侧重提炼业务模式。
 - 必须严格控制在3句话以内，总字数在 100-130 字之间，严禁冗长展开。
 - overview 必须以中文句号结尾。
+- aliases 提取大众搜索时常用的知名品牌或缩写（1-4个），不要包含 INC, CORP, LTD 等后缀，没有特殊品牌名时填 []。
 - 输出必须是合法 JSON，不要任何 Markdown 标记或额外解释。`;
 
-function parseOverview(raw: string): string {
+function parseProfileResult(raw: string): { overview: string; aliases: string[] } {
   const parsed = parseJsonObject(raw);
   let text = typeof parsed.overview === "string" ? parsed.overview : "";
   if (!text && parsed.content && typeof parsed.content === "string") {
@@ -54,7 +57,9 @@ function parseOverview(raw: string): string {
   if (!text) {
     throw new Error("Invalid overview text in response");
   }
-  return text;
+  const rawAliases = Array.isArray(parsed.aliases) ? parsed.aliases : [];
+  const aliases = rawAliases.filter((a): a is string => typeof a === "string" && a.trim().length > 0);
+  return { overview: text, aliases };
 }
 
 function buildPrompt(params: {
@@ -164,27 +169,50 @@ async function main() {
         userPrompt: prompt,
         temperature: 0.2,
       });
-      const overviewText = parseOverview(rawContent);
+      const { overview: overviewText, aliases: rawAliases } = parseProfileResult(rawContent);
       const source = AI_MODEL ?? "unknown";
 
-      await prisma.companyAnalysis.upsert({
-        where: { entityId: company.id },
-        create: {
-          entityId: company.id,
-          overview: overviewText,
-          profile: toJsonValue({ title: "公司概览", content: overviewText }),
-          source,
-          version: 1,
-        },
-        update: {
-          overview: overviewText,
-          profile: toJsonValue({ title: "公司概览", content: overviewText }),
-          source,
-          version: { increment: 1 },
-        },
+      const meta = (company.metadata as Record<string, unknown> | null) ?? {};
+      const nameZh = typeof meta.nameZh === "string" ? meta.nameZh : null;
+      const cleanedAliases = sanitizeAliases({
+        rawAliases,
+        canonicalName: company.canonicalName,
+        ticker: company.ticker,
+        nameZh,
+        existingAliases: company.aliases ?? [],
       });
 
+      await prisma.$transaction([
+        prisma.companyAnalysis.upsert({
+          where: { entityId: company.id },
+          create: {
+            entityId: company.id,
+            overview: overviewText,
+            profile: toJsonValue({ title: "公司概览", content: overviewText }),
+            source,
+            version: 1,
+          },
+          update: {
+            overview: overviewText,
+            profile: toJsonValue({ title: "公司概览", content: overviewText }),
+            source,
+            version: { increment: 1 },
+          },
+        }),
+        ...(cleanedAliases.length > 0
+          ? [
+              prisma.entity.update({
+                where: { id: company.id },
+                data: { aliases: { set: cleanedAliases } },
+              }),
+            ]
+          : []),
+      ]);
+
       console.log(`  ✓ Saved overview (${overviewText.length} chars): ${overviewText.slice(0, 60)}...`);
+      if (cleanedAliases.length > 0) {
+        console.log(`  ✓ Updated aliases: [${cleanedAliases.join(", ")}]`);
+      }
     } catch (err) {
       console.error("  Failed:", err instanceof Error ? err.message : String(err));
       if (rawContent) {

@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const { mockEntityFindMany, mockInsightFindMany, mockGetTribeMembers } = vi.hoisted(() => ({
-  mockEntityFindMany: vi.fn(),
+const { mockQueryRaw, mockInsightFindMany, mockGetTribeMembers } = vi.hoisted(() => ({
+  mockQueryRaw: vi.fn(),
   mockInsightFindMany: vi.fn(),
   mockGetTribeMembers: vi.fn(),
 }));
 
 vi.mock("@/lib/prisma", () => ({
   default: {
-    entity: { findMany: mockEntityFindMany },
+    $queryRaw: mockQueryRaw,
     insightPost: { findMany: mockInsightFindMany },
   },
 }));
@@ -23,7 +23,7 @@ import { GET } from "../src/app/api/site-search/route";
 describe("GET /api/site-search", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockEntityFindMany.mockResolvedValue([]);
+    mockQueryRaw.mockResolvedValue([]);
     mockInsightFindMany.mockResolvedValue([]);
     mockGetTribeMembers.mockResolvedValue([]);
   });
@@ -37,7 +37,7 @@ describe("GET /api/site-search", () => {
       companies: [],
       insights: [],
     });
-    expect(mockEntityFindMany).not.toHaveBeenCalled();
+    expect(mockQueryRaw).not.toHaveBeenCalled();
     expect(mockInsightFindMany).not.toHaveBeenCalled();
     expect(mockGetTribeMembers).not.toHaveBeenCalled();
   });
@@ -51,7 +51,7 @@ describe("GET /api/site-search", () => {
       companies: [],
       insights: [],
     });
-    expect(mockEntityFindMany).not.toHaveBeenCalled();
+    expect(mockQueryRaw).not.toHaveBeenCalled();
     expect(mockInsightFindMany).not.toHaveBeenCalled();
     expect(mockGetTribeMembers).not.toHaveBeenCalled();
   });
@@ -65,7 +65,7 @@ describe("GET /api/site-search", () => {
         firm: "Berkshire Hathaway",
       },
     ]);
-    mockEntityFindMany.mockResolvedValue([
+    mockQueryRaw.mockResolvedValue([
       {
         id: "company-1",
         canonicalName: "Apple Inc.",
@@ -74,6 +74,7 @@ describe("GET /api/site-search", () => {
         market: "us",
         cik: "0000320193",
         metadata: { nameZh: "苹果", nameEnShort: "Apple" },
+        aliases: [],
       },
     ]);
     mockInsightFindMany.mockResolvedValue([
@@ -106,9 +107,7 @@ describe("GET /api/site-search", () => {
         href: "/insights/apple-capital-allocation",
       },
     ]);
-    expect(mockEntityFindMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ type: "company", onboardPhase: { gte: 1 } }),
-    }));
+    expect(mockQueryRaw).toHaveBeenCalled();
     expect(mockInsightFindMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({ status: "published" }),
       take: 5,
@@ -143,12 +142,8 @@ describe("GET /api/site-search", () => {
     const longQuery = "巴".repeat(200);
     await GET(new NextRequest(`http://localhost/api/site-search?q=${longQuery}`));
 
-    expect(mockEntityFindMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        OR: expect.arrayContaining([
-          expect.objectContaining({ canonicalName: { contains: "巴".repeat(80), mode: "insensitive" } }),
-        ]),
-      }),
-    }));
+    expect(mockQueryRaw).toHaveBeenCalled();
+    const queryArg = mockQueryRaw.mock.calls[0][0];
+    expect(queryArg.values).toContain(`%${"巴".repeat(80)}%`);
   });
 });

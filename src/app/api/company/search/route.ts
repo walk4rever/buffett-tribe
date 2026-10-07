@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
       OR e."canonicalName" ILIKE ${pattern}
       OR (e.metadata->>'nameZh') ILIKE ${pattern}
       OR (e.metadata->>'nameEnShort') ILIKE ${upperPattern}
+      OR array_to_string(e.aliases, ' ') ILIKE ${pattern}
     )`);
   }
 
@@ -101,7 +102,7 @@ export async function GET(request: NextRequest) {
           CASE 
             WHEN e.ticker = ${upper} OR e.code = ${upper} THEN 0
             WHEN e.ticker ILIKE ${upper + "%"} OR e.code ILIKE ${upper + "%"} THEN 1
-            WHEN e."canonicalName" ILIKE ${query + "%"} OR (e.metadata->>'nameZh') ILIKE ${query + "%"} THEN 2
+            WHEN e."canonicalName" ILIKE ${query + "%"} OR (e.metadata->>'nameZh') ILIKE ${query + "%"} OR array_to_string(e.aliases, ' ') ILIKE ${query + "%"} THEN 2
             ELSE 3
           END ASC,`
             : Prisma.empty

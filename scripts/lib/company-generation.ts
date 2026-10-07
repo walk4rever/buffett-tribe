@@ -54,6 +54,7 @@ export type CompanyTarget = {
   sector: string | null;
   sectorModelType: string | null;
   metadata: Prisma.JsonValue;
+  aliases?: string[];
 };
 
 export type FinancialYear = {
@@ -101,7 +102,7 @@ export function jsonObject(value: unknown): Record<string, unknown> | null {
 }
 
 export async function findCompanies(query?: string): Promise<CompanyTarget[]> {
-  const select = { id: true, canonicalName: true, ticker: true, cik: true, sector: true, sectorModelType: true, metadata: true } satisfies Prisma.EntitySelect;
+  const select = { id: true, canonicalName: true, ticker: true, cik: true, sector: true, sectorModelType: true, metadata: true, aliases: true } satisfies Prisma.EntitySelect;
 
   if (!query) {
     return prisma.entity.findMany({
