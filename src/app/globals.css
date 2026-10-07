@@ -4136,15 +4136,25 @@ body.layout-no-header {
   padding: 0 1.5rem;
   height: var(--site-nav-height);
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  grid-template-areas: "logo center right";
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-areas: "brand center right";
+  column-gap: clamp(0.65rem, 1.5vw, 1.5rem);
   align-items: center;
+}
+
+.home-nav-brand-group {
+  grid-area: brand;
+  justify-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: clamp(0.5rem, 1.25vw, 1.125rem);
+  min-width: 0;
 }
 
 /* Logo - prominent brand identity per Apple nav standards */
 .home-nav-logo {
-  grid-area: logo;
   justify-self: start;
+  flex-shrink: 0;
   font-size: 1rem;
   font-weight: 600;
   color: var(--apple-white);
@@ -4174,6 +4184,16 @@ body.layout-no-header {
   align-items: center;
   justify-content: center;
   gap: 1.5rem;
+}
+
+.home-nav-search-desktop {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-nav-search-mobile {
+  display: none;
 }
 
 .home-nav-right {
@@ -4218,12 +4238,16 @@ body.layout-no-header {
 .home-nav-search {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  width: min(100%, 220px);
+  max-width: 220px;
+  flex: 1 1 150px;
+  min-width: 0;
   gap: 0.35rem;
-  min-height: 30px;
-  padding: 0.3rem 0.65rem;
+  min-height: 32px;
+  padding: 0 0.7rem;
   border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 7px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.88);
   font: inherit;
@@ -4444,34 +4468,6 @@ body.layout-no-header {
   font-size: 0.75rem;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.site-search-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 1rem;
-  min-height: 40px;
-  padding: 0 1rem;
-  border-top: 1px solid #eaecf0;
-  color: #667085;
-  font-size: 0.75rem;
-}
-
-.site-search-footer span {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.site-search-footer kbd {
-  min-width: 18px;
-  padding: 0.08rem 0.25rem;
-  border: 1px solid #d0d5dd;
-  border-radius: 4px;
-  background: #fff;
-  font: inherit;
-  text-align: center;
 }
 
 /* ── Signals strip — dark section ── */
@@ -5728,23 +5724,64 @@ body.layout-no-header {
   }
 }
 
-@media (max-width: 640px) {
+@media (min-width: 761px) and (max-width: 1024px) {
   .home-nav-in {
-    grid-template-columns: 1fr auto;
+    column-gap: 0.7rem;
+  }
+
+  .home-nav-brand-group {
+    gap: 0.5rem;
+  }
+
+  .home-nav-search {
+    max-width: clamp(90px, 14vw, 150px);
+    flex-basis: clamp(90px, 14vw, 150px);
+  }
+
+  .home-nav-center {
+    gap: 0.85rem;
+  }
+
+  .home-nav-link {
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 760px) {
+  .home-nav-in {
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "logo right"
+      "brand right"
       "center center";
     height: auto;
     min-height: var(--site-nav-height);
     padding-top: 0.55rem;
     padding-bottom: 0.5rem;
     row-gap: 0.45rem;
+    column-gap: 0.55rem;
   }
 
   .home-nav-center {
+    grid-area: center;
     width: 100%;
     justify-content: center;
     gap: 1.25rem;
+  }
+
+  .home-nav-search {
+    width: 100%;
+    flex: 1 1 auto;
+    min-width: 72px;
+    min-height: 30px;
+    padding: 0 0.55rem;
+  }
+
+  .home-nav-search-desktop {
+    display: none;
+  }
+
+  .home-nav-search-mobile {
+    display: inline;
   }
 }
 
@@ -5773,11 +5810,6 @@ body.layout-no-header {
     margin-top: 3.25rem;
   }
 
-  .site-search-footer {
-    justify-content: center;
-    gap: 0.6rem;
-    padding: 0 0.5rem;
-  }
 }
 
 /* ─── Holdings page ─────────────────────────────────────────────────────── */

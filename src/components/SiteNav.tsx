@@ -18,10 +18,13 @@ export function SiteNav() {
   return (
     <nav className="home-nav">
       <div className="home-nav-in">
-        <Link href="/" className="home-nav-logo">
-          <BtLogoMark className="home-nav-logo-img" />
-          {BRAND_EN}
-        </Link>
+        <div className="home-nav-brand-group">
+          <Link href="/" className="home-nav-logo">
+            <BtLogoMark className="home-nav-logo-img" />
+            {BRAND_EN}
+          </Link>
+          <SiteSearch />
+        </div>
         <div className="home-nav-center" aria-label="部落成员与入口">
           <Link
             href="/master"
@@ -44,7 +47,6 @@ export function SiteNav() {
           >
             洞见
           </Link>
-          <span className="home-nav-divider">|</span>
           <Link
             href="/agent"
             className={`home-nav-link${isActive("/agent") ? " home-nav-link--active" : ""}`}
@@ -59,7 +61,6 @@ export function SiteNav() {
           >
             打孔
           </Link>
-          <SiteSearch />
         </div>
         <div className="home-nav-right">
           {session ? (

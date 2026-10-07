@@ -88,6 +88,8 @@
     "backfill:tribe-member-fields:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-tribe-member-fields.ts --dry-run",
     "backfill:company:profiles": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-profiles.ts",
     "backfill:company:profiles:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-profiles.ts --dry-run",
+    "backfill:company-aliases": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-aliases.ts",
+    "backfill:company-aliases:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-aliases.ts --dry-run",
     "check:security:integrity": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/check-security-integrity.ts",
     "check:financial:integrity": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/check-financial-integrity.ts",
     "check:filing-section:integrity": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/check-filing-section-integrity.ts",

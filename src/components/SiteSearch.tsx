@@ -53,6 +53,17 @@ export function SiteSearch() {
         (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
       const isShortcut = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k";
 
+      const isDialogOpen = document.querySelector(
+        '[role="dialog"][aria-label="全站搜索"]',
+      ) !== null;
+
+      if (event.key === "Escape" && isDialogOpen && !event.defaultPrevented) {
+        event.preventDefault();
+        setIsOpen(false);
+        setQuery("");
+        return;
+      }
+
       if (isShortcut || (event.key === "/" && !isTyping)) {
         event.preventDefault();
         setIsOpen(true);
@@ -162,7 +173,8 @@ export function SiteSearch() {
         onClick={() => setIsOpen(true)}
       >
         <Search size={15} aria-hidden="true" />
-        <span>搜索</span>
+        <span className="home-nav-search-desktop">搜索大师、公司、洞见</span>
+        <span className="home-nav-search-mobile">搜索</span>
       </button>
 
       {isOpen ? (
@@ -183,7 +195,8 @@ export function SiteSearch() {
               <input
                 ref={inputRef}
                 className="site-search-input"
-                type="search"
+                type="text"
+                inputMode="search"
                 role="combobox"
                 value={query}
                 maxLength={80}
@@ -275,11 +288,6 @@ export function SiteSearch() {
                 })
               )}
             </div>
-            <footer className="site-search-footer">
-              <span><kbd>↑</kbd><kbd>↓</kbd> 选择</span>
-              <span><kbd>↵</kbd> 打开</span>
-              <span><kbd>Esc</kbd> 关闭</span>
-            </footer>
           </section>
         </div>
       ) : null}
