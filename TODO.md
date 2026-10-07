@@ -230,15 +230,11 @@
   - **验证**：`tsc --noEmit`/`typecheck:scripts`/`lint`/`vitest run` 全绿（仅 1 个无关的既存 flaky 测试，`search-filings.test.ts` 的 Disney 关键词搜索，与本次改动无关）；5 个生成脚本对 AAPL 跑 `--dry-run` 均正确识别已回填数据；`/company/CIK0000320193` 页面渲染确认 profile/business/moat/management/valuation 全部展示真实内容，无"构建中"占位；直接跑 pi-gateway 工具用的 SQL 确认 5 字段均可查到。
   - **仍未处理**：大师/持仓点评（`MasterProfile`/`PortfolioInsight`）同样的双写模式暂无功能性 bug，不在本次范围，但以后若被抄去做类似 agent 工具会复现同一个坑，需留意。
 
-- [ ] **⑥ /insights 文章关联公司，接进公司页"参考资料" tab — 方案已验证，未实现/未接入，等以后再讨论排期**（2026-08-06，用户提出"insights 里的文章能不能按公司列到公司页参考资料下"）
-  - **发现：读取端已经建好，写入端从未跑过**——`InsightPost.entityIds: String[]` 这个字段本来就存在，`/insights/[slug]/page.tsx` 的 `getEntitiesByIds()` 已经在用它渲染"相关公司"标签（文章详情页 → 公司，反向链接）；但查库确认 **68 篇已发布文章，`entityIds` 全部是空数组**——`scripts/import-insight.ts` 导入链路从来没写过这个字段。所以真正要做的不是"公司页怎么展示"（这部分数据一旦有了，实现很轻，照抄 `getCompanyReferenceFilings` 那个查询风格就行），是"怎么把 entityIds 填起来"。
-  - **`entityIds` 存的是什么**：`Entity.id`（Prisma cuid 主键），不是 ticker、不是 CIK、不是公司名——依据 `getEntitiesByIds()` 用 `where: { id: { in: ids } }` 直接按主键查。打标脚本最后一步必须把匹配结果转成这个内部 id，不能直接写 ticker 字符串。
-  - **设计：两步，LLM 提议 + 代码解析验证，不给 LLM 看候选公司名单**——跟这个代码库其它 LLM 用法同一个套路（LLM 提出、代码算/查真实数据，见 `company-name-zh.ts`、`valuation-metrics.ts`）。之所以不把 414 家公司的名单喂给 LLM 当候选池，是因为那样不随公司库增长而扩展，而且会让匹配结果被"我们已经 onboard 了哪些"这件事反向影响（应该是"文章讨论了什么"决定结果，不是"我们凑巧有什么"）：
-    1. LLM 读文章全文，凭自己的知识列出文章**实质性讨论**（不是一笔带过）的真实公司 + 猜测的 ticker（不确定就给 null，不许编）。
-    2. 代码逐个解析：先按 ticker 精确匹配 `Entity.ticker`（大小写不敏感），查不到再退化成 `canonicalName` 包含匹配，且**只有唯一命中才采用**——命中多个（有歧义）或者一个都没有，一律跳过，不猜、不写入。
-  - **已用真实文章验证（dry-run，未写库）**：`scripts/tag-insight-companies.ts --slug ds31-micky-malka-ribbit-capital --dry-run`（Micky Malka / Ribbit Capital 那篇访谈，34,613 字符）。LLM 提了 10 个候选，5 个精确匹配到库里已有 Entity：Berkshire Hathaway（ticker 给的是 `BRK.B`，库里存的是 `BRK-B`，格式不一致，ticker 匹配没中，退化到名字匹配才捞回来——**证明了两级 fallback 不是多余设计**）、Robinhood（`HOOD`）、Nubank（`NU`，注意库里 canonicalName 是"Nu Holdings Ltd."，不含"Nubank"字样，纯关键词匹配会漏掉，必须靠 LLM 读懂品牌名对应关系）、Walmart（`WMT`）、Visa（`V`）。另外 5 个（Lemon Bank 已被收购、Revolut/Stripe 私有未上市、OnePay 私有合资公司、Node 是数字艺术空间不是公司）库里确实没有对应 Entity，正确跳过，没有编造匹配。
-  - **踩了一个小坑**：脚本完整版 system prompt（带详细规则列表）比测试用的精简版更长，导致 DeepSeek 推理模型 reasoning 花的 token 更多，`max_tokens: 2000` 时 `content` 返回空（这次会话已经踩过好几次同款坑——`company-name-zh.ts`、`cn-hk-sector-classify.ts` 都改过 `max_tokens`）。改成 `6000` 后正常，`finish_reason: stop`，实测这篇长文章 `reasoning_tokens` 用了 1111，`completion_tokens` 共 1317。
-  - **没做的事（就是这条的核心状态）**：没有正式写库（这次是 `--dry-run`，`entityIds` 还是空的）、没有跑 `--all` 批量回填存量 68 篇、没有在 `/company/[id]` 的"参考资料" tab 接入展示查询。`scripts/tag-insight-companies.ts` 代码已经写好并跑通，但整个改动**没有提交**——按用户要求，先把方案和验证证据记在这里，具体什么时候实现、要不要批量跑，以后再定。
+- [x] **⑥ /insights 文章关联公司，接进公司页"参考资料" tab**（2026-10-07 已完成上线）：
+  - 落地成果：
+    1. **Admin 关联管理后台**：新增 `/admin/insights` 路由与 `AdminInsightCompanyLinks` 交互组件，支持按文章选择并绑定关联公司；
+    2. **API 与数据支持**：新增 `/api/admin/insight-company-links` 接口，支持精准读写 `InsightPost.entityIds`；
+    3. **公司详情页参考资料呈现**：在 `/company/[id]` 的「参考资料」Tab 下新增「相关洞见文章」卡片展示，已发布文章与公司双向打通并经过测试验证。
 
 - [ ] **⑧ agent 工具的公司名解析：品牌名/俗名对不上库里的法定名，导致查不到已有数据**（2026-08-08，用户问"SpaceX的moat是什么"，`get_company_analysis` 完全没查到数据，agent 退化成纯靠自身知识 + `search_wisdom` 推演，端到端查证后定位到根因）
   - **复现**：SpaceX 在库里是 `Entity{ canonicalName: "SPACE EXPLORATION TECHNOLOGIES CORP", ticker: "SPCX", nameZh: "太空探索技术", nameEnShort: "SPACE EXPLORATION TECHNOLOGIES", aliases: [] }`——`get_company_analysis` 的 `findEntity()` 直接跑了这条 SQL（`ticker` 精确匹配 OR `canonicalName`/`nameZh`/`nameEnShort` 三个字段 ILIKE `%spacex%`），零命中：三个名字字段没有一个包含"spacex"这个子串，`aliases` 是空数组，SQL 也没查它。这个 entity 其实是有数据的（`profile`/`business` 都非空，见 P0 ⑦ 的迁移），但查不到人。
