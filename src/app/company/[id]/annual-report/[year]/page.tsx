@@ -3,6 +3,7 @@ import { FilingReader } from "@/components/FilingReader";
 import { PdfFilingReader } from "@/components/PdfFilingReader";
 import { SiteNav } from "@/components/SiteNav";
 import { formatCompanyUrl, getCompanyAnnualFiling, getCompanyByIdentifier, parseCompanyIdentifier } from "@/lib/company-data";
+import { OFFICIAL_FILINGS_START_YEAR } from "@/lib/financial-period";
 
 interface Props {
   params: Promise<{ id: string; year: string }>;
@@ -28,7 +29,7 @@ export default async function AnnualReportPage({ params }: Props) {
   if (!company) notFound();
 
   const year = Number.parseInt(rawYear, 10);
-  if (!Number.isFinite(year)) notFound();
+  if (!Number.isFinite(year) || year < OFFICIAL_FILINGS_START_YEAR) notFound();
 
   const filing = await getCompanyAnnualFiling(company.id, year);
   if (!filing) notFound();

@@ -3,7 +3,11 @@ import db from "@/lib/prisma";
 import { formatUsdInYi } from "@/lib/currency";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
 import { normalizeTicker } from "@/lib/ticker";
-import { FINANCIAL_DATA_START_YEAR } from "@/lib/financial-period";
+import {
+  FINANCIAL_DATA_START_YEAR,
+  OFFICIAL_FILINGS_START_YEAR,
+  OFFICIAL_FILINGS_START_DATE,
+} from "@/lib/financial-period";
 import { normalizeCik, unpadCik, getCikLookupVariants } from "@/lib/cik";
 import {
   buildMasterHolderTrends,
@@ -928,6 +932,10 @@ export async function getCompanyReferenceFilings(entityId: string, limit = 24): 
         where: {
           filerEntityId: entityId,
           kind: { in: COMPANY_REFERENCE_FILING_KINDS },
+          OR: [
+            { periodYear: { gte: OFFICIAL_FILINGS_START_YEAR } },
+            { periodYear: null, filedAt: { gte: OFFICIAL_FILINGS_START_DATE } },
+          ],
         },
         orderBy: [{ periodYear: "desc" }, { periodQuarter: "desc" }, { ts: "desc" }],
         take: limit * 4,
@@ -979,6 +987,10 @@ export async function getCompanyFilingById(entityId: string, filingId: string) {
         where: {
           filerEntityId: entityId,
           id: filingId,
+          OR: [
+            { periodYear: { gte: OFFICIAL_FILINGS_START_YEAR } },
+            { periodYear: null, filedAt: { gte: OFFICIAL_FILINGS_START_DATE } },
+          ],
         },
         select: COMPANY_ANNUAL_FILING_SELECT,
       });
@@ -1113,6 +1125,10 @@ export async function getCompanyAnnualFilings(entityId: string, limit = 12) {
       where: {
         filerEntityId: entityId,
         kind: { in: ["10k", "20f", "40f", "hk-annual-report", "cn-annual-report", "cn-prospectus", "us-prospectus"] },
+        OR: [
+          { periodYear: { gte: OFFICIAL_FILINGS_START_YEAR } },
+          { periodYear: null, filedAt: { gte: OFFICIAL_FILINGS_START_DATE } },
+        ],
       },
       orderBy: [{ periodYear: "desc" }, { periodQuarter: "desc" }, { ts: "desc" }],
       take: limit,
@@ -1144,6 +1160,7 @@ export async function getCompanyAnnualFiling(entityId: string, year?: number | n
   try {
     return await retryOnce(async () => {
       if (year != null && !Number.isNaN(year)) {
+        if (year < OFFICIAL_FILINGS_START_YEAR) return null;
         const filings = await db.extSource.findMany({
           where: {
             filerEntityId: entityId,
@@ -1161,6 +1178,10 @@ export async function getCompanyAnnualFiling(entityId: string, year?: number | n
         where: {
           filerEntityId: entityId,
           kind: { in: ["10k", "20f", "40f", "hk-annual-report", "cn-annual-report", "cn-prospectus", "us-prospectus"] },
+          OR: [
+            { periodYear: { gte: OFFICIAL_FILINGS_START_YEAR } },
+            { periodYear: null, filedAt: { gte: OFFICIAL_FILINGS_START_DATE } },
+          ],
         },
         orderBy: [{ periodYear: "desc" }, { periodQuarter: "desc" }, { ts: "desc" }],
         take: 8,

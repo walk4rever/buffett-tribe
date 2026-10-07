@@ -124,6 +124,11 @@ async function main() {
     console.error(`No prospectus filing (${PREFERRED_FORMS.join("/")}) found for ${ticker} (CIK ${entity.cik}).`);
     process.exit(1);
   }
+  const filingYear = new Date(filing.filingDate).getUTCFullYear();
+  if (filingYear < 2020) {
+    console.log(`Prospectus was filed in ${filingYear} (< 2020) — skipping per retention policy.`);
+    return;
+  }
   console.log(`Selected ${filing.form} filed ${filing.filingDate} (${filing.accession}) for ${entity.canonicalName}`);
 
   const accnoPath = filing.accession.replace(/-/g, "");

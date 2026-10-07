@@ -895,3 +895,39 @@ v0.46.10 上线的 7 类关键词分类在随机抽样 100 家（1,909 家中）
 - 本轮改动聚焦财务分析与价值线数据口径，不包含 `CompanyCashFlowSankey.tsx` 或桑基图原型调整。
 
 ---
+
+## 十六、 官方公告/披露文件全站 2020 年基线约束与历史清理（2026-10-07）
+
+### 1. 业务决策与约束定义
+- **单一事实标准**：全站所有公司（美股 / 港股 / A股）的官方披露文件（10-K, 10-Q, 20-F, 40-F, 港股中报/年报, A股年报/季报, 招股书等），严格**仅存储与展示 2020 年及以后（>= 2020）**的数据。
+- **页面彻底拦截**：2020 年以前的历史公告在所有页面中**不展示任何链接/卡片**；访问 `< 2020` 的年报阅读器路由直接返回 404。
+- **历史数据物理清除**：库内 2020 年以前的官方公告及其级联切片、归档与旧财报，物理删除以精简数据库负担。
+- **大师持仓隔离原则**：13F 大师持仓数据（`kind: "13f"`）与大师原著/股东信（`Source` / `Chunk`）不受此约束，完全保留。
+
+### 2. 代码实现
+1. **统一常量与单一事实来源**：
+   - 在 [`src/lib/financial-period.ts`](file:///Users/rafael/R129/buffett-tribe/src/lib/financial-period.ts) 中导出 `OFFICIAL_FILINGS_START_YEAR = 2020` 与 `OFFICIAL_FILINGS_START_DATE = new Date("2020-01-01T00:00:00.000Z")`。
+2. **数据层查询全面拦截**：
+   - 在 [`src/lib/company-data.ts`](file:///Users/rafael/R129/buffett-tribe/src/lib/company-data.ts) 中的 `getCompanyReferenceFilings`、`getCompanyFilingById`、`getCompanyAnnualFilings`、`getCompanyAnnualFiling` 均增加统一过滤条件：
+     ```ts
+     OR: [
+       { periodYear: { gte: OFFICIAL_FILINGS_START_YEAR } },
+       { periodYear: null, filedAt: { gte: OFFICIAL_FILINGS_START_DATE } },
+     ]
+     ```
+   - 若请求的 `year < OFFICIAL_FILINGS_START_YEAR`，直接短路返回 `null`。
+3. **路由层防御**：
+   - 在 [`src/app/company/[id]/annual-report/[year]/page.tsx`](file:///Users/rafael/R129/buffett-tribe/src/app/company/[id]/annual-report/[year]/page.tsx) 中对 `year < OFFICIAL_FILINGS_START_YEAR` 触发 `notFound()`。
+4. **采集入库脚本下限控制**：
+   - [`scripts/import-10k-edgartools.ts`](file:///Users/rafael/R129/buffett-tribe/scripts/import-10k-edgartools.ts)：`fromYear = Math.max(fromYear, 2020);`。
+   - [`scripts/import-us-prospectus.ts`](file:///Users/rafael/R129/buffett-tribe/scripts/import-us-prospectus.ts)：跳过 2020 年以前归档的招股书。
+
+### 3. 数据治理与物理删除执行
+- 编写专项治理脚本 [`scripts/cleanup-pre-2020-filings.ts`](file:///Users/rafael/R129/buffett-tribe/scripts/cleanup-pre-2020-filings.ts)。
+- 执行结果：
+  - 成功物理删除 **949 条** pre-2020 `ExtSource` 记录（10-K: 334, 10-Q: 372, 20-F: 52, 40-F: 26, us-prospectus: 165）。
+  - 自动级联清理：**660 条** `FilingSection`、**864 条** `FilingArtifact`、**3,205 条** 2008~2019 年旧 `Financial` 记录。
+  - 经全面审计：库内 pre-2020 官方公告归零（0条），2020+ 公告保留 14,059 条；大师 13F 持仓（7,643 条）、核心实体（16,466 条）及信件（94 篇）100% 完好无损。
+
+
+---

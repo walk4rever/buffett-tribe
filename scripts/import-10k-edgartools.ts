@@ -127,6 +127,7 @@ function parseArgs(args: string[]) {
     toYear = new Date().getUTCFullYear();
     fromYear = toYear - years + 1;
   }
+  fromYear = Math.max(fromYear, 2020);
 
   return { ticker, fromYear, toYear, filingConcurrency, extractTimeoutMs, noHtml, latestOnly, python, financialsOnly, cik };
 }
