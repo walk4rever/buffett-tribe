@@ -952,3 +952,22 @@ v0.46.10 上线的 7 类关键词分类在随机抽样 100 家（1,909 家中）
 - **状态：保持待决（Open Decision）**。
 - 暂不在 Phase 1 中盲目发起全库 2020 至今历史季报的全量回补。
 - 后续待综合考虑用户查阅高频度、数据库开销以及接口调用限额后再行评估决策。
+
+---
+
+## 十八、 彻底废弃并清理 R2/数据库中的 raw XBRL 数据文件（data_file）（2026-10-07）
+
+### 1. 第一性原理审查与过度设计注销
+- **背景与根因**：系统早期曾设计了“数据血统（blood lineage）”概念，试图将每个提取出的财务数字精准追溯到具体存储于 Cloudflare R2 的原始底层 XML/XSD 事实文件。
+- **审计结论**：
+  1. **生产代码 0 消费**：`src/` 目录下全站对 `kind: "data_file"` 与 `Financial.sourceFactIds` 的读取次数为 **0**；
+  2. **SEC EDGAR 永久免费提供**：原始 XBRL 事实文件由 SEC 永久、公开、免费托管，任何标的输入 Accession 即可在 `sec.gov` 直连获取，自建 R2 镜像纯属资源浪费；
+  3. **架构负债**：173 个文件吞噬了 230 MB 的 R2 空间，且抓取过程中的额外上传拖慢 Onboard 速度。
+
+### 2. 清理执行与结果
+- 编写专项清理脚本 [`scripts/cleanup-data-file-artifacts.ts`](file:///Users/rafael/R129/buffett-tribe/scripts/cleanup-data-file-artifacts.ts)。
+- 执行结果：
+  - **Cloudflare R2**：成功物理删除 **173 个** 原始 XBRL 数据文件（.xml, .xsd），释放 **230.13 MB** 存储空间。
+  - **PostgreSQL 数据库**：成功物理删除 **173 条** `FilingArtifact(kind="data_file")` 孤岛记录。
+  - 更新 `prisma/schema.prisma` 注释，正式标注 `data_file` 与 `sourceFactIds` 已废弃退役。
+

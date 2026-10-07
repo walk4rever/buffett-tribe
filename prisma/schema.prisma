@@ -451,7 +451,7 @@ model Financial {
   value         Decimal?
   unit          String?
   rawXbrlTag    String?
-  sourceFactIds String[] @default([]) // R2 data_file artifact objectKeys (blood lineage)
+  sourceFactIds String[] @default([]) // Legacy field: retired 2026-10-07 (zero consumers, data_file purged)
   mappingRule   String? // 如 "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax"
   confidence    Float    @default(1) // 1 = 直接映射，0.5 = 多事实聚合/推断
   createdAt     DateTime @default(now())
@@ -521,7 +521,7 @@ model FilingAttachment {
 model FilingArtifact {
   id           String   @id @default(cuid())
   sourceId     String
-  kind         String // Standard import writes primary_html | index_html | section_text. section_blocks retired 2026-08-30 (zero consumers, see handoff.md) — historical rows only, no longer written. Other kinds are legacy/on-demand.
+  kind         String // Standard import writes primary_html | index_html | section_text. (section_blocks retired 2026-08-30, data_file retired 2026-10-07 — zero consumers, see handoff.md). Other kinds are legacy/on-demand.
   objectKey    String   @unique
   contentType  String
   sizeBytes    BigInt
