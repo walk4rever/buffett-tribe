@@ -63,7 +63,7 @@ function buildHtml(name: string | null): string {
           </a>
         </td>
         <td style="vertical-align:middle;">
-          <div style="font-size:14px;font-weight:600;color:#ffffff;letter-spacing:-0.2px;">Value Tribe</div>
+          <div style="font-size:13.5px;font-weight:600;color:#ffffff;letter-spacing:0.5px;text-transform:uppercase;">VALUE-TRIBE</div>
           <div style="font-size:12px;color:#94a3b8;margin-top:2px;letter-spacing:0.5px;">知识库 + Agent 驱动的价值投资研究平台</div>
         </td>
       </tr>

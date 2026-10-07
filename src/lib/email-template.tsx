@@ -266,8 +266,8 @@ export function buildFullEmailHtml(options: BuildEmailOptions): string {
                   </a>
                 </td>
                 <td style="vertical-align:middle;padding-right:12px;white-space:nowrap;">
-                  <a href="${baseUrl}" style="text-decoration:none;font-size:14px;font-weight:600;color:#ffffff;letter-spacing:-0.2px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-                    Value-Tribe
+                  <a href="${baseUrl}" style="text-decoration:none;font-size:13.5px;font-weight:600;color:#ffffff;letter-spacing:0.5px;text-transform:uppercase;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+                    VALUE-TRIBE
                   </a>
                 </td>
                 <td style="vertical-align:middle;padding-left:12px;border-left:1px solid #334155;">
@@ -290,7 +290,7 @@ export function buildFullEmailHtml(options: BuildEmailOptions): string {
     <!-- Footer -->
     <div style="border-top:0.5px solid #e5e7eb;padding:20px 36px;background:#f9fafb;">
       <p style="margin:0 0 6px;font-size:12px;color:#9ca3af;">
-        © 2026 Value-Tribe &nbsp;|&nbsp;
+        © 2026 VALUE-TRIBE &nbsp;|&nbsp;
         <a href="https://vt.air7fun.com" style="color:#6b7280;text-decoration:none;">vt.air7fun.com</a>
       </p>
       <p style="margin:0;font-size:11px;color:#9ca3af;line-height:1.5;">

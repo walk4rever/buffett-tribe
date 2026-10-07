@@ -4155,14 +4155,15 @@ body.layout-no-header {
 .home-nav-logo {
   justify-self: start;
   flex-shrink: 0;
-  font-size: 0.84rem;
-  font-weight: 500;
+  font-size: 0.88rem;
+  font-weight: 600;
   color: var(--apple-white);
-  letter-spacing: -0.01em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   text-decoration: none;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.55rem;
   opacity: 1;
   transition: opacity 0.15s;
 }
@@ -10856,7 +10857,10 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.home-nav-logo,
+.home-nav-logo {
+  color: var(--apple-white);
+}
+
 .home-nav-link {
   color: rgba(255, 255, 255, 0.8);
 }
@@ -17822,11 +17826,13 @@ a.insight-entity-chip:hover {
 .admin-shell-brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.55rem;
   text-decoration: none;
   color: var(--apple-near-black);
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   transition: opacity 0.15s ease;
 }
 
