@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **最高准则**：`PRODUCT.md` 的「核心准则」一节（买股票就是买公司 / 理解公司的三个层次：事实·框架·变化 / AI 是手段不是目的 / 界面是手段的手段）——任何产品或架构决策与它冲突时以它为准，动手前先读。README.md 有对外的简版。
 
-Full product spec: `PRODUCT.md` (large; prefer targeted `grep`/section reads over reading it whole — it has a table of contents at the top; data model notes live in its "数据字典与工程口径" and "数据资产清单" sections — `DATA.md` was retired 2026-08-07, folded in here). Script catalog: `scripts/README.md` (numbered index of the ~90 scripts in `scripts/`, grouped by pipeline — read this before writing a new script; there is very likely already one that does most of what you need). Design tokens: `APPLE-DESIGN.md`.
+Full product spec: `PRODUCT.md` (large; prefer targeted `grep`/section reads over reading it whole — it has a table of contents at the top; data model notes live in its "数据字典与工程口径" and "数据资产清单" sections — `DATA.md` was retired 2026-08-07, folded in here). Documentation center: `docs/README.md`. Script catalog: `scripts/README.md` (numbered index of the ~90 scripts in `scripts/`, grouped by pipeline — read this before writing a new script; there is very likely already one that does most of what you need). Design tokens: `docs/design/apple-design-guide.md`.
 
 ## Commands
 
