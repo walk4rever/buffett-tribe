@@ -25,6 +25,7 @@ export const SECTION_ALIASES: Record<string, string[]> = {
   // 20-F's item_7 bundles major-shareholder disclosure with related-party
   // transactions; item_12_ownership is 10-K's closest analogue.
   ownership:   ["item_7_major_shareholders_related_party", "item_12_ownership"],
+  prospectus:  ["us_prospectus_1", "us_prospectus_2", "us_prospectus_3", "us_prospectus_4"],
 };
 
 export function resolveSectionKeys(section: string | null): string[] | null {

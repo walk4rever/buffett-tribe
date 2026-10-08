@@ -90,4 +90,28 @@ describe.skipIf(!hasDb)("search_filings golden cases (live DB + R2)", () => {
     const text = result.content[0]?.type === "text" ? result.content[0].text : "";
     expect(text).toContain("龙狮瓶盖");
   }, 30_000);
+
+  it("resolves SpaceX by alias to SPACE EXPLORATION TECHNOLOGIES CORP rather than METASPACEX and lists prospectus sections", async () => {
+    const result = await searchFilingsTool.execute(
+      "test",
+      { company: "SpaceX" },
+      undefined,
+    );
+    const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+    expect(text).toContain("SPACE EXPLORATION TECHNOLOGIES CORP");
+    expect(text).toContain("SPCX");
+    expect(text).toContain("us_prospectus_1");
+    expect(text).not.toContain("METASPACEX");
+  }, 30_000);
+
+  it("finds content from SpaceX prospectus using section: 'prospectus'", async () => {
+    const result = await searchFilingsTool.execute(
+      "test",
+      { company: "SpaceX", section: "prospectus", keyword: "Starlink" },
+      undefined,
+    );
+    const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+    expect(text.toLowerCase()).toContain("starlink");
+    expect(text).toContain("SPACE EXPLORATION TECHNOLOGIES CORP");
+  }, 30_000);
 });

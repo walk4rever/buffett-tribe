@@ -236,16 +236,14 @@
     2. **API 与数据支持**：新增 `/api/admin/insight-company-links` 接口，支持精准读写 `InsightPost.entityIds`；
     3. **公司详情页参考资料呈现**：在 `/company/[id]` 的「参考资料」Tab 下新增「相关洞见文章」卡片展示，已发布文章与公司双向打通并经过测试验证。
 
-- [ ] **⑧ agent 工具的公司名解析：品牌名/俗名对不上库里的法定名，导致查不到已有数据**（2026-08-08，用户问"SpaceX的moat是什么"，`get_company_analysis` 完全没查到数据，agent 退化成纯靠自身知识 + `search_wisdom` 推演，端到端查证后定位到根因）
-  - **复现**：SpaceX 在库里是 `Entity{ canonicalName: "SPACE EXPLORATION TECHNOLOGIES CORP", ticker: "SPCX", nameZh: "太空探索技术", nameEnShort: "SPACE EXPLORATION TECHNOLOGIES", aliases: [] }`——`get_company_analysis` 的 `findEntity()` 直接跑了这条 SQL（`ticker` 精确匹配 OR `canonicalName`/`nameZh`/`nameEnShort` 三个字段 ILIKE `%spacex%`），零命中：三个名字字段没有一个包含"spacex"这个子串，`aliases` 是空数组，SQL 也没查它。这个 entity 其实是有数据的（`profile`/`business` 都非空，见 P0 ⑦ 的迁移），但查不到人。
-  - **对照案例证明了根因**：同一会话问"可口可乐的护城河"能查到（`查询公司分析 "KO"`），因为 LLM 自己知道可口可乐的 ticker 是 KO，走的是精确 ticker 匹配，根本没触发姓名字段的模糊匹配逻辑。SpaceX 是私营公司，`SPCX` 是 SEC 内部备案用的冷门 ticker，没人真的这么称呼它，LLM 只能退回品牌名，而品牌名不在任何一个被查询的字段里——**这个问题只在"私营/冷门公司，ticker 不可猜、品牌名和法定注册名不一致"这类公司上会发作，对已经很出名、LLM 自带 ticker 知识的公司基本不会触发**。
-  - **验证过 pg_trgm 模糊匹配救不了这个 case**：`similarity('spacex', 'SPACE EXPLORATION TECHNOLOGIES CORP')` 只有 0.13（标准阈值 0.3 起），而且在全库里排不到第一（`GEMINI SPACE STA INC` 靠"SPACE"共享子串反而分更高，0.227）——trigram 只能容忍拼写/空格变体（比如已经有"SpaceX"这个字符串存在时，"space x"对它的相似度有 0.5，可用），但没法凭空建立"SpaceX ↔ Space Exploration Technologies Corp"这种品牌名和法定名之间的语义对应关系。品牌名缺口只能靠显式数据（alias）补，不是靠更聪明的字符串匹配算法补。
-  - **同一套脆弱匹配逻辑在 pi-gateway 里独立实现了至少 3 遍**：`get-company-analysis.ts`/`search-filings.ts` 的 `findEntity()` 几乎一字不差地复制（`get-company-analysis.ts` 里的注释都写着"Same resolution as search_filings' findEntity"），`search-holdings.ts` 里也有一份类似的 ticker/canonicalName 匹配片段——三处各自维护，改一处不会同步到另外两处。
-  - **方向（未评估细节，未实施）**：
-    1. `Entity.aliases`（schema 里已有的 `String[]` 字段，现在全库基本是空的）系统性回填常见品牌名/俗名——沿用这个代码库已有的"LLM 提议 + 代码写入，不猜测匹配"套路（同 P0 ⑥ 的公司打标方案、`company-name-zh.ts`），存量公司批量跑一次，`onboard-company.ts` 新增一步覆盖以后新公司。
-    2. `findEntity()` 从 3 个工具各自实现的重复代码收敛成一处共享实现（`aliases` 数组也要查），SpaceX 这类问题一次修复三个工具同时受益。
-    3. pg_trgm 只作为已有 alias/name 的拼写与空格容错兜底（比如"space x"命中已有的"SpaceX" alias），不指望它单独解决品牌名对不上法定名的问题。
-  - **下一步**：以上是讨论中的方向，未拍板具体实现，找合适时机再排期评估。
+- [x] **⑧ agent 工具的公司名解析：品牌名/俗名对不上库里的法定名，导致查不到已有数据**（2026-08-08 发现，2026-10-08 彻底修复：收敛共享 `findEntity` + 精准排序权重打分 + 覆盖 prospectus 别名）
+  - **复现根因**：SpaceX 在库里是 `Entity{ canonicalName: "SPACE EXPLORATION TECHNOLOGIES CORP", ticker: "SPCX", aliases: ["SpaceX", "Starlink", "星链", "Grok"] }`。此前 `get-company-analysis.ts` 与 `search-filings.ts` 各自手写了 `findEntity`，WHERE 子句虽有 `array_to_string(aliases, ' ') ILIKE %company%`，但 `ORDER BY (UPPER(ticker) = UPPER($1)) DESC LIMIT 1`。当用户传入 `SpaceX` 时，港股 `1796.HK` 的法定名 `METASPACEX` 同样满足 `%SpaceX%`，且两者 ticker 都不等于 `SpaceX`，Postgres 物理扫描顺序直接返回了 `METASPACEX`（Phase 0 空壳），导致 Agent 误判“库里没有 SpaceX”。
+  - **解决方案**：
+    1. 抽象统一的 `services/pi-gateway/src/tools/find-entity.ts`，两处工具收敛复用；
+    2. 引入匹配层级评分：Ticker 精确匹配（100分） > Aliases 别名完全匹配（`EXISTS (SELECT 1 FROM unnest(aliases) a WHERE UPPER(a) = UPPER($1))`，90分） > 法定名/中英文名称完全匹配（85分） > 前缀匹配（60分） > Aliases 模糊匹配（40分） > 子串匹配（30分）；
+    3. 平局以 `onboardPhase DESC` 作为 tie-breaker，已建档的 Phase 2 公司绝不让位于 Phase 0 空壳；
+    4. `SECTION_ALIASES` 补齐 `prospectus`（映射到 `us_prospectus_1..4`）；
+    5. 补齐 `tests/agent-tools/get-company-analysis.test.ts` 与 `search-filings.test.ts` 的 SpaceX L3 黄金用例，端到端测试 100% 通过。
 
 - [ ] **⑨ 打孔（Punch）— 大师重仓判断墙，第一条真实数据已上线，核心机制待补**（2026-08-20，用户提出，经 /office-hours 会话梳理设计后当场实现第一版；完整设计见 PRODUCT.md「打孔（Punch）路线图」，设计文档存档于 `~/.gstack/projects/walk4rever-buffett-tribe/rafael-main-design-20260820-114747.md`）
   - **概念**：借用巴菲特"一生只有 20 次打孔机会"的比喻，把大师做过的、被证明是真正 big bet 的重仓/长期持有判断单独摘出来做成一面粘贴墙（独立顶级导航页面 `/punch`，与 `/agent` `/master` `/company` `/insights` 同级，`SiteNav` 入口已从禁用态改为真实链接）。孔是精选出来的、面向未来、持续被验证的判断，不是历史回顾陈列柜。

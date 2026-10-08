@@ -46,27 +46,7 @@ async function getAvailableSections(entityId: string, year: number | null): Prom
   return r.rows;
 }
 
-// canonicalName is always the English legal name (e.g. "POP MART
-// INTERNATIONAL GROUP LIMITED") — CN/HK entities' Chinese name lives in
-// metadata.nameZh instead (see scripts/lib/cn-hk-company-seeds.ts), which a
-// plain canonicalName match would never see. Chinese users on this
-// Chinese-language site asking about "泡泡玛特" is the expected case, not
-// an edge case.
-async function findEntity(company: string): Promise<{ id: string; name: string | null; ticker: string | null } | null> {
-  const r = await pool.query<{ id: string; name: string | null; ticker: string | null }>(
-    `SELECT id, "canonicalName" AS name, ticker
-     FROM "Entity"
-     WHERE UPPER(ticker) = UPPER($1)
-        OR "canonicalName" ILIKE $2
-        OR metadata->>'nameZh' ILIKE $2
-        OR metadata->>'nameEnShort' ILIKE $2
-        OR array_to_string(aliases, ' ') ILIKE $2
-     ORDER BY (UPPER(ticker) = UPPER($1)) DESC
-     LIMIT 1`,
-    [company, `%${company}%`],
-  );
-  return r.rows[0] ?? null;
-}
+import { findEntity } from "./find-entity.js";
 
 async function querySections(
   entityId: string,
@@ -187,7 +167,7 @@ export const searchFilingsTool = defineTool({
       description: "Company ticker (e.g. AAPL, 9992.HK, or 600519.SS) or partial name in English or Chinese (e.g. Apple, 泡泡玛特, 贵州茅台)",
     }),
     section: Type.Optional(Type.String({
-      description: "Section to retrieve: business | mda | risk | financial | notes | cybersecurity | market_risk | compensation | governance | properties | legal — or an exact section key like item_7_mda. Omit to see available sections.",
+      description: "Section to retrieve: business | mda | risk | financial | notes | cybersecurity | market_risk | compensation | governance | properties | legal | prospectus — or an exact section key like item_7_mda or us_prospectus_1. Omit to see available sections.",
     })),
     year: Type.Optional(Type.Number({
       description: "Fiscal year of the filing (e.g. 2024). Omit for most recent.",

@@ -32,25 +32,7 @@ function isArtifactType(value: string): value is ArtifactType {
   return (ARTIFACT_TYPES as readonly string[]).includes(value);
 }
 
-type EntityRow = { id: string; name: string | null; ticker: string | null };
-
-// Same resolution as search_filings' findEntity: canonicalName is always the
-// English legal name, CN/HK entities' Chinese name lives in metadata.nameZh.
-async function findEntity(company: string): Promise<EntityRow | null> {
-  const r = await pool.query<EntityRow>(
-    `SELECT id, "canonicalName" AS name, ticker
-     FROM "Entity"
-     WHERE UPPER(ticker) = UPPER($1)
-        OR "canonicalName" ILIKE $2
-        OR metadata->>'nameZh' ILIKE $2
-        OR metadata->>'nameEnShort' ILIKE $2
-        OR array_to_string(aliases, ' ') ILIKE $2
-     ORDER BY (UPPER(ticker) = UPPER($1)) DESC
-     LIMIT 1`,
-    [company, `%${company}%`],
-  );
-  return r.rows[0] ?? null;
-}
+import { findEntity } from "./find-entity.js";
 
 type ArtifactRow = { artifact_type: string; payload: unknown; generated_at: string };
 
