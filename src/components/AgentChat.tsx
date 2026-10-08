@@ -47,7 +47,7 @@ function SaveAsNoteButton({ onClick }: { onClick: () => void }) {
 }
 
 const SUGGESTIONS = [
-  "段永平为什么长期持有泡泡玛特？",
+  "段永平为什么敢在苹果下跌时反复加仓？",
   "Meta 过去 5 年的自由现金流与资本开支变化如何？",
   "伯克希尔哈撒韦最新一季 13F 持仓有什么变化？",
   "贵州茅台的护城河体现在哪些财务指标上？",

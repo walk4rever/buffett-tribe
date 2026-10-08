@@ -241,6 +241,9 @@ export function useAgentChat({ context, initialMessages }: UseAgentChatOptions =
                 prev.map((m, i) => (i === assistantIndex ? { ...m, thinking: phase } : m)),
               );
             } else if (eventType === "tool_start") {
+              // Pre-tool text deltas (e.g. "I'll look up...") are intermediate filler emitted before
+              // tools execute; clear any pre-tool text so only the post-retrieval synthesis is displayed.
+              assistantText = "";
               const id = typeof data.id === "string" ? data.id : String(Date.now());
               const name = typeof data.name === "string" ? data.name : "tool";
               const args = data.args as Record<string, unknown> | undefined;
@@ -249,7 +252,7 @@ export function useAgentChat({ context, initialMessages }: UseAgentChatOptions =
               setMessages((prev) =>
                 prev.map((m, i) =>
                   i === assistantIndex
-                    ? { ...m, toolCalls: [...(m.toolCalls ?? []), toolCall], thinking: undefined }
+                    ? { ...m, text: "", toolCalls: [...(m.toolCalls ?? []), toolCall], thinking: undefined }
                     : m,
                 ),
               );
