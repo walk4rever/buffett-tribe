@@ -45,12 +45,14 @@ type FilerRow = {
 
 function toTribeMember(row: FilerRow): TribeMember {
   const category: TribeMember["category"] = row.isMasterPersona ? "core" : "alpha";
+  const nameEn = row.personNameEn ?? row.name;
   return {
     id: row.tribeId,
     category,
     displayGroup: DISPLAY_GROUP[category],
-    name: row.personNameEn ?? row.name,
-    nameZh: row.personNameZh ?? row.personNameEn ?? row.name,
+    name: nameEn,
+    // Alpha 投资者一律展示英文名字；核心部落成员保留中文名展示
+    nameZh: category === "alpha" ? nameEn : (row.personNameZh ?? nameEn),
     firm: row.name,
     initials: row.initials ?? "??",
     materialLabel: row.materialLabel,

@@ -138,7 +138,7 @@ function buildInput(): AlphaInvestorInput {
   return {
     id,
     name,
-    nameZh: getArg("--name-zh")?.trim() || name,
+    nameZh: name,
     firm,
     cik,
     initials: getArg("--initials")?.trim() || deriveInitials(name),
