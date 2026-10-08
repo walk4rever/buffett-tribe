@@ -88,6 +88,20 @@ def _amendment_info(filing: Any) -> tuple[bool, str | None]:
         return (False, None)
 
 
+def _is_valid_holding(entry: dict[str, Any]) -> bool:
+    cusip = (entry.get("cusip") or "").strip().upper()
+    if not cusip or cusip == "000000000" or cusip == "0" * len(cusip):
+        return False
+    issuer = (entry.get("nameOfIssuer") or "").strip().upper()
+    if issuer in ("NA", "N/A", "NONE"):
+        return False
+    shares = str(entry.get("shares") or "0").strip()
+    value = str(entry.get("value") or "0").strip()
+    if shares == "0" and value == "0":
+        return False
+    return True
+
+
 def _filing_to_dict(filing: Any) -> dict[str, Any]:
     obj = filing.obj()
     holdings = []
@@ -96,7 +110,7 @@ def _filing_to_dict(filing: Any) -> dict[str, Any]:
         if frame is not None:
             for row in frame.to_dict(orient="records"):
                 entry = _holding_entry(row)
-                if entry["cusip"]:
+                if _is_valid_holding(entry):
                     holdings.append(entry)
 
     accession = _safe_str(_get_attr(filing, "accession_number") or _get_attr(filing, "accession_no")) or ""

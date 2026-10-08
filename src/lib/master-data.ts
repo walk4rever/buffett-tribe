@@ -211,6 +211,17 @@ const HOLDING_SECURITY_INCLUDE = {
   },
 } as const;
 
+function isReportableHoldingRow(r: {
+  security?: { cusip?: string | null } | null;
+  shares?: bigint | null;
+  valueUsd?: bigint | null;
+}): boolean {
+  const cusip = r.security?.cusip;
+  if (!cusip || cusip === "000000000" || /^0+$/.test(cusip)) return false;
+  if ((r.shares == null || r.shares === BigInt(0)) && (r.valueUsd == null || r.valueUsd === BigInt(0))) return false;
+  return true;
+}
+
 export async function getHoldingsByQuarter(tribeId: string, year: number, quarter: number) {
   try {
     const rows = await db.holding.findMany({
@@ -221,7 +232,8 @@ export async function getHoldingsByQuarter(tribeId: string, year: number, quarte
       include: HOLDING_SECURITY_INCLUDE,
       orderBy: { percentOfPortfolio: "desc" },
     });
-    return dedupeByKey(rows, holdingSecurityPutCallKey, (r) => r.valueUsd ?? BigInt(0));
+    const valid = rows.filter(isReportableHoldingRow);
+    return dedupeByKey(valid, holdingSecurityPutCallKey, (r) => r.valueUsd ?? BigInt(0));
   } catch (err) {
     logDbFallback("getHoldingsByQuarter", err);
     return [];
@@ -340,8 +352,10 @@ export async function getHoldingsHistoryBySecurity(tribeId: string): Promise<Sec
       },
     });
 
+    const validRows = rows.filter(isReportableHoldingRow);
+
     const deduped = dedupeByKey(
-      rows,
+      validRows,
       (r) => `${holdingSecurityPutCallKey(r)}|${r.source.periodYear}|${r.source.periodQuarter}`,
       (r) => r.valueUsd ?? BigInt(0),
     );

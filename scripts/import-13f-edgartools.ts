@@ -152,6 +152,14 @@ function toEntry(row: EdgarTools13FFiling["holdings"][number]): InfoTableEntry {
   };
 }
 
+export function isValid13FEntry(entry: InfoTableEntry): boolean {
+  if (!entry.cusip || entry.cusip === "000000000" || /^0+$/.test(entry.cusip)) return false;
+  const issuer = entry.nameOfIssuer.trim().toUpperCase();
+  if (issuer === "NA" || issuer === "N/A" || issuer === "NONE") return false;
+  if (entry.shares === 0n && entry.value === 0n) return false;
+  return true;
+}
+
 function filterFilings(params: {
   filings: EdgarTools13FFiling[];
   quarterList: Array<{ year: number; quarter: number }>;
@@ -218,7 +226,7 @@ async function main() {
         const filingTimer = new ImportTimer(`[13F ${filer.tribeId} ${filing.reportDate} ${filing.accession}]`, "    ");
         const entries = filingTimer.timeSync(
           "normalize holdings",
-          () => filing.holdings.map(toEntry).filter((entry) => entry.cusip),
+          () => filing.holdings.map(toEntry).filter(isValid13FEntry),
           (result) => `positions=${result.length}`,
         );
         console.log(`    Parsed ${entries.length} positions`);
