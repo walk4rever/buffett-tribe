@@ -6,6 +6,8 @@ import type { ReactNode } from "react";
 interface CollapsibleSectionProps {
   title: string;
   defaultOpen?: boolean;
+  isOpen?: boolean;
+  onToggle?: () => void;
   /** "right" mirrors the header for the right-side workspace panel — chevron + title
    *  hug the panel's outer (right) edge instead of the inner one, so it reads as a
    *  mirror image of the left sidebar's sections rather than the same layout floating
@@ -20,12 +22,23 @@ interface CollapsibleSectionProps {
 export function CollapsibleSection({
   title,
   defaultOpen = false,
+  isOpen,
+  onToggle,
   align = "left",
   action,
   children,
 }: CollapsibleSectionProps) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const open = isOpen !== undefined ? isOpen : internalOpen;
   const isRight = align === "right";
+
+  const handleToggle = () => {
+    if (onToggle) {
+      onToggle();
+    } else {
+      setInternalOpen((o) => !o);
+    }
+  };
 
   return (
     <div className="agent-workspace-section">
@@ -33,7 +46,7 @@ export function CollapsibleSection({
         <button
           type="button"
           className={`agent-workspace-section-toggle${isRight ? " agent-workspace-section-toggle--right" : ""}`}
-          onClick={() => setOpen((o) => !o)}
+          onClick={handleToggle}
           aria-expanded={open}
         >
           <svg

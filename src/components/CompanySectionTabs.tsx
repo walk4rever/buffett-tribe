@@ -12,6 +12,8 @@ import {
 import type { ReactElement, ReactNode } from "react";
 import type { ValueLineData } from "@/lib/value-line-data";
 import { ValueLineHeader, ValueLineBody } from "@/components/ValueLineCard";
+import { CompanyWatchlistButton } from "@/components/CompanyWatchlistButton";
+import { Sparkles, RotateCw, Check, Loader2 } from "lucide-react";
 
 export type CompanySectionTab = {
   id: string;
@@ -238,72 +240,81 @@ export function CompanySectionTabs({
     panels.find((panel) => panel.props["data-tab-panel"] === activeTab) ??
     panels[0] ??
     null;
-  const companyHeaderActions =
-    showDeepAnalysisButton || (onboardPhase !== undefined && onboardPhase >= 2) ? (
-      <>
-        {showDeepAnalysisButton && (
-          <button
-            type="button"
-            className={`company-tabs-deep-analysis-btn ${isDeepAnalysisQueued ? "company-tabs-deep-analysis-btn--queued" : ""}`}
-            onClick={handleDeepAnalysisClick}
-            disabled={isPendingDeepAnalysis || isDeepAnalysisQueued}
-            title={
-              isDeepAnalysisQueued
-                ? "已加入深度分析优先队列"
-                : `申请优先深度分析${companyName ? ` ${companyName}` : ""}`
-            }
-          >
-            {isDeepAnalysisQueued ? (
-              <>
-                <span className="company-tabs-deep-analysis-icon" aria-hidden="true">✓</span>
-                <span>已排队</span>
-              </>
-            ) : isPendingDeepAnalysis ? (
-              <>
-                <span className="company-tabs-deep-analysis-spinner" aria-hidden="true" />
-                <span>排队中…</span>
-              </>
-            ) : (
-              <>
-                <span className="company-tabs-deep-analysis-icon" aria-hidden="true">⚡</span>
-                <span>深析</span>
-              </>
-            )}
-          </button>
-        )}
+  const companyHeaderActions = selectedTicker ? (
+    <>
+      <CompanyWatchlistButton
+        ticker={selectedTicker}
+        companyName={companyName}
+        entityId={companyId}
+      />
 
-        {onboardPhase !== undefined && onboardPhase >= 2 && (
-          <button
-            type="button"
-            className={`company-tabs-deep-analysis-btn ${isPhase3Success ? "company-tabs-deep-analysis-btn--queued" : ""}`}
-            onClick={handlePhase3UpdateClick}
-            disabled={isUpdatingPhase3 || isPhase3Success}
-            title={
-              isPhase3Success
-                ? "最新数据已更新，正在刷新页面…"
-                : `即时更新${companyName ? ` ${companyName}` : ""}最新价格与基本面态势`
-            }
-          >
-            {isPhase3Success ? (
-              <>
-                <span className="company-tabs-deep-analysis-icon" aria-hidden="true">✓</span>
-                <span>已更新</span>
-              </>
-            ) : isUpdatingPhase3 ? (
-              <>
-                <span className="company-tabs-deep-analysis-spinner" aria-hidden="true" />
-                <span>更新中…</span>
-              </>
-            ) : (
-              <>
-                <span className="company-tabs-deep-analysis-icon" aria-hidden="true">⚡</span>
-                <span>更新</span>
-              </>
-            )}
-          </button>
-        )}
-      </>
-    ) : null;
+      {showDeepAnalysisButton && (
+        <button
+          type="button"
+          className={`company-tabs-action-btn company-tabs-action-btn--ai ${
+            isDeepAnalysisQueued ? "company-tabs-action-btn--success" : ""
+          }`}
+          onClick={handleDeepAnalysisClick}
+          disabled={isPendingDeepAnalysis || isDeepAnalysisQueued}
+          title={
+            isDeepAnalysisQueued
+              ? "已加入深度分析优先队列"
+              : isPendingDeepAnalysis
+              ? "排队申请中…"
+              : `申请优先深度分析${companyName ? ` (${companyName})` : ""}`
+          }
+          aria-label={
+            isDeepAnalysisQueued
+              ? "已加入深度分析优先队列"
+              : isPendingDeepAnalysis
+              ? "排队申请中"
+              : "申请优先深度分析"
+          }
+        >
+          {isDeepAnalysisQueued ? (
+            <Check size={14} strokeWidth={2.2} className="company-tabs-action-icon" />
+          ) : isPendingDeepAnalysis ? (
+            <Loader2 size={14} className="company-tabs-action-spinner" />
+          ) : (
+            <Sparkles size={14} strokeWidth={1.8} className="company-tabs-action-icon" />
+          )}
+        </button>
+      )}
+
+      {onboardPhase !== undefined && onboardPhase >= 2 && (
+        <button
+          type="button"
+          className={`company-tabs-action-btn company-tabs-action-btn--refresh ${
+            isPhase3Success ? "company-tabs-action-btn--success" : ""
+          }`}
+          onClick={handlePhase3UpdateClick}
+          disabled={isUpdatingPhase3 || isPhase3Success}
+          title={
+            isPhase3Success
+              ? "最新数据已更新"
+              : isUpdatingPhase3
+              ? "正在更新最新价格与基本面态势…"
+              : `即时更新${companyName ? ` (${companyName})` : ""}最新价格与基本面数据`
+          }
+          aria-label={
+            isPhase3Success
+              ? "最新数据已更新"
+              : isUpdatingPhase3
+              ? "更新中"
+              : "即时更新数据"
+          }
+        >
+          {isPhase3Success ? (
+            <Check size={14} strokeWidth={2.2} className="company-tabs-action-icon" />
+          ) : isUpdatingPhase3 ? (
+            <RotateCw size={14} className="company-tabs-action-spinner" />
+          ) : (
+            <RotateCw size={14} strokeWidth={1.8} className="company-tabs-action-icon" />
+          )}
+        </button>
+      )}
+    </>
+  ) : null;
 
   return (
     <article className="value-line-card dvl-workspace-card">

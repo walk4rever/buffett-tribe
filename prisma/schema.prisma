@@ -24,6 +24,7 @@ model User {
   notes         Note[]
   portfolioHoldings PortfolioHolding[]
   creditLedgers CreditLedger[]
+  watchlist WatchlistCompany[]
 }
 
 model Account {
@@ -213,6 +214,21 @@ model PortfolioHolding {
   @@index([userId, updatedAt])
 }
 
+model WatchlistCompany {
+  id          String   @id @default(cuid())
+  userId      String
+  entityId    String
+  ticker      String?
+  companyName String?
+  createdAt   DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, entityId])
+  @@index([userId, createdAt])
+}
+
 model CreditLedger {
   id        String   @id @default(cuid())
   userId    String
@@ -266,6 +282,7 @@ model Entity {
   punchesAsFiler              Punch[]                 @relation("PunchFilerEntity")
   punchesAsCompany            Punch[]                 @relation("PunchCompanyEntity")
   notes                       Note[]
+  watchlistItems              WatchlistCompany[]
 
   @@index([type])
   @@index([ticker])
