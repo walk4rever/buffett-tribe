@@ -28,8 +28,25 @@ const ARTIFACT_LABELS: Record<ArtifactType, string> = {
   valuation: "Valuation Analysis (scenarios, multiples)",
 };
 
-function isArtifactType(value: string): value is ArtifactType {
-  return (ARTIFACT_TYPES as readonly string[]).includes(value);
+const ALIAS_MAP: Record<string, ArtifactType> = {
+  company_profile: "overview",
+  business_overview: "canvas",
+  value_analysis: "moat",
+  management_analysis: "management",
+  valuation_analysis: "valuation",
+  profile: "overview",
+  business: "canvas",
+};
+
+function isArtifactType(val: string): val is ArtifactType {
+  return (ARTIFACT_TYPES as readonly string[]).includes(val);
+}
+
+export function resolveArtifactType(input?: string): ArtifactType | null {
+  if (!input) return null;
+  const lower = input.toLowerCase().trim();
+  if (isArtifactType(lower)) return lower;
+  return ALIAS_MAP[lower] ?? null;
 }
 
 import { findEntity } from "./find-entity.js";
@@ -87,7 +104,8 @@ export const getCompanyAnalysisTool = defineTool({
       return { content: [{ type: "text" as const, text: "Cancelled." }], details: null };
     }
 
-    const types = artifactType && isArtifactType(artifactType) ? [artifactType] : ARTIFACT_TYPES;
+    const resolved = resolveArtifactType(artifactType);
+    const types = resolved ? [resolved] : ["overview", "canvas", "moat", "management", "valuation"];
 
     let rows: ArtifactRow[];
     try {

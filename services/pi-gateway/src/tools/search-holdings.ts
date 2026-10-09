@@ -16,6 +16,8 @@ type HoldingRow = {
   company_ticker: string | null;
   period_year: number;
   period_quarter: number;
+  holder_name?: string | null;
+  holder_tribe_id?: string | null;
 };
 
 async function queryHoldings(
@@ -95,6 +97,117 @@ async function queryHoldings(
   return result.rows;
 }
 
+async function queryHoldingsAcrossAllMasters(
+  company: string,
+  year: number | null,
+  quarter: number | null,
+  topN: number,
+): Promise<HoldingRow[]> {
+  const params: unknown[] = [];
+  const filters: string[] = [];
+
+  params.push(company.toUpperCase());
+  params.push(`%${company}%`);
+  filters.push(`(
+    UPPER(ce.ticker) = $1
+    OR UPPER(s.ticker) = $1
+    OR ce."canonicalName" ILIKE $2
+    OR ce.metadata->>'nameZh' ILIKE $2
+    OR ce.metadata->>'nameEnShort' ILIKE $2
+    OR array_to_string(ce.aliases, ' ') ILIKE $2
+  )`);
+
+  if (year != null) {
+    params.push(year);
+    filters.push(`es."periodYear" = $${params.length}`);
+  }
+  if (quarter != null) {
+    params.push(quarter);
+    filters.push(`es."periodQuarter" = $${params.length}`);
+  }
+
+  const periodFilter = year == null && quarter == null
+    ? `AND (es."periodYear", es."periodQuarter") = (
+        SELECT es2."periodYear", es2."periodQuarter"
+        FROM "ExtSource" es2
+        WHERE es2.kind = '13f' AND es2."periodYear" IS NOT NULL
+        ORDER BY es2."periodYear" DESC, es2."periodQuarter" DESC
+        LIMIT 1
+      )`
+    : "";
+
+  const whereClause = filters.length > 0 ? `AND ${filters.join(" AND ")}` : "";
+  params.push(topN);
+
+  const sql = `
+    SELECT
+      h.shares::text                  AS shares,
+      h."valueUsd"::text              AS value_usd,
+      h."percentOfPortfolio"          AS pct,
+      h."isNewPosition"               AS is_new,
+      h."isSoldOut"                   AS is_sold,
+      h."positionChangePct"           AS change_pct,
+      h."asOfDate"::text              AS as_of_date,
+      s.ticker                        AS security_ticker,
+      s."titleOfClass"                AS title_of_class,
+      ce."canonicalName"              AS company_name,
+      ce.ticker                       AS company_ticker,
+      es."periodYear"                 AS period_year,
+      es."periodQuarter"              AS period_quarter,
+      holder."tribeId"                AS holder_tribe_id,
+      COALESCE(filer."personNameZh", filer."personNameEn", filer.name, holder."canonicalName") AS holder_name
+    FROM "Holding" h
+    JOIN "Entity" holder ON holder.id = h."holderEntityId"
+    LEFT JOIN "Filer" filer ON filer."filerEntityId" = holder.id
+    JOIN "ExtSource" es ON es.id = h."sourceId" AND es.kind = '13f'
+    JOIN "Security" s ON s.id = h."securityId"
+    LEFT JOIN "Entity" ce ON ce.id = s."companyEntityId"
+    WHERE h."isSoldOut" IS NOT TRUE
+      ${periodFilter}
+      ${whereClause}
+    ORDER BY h."percentOfPortfolio" DESC NULLS LAST, h."valueUsd" DESC NULLS LAST
+    LIMIT $${params.length}
+  `;
+
+  const result = await pool.query<HoldingRow>(sql, params);
+  return result.rows;
+}
+
+export function formatHoldingsAcrossMasters(rows: HoldingRow[], companyQuery: string): string {
+  if (rows.length === 0) {
+    return `在最新 13F 持仓中，未发现任何追踪的投资大师持有 "${companyQuery}"。`;
+  }
+  const first = rows[0];
+  const quarterLabel = `${first.period_year} Q${first.period_quarter}`;
+  const companyTitle = first.company_name ?? companyQuery;
+
+  const lines = [
+    `### 投资大师对 ${companyTitle} 的最新持仓 (${quarterLabel})`,
+    `共有 ${rows.length} 位追踪的投资人/基金持有该标的：\n`,
+  ];
+
+  for (const r of rows) {
+    const investor = r.holder_name ?? r.holder_tribe_id ?? "未知大师";
+    const pct = r.pct != null ? `${r.pct.toFixed(2)}%` : "N/A";
+    const value = formatUsd(r.value_usd);
+    const shares = formatShares(r.shares);
+
+    const badges: string[] = [];
+    if (r.is_new) badges.push("【新进仓位】");
+    else if (r.change_pct != null) {
+      const sign = r.change_pct > 0 ? "+" : "";
+      badges.push(`变动: ${sign}${r.change_pct.toFixed(1)}%`);
+    }
+
+    lines.push(
+      `- **${investor}**: 仓位占比 **${pct}** | 持股市值: ${value} | 持股数: ${shares}` +
+      (badges.length > 0 ? ` (${badges.join(", ")})` : "")
+    );
+  }
+
+  return lines.join("\n");
+}
+
 function formatUsd(raw: string | null): string {
   if (!raw) return "N/A";
   const n = Number(raw);
@@ -171,14 +284,14 @@ export async function createSearchHoldingsTool() {
     name: "search_holdings",
     label: "Search 13F Holdings",
     description:
-      `Look up 13F portfolio holdings for tracked investors (${rosterNames}). Returns position size, portfolio weight, and quarter-over-quarter change. Defaults to the most recent available quarter.`,
-    promptSnippet: "search_holdings(master, company?, year?, quarter?) → 13F holdings data",
+      `Look up 13F portfolio holdings for tracked investors (${rosterNames}), OR find which investors hold a specific company. Returns position size, portfolio weight, and quarter-over-quarter change. If master is omitted, searches across all tracked investors for the specified company.`,
+    promptSnippet: "search_holdings(master?, company?, year?, quarter?) → 13F holdings data",
     parameters: Type.Object({
-      master: Type.String({
-        description: `Which investor: ${rosterIds}`,
-      }),
+      master: Type.Optional(Type.String({
+        description: `Which investor to inspect: ${rosterIds}. Omit to search who holds a company across all investors.`,
+      })),
       company: Type.Optional(Type.String({
-        description: "Filter by company ticker (e.g. AAPL) or partial name. Omit to get full portfolio.",
+        description: "Filter by company ticker (e.g. AAPL) or partial name. If master is omitted, finds all investors holding this company.",
       })),
       year: Type.Optional(Type.Number({
         description: "Filter by year (e.g. 2023). Omit for most recent.",
@@ -193,12 +306,12 @@ export async function createSearchHoldingsTool() {
     async execute(_toolCallId, params, signal) {
       const { master, company, year, quarter, top_n } = params;
 
-      const tribeId = master.toLowerCase().trim();
-      const liveFilerLabels = await getFilerLabels();
-      const masterLabel = liveFilerLabels.get(tribeId);
-      if (!masterLabel) {
+      if (!master && !company) {
         return {
-          content: [{ type: "text" as const, text: `Unknown master "${master}". Use: ${[...liveFilerLabels.keys()].join(" | ")}` }],
+          content: [{
+            type: "text" as const,
+            text: "请至少提供 master（投资人，如 buffett / lilu / duanyongping）或 company（公司代码/名称，如 AAPL / 拼多多）之一进行持仓查询。",
+          }],
           details: null,
         };
       }
@@ -207,6 +320,38 @@ export async function createSearchHoldingsTool() {
 
       if (signal?.aborted) {
         return { content: [{ type: "text" as const, text: "Search cancelled." }], details: null };
+      }
+
+      // Case 1: Search across all investors for a specific company
+      if (!master && company) {
+        let rows: HoldingRow[];
+        try {
+          rows = await queryHoldingsAcrossAllMasters(
+            company,
+            year ?? null,
+            quarter ?? null,
+            limit,
+          );
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          return { content: [{ type: "text" as const, text: `全大师持仓反查失败: ${msg}` }], details: null };
+        }
+
+        return {
+          content: [{ type: "text" as const, text: formatHoldingsAcrossMasters(rows, company) }],
+          details: { count: rows.length, mode: "all_masters", company },
+        };
+      }
+
+      // Case 2: Inspect a specific master's portfolio
+      const tribeId = master!.toLowerCase().trim();
+      const liveFilerLabels = await getFilerLabels();
+      const masterLabel = liveFilerLabels.get(tribeId);
+      if (!masterLabel) {
+        return {
+          content: [{ type: "text" as const, text: `Unknown master "${master}". Use: ${[...liveFilerLabels.keys()].join(" | ")}` }],
+          details: null,
+        };
       }
 
       let rows: HoldingRow[];
@@ -225,7 +370,7 @@ export async function createSearchHoldingsTool() {
 
       return {
         content: [{ type: "text" as const, text: formatHoldings(rows, masterLabel) }],
-        details: { count: rows.length },
+        details: { count: rows.length, master: tribeId },
       };
     },
   });

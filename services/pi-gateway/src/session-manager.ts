@@ -8,6 +8,7 @@ import { createSearchHoldingsTool } from "./tools/search-holdings.js";
 import { searchFilingsTool } from "./tools/search-filings.js";
 import { getInsightContentTool } from "./tools/get-insight-content.js";
 import { getCompanyAnalysisTool } from "./tools/get-company-analysis.js";
+import { getStockPriceHistoryTool } from "./tools/get-stock-price-history.js";
 import type { HistoryTurn } from "./history.js";
 
 const GATEWAY_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -118,7 +119,14 @@ async function makeSession(history?: HistoryTurn[]): Promise<AgentSession> {
     agentDir: PI_AGENT_DIR,   // loads models.json (custom providers) from here
     sessionManager,
     noTools: "builtin",       // disable bash/read/write/edit for security
-    customTools: [searchWisdomTool, searchHoldingsTool, searchFilingsTool, getInsightContentTool, getCompanyAnalysisTool],
+    customTools: [
+      searchWisdomTool,
+      searchHoldingsTool,
+      searchFilingsTool,
+      getInsightContentTool,
+      getCompanyAnalysisTool,
+      getStockPriceHistoryTool,
+    ],
   });
   return session;
 }
