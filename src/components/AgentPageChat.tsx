@@ -67,9 +67,9 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
     removeWatchlist,
   } = useWatchlist();
 
-  // Multi-tab state: default is "global"
+  // Multi-tab state: default is "global" ("主对话")
   const [tabs, setTabs] = useState<ChatTab[]>([
-    { id: "global", title: "全局投研", closable: false },
+    { id: "global", title: "主对话", closable: false },
   ]);
   const [activeTabId, setActiveTabId] = useState<string>("global");
 
@@ -105,7 +105,7 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
           : "";
       const newTab: ChatTab = {
         id: tabId,
-        title: `AI 解读 · ${displayName}${displaySuffix}`,
+        title: `${displayName}${displaySuffix}`,
         ticker: company.ticker,
         companyName: company.companyName || company.ticker,
         companyUrl: company.url,
@@ -248,7 +248,7 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
                       <span className="agent-chat-tab-title">
                         {tab.companyUrl ? (
                           <>
-                            AI 解读 · {tab.companyName || tab.ticker}
+                            {tab.companyName || tab.ticker}
                             {tab.ticker && tab.companyName && tab.companyName !== tab.ticker && (
                               <span className="agent-chat-tab-ticker"> ({tab.ticker})</span>
                             )}
