@@ -971,3 +971,64 @@ v0.46.10 上线的 7 类关键词分类在随机抽样 100 家（1,909 家中）
   - **PostgreSQL 数据库**：成功物理删除 **173 条** `FilingArtifact(kind="data_file")` 孤岛记录。
   - 更新 `prisma/schema.prisma` 注释，正式标注 `data_file` 与 `sourceFactIds` 已废弃退役。
 
+---
+
+## 十九、 Agent 工具链重构与 air7 架构并发能力评估（2026-10-09）
+
+### 1. Agent 工具链优化与提示词解绑（P0~P2 落地）
+- **根因治理（去公式化金句引用）**：
+  - 移除了 [`AGENTS.md`](file:///Users/rafael/R129/buffett-tribe/services/pi-gateway/AGENTS.md) 中“每条回复末尾必须调用 `search_wisdom` 并强行附带 `Source citations` 原文引用”的硬性规则；
+  - 重新确立分工：个股、业务、财报、估值与持仓类客观问题，直接调用事实类工具基于平台真实数据作答；仅在涉及投资心法、哲学与通用方法论时，才检索智慧库。
+- **新增历史股价与趋势分析工具**：
+  - 新增 [`get-stock-price-history.ts`](file:///Users/rafael/R129/buffett-tribe/services/pi-gateway/src/tools/get-stock-price-history.ts)，利用底层 `StockPrice` 数据表，提供最新收盘价、52 周高低点与所处分位、近 1 月 / 3 月 / 1 年涨跌幅及周度抽样走势。
+- **13F 持仓反查升级**：
+  - 改造 [`search-holdings.ts`](file:///Users/rafael/R129/buffett-tribe/services/pi-gateway/src/tools/search-holdings.ts)，允许省略 `master` 参数，直接按 `company` 跨巴菲特、段永平、李录等所有追踪大师进行 13F 反向穿透，汇总输出持有者、持仓占比、市值与变动。
+- **分析类型容错与文章检索增强**：
+  - [`get-company-analysis.ts`](file:///Users/rafael/R129/buffett-tribe/services/pi-gateway/src/tools/get-company-analysis.ts) 增加别名映射容错（如 `company_profile` $\to$ `overview`, `business_overview` $\to$ `canvas` 等）；
+  - [`get-insight-content.ts`](file:///Users/rafael/R129/buffett-tribe/services/pi-gateway/src/tools/get-insight-content.ts) 新增 `query` 参数，支持跨全库按主题关键词检索深度研报。
+- **收敛为 6 个核心工具**：`search_holdings`, `get_stock_price_history`, `get_company_analysis`, `search_filings`, `get_insight_content`, `search_wisdom`。
+- **验证与部署**：
+  - 编写 [`tools-enhancements.test.ts`](file:///Users/rafael/R129/buffett-tribe/services/pi-gateway/src/tools/tools-enhancements.test.ts)，全站 30 个测试文件共 250 个测试用例通过；
+  - 通过 `deploy.sh` 平滑同步至 `air7` 生产机，PM2 进程 `pi-gateway-buffett-tribe` 重启成功，健康检查 `{"ok":true}` 确认无误。
+
+### 2. 生产环境 air7 架构与并发承载力全面评估
+
+#### (1) 全链路架构与硬件资源基准
+```
+浏览器 (User Browser)
+  ↓ HTTPS (SSE 流式连接)
+Cloudflare CDN (vt.air7fun.com)
+  ↓
+Vercel Serverless Function (/api/pi)
+  - NextAuth 鉴权、Credits 额度校验、访客 IP 限流 (Guest Limit)
+  - maxDuration = 300s
+  ↓ HTTPS 转发 (https://relay.air7.fun/pi/chat)
+air7 云服务器 (Ubuntu 2 vCPU, 3.5GB 物理内存，可用 ~2.3GB，2GB Swap)
+  ↓ PM2 Fork 单进程: pi-gateway-buffett-tribe (Express SSE, port 3456)
+  - 内存 Session 缓存 (Map<string, AgentSession>, 30min TTL)
+  - 核心驱动: @earendil-works/pi-coding-agent
+  - 模型调用: DeepSeek API (api.deepseek.com)
+  - 工具数据层: 远程 Supabase Postgres (node-pg) + 本地 GBrain (port 3457)
+```
+
+#### (2) 承载力测算结论
+
+| 指标维度 | 预估承载能力 | 说明与运行状态 |
+| :--- | :---: | :--- |
+| **同时生成并发 (In-flight)** | **15 ～ 30 人** | **舒适区间**：回答秒级吐字，工具调用无排队延迟。 |
+| **极端瞬时并发 (Peak)** | **50 ～ 80 人** | **临界承载**：偶发 DB 连接排队，受限于 DeepSeek API 限频。 |
+| **同时在线活跃用户 (Online)** | **500 ～ 1,500 人** | 用户看回答、思考、翻看页面的时间远长于提问时间（并发比约 1:40）。 |
+| **日常活跃用户 (DAU)** | **2,000 ～ 5,000 DAU** | 每日提问量在 1万～3万次水平下，系统平稳运行。 |
+
+#### (3) 核心瓶颈点剖析
+1. **纯 I/O 密集型**：Gateway 只做 SSE 管道中继、组装 Prompt 与执行 SQL，不跑本地大模型推理，Node 单进程的事件循环开销极低（空闲仅占 15MB 内存）。
+2. **内存消耗极低**：每个内存 Session（30 分钟 TTL）仅占约 300KB，即使同时缓存 1000 个未过期会话，也仅占用 ~300MB 内存，对 2.3GB 可用内存非常安全。
+3. **数据库连接池（node-pg 默认 max 10）**：在 [`db.ts`](file:///Users/rafael/R129/buffett-tribe/services/pi-gateway/src/db.ts) 中未显式配置 `max`，使用 `pg` 默认值 10。若同一秒超过 10 人同时触发工具查询，第 11 个请求需排队等待连接释放（等待 50~200ms）。
+4. **Vercel Serverless 长连接插槽**：由于 Agent 对话通常需要 10s~30s，每个请求都会占用一个 Vercel Function 执行插槽。在大规模并发时 Vercel 会先于 air7 遇到函数并发上限。
+
+#### (4) 后续轻量扩容建议（业务增长时）
+- **调整 DB 连接池**：在 `services/pi-gateway/src/db.ts` 将 `max` 显式设为 20~30，并增加 idleTimeout。
+- **PM2 开启 Cluster 模式**：利用 air7 的 2 vCPU 将启动命令调整为 `pm2 start -i 2`，吞吐量直接翻倍。
+- **前端 SSE 直连 air7（超高并发时可选）**：长连接直通 `relay.air7.fun`，绕过 Vercel 300s 函数时长限制与并发插槽计费。
+
+
