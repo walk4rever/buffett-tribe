@@ -1030,7 +1030,7 @@ Apple HIG 精简风格：
 
 ```
 用户浏览器
-  └─► vt.air7fun.com/agent（Cloudflare CDN → Vercel，Next.js）
+  └─► vt.air7fun.com/agent（Cloudflare DNS-only 灰云直连 → Vercel Anycast Edge，Next.js）
         └─► /api/pi（Next.js 代理，AGENT_SECRET 留服务端）
               └─► relay.air7.fun/pi/chat（nginx → :3456）
                     └─► pi-gateway（PM2，Express SSE）

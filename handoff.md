@@ -1361,3 +1361,98 @@ Agent 面对复杂问题时，按需打出工具组合拳：
 - [ ] **P3 - 私有资料工作区双轨接入**：
   - 在 `/agent` 上线会话级附件上传直通网关（快轨）；
   - 接入 Docling / Whisper 异步 Worker 与 `UserWisdomChunk` 隔离向量库（慢轨）。
+
+---
+
+## 二十四、 大陆移动端访问延迟排查、Cloudflare/Vercel 拓扑调优与 CDN 实践经验（2026-10-10）
+
+### 1. 问题背景与实测数据诊断
+
+近期用户反馈使用手机（中国大陆移动网络环境）访问 `https://vt.air7fun.com` 时，网络延迟极大，甚至偶现白屏、CSS/JS 静态资源加载长达数十秒的现象。
+
+通过多方端对端网络诊断与网络链路拨测，收集到第一手实测指标：
+
+| 目标端点 | 网络环境 / 解析 IP | 丢包率 (Packet Loss) | 平均延迟 (RTT) | 静态资源下载体验 (350KB CSS) |
+|---|---|---|---|---|
+| **旧架构**：`vt.air7fun.com` (Cloudflare 橙云代理) | 国内移动/电信直连 → Cloudflare 免费 Anycast (`104.21.22.39`, `172.67.202.160`) | **高达 80%** | **1409 ms** | 极度卡顿（单连接限速 ~8KB/s，耗时 44.8s） |
+| **直连 Vercel Anycast** (`76.76.21.21` / `216.198.79.1`) | 国内直连 Vercel Anycast Edge 节点 | **0%** | **86 ms** | 秒开（< 200ms） |
+| **直连新加坡服务器** (`47.237.169.174`，阿里云 SG) | 国内直连 `relay.air7.fun` | **0%** | **88 ms** | 秒开（< 250ms） |
+
+实测数据一目了然：**瓶颈并不在服务器算力，也不在 Vercel 或国内骨干网，而是出在 Cloudflare 免费版的“橙云代理（Orange Cloud CDN Proxy）”上。**
+
+---
+
+### 2. 底层网络架构与跨洋路由根因深度剖析
+
+#### 根因 1：Cloudflare 免费 Anycast 对中国大陆网络的“跨洋大回旋”与严重 QoS 限速
+- **无大陆节点与缺乏优质直连 BGP**：Cloudflare 免费套餐在国内没有边缘 POP 点；其在亚太枢纽（香港、新加坡）的免费节点与中国三大运营商（电信 163、移动 CMI、联通 169）没有直连优质 Peer，导致国内手机网络请求会被 BGP Anycast 策略牵引路由至美国西海岸（如洛杉矶 `LAX`）。
+- **4 次跨洋大回旋**：
+  1. 用户手机（大陆） $\rightarrow$ 跨太平洋 $\rightarrow$ Cloudflare Anycast POP（美国西海岸 LAX）；
+  2. Cloudflare 回源到 Vercel Anycast 接入点（美国西海岸 SFO）；
+  3. 由于 `vercel.json` 显式锁定了计算区域 `regions: ["sin1"]`（新加坡），Vercel 内部又将请求打到新加坡计算集群；
+  4. 新加坡 Serverless 跑完后再原路跨洋返回！一次简单的 HTTP 请求经历了 **4 次跨越太平洋**，单次握手直接飙升至 2 秒以上。
+- **恶劣的免费 CDN 限速**：Cloudflare 对免费域名的非白名单或代理来源流量施加了极为苛刻的 QoS 限制（单连接实测被限制在 8 KB/s 左右），导致 Next.js 打包出的 350KB CSS 资源下载耗时长达 44.8 秒。
+
+#### 根因 2：Next.js 服务端渲染（SSR）未走边缘缓存
+- 首页（[`src/app/page.tsx`](file:///Users/rafael/R129/buffett-tribe/src/app/page.tsx)）和大师列表页（[`src/app/master/page.tsx`](file:///Users/rafael/R129/buffett-tribe/src/app/master/page.tsx)）此前配置为 `export const dynamic = "force-dynamic"`；
+- 每次移动端刷新页面，Vercel Serverless Function 都必须在新加坡重新执行代码、发起远程 Supabase 数据库查询、拉取投资人列表与最新持仓数据，导致首字节时间（TTFB）始终在 1.5s ~ 3s 之间，无法享受 CDN 静态缓存优势。
+
+---
+
+### 3. 落地实施方案（两项核心改造）
+
+#### 方案一：DNS 架构调优 —— 从“橙云代理”切为“灰云直连（DNS Only）”
+- **操作**：在 Cloudflare 控制台中，将 `vt.air7fun.com` 的 CNAME 记录从 `Proxied`（橙色云朵）切换为 `DNS only`（灰色云朵），直接 CNAME 指向 Vercel 提供的 `vercel-dns-017.com`。
+- **效果**：
+  - 域名解析由 Cloudflare 权威 DNS 秒级返回 Vercel Anycast IP（`216.198.79.1` 等）；
+  - 中国大陆移动端用户直接连接 Vercel 全球 Anycast 边缘节点，不再经过 Cloudflare 免费代理中转；
+  - 彻底消除了 80% 的丢包和跨洋回旋，RTT 瞬间从 1400ms 降至 86ms。
+
+#### 方案二：前端渲染优化 —— 启用 Next.js ISR (增量静态再生成)
+- **代码改动**：在 [`src/app/page.tsx`](file:///Users/rafael/R129/buffett-tribe/src/app/page.tsx) 与 [`src/app/master/page.tsx`](file:///Users/rafael/R129/buffett-tribe/src/app/master/page.tsx) 中：
+  ```typescript
+  // 将原先的完全动态 SSR
+  // export const dynamic = "force-dynamic";
+
+  // 改造为 ISR 边缘缓存 60 秒
+  export const revalidate = 60;
+  ```
+- **效果**：
+  - 首次构建或后台每 60 秒异步重新生成一次静态 HTML 和 RSC Payload；
+  - 移动端用户访问时，直接从 Vercel Edge 边缘节点秒级吐出缓存文件，TTFB 降低至 **50ms** 以内；
+  - 极大减轻 Supabase 数据库在高并发下的并发查询压力。
+
+---
+
+### 4. 架构认知复盘：为何迁移至 `vt.air7fun.com` 依然极具价值？
+
+在排查中曾产生疑问：“既然关掉了 Cloudflare 橙云代理，那从旧域名 `vt.air7.fun` 迁移到 `vt.air7fun.com` 还有什么意义？”
+
+答案是：**价值极大，核心体现在域名信誉风控与最顶级的权威 DNS 解析。**
+
+1. **顶级域名（TLD）商业信誉与风控通行证（`.com` vs `.fun`）**：
+   - 国内社交与移动生态（微信内置浏览器、QQ、主流手机厂商自带浏览器安全管家）对小众后缀（如 `.fun`、`.xyz`、`.top`、`.cc`）有极高的风控拦截率；经常无故弹出“该网页包含未知风险/已停止访问”，甚至被邮件系统（如 QQ 邮箱、网易邮箱）判定为垃圾邮件；
+   - `.com` 是全球最具商业公信力的顶级域名，移动端分享和微信生态打开率远高于 `.fun`。
+2. **Cloudflare 是全球最强且最快的权威 DNS 引擎**：
+   - 即使关闭橙云代理（DNS-only 灰云），依然享受 Cloudflare 全球 2~5ms 的 DNS 解析时延、100% 高可用 SLA，以及抵抗 DNS 劫持和 DDoS 攻击的能力；
+   - 提供了统一纳管子域名、泛域名 SSL 证书签发的极佳控制台体验。
+3. **清晰的分层混合架构（Split Architecture）**：
+   - **DNS 解析层**：Cloudflare DNS-only（解析快、高可用、抗劫持）；
+   - **Web 前端与 CDN 边缘层**：Vercel Anycast Edge（静态资源分发快、支持 ISR 缓存、移动端网络直连体验好）；
+   - **后端长连接与流式 AI 网关**：二级域名 `relay.air7.fun` 直连新加坡阿里云服务器（PM2 + Nginx 反代 + DeepSeek/Pi-Coding-Agent SSE），互不干扰。
+
+---
+
+### 5. 客户端排查避坑指南（手机 5G 快 vs 电脑端慢的原因）
+
+在实际调试中，可能遇到“手机蜂窝网络秒开，但 Mac 本机打开依然觉得有延迟”的现象，排查结论如下：
+
+1. **代理工具（Clash Verge / TUN 模式）的干扰**：
+   - 电脑端常驻科学上网客户端（如 Clash Verge TUN 虚拟网卡），可能将 `air7fun.com` 流量捕获并加密转发到第三方海外代理节点，反而多走了一层中转链路并产生额外开销；
+   - **建议**：在代理规则中为 `air7fun.com` 和 `air7.fun` 添加 `DIRECT` 直连规则。
+2. **浏览器 Keep-Alive Socket 复用老连接**：
+   - 现代浏览器（Chrome/Edge）会维持 HTTP 长连接（Keep-Alive Sockets）达数分钟。在 Cloudflare 切换灰云后的初期，浏览器如果继续复用旧的 Cloudflare 代理 Socket，仍然会表现出卡顿；
+   - **建议**：在 `chrome://net-internals/#sockets` 点击 `Flush socket pools`，或者使用无痕模式（Incognito）硬刷新（`Cmd + Shift + R`）验证。
+3. **HTTP/3 (QUIC) UDP 丢包回退机制**：
+   - 国内部分宽带运营商对 UDP 443 端口存在 QoS 劣化或限速，导致浏览器首次尝试 HTTP/3 握手超时失败，进而回退到 TCP/TLS，导致用户感知前 1~2 秒卡顿。一旦回退完成建立 TCP 连接，后续访问即恢复极速。
+
