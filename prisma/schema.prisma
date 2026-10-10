@@ -747,3 +747,65 @@ model EmailAnnouncement {
 
   @@index([createdAt(sort: Desc)])
 }
+
+// ============================================================================
+// Wisdom Library — master knowledge layer (formerly GBrain pages & content_chunks)
+// Native Supabase pgvector store for search_wisdom agent retrieval
+// ============================================================================
+
+model WisdomPage {
+  id                          Int           @id @default(autoincrement())
+  sourceId                    String?       @map("source_id")
+  slug                        String
+  type                        String        @default("page")
+  title                       String
+  compiledTruth               String        @default("") @map("compiled_truth")
+  timeline                    String        @default("")
+  frontmatter                 Json          @default("{}")
+  contentHash                 String?       @map("content_hash")
+  emotionalWeight             Float         @default(0.0) @map("emotional_weight")
+  createdAt                   DateTime      @default(now()) @map("created_at")
+  updatedAt                   DateTime      @default(now()) @updatedAt @map("updated_at")
+  deletedAt                   DateTime?     @map("deleted_at")
+  effectiveDate               DateTime?     @map("effective_date")
+  effectiveDateSource         String?       @map("effective_date_source")
+  importFilename              String?       @map("import_filename")
+  salienceTouchedAt           DateTime?     @map("salience_touched_at")
+  searchVector                Unsupported("tsvector")? @map("search_vector")
+  emotionalWeightRecomputedAt DateTime?     @map("emotional_weight_recomputed_at")
+  chunks                      WisdomChunk[]
+
+  @@unique([sourceId, slug], map: "pages_source_slug_key")
+  @@index([type], map: "idx_pages_type")
+  @@index([deletedAt], map: "pages_deleted_at_purge_idx")
+  @@map("pages")
+}
+
+model WisdomChunk {
+  id                   Int                    @id @default(autoincrement())
+  pageId               Int                    @map("page_id")
+  chunkIndex           Int                    @map("chunk_index")
+  chunkText            String                 @map("chunk_text")
+  chunkSource          String                 @default("compiled_truth") @map("chunk_source")
+  embedding            Unsupported("vector")?
+  model                String                 @default("text-embedding-3-large")
+  tokenCount           Int?                   @map("token_count")
+  embeddedAt           DateTime?              @map("embedded_at")
+  createdAt            DateTime               @default(now()) @map("created_at")
+  language             String?
+  symbolName           String?                @map("symbol_name")
+  symbolType           String?                @map("symbol_type")
+  startLine            Int?                   @map("start_line")
+  endLine              Int?                   @map("end_line")
+  docComment           String?                @map("doc_comment")
+  symbolNameQualified  String?                @map("symbol_name_qualified")
+  searchVector         Unsupported("tsvector")? @map("search_vector")
+  modality             String                 @default("text")
+  embeddingImage       Unsupported("vector")? @map("embedding_image")
+  page                 WisdomPage             @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, chunkIndex], map: "idx_chunks_page_index")
+  @@index([pageId], map: "idx_chunks_page")
+  @@map("content_chunks")
+}
+
