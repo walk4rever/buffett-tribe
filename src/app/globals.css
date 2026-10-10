@@ -8679,6 +8679,541 @@ body.layout-no-header {
   }
 }
 
+/* ── Real-time Interactive Valuation Deep-Dive (估值分析深剖) ── */
+.val-deep-dive {
+  display: flex;
+  flex-direction: column;
+  gap: 1.8rem;
+  margin-bottom: 2rem;
+}
+
+.val-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.val-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.val-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.015em;
+}
+
+.val-subtitle {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.val-status-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.val-tag--deep-green {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  border-color: rgba(16, 185, 129, 0.28);
+}
+
+.val-tag--green {
+  background: rgba(34, 197, 94, 0.1);
+  color: #15803d;
+  border-color: rgba(34, 197, 94, 0.24);
+}
+
+.val-tag--amber {
+  background: rgba(245, 158, 11, 0.1);
+  color: #b45309;
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.val-tag--orange {
+  background: rgba(249, 115, 22, 0.1);
+  color: #c2410c;
+  border-color: rgba(249, 115, 22, 0.25);
+}
+
+.val-tag--red {
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.val-tag--neutral {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* 6-Card Multiples Matrix */
+.val-multiples-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+@media (max-width: 900px) {
+  .val-multiples-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .val-multiples-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.val-multiple-card {
+  display: flex;
+  flex-direction: column;
+  padding: 0.9rem 1rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid var(--company-border-soft);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.val-multiple-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.val-card-label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 0.4rem;
+}
+
+.val-card-val-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.35rem;
+}
+
+.val-card-val {
+  font-size: 1.35rem;
+  font-weight: 750;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  font-feature-settings: "tnum";
+}
+
+.val-card-subtag {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.12rem 0.45rem;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.val-tag--sub-green {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.val-tag--sub-red {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+.val-tag--sub-slate {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.val-tag--sub-orange {
+  background: rgba(249, 115, 22, 0.12);
+  color: #c2410c;
+}
+
+.val-card-hint {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  line-height: 1.4;
+  margin-top: auto;
+}
+
+/* PE-Band Chart Block */
+.val-chart-block {
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 1.4rem;
+  background: #ffffff;
+  border: 1px solid var(--company-border-soft);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+}
+
+.val-chart-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
+.val-block-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.val-block-desc {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.76rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.val-band-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  font-size: 0.72rem;
+  color: #475569;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.legend-item--active {
+  font-weight: 600;
+  color: #0071e3;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.dot-b0_7 { background: #10b981; }
+.dot-b1_0 { background: #f59e0b; }
+.dot-b1_3 { background: #3b82f6; }
+.dot-b1_6 { background: #ef4444; }
+.dot-price { background: #0071e3; width: 10px; height: 10px; }
+
+/* Interactive HUD Inspection Row */
+.val-hud-row {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  padding: 0.45rem 0.85rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 0.6rem;
+  font-size: 0.74rem;
+  flex-wrap: wrap;
+}
+
+.val-hud-col {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.val-hud-label {
+  color: #64748b;
+}
+
+.val-hud-value {
+  font-weight: 650;
+  color: #0f172a;
+}
+
+.val-hud-value--blue {
+  color: #0071e3;
+}
+
+.val-hud-value--amber {
+  color: #d97706;
+}
+
+.val-hud-tag {
+  font-weight: 600;
+  color: #047857;
+  background: rgba(16, 185, 129, 0.1);
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+}
+
+.val-svg-wrap {
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.val-pe-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.val-axis-text {
+  font-size: 10px;
+  fill: #94a3b8;
+  font-family: inherit;
+}
+
+/* 5-Year TSR Simulator Block */
+.val-sim-block {
+  display: flex;
+  flex-direction: column;
+  padding: 1.3rem 1.4rem;
+  background: #ffffff;
+  border: 1px solid var(--company-border-soft);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+}
+
+.val-sim-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.1rem;
+}
+
+.val-preset-group {
+  display: inline-flex;
+  align-items: center;
+  background: #f1f5f9;
+  padding: 0.2rem;
+  border-radius: 8px;
+  gap: 0.2rem;
+}
+
+.preset-btn {
+  border: none;
+  background: transparent;
+  font-size: 0.74rem;
+  font-weight: 550;
+  color: #475569;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preset-btn:hover {
+  color: #0f172a;
+}
+
+.preset-btn--active {
+  background: #ffffff;
+  color: #0071e3;
+  font-weight: 650;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.val-sim-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 1.4rem;
+}
+
+@media (max-width: 860px) {
+  .val-sim-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.val-sliders-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  padding-right: 0.5rem;
+}
+
+.val-slider-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.slider-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.slider-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.slider-value-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0071e3;
+  background: rgba(0, 113, 227, 0.08);
+  padding: 0.15rem 0.55rem;
+  border-radius: 6px;
+  font-feature-settings: "tnum";
+}
+
+.val-range-input {
+  width: 100%;
+  accent-color: #0071e3;
+  cursor: pointer;
+}
+
+.slider-scale-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: #94a3b8;
+}
+
+.val-result-card {
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.15rem;
+}
+
+.val-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+
+.val-result-title {
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: #475569;
+}
+
+.val-rating-pill {
+  font-size: 0.68rem;
+  font-weight: 650;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+}
+
+.tsr-pill--green {
+  background: rgba(16, 185, 129, 0.15);
+  color: #047857;
+}
+
+.tsr-pill--light-green {
+  background: rgba(34, 197, 94, 0.14);
+  color: #15803d;
+}
+
+.tsr-pill--amber {
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+}
+
+.tsr-pill--slate {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.tsr-pill--red {
+  background: rgba(239, 68, 68, 0.15);
+  color: #b91c1c;
+}
+
+.val-irr-display {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+}
+
+.val-irr-number {
+  font-size: 2.3rem;
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  font-feature-settings: "tnum";
+}
+
+.val-irr--up {
+  color: #059669;
+}
+
+.val-irr--dn {
+  color: #dc2626;
+}
+
+.val-irr-unit {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.val-result-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+}
+
+.val-result-metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.metric-label {
+  color: #64748b;
+}
+
+.metric-val {
+  color: #1e293b;
+  font-feature-settings: "tnum";
+}
+
+.val-formula-note {
+  margin: auto 0 0;
+  font-size: 0.68rem;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
 .company-reference-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));

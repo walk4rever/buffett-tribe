@@ -22,12 +22,9 @@ import {
 } from "@/lib/company-data";
 import {
   ManagementAnalysisSection,
-  ValuationAnalysisSection,
   parseManagementPayload,
-  parseValuationPayload,
 } from "@/components/CompanyGeneratedSections";
-
-import { StockPriceChartLazy } from "@/components/StockPriceChartLazy";
+import { ValuationAnalysisView } from "@/components/ValuationAnalysisView";
 import { buildCompanyFinancialDashboard } from "@/lib/company-financial-dashboard";
 import { formatShares } from "@/lib/master-data";
 import { CompanyFinancialDashboardComponent } from "@/components/CompanyFinancialDashboard";
@@ -410,11 +407,13 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   const managementArtifact = analysis?.management != null
     ? { payload: analysis.management, generatedAt: analysis.updatedAt, source: analysis.source }
     : null;
-  const valuationArtifact = analysis?.valuation != null
-    ? { payload: analysis.valuation, generatedAt: analysis.updatedAt, source: analysis.source }
-    : null;
   const hasManagement = managementArtifact != null && parseManagementPayload(managementArtifact.payload) != null;
-  const hasValuation = valuationArtifact != null && parseValuationPayload(valuationArtifact.payload) != null;
+  const hasValuation = Boolean(
+    valueLineData &&
+    valueLineData.annuals &&
+    valueLineData.annuals.length > 0 &&
+    (valueLineData.latestPrice != null || valueLineData.pricePoints.length > 0)
+  );
 
   const availablePriceTickers = uniqueTickers([
     company.ticker,
@@ -730,33 +729,23 @@ export default async function CompanyPage({ params, searchParams }: Props) {
               )}
             </section>
 
-            {/* Tab 5: Valuation Analysis */}
+            {/* Tab 5: Valuation Analysis (Real-time Interactive Deep Dive) */}
             <section className="company-section" data-tab-panel="valuation">
-              {availablePriceTickers.length > 0 ? (
-                <div className="dvl-tab-price-block" style={{ marginBottom: "2rem" }}>
-                  <div className="company-financial-trend-head">
-                    <h3>全周期行情走势</h3>
-                    <span className="dvl-section-subtitle">支持日线、周线、成交量及多档周期交互 (1M ~ Max)</span>
-                  </div>
-                  <StockPriceChartLazy tickers={availablePriceTickers} />
-                </div>
-              ) : null}
-
-              {hasValuation && valuationArtifact ? (
-                <ValuationAnalysisSection artifact={valuationArtifact} />
+              {valueLineData && hasValuation ? (
+                <ValuationAnalysisView data={valueLineData} />
               ) : (
                 <div className="company-placeholder-grid">
                   <article className="company-placeholder-card">
                     <h3>倍数估值</h3>
-                    <p>后续可展示 PE、EV/EBIT、P/FCF、PS 等历史区间与行业对比。</p>
+                    <p>该标的暂无完整财务或行情数据，待财报入库后自动生成历史估值走廊。</p>
                   </article>
                   <article className="company-placeholder-card">
                     <h3>现金流模型</h3>
-                    <p>后续可接入 DCF、增长假设、资本回报和安全边际区间。</p>
+                    <p>后续将根据财报披露的自由现金流 (FCF) 自动接入多因子安全边际。</p>
                   </article>
                   <article className="company-placeholder-card">
-                    <h3>估值判断</h3>
-                    <p>后续可把价格历史、财务趋势和资本配置合成一个统一的估值结论。</p>
+                    <h3>情景推演</h3>
+                    <p>后续将根据最新行情与盈利基数自动开启 5 年股东总回报模拟器。</p>
                   </article>
                 </div>
               )}

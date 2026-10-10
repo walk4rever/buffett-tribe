@@ -37,7 +37,6 @@ const GENERATE_STEPS = [
   { script: "generate:business-model", artifactType: "business_overview", label: "业务概览/商业画布" },
   { script: "generate:value-analysis", artifactType: "value_analysis", label: "价值分析" },
   { script: "generate:management-analysis", artifactType: "management_analysis", label: "管理分析" },
-  { script: "generate:valuation-analysis", artifactType: "valuation_analysis", label: "估值分析" },
 ] as const;
 
 function getArg(flag: string): string | undefined {

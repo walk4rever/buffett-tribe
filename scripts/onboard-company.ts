@@ -19,9 +19,8 @@
  *   4. generate:business-model
  *   5. generate:value-analysis
  *   6. generate:management-analysis
- *   7. generate:valuation-analysis
- *   8. sync:company-name-map   -> CompanyNameMap (ticker & issuer key sync)
- * (3-7 skippable with --skip-generation)
+ *   7. sync:company-name-map   -> CompanyNameMap (ticker & issuer key sync)
+ * (3-6 skippable with --skip-generation)
  *
  * CN/HK steps (--market cn|hk): seed_entity (canonicalName/nameZh/
  * nameEnShort/exchange/industry auto-fetched via akshare — see
@@ -577,11 +576,10 @@ async function main() {
     },
   };
 
-  // Phase 2 analysis steps: 4 separate mature scripts for each dimension
-  // (generate:business-model, generate:value-analysis, generate:management-analysis, generate:valuation-analysis)
-  // Note: generate-company-analysis-unified is deprecated because valuation
-  // requires quantitative code computation and management requires shareholder
-  // letter semantic retrieval; unifying into 1 LLM call corrupted the schema.
+  // Phase 2 analysis steps: 3 qualitative dimension generators
+  // (generate:business-model, generate:value-analysis, generate:management-analysis)
+  // Note: Valuation analysis is now 100% computed dynamically in code (ValuationAnalysisView)
+  // from ValueLine fundamentals and real-time market prices, eliminating offline LLM latency.
   const phase2AnalysisSteps: Step[] = [
     {
       id: "generate_business_model",
@@ -605,13 +603,6 @@ async function main() {
       skip: skipGeneration,
       run: () => runNpmScript("generate:management-analysis", buildGenerateArgs(ticker, force)),
       verify: (entityId, stepStartedAt) => verifyCompanyAnalysisField(entityId, "management", stepStartedAt, force),
-    },
-    {
-      id: "generate_valuation_analysis",
-      label: "生成估值分析（valuation_analysis）",
-      skip: skipGeneration,
-      run: () => runNpmScript("generate:valuation-analysis", buildGenerateArgs(ticker, force)),
-      verify: (entityId, stepStartedAt) => verifyCompanyAnalysisField(entityId, "valuation", stepStartedAt, force),
     },
   ];
 
