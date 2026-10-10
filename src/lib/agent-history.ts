@@ -1,4 +1,9 @@
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import {
+  summarizeConversationPreview,
+  type AgentTurnPreview,
+} from "@/lib/agent-workspace-ui";
 
 const HISTORY_LIMIT = 10;
 
@@ -23,4 +28,36 @@ export async function getRecentTurns(userId: string, contextKey: string): Promis
     text: t.text,
     imageUrls: t.imageUrls,
   }));
+}
+
+export async function getLatestCompanyTurnPreviews(
+  userId: string,
+  tickers: string[],
+): Promise<Record<string, AgentTurnPreview>> {
+  const contextKeys = [...new Set(tickers.map((ticker) => `company:${ticker}`))];
+  if (contextKeys.length === 0) return {};
+
+  const rows = await prisma.$queryRaw<
+    Array<{ contextKey: string; role: string; text: string; hasImages: boolean }>
+  >(Prisma.sql`
+    SELECT DISTINCT ON ("contextKey")
+      "contextKey",
+      role,
+      LEFT("text", 512) AS text,
+      COALESCE(cardinality("imageUrls"), 0) > 0 AS "hasImages"
+    FROM "ChatTurn"
+    WHERE "userId" = ${userId}
+      AND "contextKey" IN (${Prisma.join(contextKeys)})
+    ORDER BY "contextKey", "createdAt" DESC, id DESC
+  `);
+
+  const previews: Record<string, AgentTurnPreview> = {};
+  for (const row of rows) {
+    if (row.role !== "user" && row.role !== "assistant") continue;
+    const text = summarizeConversationPreview(row.text) || (row.hasImages ? "发送了图片" : "");
+    if (text) {
+      previews[row.contextKey] = { role: row.role, text };
+    }
+  }
+  return previews;
 }

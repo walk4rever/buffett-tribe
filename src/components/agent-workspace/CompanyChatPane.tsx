@@ -1,19 +1,23 @@
 "use client";
 
+import { useEffect } from "react";
 import { AgentChat } from "@/components/AgentChat";
-import { useAgentChat } from "@/hooks/useAgentChat";
+import { useAgentChat, type Message } from "@/hooks/useAgentChat";
+import type { AgentTurnPreview } from "@/lib/agent-workspace-ui";
 
 interface CompanyChatPaneProps {
   companyName: string;
   ticker: string;
   companyUrl?: string | null;
   onSaveAsNote?: (text: string) => void;
+  onLatestTurnChange?: (ticker: string, preview: AgentTurnPreview) => void;
 }
 
 export function CompanyChatPane({
   companyName,
   ticker,
   onSaveAsNote,
+  onLatestTurnChange,
 }: CompanyChatPaneProps) {
   const {
     messages,
@@ -28,6 +32,19 @@ export function CompanyChatPane({
   } = useAgentChat({
     context: { companyName, ticker },
   });
+
+  useEffect(() => {
+    if (streaming || !onLatestTurnChange) return;
+    const latestTurn = [...messages].reverse().find((message: Message) =>
+      !message.error && (message.text.trim() || message.imageUrls?.length || message.images?.length),
+    );
+    if (!latestTurn) return;
+
+    onLatestTurnChange(ticker, {
+      role: latestTurn.role,
+      text: latestTurn.text || "发送了图片",
+    });
+  }, [messages, onLatestTurnChange, streaming, ticker]);
 
   return (
     <div className="agent-company-chat-pane">

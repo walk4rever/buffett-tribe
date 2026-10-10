@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { useSession } from "next-auth/react";
 import {
   PanelLeftClose,
   PanelLeft,
-  Compass,
-  Sparkles,
+  Building2,
+  MessageSquare,
   ExternalLink,
   X,
 } from "lucide-react";
@@ -17,6 +17,11 @@ import { CompanyChatPane } from "@/components/agent-workspace/CompanyChatPane";
 import { useAgentChat, type Message } from "@/hooks/useAgentChat";
 import { useNotes } from "@/hooks/useNotes";
 import { useWatchlist, type WatchlistCompanyItem } from "@/hooks/useWatchlist";
+import {
+  getNextChatTabIndex,
+  summarizeConversationPreview,
+  type AgentTurnPreview,
+} from "@/lib/agent-workspace-ui";
 
 interface AgentPageChatProps {
   initialMessages?: Message[];
@@ -52,8 +57,10 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
     notes,
     activeNote,
     draft,
+    saveStatus,
     openNote,
     closeEditor,
+    flushPendingSave,
     createNote,
     updateDraft,
     deleteNote,
@@ -66,6 +73,59 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
     loading: watchlistLoading,
     removeWatchlist,
   } = useWatchlist();
+
+  const [watchlistExpanded, setWatchlistExpanded] = useState(false);
+  const [latestByContextKey, setLatestByContextKey] = useState<Record<string, AgentTurnPreview>>({});
+  const [loadedTickerKey, setLoadedTickerKey] = useState("");
+  const [failedTickerKey, setFailedTickerKey] = useState("");
+  const companyTickers = useMemo(
+    () => [...new Set(watchlistItems.map((item) => item.ticker.trim()).filter(Boolean))],
+    [watchlistItems],
+  );
+  const tickerKey = JSON.stringify(companyTickers);
+  const previewsLoading =
+    watchlistExpanded &&
+    companyTickers.length > 0 &&
+    loadedTickerKey !== tickerKey &&
+    failedTickerKey !== tickerKey;
+  const previewsError = failedTickerKey === tickerKey;
+
+  useEffect(() => {
+    if (companyTickers.length === 0 || !watchlistExpanded || loadedTickerKey === tickerKey) return;
+
+    let cancelled = false;
+    const query = new URLSearchParams();
+    companyTickers.forEach((ticker) => query.append("companyTicker", ticker));
+
+    fetch(`/api/agent-turns?${query}`, { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Failed to load company turn previews");
+        return response.json() as Promise<{
+          latestByContextKey?: Record<string, AgentTurnPreview>;
+        }>;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setLatestByContextKey(data.latestByContextKey ?? {});
+        setLoadedTickerKey(tickerKey);
+        setFailedTickerKey("");
+      })
+      .catch(() => {
+        if (!cancelled) setFailedTickerKey(tickerKey);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [companyTickers, loadedTickerKey, tickerKey, watchlistExpanded]);
+
+  const handleLatestTurnChange = useCallback((ticker: string, preview: AgentTurnPreview) => {
+    const text = summarizeConversationPreview(preview.text) || "发送了图片";
+    setLatestByContextKey((prev) => ({
+      ...prev,
+      [`company:${ticker}`]: { role: preview.role, text },
+    }));
+  }, []);
 
   // Multi-tab state: default is "global" ("主对话")
   const [tabs, setTabs] = useState<ChatTab[]>([
@@ -129,6 +189,14 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
     });
   };
 
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const nextIndex = getNextChatTabIndex(event.key, index, tabs.length);
+    if (nextIndex === null) return;
+    event.preventDefault();
+    setActiveTabId(tabs[nextIndex].id);
+    document.getElementById(`agent-chat-tab-${nextIndex}`)?.focus();
+  };
+
   return (
     <div className="agent-workspace">
       {/* Main Workspace Body */}
@@ -183,6 +251,10 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
                   void removeWatchlist(ticker);
                 }}
                 watchlistLoading={watchlistLoading}
+                onWatchlistOpenChange={setWatchlistExpanded}
+                latestByContextKey={latestByContextKey}
+                previewsLoading={previewsLoading}
+                previewsError={previewsError}
               />
             </div>
           </aside>
@@ -199,6 +271,8 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
                 content={draft.content}
                 onChangeTitle={(title) => updateDraft({ title })}
                 onChangeContent={(content) => updateDraft({ content })}
+                saveStatus={saveStatus}
+                onRetrySave={() => void flushPendingSave()}
                 onClose={closeEditor}
                 onDelete={() => void deleteNote(activeNote.id)}
               />
@@ -208,7 +282,7 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
           {/* Agent Chat Pane with Multi-Tab Navigation */}
           <div className="agent-workspace-chat-pane">
             {/* Multi-Tab Bar (rendered when session or tabs > 1) */}
-            <div className="agent-chat-tabs-bar" role="tablist">
+            <div className="agent-chat-tabs-bar">
               {/* Workspace Toggle inside Tab Bar (when Sidebar is Closed) - 仅登录用户可见 */}
               {session && !leftOpen && (
                 <div className="agent-tabs-sidebar-ctrl">
@@ -226,37 +300,52 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
                 </div>
               )}
 
-              <div className="agent-chat-tabs-scroll">
-                {tabs.map((tab) => {
+              <div
+                className="agent-chat-tabs-scroll"
+                role="tablist"
+                aria-label="投研对话"
+                aria-orientation="horizontal"
+              >
+                {tabs.map((tab, index) => {
                   const isActive = tab.id === activeTabId;
                   return (
                     <div
                       key={tab.id}
-                      role="tab"
-                      aria-selected={isActive}
-                      className={`agent-chat-tab ${isActive ? "is-active" : ""}`}
-                      onClick={() => setActiveTabId(tab.id)}
-                      title={tab.title}
+                      className={`agent-chat-tab-group ${isActive ? "is-active" : ""}`}
+                      role="presentation"
                     >
-                      <span className="agent-chat-tab-icon">
-                        {tab.id === "global" ? (
-                          <Compass size={13} strokeWidth={2} />
-                        ) : (
-                          <Sparkles size={13} strokeWidth={2} />
-                        )}
-                      </span>
-                      <span className="agent-chat-tab-title">
-                        {tab.companyUrl ? (
-                          <>
-                            {tab.companyName || tab.ticker}
-                            {tab.ticker && tab.companyName && tab.companyName !== tab.ticker && (
-                              <span className="agent-chat-tab-ticker"> ({tab.ticker})</span>
-                            )}
-                          </>
-                        ) : (
-                          tab.title
-                        )}
-                      </span>
+                      <button
+                        id={`agent-chat-tab-${index}`}
+                        type="button"
+                        role="tab"
+                        aria-selected={isActive}
+                        aria-controls={`agent-chat-panel-${index}`}
+                        tabIndex={isActive ? 0 : -1}
+                        className={`agent-chat-tab ${isActive ? "is-active" : ""}`}
+                        onClick={() => setActiveTabId(tab.id)}
+                        onKeyDown={(event) => handleTabKeyDown(event, index)}
+                        title={tab.title}
+                      >
+                        <span className="agent-chat-tab-icon">
+                          {tab.id === "global" ? (
+                            <MessageSquare size={14} strokeWidth={2} />
+                          ) : (
+                            <Building2 size={14} strokeWidth={2} />
+                          )}
+                        </span>
+                        <span className="agent-chat-tab-title">
+                          {tab.companyUrl ? (
+                            <>
+                              {tab.companyName || tab.ticker}
+                              {tab.ticker && tab.companyName && tab.companyName !== tab.ticker && (
+                                <span className="agent-chat-tab-ticker"> ({tab.ticker})</span>
+                              )}
+                            </>
+                          ) : (
+                            tab.title
+                          )}
+                        </span>
+                      </button>
                       {tab.companyUrl && (
                         <a
                           href={tab.companyUrl}
@@ -281,7 +370,7 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
                             handleCloseTab(tab.id);
                           }}
                           title="关闭此对话"
-                          aria-label="关闭"
+                          aria-label={`关闭 ${tab.companyName || tab.title}`}
                         >
                           <X size={11} strokeWidth={2.2} />
                         </button>
@@ -294,6 +383,11 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
 
             {/* Global Chat Tab */}
             <div
+              id="agent-chat-panel-0"
+              role="tabpanel"
+              aria-labelledby="agent-chat-tab-0"
+              tabIndex={0}
+              aria-hidden={activeTabId !== "global"}
               className="agent-workspace-chat-tab-content"
               style={{
                 display: activeTabId === "global" ? "flex" : "none",
@@ -324,10 +418,16 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
 
             {/* Company Chat Tabs */}
             {tabs
-              .filter((t) => t.id !== "global")
-              .map((tab) => (
+              .map((tab, index) => ({ tab, index }))
+              .filter(({ tab }) => tab.id !== "global")
+              .map(({ tab, index }) => (
                 <div
                   key={tab.id}
+                  id={`agent-chat-panel-${index}`}
+                  role="tabpanel"
+                  aria-labelledby={`agent-chat-tab-${index}`}
+                  tabIndex={0}
+                  aria-hidden={activeTabId !== tab.id}
                   className="agent-workspace-chat-tab-content"
                   style={{
                     display: activeTabId === tab.id ? "flex" : "none",
@@ -340,6 +440,7 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
                     companyName={tab.companyName!}
                     ticker={tab.ticker!}
                     companyUrl={tab.companyUrl}
+                    onLatestTurnChange={handleLatestTurnChange}
                     onSaveAsNote={
                       session
                         ? (text) => {

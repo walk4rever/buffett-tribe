@@ -6,6 +6,7 @@ import { NotesSidebar } from "@/components/agent-workspace/NotesSidebar";
 import { WatchlistSection } from "@/components/agent-workspace/WatchlistSection";
 import type { Note } from "@/hooks/useNotes";
 import type { WatchlistCompanyItem } from "@/hooks/useWatchlist";
+import type { AgentTurnPreview } from "@/lib/agent-workspace-ui";
 
 interface WorkspaceSidebarProps {
   notes: Note[];
@@ -17,6 +18,10 @@ interface WorkspaceSidebarProps {
   onSelectCompany: (company: WatchlistCompanyItem) => void;
   onRemoveCompany?: (ticker: string) => void;
   watchlistLoading?: boolean;
+  onWatchlistOpenChange?: (open: boolean) => void;
+  latestByContextKey?: Record<string, AgentTurnPreview>;
+  previewsLoading?: boolean;
+  previewsError?: boolean;
 }
 
 export function WorkspaceSidebar({
@@ -29,16 +34,24 @@ export function WorkspaceSidebar({
   onSelectCompany,
   onRemoveCompany,
   watchlistLoading,
+  onWatchlistOpenChange,
+  latestByContextKey,
+  previewsLoading,
+  previewsError,
 }: WorkspaceSidebarProps) {
-  // 默认「资料」和「关注」均为折叠（null）。点击哪个打开哪个，其余自动折叠。
+  // Keep only one workspace section open at a time.
   const [openSection, setOpenSection] = useState<"notes" | "watchlist" | null>(null);
 
   const toggleNotes = () => {
-    setOpenSection((prev) => (prev === "notes" ? null : "notes"));
+    const next = openSection === "notes" ? null : "notes";
+    setOpenSection(next);
+    onWatchlistOpenChange?.(false);
   };
 
   const toggleWatchlist = () => {
-    setOpenSection((prev) => (prev === "watchlist" ? null : "watchlist"));
+    const next = openSection === "watchlist" ? null : "watchlist";
+    setOpenSection(next);
+    onWatchlistOpenChange?.(next === "watchlist");
   };
 
   return (
@@ -55,6 +68,7 @@ export function WorkspaceSidebar({
               e.stopPropagation();
               onCreateNote();
               setOpenSection("notes");
+              onWatchlistOpenChange?.(false);
             }}
             title="新建笔记"
           >
@@ -76,6 +90,9 @@ export function WorkspaceSidebar({
           onSelectCompany={onSelectCompany}
           onRemoveCompany={onRemoveCompany}
           loading={watchlistLoading}
+          latestByContextKey={latestByContextKey}
+          previewsLoading={previewsLoading}
+          previewsError={previewsError}
         />
       </CollapsibleSection>
     </div>

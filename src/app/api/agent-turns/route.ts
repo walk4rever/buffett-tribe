@@ -5,7 +5,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { agentContextSchema, deriveContextKey } from "@/lib/agent-context";
-import { getRecentTurns } from "@/lib/agent-history";
+import { getLatestCompanyTurnPreviews, getRecentTurns } from "@/lib/agent-history";
 import { imageExtensionForMimeType, validateImageAttachments, type ImageAttachment } from "@/lib/image-attachment";
 import { buildUserObjectKey, uploadToR2 } from "@/lib/r2";
 import { NO_STORE_HEADERS } from "@/lib/http-cache";
@@ -26,6 +26,15 @@ async function uploadChatImages(userId: string, images: ImageAttachment[]): Prom
   return urls;
 }
 
+const postBodySchema = z.object({
+  context: agentContextSchema.optional(),
+  role: z.enum(["user", "assistant"]),
+  text: z.string(),
+  images: z.unknown().optional(),
+});
+
+const companyTickersSchema = z.array(z.string().trim().min(1).max(64)).max(100);
+
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -33,19 +42,23 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const contextKey = searchParams.get("contextKey") ?? deriveContextKey(undefined);
+  const requestedTickers = searchParams.getAll("companyTicker");
+  if (requestedTickers.length > 0) {
+    const parsed = companyTickersSchema.safeParse(requestedTickers);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "invalid company tickers" }, { status: 400 });
+    }
 
+    const tickers = [...new Set(parsed.data)];
+    const latestByContextKey = await getLatestCompanyTurnPreviews(session.user.id, tickers);
+    return NextResponse.json({ latestByContextKey }, { headers: NO_STORE_HEADERS });
+  }
+
+  const contextKey = searchParams.get("contextKey") ?? deriveContextKey(undefined);
   const turns = await getRecentTurns(session.user.id, contextKey);
 
   return NextResponse.json({ turns }, { headers: NO_STORE_HEADERS });
 }
-
-const postBodySchema = z.object({
-  context: agentContextSchema.optional(),
-  role: z.enum(["user", "assistant"]),
-  text: z.string(),
-  images: z.unknown().optional(),
-});
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import React, { useMemo, useState, useRef } from "react";
+import { Building2, Check, Loader2, Sparkles } from "lucide-react";
 
 export type CompanyMarket = "us" | "hk" | "cn";
 
@@ -65,7 +66,7 @@ export function CompanyGrid({
           className="companies-fasttrack-btn companies-fasttrack-btn--queued"
           title={isP0 ? "已进入快速通道排队中，下次批处理将优先建档" : "已进入快速通道排队中，下次批处理将优先深度分析"}
         >
-          <span className="companies-fasttrack-icon" aria-hidden="true">✓</span>
+          <Check className="companies-fasttrack-icon" size={12} strokeWidth={2.2} aria-hidden="true" />
           <span>已排队</span>
         </span>
       );
@@ -84,9 +85,13 @@ export function CompanyGrid({
         title={isP0 ? "申请快速通道优先建档" : "申请快速通道优先深度分析"}
       >
         {isPending ? (
-          <span className="companies-fasttrack-spinner" aria-hidden="true" />
+          <Loader2 className="companies-fasttrack-pending-icon" size={12} aria-hidden="true" />
         ) : (
-          <span className="companies-fasttrack-icon" aria-hidden="true">⚡</span>
+          isP0 ? (
+            <Building2 className="companies-fasttrack-icon" size={12} strokeWidth={2} aria-hidden="true" />
+          ) : (
+            <Sparkles className="companies-fasttrack-icon" size={12} strokeWidth={2} aria-hidden="true" />
+          )
         )}
         <span>{isPending ? "排队中…" : isP0 ? "建档" : "深析"}</span>
       </button>

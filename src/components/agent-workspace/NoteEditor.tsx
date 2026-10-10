@@ -4,8 +4,9 @@ import { useRef, useState } from "react";
 import type { ClipboardEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Eye, Edit3, Trash2, X, Check } from "lucide-react";
+import { AlertCircle, Check, Eye, Edit3, LoaderCircle, Trash2, X } from "lucide-react";
 import { mdComponents } from "@/lib/markdown-components";
+import { getNoteSaveLabel, type NoteSaveStatus } from "@/lib/agent-workspace-ui";
 import { CopyMarkdownButton } from "@/components/CopyMarkdownButton";
 import { fileToImageAttachment, isSupportedImageFile } from "@/lib/downscale-image";
 import type { ImageAttachment } from "@/lib/image-attachment";
@@ -15,6 +16,8 @@ interface NoteEditorProps {
   content: string;
   onChangeTitle: (title: string) => void;
   onChangeContent: (content: string) => void;
+  saveStatus: NoteSaveStatus;
+  onRetrySave: () => void;
   onClose: () => void;
   onDelete: () => void;
 }
@@ -32,7 +35,16 @@ async function uploadNoteImage(attachment: ImageAttachment): Promise<string | nu
   return url;
 }
 
-export function NoteEditor({ title, content, onChangeTitle, onChangeContent, onClose, onDelete }: NoteEditorProps) {
+export function NoteEditor({
+  title,
+  content,
+  onChangeTitle,
+  onChangeContent,
+  saveStatus,
+  onRetrySave,
+  onClose,
+  onDelete,
+}: NoteEditorProps) {
   const [mode, setMode] = useState<ViewMode>("preview");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -74,9 +86,24 @@ export function NoteEditor({ title, content, onChangeTitle, onChangeContent, onC
         {/* Row 1: Note Action Bar */}
         <div className="agent-note-top-bar">
           <div className="agent-note-top-left">
-            <span className="agent-note-autosave-tag" title="更改自动保存至数据库">
-              <Check size={11} />
-              <span>已自动保存</span>
+            <span
+              className={`agent-note-autosave-tag is-${saveStatus}`}
+              role="status"
+              aria-live="polite"
+            >
+              {saveStatus === "saving" ? (
+                <LoaderCircle size={13} className="agent-note-save-spinner" />
+              ) : saveStatus === "error" ? (
+                <AlertCircle size={13} />
+              ) : (
+                <Check size={13} />
+              )}
+              <span>{getNoteSaveLabel(saveStatus)}</span>
+              {saveStatus === "error" && (
+                <button type="button" className="agent-note-save-retry" onClick={onRetrySave}>
+                  重试
+                </button>
+              )}
             </span>
           </div>
 
@@ -167,4 +194,3 @@ export function NoteEditor({ title, content, onChangeTitle, onChangeContent, onC
     </div>
   );
 }
-

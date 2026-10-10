@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { NoteSaveStatus } from "@/lib/agent-workspace-ui";
 
 export interface Note {
   id: string;
@@ -21,7 +22,15 @@ export function useNotes() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ title: string; content: string } | null>(null);
+  const [saveStatus, setSaveStatus] = useState<NoteSaveStatus>("saved");
+  const draftRef = useRef<{ title: string; content: string } | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveRevisionRef = useRef(0);
+  const pendingSaveRef = useRef<{
+    id: string;
+    patch: { title: string; content: string };
+    revision: number;
+  } | null>(null);
 
   useEffect(() => {
     fetch("/api/notes", { cache: "no-store" })
@@ -34,22 +43,26 @@ export function useNotes() {
 
   const activeNote = notes.find((n) => n.id === activeNoteId) ?? null;
 
-  function openNote(id: string) {
-    flushPendingSave();
+  async function openNote(id: string) {
+    if (!(await flushPendingSave())) return;
     const note = notes.find((n) => n.id === id);
     if (!note) return;
     setActiveNoteId(id);
-    setDraft({ title: note.title ?? "", content: note.content });
+    const nextDraft = { title: note.title ?? "", content: note.content };
+    draftRef.current = nextDraft;
+    setDraft(nextDraft);
+    setSaveStatus("saved");
   }
 
-  function closeEditor() {
-    flushPendingSave();
+  async function closeEditor() {
+    if (!(await flushPendingSave())) return;
     setActiveNoteId(null);
+    draftRef.current = null;
     setDraft(null);
   }
 
   async function createNote(content = ""): Promise<void> {
-    flushPendingSave();
+    if (!(await flushPendingSave())) return;
     const res = await fetch("/api/notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -59,50 +72,82 @@ export function useNotes() {
     const { note } = (await res.json()) as { note: Note };
     setNotes((prev) => [note, ...prev]);
     setActiveNoteId(note.id);
-    setDraft({ title: note.title ?? "", content: note.content });
+    const nextDraft = { title: note.title ?? "", content: note.content };
+    draftRef.current = nextDraft;
+    setDraft(nextDraft);
+    setSaveStatus("saved");
   }
 
-  function scheduleSave(id: string, patch: { title?: string; content?: string }) {
+  function scheduleSave(id: string, patch: { title: string; content: string }) {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => void persist(id, patch), AUTOSAVE_DEBOUNCE_MS);
+    const save = {
+      id,
+      patch,
+      revision: ++saveRevisionRef.current,
+    };
+    pendingSaveRef.current = save;
+    setSaveStatus("saving");
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      void persist(save);
+    }, AUTOSAVE_DEBOUNCE_MS);
   }
 
-  async function persist(id: string, patch: { title?: string; content?: string }) {
-    const res = await fetch(`/api/notes/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    }).catch(() => null);
-    if (!res?.ok) return;
-    const { note } = (await res.json()) as { note: Note };
-    setNotes((prev) =>
-      [note, ...prev.filter((n) => n.id !== id)].sort(
-        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      ),
-    );
+  async function persist(save: NonNullable<typeof pendingSaveRef.current>, keepalive = false) {
+    if (save.revision === saveRevisionRef.current) setSaveStatus("saving");
+    try {
+      const res = await fetch(`/api/notes/${save.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(save.patch),
+        keepalive,
+      });
+      if (!res.ok) throw new Error("Note save failed");
+
+      const { note } = (await res.json()) as { note: Note };
+      if (save.revision === saveRevisionRef.current) {
+        pendingSaveRef.current = null;
+        setSaveStatus("saved");
+        setNotes((prev) =>
+          [note, ...prev.filter((n) => n.id !== save.id)].sort(
+            (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+          ),
+        );
+      }
+      return true;
+    } catch {
+      if (save.revision === saveRevisionRef.current) setSaveStatus("error");
+      return false;
+    }
   }
 
-  function flushPendingSave() {
-    if (!saveTimerRef.current || !activeNoteId || !draft) return;
-    clearTimeout(saveTimerRef.current);
+  async function flushPendingSave(): Promise<boolean> {
+    const save = pendingSaveRef.current;
+    if (!save) return true;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = null;
-    void persist(activeNoteId, { title: draft.title, content: draft.content });
+    return persist(save);
   }
 
   function updateDraft(patch: Partial<{ title: string; content: string }>) {
     if (!activeNoteId) return;
-    setDraft((prev) => {
-      const next = { ...(prev ?? { title: "", content: "" }), ...patch };
-      // Schedule the full merged draft, not just this call's partial patch — two
-      // fields edited within the same debounce window would otherwise cancel each
-      // other's pending save and only the last-edited field would ever reach the DB.
-      scheduleSave(activeNoteId, next);
-      return next;
-    });
+    const next = { ...(draftRef.current ?? { title: "", content: "" }), ...patch };
+    draftRef.current = next;
+    setDraft(next);
+    scheduleSave(activeNoteId, next);
   }
 
   async function deleteNote(id: string) {
-    if (activeNoteId === id) closeEditor();
+    if (activeNoteId === id) {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+      pendingSaveRef.current = null;
+      saveRevisionRef.current += 1;
+      setActiveNoteId(null);
+      draftRef.current = null;
+      setDraft(null);
+      setSaveStatus("saved");
+    }
     setNotes((prev) => prev.filter((n) => n.id !== id));
     await fetch(`/api/notes/${id}`, { method: "DELETE" }).catch(() => {});
   }
@@ -110,6 +155,15 @@ export function useNotes() {
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      const save = pendingSaveRef.current;
+      if (save) {
+        void fetch(`/api/notes/${save.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(save.patch),
+          keepalive: true,
+        }).catch(() => {});
+      }
     };
   }, []);
 
@@ -117,8 +171,10 @@ export function useNotes() {
     notes,
     activeNote,
     draft,
+    saveStatus,
     openNote,
     closeEditor,
+    flushPendingSave,
     createNote,
     updateDraft,
     deleteNote,

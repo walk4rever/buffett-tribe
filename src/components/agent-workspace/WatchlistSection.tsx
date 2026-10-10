@@ -1,28 +1,31 @@
 "use client";
 
-import { Star, Sparkles, Trash2 } from "lucide-react";
-import { useWatchlist, type WatchlistCompanyItem } from "@/hooks/useWatchlist";
+import { Star, Trash2 } from "lucide-react";
+import type { AgentTurnPreview } from "@/lib/agent-workspace-ui";
+import { summarizeConversationPreview } from "@/lib/agent-workspace-ui";
+import type { WatchlistCompanyItem } from "@/hooks/useWatchlist";
 
 interface WatchlistSectionProps {
-  items?: WatchlistCompanyItem[];
+  items: WatchlistCompanyItem[];
   activeTicker?: string | null;
   onSelectCompany?: (company: WatchlistCompanyItem) => void;
   onRemoveCompany?: (ticker: string) => void;
   loading?: boolean;
+  latestByContextKey?: Record<string, AgentTurnPreview>;
+  previewsLoading?: boolean;
+  previewsError?: boolean;
 }
 
 export function WatchlistSection({
-  items: propsItems,
+  items,
   activeTicker,
   onSelectCompany,
-  onRemoveCompany: propsOnRemove,
-  loading: propsLoading,
-}: WatchlistSectionProps = {}) {
-  const hookWatchlist = useWatchlist();
-
-  const items = propsItems ?? hookWatchlist.items;
-  const loading = propsLoading ?? hookWatchlist.loading;
-  const onRemoveCompany = propsOnRemove ?? hookWatchlist.removeWatchlist;
+  onRemoveCompany,
+  loading = false,
+  latestByContextKey = {},
+  previewsLoading = false,
+  previewsError = false,
+}: WatchlistSectionProps) {
   if (loading && items.length === 0) {
     return (
       <div className="agent-workspace-empty-card">
@@ -36,7 +39,7 @@ export function WatchlistSection({
       <div className="agent-workspace-empty-card">
         <Star size={22} className="agent-workspace-empty-icon" />
         <p className="agent-workspace-empty-text">
-          暂无关注公司。在公司详情页点击「收藏」星标即可加入关注，随时在此调起专属投研对话。
+          暂无关注公司。在公司详情页点击星标关注后，最近对话会显示在这里。
         </p>
       </div>
     );
@@ -47,6 +50,15 @@ export function WatchlistSection({
       {items.map((company: WatchlistCompanyItem) => {
         const isActive =
           activeTicker && activeTicker.toUpperCase() === company.ticker.toUpperCase();
+        const preview = latestByContextKey[`company:${company.ticker}`];
+        const previewText = preview
+          ? summarizeConversationPreview(preview.text) || "发送了图片"
+          : previewsLoading
+            ? "正在读取最近对话…"
+            : previewsError
+              ? "暂时无法加载对话记录"
+              : "还没有对话记录";
+        const companyName = company.companyName || company.ticker;
 
         return (
           <li key={company.id} className="agent-workspace-watchlist-li">
@@ -54,20 +66,21 @@ export function WatchlistSection({
               type="button"
               className={`agent-workspace-watchlist-item ${isActive ? "is-active" : ""}`}
               onClick={() => onSelectCompany?.(company)}
-              title={`打开 ${company.companyName || company.ticker} 专属投研对话`}
+              title={companyName}
+              aria-label={`打开 ${companyName} 的对话`}
             >
               <div className="agent-workspace-watchlist-head">
-                <span className="agent-workspace-watchlist-ticker">
-                  {company.ticker}
-                </span>
-                <span className="agent-workspace-watchlist-hint">
-                  <Sparkles size={11} className="agent-workspace-watchlist-sparkle" />
-                  <span>AI解读</span>
-                </span>
+                <span className="agent-workspace-watchlist-name">{companyName}</span>
+                <span className="agent-workspace-watchlist-ticker">{company.ticker}</span>
               </div>
               <div className="agent-workspace-watchlist-body">
-                <span className="agent-workspace-watchlist-name">
-                  {company.companyName || company.ticker}
+                {preview?.role === "user" && (
+                  <span className="agent-workspace-watchlist-preview-role">
+                    你
+                  </span>
+                )}
+                <span className="agent-workspace-watchlist-preview">
+                  {previewText}
                 </span>
               </div>
             </button>
