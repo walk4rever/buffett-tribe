@@ -177,7 +177,7 @@ Canvas 的数据来自结构化事实层（财务数据，来自 EDGAR / 市场�
 Agent 由 pi-gateway（Express SSE，air7，PM2）驱动，使用 `@earendil-works/pi-coding-agent` 框架，LLM 为 DeepSeek。
 
 三个工具：
-- **`search_wisdom`** 查询资料库：原生智慧库语义检索，DashScope text-embedding-v4 1536d（Supabase pgvector）
+- **`search_wisdom`** 查询资料库：原生智慧库语义检索，DashScope text-embedding-v4 1536d（Supabase pgvector）。支持 `master: munger` 自动路由至伯克希尔年会联合档案并优先置顶芒格（CM:）发言；阈值优化并增加防后勤词检索引导。
 - **`search_holdings`** 查询持仓明细：Supabase SQL，Holding → Security → Entity 联表，覆盖全部 5 位投资人（从 `Filer` 表动态读取）
 - **`search_filings`** 查询公司年报：FilingSection 结构化抽取，section alias 映射，keyword excerpt
 

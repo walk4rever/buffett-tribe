@@ -18,7 +18,7 @@ async function getEmbedding(text: string): Promise<number[]> {
   return data.data[0].embedding;
 }
 
-type WisdomRow = {
+export type WisdomRow = {
   chunk_text: string;
   title: string | null;
   slug: string;
@@ -26,9 +26,12 @@ type WisdomRow = {
   score: number;
 };
 
-async function vectorSearch(embedding: number[], master: string | null, limit: number): Promise<WisdomRow[]> {
+export async function vectorSearch(embedding: number[], master: string | null, limit: number): Promise<WisdomRow[]> {
+  // Munger's wisdom in the database is recorded within Berkshire annual meetings under 'buffett'
+  const effectiveMaster = master === "munger" ? "buffett" : (master ?? null);
+
   // Embed as a literal: pg's extended query protocol doesn't support ::vector cast for user-defined types.
-  // The embedding comes from OpenAI (not user input) so interpolation is safe.
+  // The embedding comes from DashScope/OpenAI (not user input) so interpolation is safe.
   const embLiteral = `'[${embedding.join(",")}]'::vector`;
   const result = await pool.query<WisdomRow>(
     `
@@ -46,13 +49,28 @@ async function vectorSearch(embedding: number[], master: string | null, limit: n
     ORDER BY cc.embedding <=> ${embLiteral}
     LIMIT $2
     `,
-    [master ?? null, limit],
+    [effectiveMaster, master === "munger" ? limit * 2 : limit],
   );
-  return result.rows.filter((r) => r.score >= 0.3);
+
+  let rows = result.rows.filter((r) => r.score >= 0.25);
+  if (master === "munger" && rows.length > 0) {
+    // When munger is specifically requested, prioritize passages with CM / Charlie / Munger quotes
+    rows.sort((a, b) => {
+      const aHasMunger = /CM:|Charlie|Munger|芒格/i.test(a.chunk_text);
+      const bHasMunger = /CM:|Charlie|Munger|芒格/i.test(b.chunk_text);
+      if (aHasMunger && !bHasMunger) return -1;
+      if (!aHasMunger && bHasMunger) return 1;
+      return b.score - a.score;
+    });
+    rows = rows.slice(0, limit);
+  }
+  return rows;
 }
 
-function formatChunks(chunks: WisdomRow[]): string {
-  if (chunks.length === 0) return "No relevant passages found in the wisdom library.";
+export function formatChunks(chunks: WisdomRow[]): string {
+  if (chunks.length === 0) {
+    return "No relevant passages found in the wisdom library. (Tip: Search by specific investment principles, business moat, or mental model topics rather than generic terms like 'annual meeting' or 'Q&A'.)";
+  }
   return chunks
     .map((c) => {
       const fm = c.frontmatter ?? {};
@@ -74,7 +92,7 @@ export const searchWisdomTool = defineTool({
     query: Type.String({ description: "Topic or question to search for" }),
     master: Type.Optional(
       Type.String({
-        description: "Filter by master: buffett | munger | lilu | duanyongping",
+        description: "Filter by master: buffett | munger | lilu | duanyongping ('munger' searches co-attended Berkshire meeting archives)",
       }),
     ),
   }),

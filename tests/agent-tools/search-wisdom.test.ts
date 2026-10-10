@@ -39,7 +39,19 @@ describe.skipIf(!hasDeps)("search_wisdom golden cases (live DB + DashScope embed
       undefined,
     );
     const text = result.content[0]?.type === "text" ? result.content[0].text : "";
-    expect(text).not.toBe("No relevant passages found in the wisdom library.");
+    expect(text).not.toContain("No relevant passages found");
+    expect(result.details).toMatchObject({ count: expect.any(Number) });
+    expect((result.details as { count: number }).count).toBeGreaterThan(0);
+  }, 30_000);
+
+  it("successfully routes master=munger to Berkshire archives and returns passages", async () => {
+    const result = await searchWisdomTool.execute(
+      "test-munger",
+      { query: "modern finance theory", master: "munger" },
+      undefined,
+    );
+    const text = result.content[0]?.type === "text" ? result.content[0].text : "";
+    expect(text).not.toContain("No relevant passages found");
     expect(result.details).toMatchObject({ count: expect.any(Number) });
     expect((result.details as { count: number }).count).toBeGreaterThan(0);
   }, 30_000);

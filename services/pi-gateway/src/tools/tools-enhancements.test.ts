@@ -80,3 +80,28 @@ describe("formatHoldingsAcrossMasters", () => {
     expect(res).toContain("变动: -1.2%");
   });
 });
+
+describe("formatChunks", () => {
+  it("returns helpful guidance when chunks are empty", async () => {
+    const { formatChunks } = await import("./search-wisdom.js");
+    const res = formatChunks([]);
+    expect(res).toContain("No relevant passages found in the wisdom library.");
+    expect(res).toContain("Search by specific investment principles");
+  });
+
+  it("formats passages with labels properly", async () => {
+    const { formatChunks } = await import("./search-wisdom.js");
+    const mockChunks = [
+      {
+        chunk_text: "CM: Invert, always invert.",
+        title: "Mental Models",
+        slug: "1995_annual_meeting",
+        frontmatter: { master: "buffett", year: 1995 },
+        score: 0.88,
+      },
+    ];
+    const res = formatChunks(mockChunks);
+    expect(res).toContain("[buffett · 1995 · Mental Models]");
+    expect(res).toContain("CM: Invert, always invert.");
+  });
+});

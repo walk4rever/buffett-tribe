@@ -1190,8 +1190,174 @@ air7 云服务器 (Ubuntu 2 vCPU, 3.5GB 物理内存，可用 ~2.3GB，2GB Swap)
   - 运行全量单元测试（`npm test`），30 个测试套件 250 个用例全部通过；
   - 数据库架构极其清晰，消除了在 Supabase 仪表盘以及后续 `prisma migrate diff` 时产生的所有遗留表噪音。
 
+---
 
+## 二十三、 大师资料库（Library）资产摸底、Agent 检索踩坑归因与 All-in-Markdown 架构重构方案（2026-10-10）
 
+### 1. 大师语料与言论数据资产全盘摸底
 
+对当前全库中关于**巴菲特（Warren Buffett）**与**查理·芒格（Charlie Munger）**等大师言论的存储、检索与展示层进行了端到端深度摸底：
 
+#### (1) 数据存储资产构成
+1. **中英双语信件库（`Source` & `Chunk` 表，文件位于 `data/shareholder/` 与 `data/partnership/`）**：
+   - **94 篇原始信件**：含 61 篇致股东信（1965–2025）、33 篇致合伙人信（1958–1970）；
+   - **8,825 个文本切片**：按“1段英文 + 1段中文”严格对齐，生成向量嵌入并附带 PostgreSQL `tsvector` 全文检索列。
+2. **大师智慧向量库（`WisdomPage` / `pages` 与 `WisdomChunk` / `content_chunks` 表）**：
+   - 原 GBrain 迁移至 Supabase 原生的 pgvector 知识库；
+   - **收录 138 篇巴菲特/芒格关联资料**（含 61 篇股东信、46 篇合伙人信、31 篇股东大会问答实录）；李录 151 篇、段永平 290 篇；
+   - **2,681 个切片**（使用阿里云百炼 DashScope `text-embedding-v4` 1536 维向量）；其中 127 条切片显式包含 `Munger` / `CM:` 发言。
+3. **经典文献与原版书籍（`Document` 表，原文存于 Cloudflare R2）**：
+   - 收录 9 部大部头文献，其中巴菲特名下为《Buffett & Munger Unscripted》（历年股东大会现场问答实录，包含 1994~2023 年巴菲特与芒格同台的精选问答对谈原版 PDF）；
+   - 段永平《投资问答录·投资篇/商业篇》PDF、李录文集 PDF。
+4. **深度播客与访谈文章（`InsightPost` 表）**：
+   - 227 篇深度研究长文，包含《查理·芒格 (Charlie Munger)》（Acquired 传记实录）、《查理·芒格与约翰·科里森对话录》（Invest Like the Best 对谈）。
+5. **大师画像与风格矩阵（`MasterProfile` 表）**：
+   - 伯克希尔哈撒韦投资风格、集中度演变及人物生平（`bio`, `fundOverview`）。
 
+#### (2) Agent 访问机制（`services/pi-gateway`）
+- **上下文感知注入**：当用户在巴菲特主页时，网关自动在会话起始注入：`[当前用户正在浏览投资人主页：巴菲特...调用 search_wisdom / search_holdings 时选择与这位投资人匹配的 master 过滤值。]`；
+- **检索工具 `search_wisdom(query, master?)`**：调用 DashScope 生成查询向量，通过 pgvector 计算余弦距离（`1 - (cc.embedding <=> query_vec)`），过滤 `score >= 0.3`，取 Top 6 真实段落。
+- **引用规则**：Prompt 强约束必须通过工具检索真实原文，并在文末严格使用规范格式：`**[Name] · [Year] [Source]**` + 真实引文。
+
+#### (3) 前端页面展示形态
+- **大师主页（`/master/buffett`）**：Hero 人物画像、AI 解读入口（`MasterAgentDialog` 悬浮窗）、资料库网格卡片（`#library`，汇聚信件、书籍、文章）、最新 13F 持仓饼图与明细；
+- **双语信件阅读器（`/letters/[type]/[year]`）**：组件 `LetterReadingArea`，支持中英双语对照、字号/行高自定义、表格格式化与左侧年份时间轴导航；
+- **原版 PDF 阅读器（`/documents/buffett/unscripted`）**：组件 `PdfViewer`，在线阅读《Unscripted》PDF；
+- **长文洞见阅读器（`/insights/[slug]`）**：阅读芒格专题访谈。
+
+---
+
+### 2. Agent 实测三大踩坑复盘与代码级底层归因
+
+在实机对话测试中，Agent 真实暴露了三个严重影响体验的痛点，经代码排查均定位到确凿根因：
+
+#### 坑 1：`master: munger` 筛选器 100% 查空
+- **现象**：Agent 传入 `master="munger"` 查芒格标志性观点（如 mental models、inversion），均返回 `"No relevant passages found"`。
+- **底层代码归因**：
+  - 在 [`search-wisdom.ts`](file:///Users/rafael/R129/buffett-tribe/services/pi-gateway/src/tools/search-wisdom.ts#L75-L79) 参数描述中明确向大模型声称支持 `buffett | munger | lilu | duanyongping`；
+  - 但底层 `pages` 表的 `frontmatter->>'master'` 实际上只有 `buffett`、`lilu`、`duanyongping` 三个值，根本没有 `munger`！
+  - 执行 SQL `WHERE ($1::text IS NULL OR p.frontmatter->>'master' = $1)` 时，由于值不匹配，SQL 恒为 0 行；
+  - **实情**：芒格的大量精妙言论全部存在以 `CM:` 开头的段落中，归属在 `buffett` 年会问答档案里。
+
+#### 坑 2：泛化词检索命中“牛排馆订位”等年会后勤通知
+- **现象**：搜索 `"annual meeting question answer"`，召回的全是记者提问邮箱、54个问题限额、Gorat's 牛排馆订座电话（`402-551-3733`）等后勤通知。
+- **底层数据归因**：
+  - 巴菲特历年致股东信（1965–2025）末尾几乎每年都有一个固定小节叫 `Annual Meeting`，详述参会凭证、大卖场打折和订餐安排；
+  - 当 Agent 使用“结构性词汇”泛搜时，语义向量高度契合这些后勤安排章节，导致真正探讨投资哲学的问答被后勤段落挤出。
+
+#### 坑 3：特定主题（如 "AI / 人工智能"）检索落空
+- **现象**：搜索 `"artificial intelligence AI jobs"` 或口语化短语 `"Charlie and I think"` 一无所获。
+- **底层数据归因**：
+  1. **语料源为精选集**：库内股东大会实录来源于书籍《Buffett & Munger Unscripted》（精选剪辑版），2023 年仅收录 576 行，当年现场零碎提问（如 AI、就业）未被编纂入书；
+  2. **纯单模向量检索缺陷**：当前 `search_wisdom` 完全依赖 DashScope 向量相似度，且硬设 `score >= 0.3` 阈值。当短语缺乏明确概念时，向量漂移跌破 0.3 即被丢弃；系统缺乏 PostgreSQL `tsvector` 全文检索的关键词保底补偿机制。
+
+---
+
+### 3. 大师资料库（Library）核心架构决议
+
+针对上述割裂与体验问题，确立两大不可动摇的架构原则：
+
+#### 原则一：坚决废弃 PDF Viewer 主阅读形态，R2 退居冷备下载
+- **第一性原理审视**：
+  - PDF 属于固定版式打印物，在移动端和窄屏下缩放、拖拽体验极差；
+  - PDF.js / Canvas 性能沉重，无法自适应排版；
+  - **致命伤在于无法与 AI / Agent 产生交互**：Agent 无法生成直接定位到 PDF 某一页某一行的 Deep Link，用户也无法选中 PDF 某句话即时呼起 AI 解读。
+- **重构决议**：
+  - **阅读体验 100% 转向原生 Web Markdown Reader**（具备字号/行距调节、TOC 目录树、双语对照、深色模式）；
+  - R2 与原始 PDF 仅作为备查存档，页面右上角提供低调的 `「📥 下载原始 PDF 备查」` 外链即可。
+
+#### 原则二：确立 All-in-Markdown 为单一真理源（Single Source of Truth, SSOT）
+- **解决“数据精神分裂”**：
+  - 彻底终结“前端读 `Source`、大会看 R2 PDF、Agent 搜 `WisdomChunk`、文章读 `InsightPost`”的四套平行系统局面；
+  - 所有大师资产全部收敛在 `data/wisdom/` 仓库，具备统一 YAML Frontmatter：
+    ```markdown
+    ---
+    id: buffett-1994-annual-meeting
+    master: buffett
+    speakers: [buffett, munger]
+    year: 1994
+    category: annual_meeting
+    title: 1994 Berkshire Hathaway Annual Meeting
+    source: Buffett & Munger Unscripted
+    ---
+    ```
+- **一次解析，三路赋能**：
+  1. **前端展示层**：保留完整 Markdown 章节树，支持锚点定位（如 `#declining-businesses`）；
+  2. **全文检索层**：提取标题与文本生成 PostgreSQL `tsvector`，解决专有名词精确匹配；
+  3. **语义检索层**：按逻辑问答/小节切分 Chunk，生成 1536 维 pgvector 向量，并将 `speakers: ['munger']`、`category` 写入元数据。
+- **Agent 引用 Deep Link 直达**：
+  - Agent 回答：“芒格在 1994 年年会曾指出……（[查看 1994 年会原文 #declining-businesses](/master/buffett/library/annual-meeting/1994#declining-businesses)）”；
+  - 用户点击链接后，页面直接平滑滚动并高亮该发言段落，实现投研交互闭环。
+
+---
+
+### 4. 前瞻扩展：`/agent` 工作区用户私有资料融合架构
+
+为满足 `/agent` 预留的“用户上传私有资料（研报/PPT/纪要/录音/截图），与平台公开数据深度融合分析”的需求，确立“**双轨制 + 统一 Markdown IR**”落地架构：
+
+```
+                    用户上传私有文件 (PDF / Word / PPT / 图片 / 音视频)
+                                        │
+                    ┌───────────────────┴───────────────────┐
+                    ▼                                       ▼
+       【快轨：会话级临时资料】                 【慢轨：个人永久资料库】
+       (单篇研报/几张截图/紧急分析)             (多篇长期跟踪研报/纪要/录音)
+                    │                                       │
+         轻量解析 (前端/网关流式处理)             异步任务队列 (Docling / Whisper)
+                    │                                       │
+             提取核心 Markdown                      转化为标准 Markdown 资产入库
+                    │                                       │
+     直接塞入当前 Agent 上下文                生成 user_chunks (pgvector 隔离)
+          (Long-Context 窗口)                               │
+                    │                             提供 search_user_docs 工具
+                    ▼                                       ▼
+       ┌────────────────────────────────────────────────────────┐
+       │                   Agent 决策与推理网关                 │
+       │                                                        │
+       │   融合 1: 用户私有研报 (search_user_docs / 临时注入)     │
+       │   融合 2: 平台公信财报 (get_company_analysis / 10-K)    │
+       │   融合 3: 大师投资哲学 (search_wisdom / 商业画布)      │
+       └────────────────────────────────────────────────────────┘
+```
+
+#### (1) 克服多模态与文本之间的鸿沟
+- **多格式压平为 Markdown**：Agent 内部只认结构化 Markdown。
+  - **复杂 PDF / Word / PPT**：采用工业级解析器（如 **Docling** 或大模型多模态 Document 直读），保留高保真表格与按页（Slide）切分的层级；
+  - **音视频**：采用 **Whisper-large-v3 / SenseVoice** 快速语音转文字，输出带时间戳与说话人（Diarization）的对话实录 Markdown；
+  - **图片/图表**：Vision 模型提取数据表格并生成图表意图摘要 Markdown。
+
+#### (2) 双轨制落地策略
+- **快轨（Session 级即传即聊，秒级响应）**：
+  - 针对单篇 10~20 页研报或截图；
+  - **不走重型切片与向量入库**，直接通过网关将轻量解析出的 Markdown 或文档原生 Payload 注入大模型超长上下文（128k~1M Long-Context Window），用户上传 2 秒即可开始提问。
+- **慢轨（Repository 级永久知识库，跨会话检索）**：
+  - 用户在工作区左侧长期沉淀数十篇材料；
+  - 走后台异步 Worker 解析，落入 `UserWisdomChunk` 表（以 `userId` 做严格租户数据隔离）；
+  - 为 Agent 挂载专用工具 `search_user_documents(query, docId?)`。
+
+#### (3) 三源协同投研推理
+Agent 面对复杂问题时，按需打出工具组合拳：
+1. `search_user_documents` $\rightarrow$ 抽取用户私有研报数据与预期；
+2. `get_company_analysis` + `search_filings` $\rightarrow$ 校验官方披露与历史基本面；
+3. `search_wisdom` $\rightarrow$ 调取巴菲特/段永平商业模式与护城河哲学；
+最终产出观点深刻、论据可溯源的深度研报。
+
+---
+
+### 5. 后续落地推进路线图（分期落地）
+
+- [x] **P0 - 快速根除当前 Agent 实测问题（已实施并验证通过，2026-10-10）**：
+  - 在 [`search-wisdom.ts`](file:///Users/rafael/R129/buffett-tribe/services/pi-gateway/src/tools/search-wisdom.ts) 中增加 `master: "munger"` 到 `"buffett"` 的别名映射路由，并将包含 `CM:` / 芒格发言的切片重排优先置顶；
+  - 优化向量过滤阈值（从 `0.3` 降至 `0.25`），并在空结果时返回引导性建议；
+  - 在 [`AGENTS.md`](file:///Users/rafael/R129/buffett-tribe/services/pi-gateway/AGENTS.md) 中增加防坑检索规范，明令禁止搜索泛化后勤词，并引导使用业务核心概念；
+  - 实测验证：检索 `{ query: "inversion mental models", master: "munger" }` 100% 成功命中并置顶芒格原话。
+- [ ] **P1 - 语料清洗与 All-in-Markdown 资产统一**：
+  - 将《Unscripted》PDF、段永平两册问答录全面转为高精度 Markdown 资产并纳管于 `data/wisdom/`；
+  - 标准化 YAML Frontmatter，将芒格问答段落打上 `speakers: [munger]` 标签；
+  - 编写统一入库脚本，生成统一的 `pgvector` 与 `tsvector` 双路索引。
+- [ ] **P2 - 前端统一阅读器（`MasterReader`）落地**：
+  - 提炼通用组件，支持中英双语、TOC 目录树与锚点定位；
+  - 淘汰 `PdfViewer`，为 Agent 提供精准到段落的 Deep Link 溯源交互。
+- [ ] **P3 - 私有资料工作区双轨接入**：
+  - 在 `/agent` 上线会话级附件上传直通网关（快轨）；
+  - 接入 Docling / Whisper 异步 Worker 与 `UserWisdomChunk` 隔离向量库（慢轨）。
