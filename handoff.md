@@ -1159,6 +1159,38 @@ air7 云服务器 (Ubuntu 2 vCPU, 3.5GB 物理内存，可用 ~2.3GB，2GB Swap)
    - 彻底消除了 Prisma Migration 误删大师向量表的风险；
    - 消除系统概念噪音与文档心智负担，正式确立 Supabase 原生 pgvector 知识库架构。
 
+---
+
+## 二十二、 Supabase 全量数据表盘点与废弃空表清理（2026-10-10）
+
+### 1. 盘点背景与第一性原理审查
+- 退役 GBrain 中间层后，对当前 Supabase 数据库（`public` schema）的全部 73 张数据表进行了系统性审计；
+- **排查目标**：清点数据库总表数、行数、磁盘占用，识别是否存在孤岛表、0 行空表以及未被代码引用的历史遗留系统垃圾表。
+
+### 2. 盘点与双重验证结果
+- **总表数**：73 张基础表（Base Tables）。
+- **表结构构成**：
+  1. **Prisma 业务核心表 (37张)**：全部在 `prisma/schema.prisma` 中纳管，包含 SEC 财报（`Financial` 59.9 万行）、行情（`StockPrice` 1,408 万行）、实体映射、问答等，全部健康运行；
+  2. **大师知识库原生表 (2张)**：`pages` (579 篇, 27 MB) 与 `content_chunks` (2,681 块, 88 MB)，已正式映射为 `WisdomPage` 与 `WisdomChunk`；
+  3. **保留的元数据表 (5张)**：包含历史数据的旧标签表 `tags` (1,253 行)、`config` (6 行)、`ingest_log` (9 行)、`files` (1 行)、`sources` (1 行) 均予以保留；
+  4. **完全为空（0行）且无业务引用的废弃外部表 (29张)**：
+     - **OAuth 历史鉴权模块 (3张)**：`oauth_clients`, `oauth_codes`, `oauth_tokens`（系统目前采用 NextAuth/Auth.js 标准表）；
+     - **Minion / Subagent 历史模块 (6张)**：`minion_jobs`, `minion_inbox`, `minion_attachments`, `subagent_messages`, `subagent_rate_leases`, `subagent_tool_executions`；
+     - **Eval 评估历史表 (3张)**：`eval_candidates`, `eval_capture_failures`, `eval_takes_quality_runs`；
+     - **预算历史表 (2张)**：`budget_ledger`, `budget_reservations`；
+     - **GBrain 规划的高级未用特性表 (15张)**：`takes`, `facts`, `links`, `raw_data`, `page_versions`, `timeline_entries`, `synthesis_evidence`, `drift_decisions`, `dream_verdicts`, `code_edges_chunk`, `code_edges_symbol`, `file_migration_ledger`, `access_tokens`, `mcp_request_log`, `gbrain_cycle_locks`。
+- **安全检查 (Double Check)**：
+  - 确认 29 张待清理表行数**严格为 0**；
+  - 确认**没有任何活跃业务表或保留表存在指向这 29 张表的外键依赖**（Reverse Foreign Keys 数量为 0）。
+
+### 3. 执行清理与效果验证
+- 执行 `DROP TABLE IF EXISTS ... CASCADE;` 安全删除了上述 29 张无用空表；
+- **清理后状态**：
+  - `public` schema 基础表总数从 **73 张缩减至 44 张**；
+  - 运行全量单元测试（`npm test`），30 个测试套件 250 个用例全部通过；
+  - 数据库架构极其清晰，消除了在 Supabase 仪表盘以及后续 `prisma migrate diff` 时产生的所有遗留表噪音。
+
+
 
 
 
