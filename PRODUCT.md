@@ -105,7 +105,7 @@ AI 是当前最好的手段之一，仅此而已；有更好的技术就持续�
 护城河在哪里？管理层可信吗？现在的价格有安全边际吗？
 
 Agent 是核心入口。三层知识驱动 Agent 自主决定如何回答：
-- **`search_wisdom`**：大师说了什么 — 年会记录、股东信、演讲、书（GBrain 知识图谱，语义检索）
+- **`search_wisdom`**：大师说了什么 — 年会记录、股东信、演讲、书（原生大师智慧库，Supabase pgvector 语义检索）
 - **`search_holdings`**：大师买了什么 — 5 位投资人的 13F 持仓：核心 3 位（巴菲特 / 李录 / 段永平）+ Alpha 2 位（Gavin Baker / Alex Sacerdote）（Supabase SQL，从 `Filer` 表动态读取）
 - **`search_filings`**：公司披露了什么 — 10-K / 20-F 年报章节（FilingSection，约 120 家，2020–2025）
 
@@ -177,7 +177,7 @@ Canvas 的数据来自结构化事实层（财务数据，来自 EDGAR / 市场�
 Agent 由 pi-gateway（Express SSE，air7，PM2）驱动，使用 `@earendil-works/pi-coding-agent` 框架，LLM 为 DeepSeek。
 
 三个工具：
-- **`search_wisdom`** 查询资料库：GBrain 语义检索，DashScope text-embedding-v4 1536d
+- **`search_wisdom`** 查询资料库：原生智慧库语义检索，DashScope text-embedding-v4 1536d（Supabase pgvector）
 - **`search_holdings`** 查询持仓明细：Supabase SQL，Holding → Security → Entity 联表，覆盖全部 5 位投资人（从 `Filer` 表动态读取）
 - **`search_filings`** 查询公司年报：FilingSection 结构化抽取，section alias 映射，keyword excerpt
 
@@ -1016,15 +1016,15 @@ Apple HIG 精简风格：
 | 数据库 | PostgreSQL via Prisma (Supabase) |
 | Agent 服务 | pi-gateway（Express SSE，air7 :3456，PM2）· `@earendil-works/pi-coding-agent` |
 | Agent LLM | DeepSeek（对话）· Claude API（批量生成分析内容） |
-| 知识层 | GBrain（air7 :3457，Supabase 后端，pgvector 1536d）— 大师知识图谱 |
-| Agent 工具 | `search_wisdom` → GBrain / `search_holdings` → Supabase SQL / `search_filings` → FilingSection SQL |
+| 知识层 | 原生大师智慧库（Supabase 后端，pgvector 1536d，WisdomPage / WisdomChunk） |
+| Agent 工具 | `search_wisdom` → Supabase pgvector / `search_holdings` → Supabase SQL / `search_filings` → FilingSection SQL |
 | 持仓数据 | SEC EDGAR 13F-HR（`pipeline-13f.ts` 自动化：导入持仓、对齐证券、自动通过 SEC 官方表补齐新公司 CIK、校验完整性） |
 | 财务数据 | SEC EDGAR XBRL（CompanyFacts + filing-level inline XBRL fallback） |
 | 原始文件 | Cloudflare R2（PDF、SEC filing HTML、index、附件、data files） |
 | 市场数据 | Yahoo Finance 导入脚本 + `StockPrice` |
 | 产品分析 | PostHog（前端事件，仍在补齐事件体系） |
 | 认证 | NextAuth.js |
-| 部署 | Vercel（主站）· air7（pi-gateway + GBrain） |
+| 部署 | Vercel（主站）· air7（pi-gateway） |
 
 ### Agent 运行时链路
 
@@ -1035,10 +1035,11 @@ Apple HIG 精简风格：
               └─► relay.air7.fun/pi/chat（nginx → :3456）
                     └─► pi-gateway（PM2，Express SSE）
                           ├─► @earendil-works/pi-coding-agent → DeepSeek API
-                          ├─► search_wisdom → GBrain（air7 :3457，pgvector 1536d）
+                          ├─► search_wisdom → Supabase pgvector (`pages`/`content_chunks`, 1536d)
                           ├─► search_holdings → Supabase（Holding SQL，Filer 表动态投资人清单）
                           └─► search_filings → Supabase（FilingSection SQL；优先读 section 自己的 text artifact，缺失才回退 FilingArtifact primary_html 现场解析——**2026-08-30 代码已改，air7 尚未跑 `services/pi-gateway/deploy.sh`，生产环境仍是旧的 primary_html 优先逻辑**，见 `handoff.md`）
 ```
+
 
 关键文件：
 

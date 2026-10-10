@@ -28,7 +28,7 @@
 核心定位：用价值投资框架帮助用户更好地理解和分析一家公司。你有一个投资想法——"泡泡玛特值得买吗？"——平台把这个问题放进价值投资框架里：护城河在哪里？管理层可信吗？现在的价格有安全边际吗？大师们怎么看这类生意？
 
 四层知识驱动 Agent：
-- 大师说了什么 → 年会记录、股东信、演讲、书（GBrain 知识图谱，语义检索）
+- 大师说了什么 → 年会记录、股东信、演讲、书（大师智慧库，Supabase pgvector 语义检索）
 - 大师买了什么 → 追踪投资人 13F 持仓（Supabase SQL）
 - 公司披露了什么 → 10-K / 20-F / 40-F 年报章节，美股+港股+A股（FilingSection 结构化抽取）
 - 网站自己写过什么 → 已生成的公司分析、`/insights` 洞见文章
@@ -119,13 +119,14 @@ Agent 服务（pi-gateway）运行在 air7 服务器，由 PM2 管理，通过 `
 | **数据库** | PostgreSQL · Prisma · Supabase |
 | **Agent 服务** | pi-gateway（Express SSE，air7，PM2），`@earendil-works/pi-coding-agent` |
 | **LLM** | DeepSeek（Agent 对话 + 批量生成分析） |
-| **知识层** | GBrain（air7，Supabase 后端，pgvector 1536d） |
+| **知识层** | 原生大师智慧库（Supabase pgvector 1536d，WisdomPage / WisdomChunk） |
 | **持仓数据** | SEC EDGAR 13F-HR |
 | **财务数据** | SEC EDGAR XBRL（CompanyFacts + inline XBRL） |
 | **原始文件** | Cloudflare R2（PDF、SEC filing HTML、附件） |
 | **市场数据** | Yahoo Finance 导入脚本 + StockPrice |
 | **认证** | NextAuth.js |
-| **部署** | Vercel（主站）· air7（pi-gateway + GBrain） |
+| **部署** | Vercel（主站）· air7（pi-gateway） |
+
 
 ---
 

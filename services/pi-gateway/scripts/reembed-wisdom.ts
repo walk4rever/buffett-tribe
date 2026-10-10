@@ -1,11 +1,9 @@
 /**
- * Re-embed GBrain's content_chunks with DashScope (search_wisdom's embedding provider).
+ * Backfill / re-embed content_chunks (WisdomChunk) with DashScope (search_wisdom's embedding provider).
  *
- * By default only backfills chunks with a NULL embedding — run this after any
- * `gbrain import`/`sync` job, since GBrain's own ingestion still writes via its
- * own (currently broken) embedding_model config and leaves new chunks
- * unembedded rather than mixing in a different vector space. Use --all to
- * force a full re-embed (e.g. after switching embedding models/providers).
+ * By default only backfills chunks with a NULL embedding. Run this whenever new
+ * wisdom passages are inserted without vectors, or use --all to force a full re-embed
+ * (e.g. after switching embedding models/providers or dimensions).
  *
  * Usage:
  *   tsx --env-file=.env scripts/reembed-wisdom.ts            # dry-run
@@ -13,6 +11,7 @@
  *   tsx --env-file=.env scripts/reembed-wisdom.ts --apply --all
  *   tsx --env-file=.env scripts/reembed-wisdom.ts --apply --limit 50
  */
+
 import { pool } from "../src/db.js";
 
 const DRY_RUN = !process.argv.includes("--apply");

@@ -1151,9 +1151,14 @@ air7 云服务器 (Ubuntu 2 vCPU, 3.5GB 物理内存，可用 ~2.3GB，2GB Swap)
    - 执行 `npx prisma generate` 生成强类型支持；
    - 编写探针验证 `prisma.wisdomPage.count()`（579）与 `prisma.wisdomChunk.count()`（2681）完全正常；
    - 执行 `npm test`，全站 30 个测试套件 250 个用例全量通过。
-3. **架构收益**：
+3. **本地脚本与文档收尾清理**：
+   - 彻底删除已成为死代码的两个外部桥接脚本：`scripts/export-letters-gbrain.ts`（导出 Markdown 给外部 CLI）与 `scripts/import-lilu-gbrain.py`（一次性 PDF 切片转换）；
+   - 保留并更新直连 Supabase 的原生向量维护脚本 `services/pi-gateway/scripts/reembed-wisdom.ts`（用于扫描 `WisdomChunk` 并调用 DashScope 补齐/重嵌 1536 维向量）；
+   - 更新 `README.md`、`PRODUCT.md` 及 `CLAUDE.md`，彻底清除已停用的 `GBrain (air7 :3457)` 描述。
+4. **架构收益**：
    - 彻底消除了 Prisma Migration 误删大师向量表的风险；
    - 消除系统概念噪音与文档心智负担，正式确立 Supabase 原生 pgvector 知识库架构。
+
 
 
 
