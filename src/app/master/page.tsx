@@ -5,8 +5,7 @@ import { getAvailableQuarters, getLatestPortfolioValueUsd } from "@/lib/master-d
 import { formatUsdInYi } from "@/lib/currency";
 import { BRAND_ZH } from "@/lib/brand";
 import { BookOpen, BarChart3 } from "lucide-react";
-
-export const dynamic = "force-dynamic";
+export const revalidate = 60; // ISR: cache for 60 seconds at edge, instant paint
 
 function logMasterIndexFallback(scope: string, err: unknown) {
   if (process.env.DEBUG_DB_FALLBACK !== "1") return;

@@ -9,8 +9,7 @@ import { getAvailableQuarters, getLatestPortfolioValueUsd } from "@/lib/master-d
 import { formatUsdInYi } from "@/lib/currency";
 import { BRAND_EN } from "@/lib/brand";
 import { BookOpen, BarChart3 } from "lucide-react";
-
-export const dynamic = "force-dynamic";
+export const revalidate = 60; // ISR: cache for 60 seconds at edge, instant mobile paint
 
 const POPULAR_COMPANIES = [
   { name: "贵州茅台", ticker: "600519", href: "/company/cn-600519" },
