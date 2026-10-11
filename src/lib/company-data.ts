@@ -441,6 +441,14 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
   }
 
   return [...byYear.entries()]
+    .filter(([, data]) =>
+      Boolean(
+        data.items.Revenue ||
+        data.items.NetIncome ||
+        data.items.OperatingCashFlow ||
+        data.items.TotalAssets
+      )
+    )
     .sort((a, b) => b[0] - a[0])
     .slice(0, limit)
     .map(([year, data]) => ({ year, periodEnd: data.periodEnd, items: data.items }));

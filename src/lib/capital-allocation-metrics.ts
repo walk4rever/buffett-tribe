@@ -47,7 +47,11 @@ export function computeCapitalAllocationStats(
   input: CapitalAllocationAnnualInput[],
 ): CapitalAllocationStats | null {
   const annuals = input
-    .filter((annual) => Number.isFinite(annual.year))
+    .filter(
+      (annual) =>
+        Number.isFinite(annual.year) &&
+        (annual.operatingCashFlow != null || annual.capEx != null || annual.roe != null),
+    )
     .slice()
     .sort((a, b) => a.year - b.year)
     .slice(-5);

@@ -156,4 +156,22 @@ describe("computeCapitalAllocationStats", () => {
     expect(stats?.capexPct).toBeNull();
     expect(stats?.fcfPct).toBeNull();
   });
+
+  it("excludes incomplete fiscal years that lack operating financials so completed years are not displaced", () => {
+    const stats = computeCapitalAllocationStats([
+      { year: 2021, operatingCashFlow: 100, capEx: 20, repurchaseAmt: 0, dividendsPaid: 10, shares: 100, roe: 20 },
+      { year: 2022, operatingCashFlow: 120, capEx: 25, repurchaseAmt: 0, dividendsPaid: 15, shares: 100, roe: 22 },
+      { year: 2023, operatingCashFlow: 140, capEx: 30, repurchaseAmt: 0, dividendsPaid: 20, shares: 100, roe: 24 },
+      { year: 2024, operatingCashFlow: 160, capEx: 35, repurchaseAmt: 0, dividendsPaid: 25, shares: 100, roe: 25 },
+      { year: 2025, operatingCashFlow: 180, capEx: 40, repurchaseAmt: 10, dividendsPaid: 30, shares: 98, roe: 26 },
+      // Incomplete/in-progress year with only a buyback event but no annual financials yet
+      { year: 2026, operatingCashFlow: null, capEx: null, repurchaseAmt: 5, dividendsPaid: null, shares: null, roe: null },
+    ]);
+
+    expect(stats?.periodCount).toBe(5);
+    expect(stats?.earliestYear).toBe(2021);
+    expect(stats?.latestYear).toBe(2025);
+    expect(stats?.annuals.map((a) => a.year)).toEqual([2021, 2022, 2023, 2024, 2025]);
+  });
 });
+

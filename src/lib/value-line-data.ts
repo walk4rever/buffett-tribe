@@ -357,6 +357,7 @@ export async function getValueLineData(
         dividendsPaid,
       };
     })
+    .filter((a) => a.revenue != null || a.netIncome != null || a.operatingCashFlow != null)
     .sort((a, b) => a.year - b.year);
 
   // Normalize historical shares & EPS for stock splits so older years are on the latest share basis

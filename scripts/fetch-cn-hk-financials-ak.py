@@ -536,8 +536,9 @@ def fetch_cn_records(code: str, from_year: int) -> list[dict[str, object]]:
                             rep_by_year[r_year] = rep_by_year.get(r_year, 0.0) + amt
 
             for r_year, total_amt in rep_by_year.items():
-                fy_date = f"{r_year}-12-31"
-                add_rec(fy_date, "FY", "ShareRepurchaseAmt", total_amt)
+                if r_year in completed_fy_years:
+                    fy_date = f"{r_year}-12-31"
+                    add_rec(fy_date, "FY", "ShareRepurchaseAmt", total_amt)
     except Exception as e:
         print(f"  warning: error processing CN share repurchases for {code}: {e}", file=sys.stderr)
 
