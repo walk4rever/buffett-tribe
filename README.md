@@ -121,7 +121,7 @@ Agent 服务（pi-gateway）运行在 air7 服务器，由 PM2 管理，通过 `
 | **LLM** | DeepSeek（Agent 对话 + 批量生成分析） |
 | **知识层** | 原生大师智慧库（Supabase pgvector 1536d，WisdomPage / WisdomChunk） |
 | **持仓数据** | SEC EDGAR 13F-HR |
-| **财务数据** | SEC EDGAR XBRL（CompanyFacts + inline XBRL） |
+| **财务数据** | SEC EDGAR 官方 REST（美股 CompanyFacts 全量法定主表整包拉取）· AkShare / 东方财富 / 新浪财经（A股、港股法定三张主表全量科目镜像） |
 | **原始文件** | Cloudflare R2（PDF、SEC filing HTML、附件） |
 | **市场数据** | Yahoo Finance 导入脚本 + StockPrice |
 | **认证** | NextAuth.js |
