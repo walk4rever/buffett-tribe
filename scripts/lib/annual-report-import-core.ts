@@ -59,7 +59,7 @@ export type InlineXbrlDocument = {
   facts: InlineXbrlFact[];
 };
 
-import { CANONICAL_FINANCIAL_DICTIONARY, CanonicalLineItemConfig } from "../../src/lib/canonical-financial-dictionary";
+import { CANONICAL_FINANCIAL_DICTIONARY } from "../../src/lib/canonical-financial-dictionary";
 
 export type LineItemConfig = {
   key: string;

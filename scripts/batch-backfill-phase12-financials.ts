@@ -29,6 +29,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import prisma from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { backfillCompanyFinancialsFast } from "./backfill-company-financials-fast";
 
 type Market = "us" | "cn" | "hk";
@@ -162,7 +163,7 @@ async function main() {
   const marketFilter = marketArg === "all" ? { in: ["us", "cn", "hk"] } : marketArg;
 
   // Query all Phase 1 and Phase 2 entities
-  const whereClause: any = {
+  const whereClause: Prisma.EntityWhereInput = {
     type: "company",
     onboardPhase: { in: [1, 2] },
     market: marketFilter,

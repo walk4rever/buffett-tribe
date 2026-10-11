@@ -88,7 +88,7 @@ async function verifyCompany(entityId: string, market: "US" | "CN" | "HK", symbo
     }));
     const ca = computeCapitalAllocationStats(annualInputs);
     capitalAllocationOk = ca.periodCount > 0;
-  } catch (e) {
+  } catch {
     capitalAllocationOk = false;
   }
 
@@ -104,7 +104,7 @@ async function verifyCompany(entityId: string, market: "US" | "CN" | "HK", symbo
       currency,
     );
     dashboardOk = Boolean(dash && dash.rows?.length > 0 && dash.displayYears?.length > 0);
-  } catch (e) {
+  } catch {
     dashboardOk = false;
   }
 
