@@ -157,6 +157,17 @@ export const LINE_ITEMS: LineItemConfig[] = [
     unitCandidates: ["USD"],
     periodType: "duration",
   },
+  {
+    key: "DividendsPaid",
+    tagsUsGaap: [
+      "PaymentsOfDividends",
+      "PaymentsOfDividendsCommonStock",
+      "PaymentsOfDividendsPreferredStock",
+    ],
+    tagsIfrs: ["DividendsPaid", "DividendsPaidClassifiedAsFinancingActivities"],
+    unitCandidates: ["USD"],
+    periodType: "duration",
+  },
 ];
 
 const TICKER_ALIASES: Record<string, string> = {

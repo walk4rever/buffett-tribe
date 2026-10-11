@@ -54,6 +54,9 @@ MAPPING_CASH_FLOW = {
     "Cash Flow From Continuing Operating Activities": "OperatingCashFlow",
     "Capital Expenditure": "CapEx",
     "Free Cash Flow": "FreeCashFlow",
+    "Cash Dividends Paid": "DividendsPaid",
+    "Dividends Paid": "DividendsPaid",
+    "Common Stock Dividend Paid": "DividendsPaid",
 }
 
 

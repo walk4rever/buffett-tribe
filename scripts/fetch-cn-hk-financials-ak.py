@@ -33,9 +33,11 @@ filtering 报告日 ending in "1231". Column names verified against Moutai
 template (e.g. CMB 600036) names the same concepts differently (归属于母
 公司的净利润, 归属于母公司股东的权益) — both variants are mapped. No
 dedicated buyback column exists in either template, so ShareRepurchaseAmt
-is left unmapped for CN rather than guessed; GrossProfit is derived as
-营业收入 - 营业成本 (a standard identity, not a raw column; skipped for
-banks, which have no 营业成本).
+is left unmapped for CN rather than guessed. Dividend rows are mapped only
+when the source names dividends separately; the combined “dividends, profits
+and interest paid” line is not used. GrossProfit is derived as 营业收入 -
+营业成本 (a standard identity, not a raw column; skipped for banks, which
+have no 营业成本).
 """
 
 from __future__ import annotations
@@ -49,8 +51,11 @@ from pathlib import Path
 import akshare as ak
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+from cn_dividend_akshare import fetch_cn_dividend_records as fetch_akshare_cn_dividends
+
 # STD_ITEM_NAME -> Financial.lineItem, verified against scripts/lib/
-# annual-report-import-core.ts's LINE_ITEMS (the same 12 keys the US SEC
+# annual-report-import-core.ts's LINE_ITEMS (the same canonical keys the US SEC
 # import pipeline writes). Names, not STD_ITEM_CODEs: codes differ across
 # industry templates (industrial "004xxx" vs insurer/bank "002xxx"), while
 # the core names are shared or aliased per template. Names verified against
@@ -75,6 +80,10 @@ HK_ITEM_NAME_MAP: dict[str, str] = {
     "经营业务现金净额": "OperatingCashFlow",
     "购建固定资产": "CapEx",
     "回购股份": "ShareRepurchaseAmt",  # see suspicious-repurchase check in check-all-company-financials.ts
+    "支付股息": "DividendsPaid",
+    "已付股息": "DividendsPaid",
+    "已付股息(融资)": "DividendsPaid",
+    "股息支付": "DividendsPaid",
 }
 
 HK_STATEMENTS = ["资产负债表", "利润表", "现金流量表"]
@@ -121,6 +130,8 @@ CN_COLUMN_MAP: dict[str, str] = {
     "经营活动产生的现金流量净额": "OperatingCashFlow",
     "购建固定资产、无形资产和其他长期资产所支付的现金": "CapEx",
     "购建固定资产、无形资产和其他长期资产支付的现金": "CapEx",
+    "分配股利、利润支付的现金": "DividendsPaid",
+    "分配股利、利润所支付的现金": "DividendsPaid",
 }
 
 CN_STATEMENTS = ["资产负债表", "利润表", "现金流量表"]
@@ -145,6 +156,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out-dir", default="/tmp/cn-hk-financials-ak", help="Directory for the generated JSON fixture")
     parser.add_argument("--import-db", action="store_true", help="Import the generated JSON into the database after fetching")
     parser.add_argument("--keep-file", action="store_true", help="Keep the generated JSON instead of deleting it after import")
+    parser.add_argument(
+        "--dividends-only",
+        action="store_true",
+        help="Fetch only implemented A-share cash dividends; requires --market cn",
+    )
     return parser.parse_args()
 
 
@@ -173,6 +189,7 @@ FLOW_LINE_ITEMS = {
     "OperatingCashFlow",
     "CapEx",
     "ShareRepurchaseAmt",
+    "DividendsPaid",
 }
 
 
@@ -508,6 +525,30 @@ def fetch_cn_records(code: str, from_year: int) -> list[dict[str, object]]:
     except Exception as e:
         print(f"  warning: error processing CN share repurchases for {code}: {e}", file=sys.stderr)
 
+    try:
+        for record in fetch_cn_dividend_records(code, from_year):
+            key = (str(record["periodEnd"]), "FY", "DividendsPaid")
+            if key not in seen_keys:
+                records.append(record)
+                seen_keys.add(key)
+    except Exception as e:
+        print(f"  warning: failed to fetch AkShare CN dividends for {code}: {e}", file=sys.stderr)
+
+    return records
+
+
+def fetch_cn_dividend_records(code: str, from_year: int) -> list[dict[str, object]]:
+    records = fetch_akshare_cn_dividends(
+        code,
+        from_year,
+        ak.stock_dividend_cninfo,
+        ak.stock_fhps_detail_ths,
+    )
+    print(
+        f"  matched {len(records)} CN dividend payment year(s) "
+        f"from CNINFO + THS (source totals may be rounded)",
+        file=sys.stderr,
+    )
     return records
 
 
@@ -536,7 +577,19 @@ def import_into_db(json_path: Path, ticker: str, code: str, market: str, currenc
 def main() -> int:
     args = parse_args()
 
-    if args.market == "cn":
+    if args.dividends_only and args.market != "cn":
+        print("--dividends-only is only supported for --market cn", file=sys.stderr)
+        return 2
+
+    if args.dividends_only:
+        ticker = args.ticker or f"{args.code}.SS"
+        print(f"Fetching implemented CN dividends for {args.code} from {args.from_year}...")
+        try:
+            records = fetch_cn_dividend_records(args.code, args.from_year)
+        except Exception as e:
+            print(f"Failed to fetch AkShare CN dividends for {args.code}: {e}", file=sys.stderr)
+            return 1
+    elif args.market == "cn":
         ticker = args.ticker or f"{args.code}.SS"
         print(f"Fetching CN financials for {args.code} ({ticker}) from {args.from_year}...")
         records = fetch_cn_records(args.code, args.from_year)
@@ -545,11 +598,12 @@ def main() -> int:
         print(f"Fetching HK financials for {args.code} ({ticker})...")
         records = fetch_hk_records(args.code, args.from_year)
 
-    if not records:
+    if not records and not args.dividends_only:
         print(f"No mapped line items returned for {args.code}", file=sys.stderr)
         return 1
 
-    check_completeness(records, args.code)
+    if not args.dividends_only:
+        check_completeness(records, args.code)
 
     out_dir = Path(args.out_dir)
     json_path = write_output(out_dir, args.code, records)

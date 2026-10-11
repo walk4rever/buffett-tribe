@@ -8769,6 +8769,10 @@ body.layout-no-header {
   gap: 0.85rem;
 }
 
+.cap-alloc-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 @media (max-width: 900px) {
   .val-multiples-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -8854,6 +8858,16 @@ body.layout-no-header {
   color: #94a3b8;
   line-height: 1.4;
   margin-top: auto;
+}
+
+.cap-alloc-summary-grid .val-card-label,
+.cap-alloc-summary-grid .val-card-subtag,
+.cap-alloc-summary-grid .val-card-hint {
+  font-size: 12px;
+}
+
+.cap-alloc-summary-grid .val-card-hint {
+  color: #64748b;
 }
 
 /* PE-Band Chart Block */
@@ -9423,6 +9437,11 @@ body.layout-no-header {
   background: linear-gradient(180deg, #eef2ff 0%, #ffffff 100%);
 }
 
+.cap-wf-step-card--dividend {
+  border-top: 3px solid #0f766e;
+  background: linear-gradient(180deg, #f0fdfa 0%, #ffffff 100%);
+}
+
 .cap-wf-step-card--retained {
   border-top: 3px solid #8b5cf6;
   background: linear-gradient(180deg, #f5f3ff 0%, #ffffff 100%);
@@ -9453,7 +9472,7 @@ body.layout-no-header {
 }
 
 .cap-wf-step-badge {
-  font-size: 0.64rem;
+  font-size: 12px;
   font-weight: 650;
   color: #64748b;
   margin-bottom: 0.2rem;
@@ -9490,6 +9509,10 @@ body.layout-no-header {
   color: #7c3aed;
 }
 
+.cap-wf-step-val--teal {
+  color: #0f766e;
+}
+
 .cap-wf-step-name {
   font-size: 0.76rem;
   font-weight: 650;
@@ -9500,13 +9523,18 @@ body.layout-no-header {
 }
 
 .cap-wf-step-sub {
-  font-size: 0.66rem;
+  font-size: 12px;
   color: #64748b;
   margin-top: 0.2rem;
   line-height: 1.35;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.cap-wf-steps-grid .cap-wf-step-sub {
+  white-space: normal;
+  overflow: visible;
 }
 
 /* ── 3. Dual-Axis Chart & HUD ── */

@@ -161,7 +161,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
         </div>
       </div>
 
-      <div className="val-multiples-grid">
+      <div className="val-multiples-grid cap-alloc-summary-grid">
         <div className="val-multiple-card">
           <span className="val-card-label">总股数净变化</span>
           <div className="val-card-val-row">
@@ -196,6 +196,22 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
         </div>
 
         <div className="val-multiple-card">
+          <span className="val-card-label">已披露现金分红合计</span>
+          <div className="val-card-val-row">
+            <span
+              className="val-card-val"
+              style={{ color: stats.cumDividends ? "#0f766e" : "#64748b" }}
+            >
+              {formatAmount(stats.cumDividends)}
+            </span>
+            <span className="val-card-subtag val-tag--sub-slate">
+              {stats.dividendCoverage}/{stats.periodCount} 年有披露
+            </span>
+          </div>
+          <span className="val-card-hint">未披露不按零计算</span>
+        </div>
+
+        <div className="val-multiple-card">
           <span className="val-card-label">资本开支 / 经营现金流</span>
           <div className="val-card-val-row">
             <span className="val-card-val">
@@ -220,7 +236,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
           <div>
             <h4 className="val-block-title">经营现金流 (OCF) 资本去向</h4>
             <span className="val-block-desc">
-              仅汇总 OCF 与 CapEx 均有披露的财年（{flowCoverageLabel}）；未覆盖股息、并购、偿债和现金变动
+              仅汇总 OCF 与 CapEx 均有披露的财年（{flowCoverageLabel}）；不含并购、偿债和现金变动
             </span>
           </div>
         </div>
@@ -283,16 +299,34 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
 
           <div className="cap-wf-connector">=</div>
 
-          {/* Step 5: FCF remaining after disclosed buybacks */}
-          <div className="cap-wf-step-card cap-wf-step-card--retained" title="此差额不代表留存现金或全部资本配置用途">
-            <div className="cap-wf-step-badge">5. FCF 减回购</div>
-            <div className="cap-wf-step-val cap-wf-step-val--purple">
-              {stats.fcfAfterBuybacks == null
+          {/* Step 5: Cash dividends */}
+          <div className="cap-wf-step-card cap-wf-step-card--dividend" title="现金流量表披露的现金分红金额">
+            <div className="cap-wf-step-badge">5. 现金分红</div>
+            <div className="cap-wf-step-val cap-wf-step-val--teal">
+              {stats.completeFlowDividends == null
                 ? "—"
-                : `${currencySym}${formatUsdInYi(stats.fcfAfterBuybacks)}`}
+                : `-${currencySym}${formatUsdInYi(stats.completeFlowDividends)}`}
             </div>
-            <div className="cap-wf-step-name">未扣除其它现金用途</div>
-            <div className="cap-wf-step-sub">不等同于留存现金</div>
+            <div className="cap-wf-step-name">已披露现金分红</div>
+            <div className="cap-wf-step-sub">
+              {stats.dividendPct != null
+                ? `占 FCF ${stats.dividendPct}%`
+                : `现金流完整年度分红披露 ${stats.flowDividendCoverage}/${stats.flowCoverage} 年`}
+            </div>
+          </div>
+
+          <div className="cap-wf-connector">=</div>
+
+          {/* Step 6: FCF after disclosed distributions */}
+          <div className="cap-wf-step-card cap-wf-step-card--retained" title="仅为 FCF 扣除已披露回购与分红后的差额，不代表期末现金余额">
+            <div className="cap-wf-step-badge">6. 扣除股东分配后</div>
+            <div className="cap-wf-step-val cap-wf-step-val--purple">
+              {stats.fcfAfterDistributions == null
+                ? "—"
+                : `${currencySym}${formatUsdInYi(stats.fcfAfterDistributions)}`}
+            </div>
+            <div className="cap-wf-step-name">FCF 减回购与分红</div>
+            <div className="cap-wf-step-sub">仅在数据完整时计算</div>
           </div>
         </div>
       </div>
@@ -516,7 +550,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
           <div>
             <h4 className="val-block-title">历年资本配置与股本变化明细</h4>
             <span className="val-block-desc">
-              年度经营现金流、资本开支、真实在外流通总股本与净资产收益率 (ROE) 走廊
+              年度经营现金流、资本开支、回购、现金分红与股本变化
             </span>
           </div>
         </div>
@@ -530,6 +564,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                 <th style={{ textAlign: "right" }}>资本开支 (CapEx)</th>
                 <th style={{ textAlign: "right" }}>自由现金流 (FCF)</th>
                 <th style={{ textAlign: "right" }}>股票回购</th>
+                <th style={{ textAlign: "right" }}>现金分红</th>
                 <th style={{ textAlign: "right" }}>股数（披露值）</th>
                 <th style={{ textAlign: "right" }}>ROE</th>
               </tr>
@@ -572,6 +607,16 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                     {a.repurchaseAmt == null
                       ? "—"
                       : `${currencySym}${formatUsdInYi(Math.abs(a.repurchaseAmt))}`}
+                  </td>
+                  <td
+                    style={{
+                      textAlign: "right",
+                      color: a.dividendsPaid != null && a.dividendsPaid !== 0 ? "#0f766e" : undefined,
+                    }}
+                  >
+                    {a.dividendsPaid == null
+                      ? "—"
+                      : `${currencySym}${formatUsdInYi(Math.abs(a.dividendsPaid))}`}
                   </td>
                   <td style={{ textAlign: "right" }}>
                     {a.shares != null ? `${formatUsdInYi(a.shares)}股` : "—"}

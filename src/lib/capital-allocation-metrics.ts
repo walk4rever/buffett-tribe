@@ -3,6 +3,7 @@ export type CapitalAllocationAnnualInput = {
   operatingCashFlow: number | null;
   capEx: number | null;
   repurchaseAmt: number | null;
+  dividendsPaid: number | null;
   shares: number | null;
   roe: number | null;
 };
@@ -19,12 +20,18 @@ export type CapitalAllocationStats = {
   cumCapEx: number | null;
   cumFcf: number | null;
   cumBuybacks: number | null;
+  cumDividends: number | null;
   buybackCoverage: number;
+  dividendCoverage: number;
   flowBuybackCoverage: number;
+  flowDividendCoverage: number;
   completeFlowBuybacks: number | null;
+  completeFlowDividends: number | null;
   fcfAfterBuybacks: number | null;
+  fcfAfterDistributions: number | null;
   capexPct: number | null;
   buybackPct: number | null;
+  dividendPct: number | null;
   fcfPct: number | null;
   sharesStart: number | null;
   sharesEnd: number | null;
@@ -64,17 +71,33 @@ export function computeCapitalAllocationStats(
   const cumBuybacks = knownBuybacks.length
     ? sum(knownBuybacks.map((annual) => Math.abs(annual.repurchaseAmt!)))
     : null;
+  const knownDividends = annuals.filter((annual) => annual.dividendsPaid != null);
+  const cumDividends = knownDividends.length
+    ? sum(knownDividends.map((annual) => Math.abs(annual.dividendsPaid!)))
+    : null;
   const hasCompleteFlowBuybacks =
     flowCoverage > 0 && flowAnnuals.every((annual) => annual.repurchaseAmt != null);
+  const hasCompleteFlowDividends =
+    flowCoverage > 0 && flowAnnuals.every((annual) => annual.dividendsPaid != null);
   const flowBuybackCoverage = flowAnnuals.filter(
     (annual) => annual.repurchaseAmt != null,
+  ).length;
+  const flowDividendCoverage = flowAnnuals.filter(
+    (annual) => annual.dividendsPaid != null,
   ).length;
   const completeFlowBuybacks = hasCompleteFlowBuybacks
     ? sum(flowAnnuals.map((annual) => Math.abs(annual.repurchaseAmt!)))
     : null;
+  const completeFlowDividends = hasCompleteFlowDividends
+    ? sum(flowAnnuals.map((annual) => Math.abs(annual.dividendsPaid!)))
+    : null;
   const fcfAfterBuybacks =
     cumFcf != null && completeFlowBuybacks != null
       ? cumFcf - completeFlowBuybacks
+      : null;
+  const fcfAfterDistributions =
+    cumFcf != null && completeFlowBuybacks != null && completeFlowDividends != null
+      ? cumFcf - completeFlowBuybacks - completeFlowDividends
       : null;
 
   const capexPct =
@@ -88,6 +111,10 @@ export function computeCapitalAllocationStats(
   const buybackPct =
     cumFcf != null && completeFlowBuybacks != null && cumFcf > 0
       ? Number(((completeFlowBuybacks / cumFcf) * 100).toFixed(1))
+      : null;
+  const dividendPct =
+    cumFcf != null && completeFlowDividends != null && cumFcf > 0
+      ? Number(((completeFlowDividends / cumFcf) * 100).toFixed(1))
       : null;
 
   const annualsWithShares = annuals.filter(
@@ -116,12 +143,18 @@ export function computeCapitalAllocationStats(
     cumCapEx,
     cumFcf,
     cumBuybacks,
+    cumDividends,
     buybackCoverage: knownBuybacks.length,
+    dividendCoverage: knownDividends.length,
     flowBuybackCoverage,
+    flowDividendCoverage,
     completeFlowBuybacks,
+    completeFlowDividends,
     fcfAfterBuybacks,
+    fcfAfterDistributions,
     capexPct,
     buybackPct,
+    dividendPct,
     fcfPct,
     sharesStart,
     sharesEnd,

@@ -1,7 +1,14 @@
 import { readFileSync } from "node:fs";
 import db from "../src/lib/prisma";
 
-type Record_ = { periodEnd: string; periodType?: string; lineItem: string; value: number };
+type Record_ = {
+  periodEnd: string;
+  periodType?: string;
+  lineItem: string;
+  value: number | null;
+  mappingRule?: string;
+  confidence?: number;
+};
 
 function getArg(flag: string): string | undefined {
   const args = process.argv.slice(2);
@@ -74,10 +81,12 @@ async function runPool<T>(items: T[], concurrency: number, fn: (item: T, index: 
     }
   }
 
+  const importableRecords = uniqueRecords.filter((record) => record.value !== null);
+  const skippedUnknown = uniqueRecords.length - importableRecords.length;
   let written = 0;
   const CONCURRENCY = 3;
   console.time("  db-write");
-  await runPool(uniqueRecords, CONCURRENCY, async (record) => {
+  await runPool(importableRecords, CONCURRENCY, async (record) => {
     const periodEnd = new Date(record.periodEnd);
     const periodType = record.periodType ?? "FY";
 
@@ -101,11 +110,15 @@ async function runPool<T>(items: T[], concurrency: number, fn: (item: T, index: 
             lineItem: record.lineItem,
             value: record.value,
             unit: currency,
+            mappingRule: record.mappingRule,
+            confidence: record.confidence,
           },
           update: {
             sourceId: extSource.id,
             value: record.value,
             unit: currency,
+            mappingRule: record.mappingRule,
+            confidence: record.confidence,
           },
         });
         written++;
@@ -119,7 +132,9 @@ async function runPool<T>(items: T[], concurrency: number, fn: (item: T, index: 
   });
   console.timeEnd("  db-write");
 
-  console.log(`Wrote ${written}/${records.length} Financial rows for entity ${entity.id} (unit=${currency})`);
+  console.log(
+    `Wrote ${written}/${records.length} Financial rows for entity ${entity.id} (unit=${currency}); skipped ${skippedUnknown} unknown amount(s)`,
+  );
   await db.$disconnect();
 }
 

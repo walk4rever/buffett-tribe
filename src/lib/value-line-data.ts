@@ -50,6 +50,7 @@ export type ValueLineAnnualData = {
   eps: number | null;
   shares: number | null;
   repurchaseAmt: number | null;
+  dividendsPaid: number | null;
 };
 
 export type ValueLineHolderBreakdownItem = {
@@ -314,6 +315,7 @@ export async function getValueLineData(
       const liabilities = parseNum(f.items, "TotalLiabilities");
       const epsRaw = parseNum(f.items, "EPSDiluted") ?? parseNum(f.items, "EPSBasic");
       const repAmt = parseNum(f.items, "ShareRepurchaseAmt");
+      const dividendsPaid = parseNum(f.items, "DividendsPaid");
       const rawShs =
         parseNum(f.items, "CommonStockSharesOutstanding") ??
         parseNum(f.items, "WeightedAverageNumberOfDilutedSharesOutstanding");
@@ -347,6 +349,7 @@ export async function getValueLineData(
         eps,
         shares,
         repurchaseAmt: repAmt,
+        dividendsPaid,
       };
     })
     .sort((a, b) => a.year - b.year);

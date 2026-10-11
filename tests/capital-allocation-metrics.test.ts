@@ -5,8 +5,8 @@ import { computeCapitalAllocationStats } from "../src/lib/capital-allocation-met
 describe("computeCapitalAllocationStats", () => {
   it("calculates FCF only for years with both OCF and CapEx", () => {
     const stats = computeCapitalAllocationStats([
-      { year: 2024, operatingCashFlow: 200, capEx: null, repurchaseAmt: 20, shares: 95, roe: 15 },
-      { year: 2023, operatingCashFlow: 100, capEx: -20, repurchaseAmt: 10, shares: 100, roe: 10 },
+      { year: 2024, operatingCashFlow: 200, capEx: null, repurchaseAmt: 20, dividendsPaid: null, shares: 95, roe: 15 },
+      { year: 2023, operatingCashFlow: 100, capEx: -20, repurchaseAmt: 10, dividendsPaid: null, shares: 100, roe: 10 },
     ]);
 
     expect(stats).not.toBeNull();
@@ -19,8 +19,8 @@ describe("computeCapitalAllocationStats", () => {
 
   it("does not label partial buyback data as a complete FCF allocation", () => {
     const stats = computeCapitalAllocationStats([
-      { year: 2024, operatingCashFlow: 100, capEx: 20, repurchaseAmt: null, shares: 95, roe: 15 },
-      { year: 2023, operatingCashFlow: 100, capEx: 20, repurchaseAmt: 10, shares: 100, roe: 10 },
+      { year: 2024, operatingCashFlow: 100, capEx: 20, repurchaseAmt: null, dividendsPaid: null, shares: 95, roe: 15 },
+      { year: 2023, operatingCashFlow: 100, capEx: 20, repurchaseAmt: 10, dividendsPaid: null, shares: 100, roe: 10 },
     ]);
 
     expect(stats?.cumBuybacks).toBe(10);
@@ -30,10 +30,95 @@ describe("computeCapitalAllocationStats", () => {
     expect(stats?.flowBuybackCoverage).toBe(1);
   });
 
+  it("subtracts disclosed dividends and buybacks from FCF only with complete coverage", () => {
+    const stats = computeCapitalAllocationStats([
+      {
+        year: 2024,
+        operatingCashFlow: 100,
+        capEx: 20,
+        repurchaseAmt: 10,
+        dividendsPaid: 15,
+        shares: 95,
+        roe: 15,
+      },
+      {
+        year: 2023,
+        operatingCashFlow: 100,
+        capEx: 20,
+        repurchaseAmt: 0,
+        dividendsPaid: -5,
+        shares: 100,
+        roe: 10,
+      },
+    ]);
+
+    expect(stats?.cumDividends).toBe(20);
+    expect(stats?.dividendCoverage).toBe(2);
+    expect(stats?.completeFlowDividends).toBe(20);
+    expect(stats?.dividendPct).toBe(12.5);
+    expect(stats?.fcfAfterDistributions).toBe(130);
+  });
+
+  it("keeps distributions unknown when dividend data is missing in a complete cash-flow year", () => {
+    const stats = computeCapitalAllocationStats([
+      {
+        year: 2024,
+        operatingCashFlow: 100,
+        capEx: 20,
+        repurchaseAmt: 10,
+        dividendsPaid: null,
+        shares: 95,
+        roe: 15,
+      },
+      {
+        year: 2023,
+        operatingCashFlow: 100,
+        capEx: 20,
+        repurchaseAmt: 0,
+        dividendsPaid: 10,
+        shares: 100,
+        roe: 10,
+      },
+    ]);
+
+    expect(stats?.cumDividends).toBe(10);
+    expect(stats?.dividendCoverage).toBe(1);
+    expect(stats?.flowDividendCoverage).toBe(1);
+    expect(stats?.completeFlowDividends).toBeNull();
+    expect(stats?.fcfAfterDistributions).toBeNull();
+  });
+
+  it("treats an explicitly reported zero dividend as complete data", () => {
+    const stats = computeCapitalAllocationStats([
+      {
+        year: 2024,
+        operatingCashFlow: 100,
+        capEx: 20,
+        repurchaseAmt: 0,
+        dividendsPaid: 0,
+        shares: 95,
+        roe: 15,
+      },
+      {
+        year: 2023,
+        operatingCashFlow: 100,
+        capEx: 20,
+        repurchaseAmt: 0,
+        dividendsPaid: 0,
+        shares: 100,
+        roe: 10,
+      },
+    ]);
+
+    expect(stats?.cumDividends).toBe(0);
+    expect(stats?.dividendCoverage).toBe(2);
+    expect(stats?.fcfAfterDistributions).toBe(160);
+  });
+
   it("reports no cumulative flow totals when no year has complete OCF and CapEx", () => {
     const stats = computeCapitalAllocationStats([
-      { year: 2024, operatingCashFlow: 100, capEx: null, repurchaseAmt: 0, shares: 95, roe: 15 },
-      { year: 2023, operatingCashFlow: null, capEx: 20, repurchaseAmt: 0, shares: 100, roe: 10 },
+      { year: 2024, operatingCashFlow: 100, capEx: null, repurchaseAmt: 0, dividendsPaid: 0, shares: 95, roe: 15 },
+      { year: 2023, operatingCashFlow: null, capEx: 20, repurchaseAmt: 0, dividendsPaid: 0, shares: 100, roe: 10 },
     ]);
 
     expect(stats?.cumOcf).toBeNull();
@@ -44,18 +129,27 @@ describe("computeCapitalAllocationStats", () => {
 
   it("preserves a negative FCF remainder when buybacks exceed FCF", () => {
     const stats = computeCapitalAllocationStats([
-      { year: 2024, operatingCashFlow: 100, capEx: 80, repurchaseAmt: 50, shares: 95, roe: 15 },
-      { year: 2023, operatingCashFlow: 100, capEx: 80, repurchaseAmt: 50, shares: 100, roe: 10 },
+      { year: 2024, operatingCashFlow: 100, capEx: 80, repurchaseAmt: 50, dividendsPaid: null, shares: 95, roe: 15 },
+      { year: 2023, operatingCashFlow: 100, capEx: 80, repurchaseAmt: 50, dividendsPaid: null, shares: 100, roe: 10 },
     ]);
 
     expect(stats?.cumFcf).toBe(40);
     expect(stats?.fcfAfterBuybacks).toBe(-60);
   });
 
+  it("preserves a negative remainder when dividends and buybacks exceed FCF", () => {
+    const stats = computeCapitalAllocationStats([
+      { year: 2024, operatingCashFlow: 100, capEx: 80, repurchaseAmt: 30, dividendsPaid: 20, shares: 95, roe: 15 },
+      { year: 2023, operatingCashFlow: 100, capEx: 80, repurchaseAmt: 30, dividendsPaid: 20, shares: 100, roe: 10 },
+    ]);
+
+    expect(stats?.fcfAfterDistributions).toBe(-60);
+  });
+
   it("does not produce OCF allocation percentages when cumulative OCF is non-positive", () => {
     const stats = computeCapitalAllocationStats([
-      { year: 2024, operatingCashFlow: -100, capEx: 20, repurchaseAmt: 0, shares: 95, roe: -5 },
-      { year: 2023, operatingCashFlow: -50, capEx: 10, repurchaseAmt: 0, shares: 100, roe: 0 },
+      { year: 2024, operatingCashFlow: -100, capEx: 20, repurchaseAmt: 0, dividendsPaid: null, shares: 95, roe: -5 },
+      { year: 2023, operatingCashFlow: -50, capEx: 10, repurchaseAmt: 0, dividendsPaid: null, shares: 100, roe: 0 },
     ]);
 
     expect(stats?.cumOcf).toBe(-150);
