@@ -2,6 +2,12 @@
 
 import { useMemo, useState } from "react";
 import type { ValueLineData } from "@/lib/value-line-data";
+import { computeScenarios } from "@/lib/valuation-metrics";
+import {
+  buildHistoricalPeSeries,
+  computeAnnualEpsGrowthPct,
+  computeHistoricalPeMetrics,
+} from "@/lib/valuation-analysis-metrics";
 
 function getCurrencySymbol(market: "us" | "hk" | "cn"): { symbol: string; code: string } {
   switch (market) {
@@ -45,91 +51,66 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
 
   // Active pricing & fundamentals
   const latestPrice = data.latestPrice ?? (data.pricePoints.length ? data.pricePoints[data.pricePoints.length - 1].close : null);
-  const benchmarkPe = data.benchmarkPe ?? 18.0;
-  const currentPe = data.peRatio ?? (latestPrice && data.annuals.length && data.annuals[data.annuals.length - 1].eps && (data.annuals[data.annuals.length - 1].eps ?? 0) > 0 ? Number((latestPrice / (data.annuals[data.annuals.length - 1].eps ?? 1)).toFixed(1)) : null);
   const latestAnnual = data.annuals.length ? data.annuals[data.annuals.length - 1] : null;
-  const latestEps = latestAnnual?.eps ?? (currentPe && latestPrice ? Number((latestPrice / currentPe).toFixed(2)) : null);
+  const latestEps = latestAnnual?.eps ?? null;
+  const currentPe =
+    data.peRatio ??
+    (latestPrice != null && latestEps != null && latestEps > 0
+      ? Number((latestPrice / latestEps).toFixed(1))
+      : null);
 
   // 1. Compute Historical PE Percentile
+  const historicalPeSeries = useMemo(
+    () => buildHistoricalPeSeries(data.pricePoints, data.annuals),
+    [data.pricePoints, data.annuals],
+  );
   const historicalPeMetrics = useMemo(() => {
-    if (!data.pricePoints.length || !data.annuals.length) {
-      return { peMin: null, peMedian: benchmarkPe, peMax: null, currentPercentile: null, sampleCount: 0 };
-    }
-
-    const epsByYear = new Map<number, number>();
-    data.annuals.forEach((a) => {
-      if (a.eps != null && a.eps > 0) epsByYear.set(a.year, a.eps);
-    });
-
-    const minYear = Math.min(...data.annuals.map((a) => a.year));
-    const maxYear = Math.max(...data.annuals.map((a) => a.year));
-
-    const pes: number[] = [];
-    data.pricePoints.forEach((p) => {
-      const yr = parseInt(p.date.slice(0, 4), 10);
-      const targetYr = Math.max(minYear, Math.min(maxYear, yr));
-      const eps = epsByYear.get(targetYr) ?? epsByYear.get(maxYear);
-      if (eps != null && eps > 0 && p.close > 0) {
-        const pe = p.close / eps;
-        if (pe > 2 && pe < 300) {
-          pes.push(pe);
-        }
-      }
-    });
-
-    if (!pes.length) {
-      return { peMin: null, peMedian: benchmarkPe, peMax: null, currentPercentile: null, sampleCount: 0 };
-    }
-
-    pes.sort((a, b) => a - b);
-    const peMin = Number(pes[Math.floor(pes.length * 0.05)].toFixed(1));
-    const peMedian = Number(pes[Math.floor(pes.length * 0.5)].toFixed(1));
-    const peMax = Number(pes[Math.floor(pes.length * 0.95)].toFixed(1));
-
-    let currentPercentile: number | null = null;
-    if (currentPe != null && currentPe > 0) {
-      const below = pes.filter((p) => p <= currentPe).length;
-      currentPercentile = Number(((below / pes.length) * 100).toFixed(0));
-    }
-
-    return { peMin, peMedian: peMedian || benchmarkPe, peMax, currentPercentile, sampleCount: pes.length };
-  }, [data.pricePoints, data.annuals, benchmarkPe, currentPe]);
+    return computeHistoricalPeMetrics(historicalPeSeries, currentPe);
+  }, [historicalPeSeries, currentPe]);
+  const hasHistoricalBenchmark =
+    historicalPeMetrics.sampleCount >= 2 && historicalPeMetrics.peMedian != null;
+  const benchmarkPe = hasHistoricalBenchmark
+    ? historicalPeMetrics.peMedian
+    : data.benchmarkPe;
 
   // FCF Yield & Additional Multiples
   const fcfYield = useMemo(() => {
-    if (!latestAnnual?.freeCashFlow || !data.marketCap || data.marketCap <= 0) return null;
+    if (latestAnnual?.freeCashFlow == null || !data.marketCap || data.marketCap <= 0) return null;
     const ratio = (latestAnnual.freeCashFlow / data.marketCap) * 100;
     return Number(ratio.toFixed(1));
   }, [latestAnnual, data.marketCap]);
 
   // Margin of safety status
-  const valuationDiffPct = data.valuationDiffPct ?? (currentPe && historicalPeMetrics.peMedian ? Number((((currentPe - historicalPeMetrics.peMedian) / historicalPeMetrics.peMedian) * 100).toFixed(1)) : null);
+  const valuationDiffPct =
+    currentPe != null && benchmarkPe != null && benchmarkPe > 0
+      ? Number((((currentPe - benchmarkPe) / benchmarkPe) * 100).toFixed(1))
+      : null;
 
-  let marginOfSafetyTag = "合理中枢";
+  let marginOfSafetyTag = "估值数据不足";
   let marginOfSafetyClass = "val-tag--neutral";
-  let marginOfSafetyDesc = "当前估值贴近历史合理中枢水平，胜率适中。";
+  let marginOfSafetyDesc = "缺少可比的当前及历史 P/E 数据，暂不判断估值水平。";
 
   if (valuationDiffPct != null) {
     if (valuationDiffPct <= -20) {
-      marginOfSafetyTag = `深度安全边际（折价 ${Math.abs(valuationDiffPct).toFixed(0)}%）`;
+      marginOfSafetyTag = `显著低于参考 P/E ${Math.abs(valuationDiffPct).toFixed(0)}%`;
       marginOfSafetyClass = "val-tag--deep-green";
-      marginOfSafetyDesc = "当前市盈率显著低于历史中枢，处于极具吸引力的巴菲特式击球区。";
+      marginOfSafetyDesc = "当前市盈率显著低于参考倍数；这不代表已确认安全边际。";
     } else if (valuationDiffPct <= -5) {
-      marginOfSafetyTag = `合理偏低（折价 ${Math.abs(valuationDiffPct).toFixed(0)}%）`;
+      marginOfSafetyTag = `低于参考 P/E ${Math.abs(valuationDiffPct).toFixed(0)}%`;
       marginOfSafetyClass = "val-tag--green";
-      marginOfSafetyDesc = "具备适度估值安全垫，提供良好入场赔率。";
+      marginOfSafetyDesc = "当前市盈率低于参考倍数；参考倍数不等于企业内在价值。";
     } else if (valuationDiffPct <= 15) {
-      marginOfSafetyTag = `估值中枢（合理区间）`;
+      marginOfSafetyTag = "接近参考 P/E";
       marginOfSafetyClass = "val-tag--amber";
-      marginOfSafetyDesc = "价格与企业内在价值中枢高度一致，回报主要来自企业自身盈利增长。";
+      marginOfSafetyDesc = "当前市盈率接近参考倍数，实际回报仍取决于未来经营表现。";
     } else if (valuationDiffPct <= 30) {
-      marginOfSafetyTag = `估值偏高（溢价 ${valuationDiffPct.toFixed(0)}%）`;
+      marginOfSafetyTag = `高于参考 P/E ${valuationDiffPct.toFixed(0)}%`;
       marginOfSafetyClass = "val-tag--orange";
-      marginOfSafetyDesc = "估值高于历史中位数，需企业高速增长消化估值溢价。";
+      marginOfSafetyDesc = "当前市盈率高于参考倍数。";
     } else {
-      marginOfSafetyTag = `高估值承压（显著溢价 ${valuationDiffPct.toFixed(0)}%）`;
+      marginOfSafetyTag = `显著高于参考 P/E ${valuationDiffPct.toFixed(0)}%`;
       marginOfSafetyClass = "val-tag--red";
-      marginOfSafetyDesc = "历史高分位估值，存在戴维斯双杀及均值回归风险。";
+      marginOfSafetyDesc = "当前市盈率显著高于参考倍数，存在估值回落风险。";
     }
   }
 
@@ -139,10 +120,9 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
     const height = 240;
     const padding = { top: 20, right: 30, bottom: 30, left: 45 };
 
-    const pts = data.pricePoints;
-    if (!pts || pts.length < 2) return null;
+    if (benchmarkPe == null || historicalPeSeries.length < 2) return null;
 
-    const basePe = historicalPeMetrics.peMedian ?? 18;
+    const basePe = benchmarkPe;
     const mults = {
       p0_7: Number((basePe * 0.7).toFixed(1)),
       p1_0: Number((basePe * 1.0).toFixed(1)),
@@ -150,17 +130,8 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
       p1_6: Number((basePe * 1.6).toFixed(1)),
     };
 
-    const epsByYear = new Map<number, number>();
-    data.annuals.forEach((a) => {
-      if (a.eps != null && a.eps > 0) epsByYear.set(a.year, a.eps);
-    });
-    const minYr = Math.min(...data.annuals.map((a) => a.year));
-    const maxYr = Math.max(...data.annuals.map((a) => a.year));
-
-    const bandPoints = pts.map((p) => {
-      const yr = parseInt(p.date.slice(0, 4), 10);
-      const targetYr = Math.max(minYr, Math.min(maxYr, yr));
-      const eps = epsByYear.get(targetYr) ?? epsByYear.get(maxYr) ?? (latestPrice ? latestPrice / basePe : 1);
+    const bandPoints = historicalPeSeries.map((p) => {
+      const eps = p.eps;
       return {
         date: p.date,
         price: p.close,
@@ -253,81 +224,79 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
       yMin,
       yMax,
     };
-  }, [data.pricePoints, data.annuals, historicalPeMetrics.peMedian, latestPrice, currencySymbol]);
+  }, [historicalPeSeries, benchmarkPe, currencySymbol]);
 
   // Interactive Hover State for PE-Band
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   // 3. Interactive 5-Year TSR Simulator State
-  const defaultGrowth = useMemo(() => {
-    if (data.annuals.length >= 4) {
-      const first = data.annuals[0].eps;
-      const last = data.annuals[data.annuals.length - 1].eps;
-      if (first && last && first > 0 && last > 0) {
-        const span = data.annuals.length - 1;
-        const cagr = ((last / first) ** (1 / span) - 1) * 100;
-        return Number(Math.max(-5, Math.min(25, cagr)).toFixed(1));
-      }
-    }
-    return 8.0;
-  }, [data.annuals]);
+  const defaultGrowth = useMemo(
+    () => computeAnnualEpsGrowthPct(data.annuals),
+    [data.annuals],
+  );
+  const growthMin = Math.min(-90, Math.floor((defaultGrowth ?? 0) / 10) * 10);
+  const growthMax = Math.max(100, Math.ceil((defaultGrowth ?? 0) / 10) * 10);
 
   const [activeScenario, setActiveScenario] = useState<"conservative" | "base" | "optimistic" | "custom">("base");
-  const [growthRate, setGrowthRate] = useState<number>(defaultGrowth);
-  const [exitPe, setExitPe] = useState<number>(Number(benchmarkPe.toFixed(1)));
-  const [shareholderYield, setShareholderYield] = useState<number>(2.5);
+  const [growthRate, setGrowthRate] = useState<number>(defaultGrowth ?? 0);
+  const [exitPe, setExitPe] = useState<number>(Number((benchmarkPe ?? 0).toFixed(1)));
 
   const handleScenarioPreset = (preset: "conservative" | "base" | "optimistic") => {
+    if (defaultGrowth == null || benchmarkPe == null) return;
     setActiveScenario(preset);
     if (preset === "conservative") {
-      setGrowthRate(Number(Math.max(1, defaultGrowth * 0.4).toFixed(1)));
+      const conservativeGrowth = Math.max(
+        growthMin,
+        Math.min(defaultGrowth * 0.4, defaultGrowth - 5),
+      );
+      setGrowthRate(Number(conservativeGrowth.toFixed(1)));
       setExitPe(Number((benchmarkPe * 0.8).toFixed(1)));
-      setShareholderYield(2.0);
     } else if (preset === "base") {
       setGrowthRate(defaultGrowth);
       setExitPe(Number(benchmarkPe.toFixed(1)));
-      setShareholderYield(2.5);
     } else {
-      setGrowthRate(Number(Math.min(30, defaultGrowth * 1.5 + 4).toFixed(1)));
+      const optimisticGrowth = Math.min(
+        growthMax,
+        Math.max(defaultGrowth * 1.5, defaultGrowth + 5),
+      );
+      setGrowthRate(Number(optimisticGrowth.toFixed(1)));
       setExitPe(Number((benchmarkPe * 1.3).toFixed(1)));
-      setShareholderYield(3.0);
     }
   };
 
-  const handleSliderChange = (type: "growth" | "exitPe" | "yield", val: number) => {
+  const handleSliderChange = (type: "growth" | "exitPe", val: number) => {
     setActiveScenario("custom");
     if (type === "growth") setGrowthRate(val);
     if (type === "exitPe") setExitPe(val);
-    if (type === "yield") setShareholderYield(val);
   };
 
-  // Math calculation of 5Y Return
+  // Annualized price return excludes dividends and other shareholder distributions.
   const tsrCalculations = useMemo(() => {
-    if (!latestEps || latestEps <= 0 || !latestPrice || latestPrice <= 0) {
-      return null;
-    }
-
-    const targetEps = latestEps * (1 + growthRate / 100) ** 5;
-    const targetPrice = targetEps * exitPe;
-    const priceChangePct = ((targetPrice - latestPrice) / latestPrice) * 100;
-
-    // Compound Annual Growth Rate (CAGR) with dividend reinvestment / shareholder yield
-    const priceCagr = (targetPrice / latestPrice) ** 0.2 - 1;
-    const totalCagrPct = (priceCagr + shareholderYield / 100) * 100;
+    const [scenario] = computeScenarios({
+      latestEps,
+      latestPrice,
+      horizonYears: 5,
+      scenarios: [{ name: "情景", growthPct: growthRate, exitPe, rationale: "" }],
+    });
+    if (scenario.impliedPrice == null || scenario.impliedAnnualReturnPct == null) return null;
+    const targetEps = latestEps! * (1 + growthRate / 100) ** 5;
+    const targetPrice = scenario.impliedPrice;
+    const priceChangePct = ((targetPrice - latestPrice!) / latestPrice!) * 100;
+    const annualizedPriceReturnPct = scenario.impliedAnnualReturnPct;
 
     let ratingTag = "合理收益";
     let ratingClass = "tsr-pill--amber";
-    if (totalCagrPct >= 15) {
-      ratingTag = "卓越回报 (IRR ≥ 15%)";
+    if (annualizedPriceReturnPct >= 15) {
+      ratingTag = "年化价格回报 ≥ 15%";
       ratingClass = "tsr-pill--green";
-    } else if (totalCagrPct >= 8) {
-      ratingTag = "稳健回报 (8%~15%)";
+    } else if (annualizedPriceReturnPct >= 8) {
+      ratingTag = "年化价格回报 8%~15%";
       ratingClass = "tsr-pill--light-green";
-    } else if (totalCagrPct >= 0) {
-      ratingTag = "跑输通胀 (0%~8%)";
+    } else if (annualizedPriceReturnPct >= 0) {
+      ratingTag = "年化价格回报 0%~8%";
       ratingClass = "tsr-pill--slate";
     } else {
-      ratingTag = "本金亏损风险 (< 0%)";
+      ratingTag = "年化价格回报为负";
       ratingClass = "tsr-pill--red";
     }
 
@@ -335,11 +304,11 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
       targetEps: Number(targetEps.toFixed(2)),
       targetPrice: Number(targetPrice.toFixed(2)),
       priceChangePct: Number(priceChangePct.toFixed(1)),
-      totalCagrPct: Number(totalCagrPct.toFixed(1)),
+      annualizedPriceReturnPct,
       ratingTag,
       ratingClass,
     };
-  }, [latestEps, latestPrice, growthRate, exitPe, shareholderYield]);
+  }, [latestEps, latestPrice, growthRate, exitPe]);
 
   const activePoint = peBandData && hoverIdx != null ? peBandData.bandPoints[hoverIdx] : peBandData ? peBandData.bandPoints[peBandData.bandPoints.length - 1] : null;
 
@@ -349,7 +318,7 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
       <div className="val-section-head">
         <div>
           <div className="val-title-row">
-            <h3 className="val-title">估值分析与安全边际精算</h3>
+            <h3 className="val-title">估值分析与历史 P/E 参考</h3>
             <span className={`val-status-badge ${marginOfSafetyClass}`}>{marginOfSafetyTag}</span>
           </div>
           <p className="val-subtitle">{marginOfSafetyDesc}</p>
@@ -362,7 +331,7 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
       {/* 6-Card Multiples Matrix */}
       <div className="val-multiples-grid">
         <div className="val-multiple-card">
-          <span className="val-card-label">当前市盈率 P/E (TTM)</span>
+            <span className="val-card-label">当前市盈率 P/E（最新年报）</span>
           <div className="val-card-val-row">
             <span className="val-card-val">{currentPe ? `${currentPe}x` : "—"}</span>
             {historicalPeMetrics.currentPercentile != null ? (
@@ -370,34 +339,37 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
             ) : null}
           </div>
           <span className="val-card-hint">
-            5年区间: {historicalPeMetrics.peMin ? `${historicalPeMetrics.peMin}x` : "—"} ~ {historicalPeMetrics.peMax ? `${historicalPeMetrics.peMax}x` : "—"}
+            历史 P/E 5%-95%范围: {historicalPeMetrics.peMin != null ? `${historicalPeMetrics.peMin}x` : "—"} ~ {historicalPeMetrics.peMax != null ? `${historicalPeMetrics.peMax}x` : "—"}
           </span>
         </div>
 
         <div className="val-multiple-card">
-          <span className="val-card-label">历史合理中枢 (Benchmark P/E)</span>
+            <span className="val-card-label">
+              {hasHistoricalBenchmark ? "历史 P/E 中位数" : "系统参考 P/E"}
+            </span>
           <div className="val-card-val-row">
-            <span className="val-card-val">{historicalPeMetrics.peMedian ? `${historicalPeMetrics.peMedian}x` : "—"}</span>
+            <span className="val-card-val">{benchmarkPe != null ? `${benchmarkPe}x` : "—"}</span>
             {valuationDiffPct != null ? (
               <span className={`val-card-subtag ${valuationDiffPct <= 0 ? "val-tag--sub-green" : "val-tag--sub-red"}`}>
-                {valuationDiffPct <= 0 ? `低估 ${Math.abs(valuationDiffPct)}%` : `溢价 ${valuationDiffPct}%`}
+                {valuationDiffPct <= 0
+                  ? `低于参考 ${Math.abs(valuationDiffPct)}%`
+                  : `高于参考 ${valuationDiffPct}%`}
               </span>
             ) : null}
           </div>
-          <span className="val-card-hint">基于历史长周期中位数与 ROE 锚定</span>
+          <span className="val-card-hint">
+            {hasHistoricalBenchmark
+              ? `${historicalPeMetrics.sampleCount} 个历史价格样本`
+              : "历史样本不足，采用系统参考值"}
+          </span>
         </div>
 
         <div className="val-multiple-card">
           <span className="val-card-label">自由现金流收益率 (FCF Yield)</span>
           <div className="val-card-val-row">
             <span className="val-card-val">{fcfYield != null ? `${fcfYield}%` : "—"}</span>
-            {fcfYield != null ? (
-              <span className={`val-card-subtag ${fcfYield >= 4.5 ? "val-tag--sub-green" : "val-tag--sub-slate"}`}>
-                {fcfYield >= 4.0 ? "胜过美债" : "适度水平"}
-              </span>
-            ) : null}
           </div>
-          <span className="val-card-hint">FCF / 市值 · 真实股东自由现金流回报</span>
+          <span className="val-card-hint">最新年报 FCF / 当前市值</span>
         </div>
 
         <div className="val-multiple-card">
@@ -405,33 +377,33 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
           <div className="val-card-val-row">
             <span className="val-card-val">{data.pbRatio ? `${data.pbRatio}x` : "—"}</span>
           </div>
-          <span className="val-card-hint">净资产底线与破产保护安全垫</span>
+          <span className="val-card-hint">市值 / 最新披露净资产</span>
         </div>
 
         <div className="val-multiple-card">
           <span className="val-card-label">现金流转化率 (OCF / 净利润)</span>
           <div className="val-card-val-row">
-            <span className="val-card-val">{data.cashConversionRatio ? `${data.cashConversionRatio.toFixed(2)}x` : "—"}</span>
+            <span className="val-card-val">{data.cashConversionRatio != null ? `${data.cashConversionRatio.toFixed(2)}x` : "—"}</span>
             {data.cashConversionRatio != null ? (
               <span className={`val-card-subtag ${data.cashConversionRatio >= 1.0 ? "val-tag--sub-green" : "val-tag--sub-orange"}`}>
                 {data.cashConversionRatio >= 1.0 ? "盈利含金量高" : "部分应收/资本占用"}
               </span>
             ) : null}
           </div>
-          <span className="val-card-hint">衡量账面净利润向真实真金白银的转化度</span>
+          <span className="val-card-hint">近年经营现金流 / 净利润</span>
         </div>
 
         <div className="val-multiple-card">
           <span className="val-card-label">5年平均 ROE (净资产收益率)</span>
           <div className="val-card-val-row">
-            <span className="val-card-val">{data.roeAvg5Y ? `${data.roeAvg5Y.toFixed(1)}%` : "—"}</span>
+            <span className="val-card-val">{data.roeAvg5Y != null ? `${data.roeAvg5Y.toFixed(1)}%` : "—"}</span>
             {data.roeStability ? (
               <span className="val-card-subtag">
                 {data.roeStability === "stellar" ? "极其稳固" : data.roeStability === "solid" ? "稳健优质" : "具备周期性"}
               </span>
             ) : null}
           </div>
-          <span className="val-card-hint">巴菲特第一衡量指标：长期复利天花板</span>
+          <span className="val-card-hint">近 5 年披露 ROE 均值</span>
         </div>
       </div>
 
@@ -440,18 +412,18 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
         <div className="val-chart-block">
           <div className="val-chart-header">
             <div>
-              <h4 className="val-block-title">历史估值通道走廊 (P/E Band Corridor)</h4>
+              <h4 className="val-block-title">历史 P/E 参考带</h4>
               <span className="val-block-desc">
-                股价穿行于极端悲观(0.7x)、中枢(1.0x)、乐观(1.3x)与极度狂热(1.6x)多重估值彩带中的历史周期穿越
+                按最近可得完整年度 EPS 与{hasHistoricalBenchmark ? "历史中位数" : "系统参考值"}计算；不代表未来目标价。
               </span>
             </div>
 
             {/* Current Point Legend */}
             <div className="val-band-legend">
-              <span className="legend-item"><span className="legend-dot dot-b0_7" />0.7x 极度悲观 ({peBandData.mults.p0_7}x)</span>
-              <span className="legend-item"><span className="legend-dot dot-b1_0" />1.0x 历史中枢 ({peBandData.mults.p1_0}x)</span>
-              <span className="legend-item"><span className="legend-dot dot-b1_3" />1.3x 历史乐观 ({peBandData.mults.p1_3}x)</span>
-              <span className="legend-item"><span className="legend-dot dot-b1_6" />1.6x 极端狂热 ({peBandData.mults.p1_6}x)</span>
+              <span className="legend-item"><span className="legend-dot dot-b0_7" />参考值 0.7x ({peBandData.mults.p0_7}x)</span>
+              <span className="legend-item"><span className="legend-dot dot-b1_0" />参考值 1.0x ({peBandData.mults.p1_0}x)</span>
+              <span className="legend-item"><span className="legend-dot dot-b1_3" />参考值 1.3x ({peBandData.mults.p1_3}x)</span>
+              <span className="legend-item"><span className="legend-dot dot-b1_6" />参考值 1.6x ({peBandData.mults.p1_6}x)</span>
               <span className="legend-item legend-item--active"><span className="legend-dot dot-price" />实际收盘价</span>
             </div>
           </div>
@@ -467,25 +439,25 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
               <span className="val-hud-value val-hud-value--blue">{currencySymbol}{activePoint?.price.toFixed(2)}</span>
             </div>
             <div className="val-hud-col">
-              <span className="val-hud-label">对应 P/E:</span>
+                  <span className="val-hud-label">对应年度 EPS P/E:</span>
               <span className="val-hud-value">{activePoint?.pe ? `${activePoint.pe}x` : "—"}</span>
             </div>
             <div className="val-hud-col">
-              <span className="val-hud-label">基准中枢线:</span>
+              <span className="val-hud-label">参考 P/E 股价:</span>
               <span className="val-hud-value val-hud-value--amber">{currencySymbol}{activePoint?.b1_0.toFixed(2)}</span>
             </div>
             <div className="val-hud-col">
               <span className="val-hud-label">通道状态:</span>
               <span className="val-hud-tag">
                 {activePoint && activePoint.pe
-                  ? activePoint.pe < peBandData.mults.p0_7
-                    ? "跌破 0.7x 底部极端超跌"
+                    ? activePoint.pe < peBandData.mults.p0_7
+                    ? "低于参考区间"
                     : activePoint.pe < peBandData.mults.p1_0
-                    ? "处于 0.7x ~ 1.0x 安全边际击球区"
+                    ? "低于参考 P/E"
                     : activePoint.pe < peBandData.mults.p1_3
-                    ? "处于 1.0x ~ 1.3x 估值中枢上方"
-                    : "处于 1.3x 以上高估值风险区"
-                  : "正常"}
+                    ? "高于参考 P/E"
+                    : "高于参考区间"
+                  : "数据不足"}
               </span>
             </div>
           </div>
@@ -597,13 +569,17 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
       ) : null}
 
       {/* ── 3. Interactive 5-Year TSR Simulator ── */}
-      {tsrCalculations && latestPrice ? (
+      {tsrCalculations &&
+      latestPrice != null &&
+      latestEps != null &&
+      defaultGrowth != null &&
+      benchmarkPe != null ? (
         <div className="val-sim-block">
           <div className="val-sim-head">
             <div>
-              <h4 className="val-block-title">5年股东总回报预期模拟器 (5-Year TSR Simulator)</h4>
+              <h4 className="val-block-title">5年估值情景测算</h4>
               <p className="val-block-desc">
-                基于最新股价与真实盈利基准，交互推演不同成长速度与退出估值下的<strong>未来目标价</strong>与<strong>预期年化复合收益率 (IRR)</strong>
+                按 EPS 增长与退出 P/E 假设测算；仅为情景分析，不构成预测，且不含分红。
               </p>
             </div>
 
@@ -614,21 +590,21 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
                 className={`preset-btn ${activeScenario === "conservative" ? "preset-btn--active" : ""}`}
                 onClick={() => handleScenarioPreset("conservative")}
               >
-                保守压力测试
+                偏低估值
               </button>
               <button
                 type="button"
                 className={`preset-btn ${activeScenario === "base" ? "preset-btn--active" : ""}`}
                 onClick={() => handleScenarioPreset("base")}
               >
-                基准均值回归
+                参考估值
               </button>
               <button
                 type="button"
                 className={`preset-btn ${activeScenario === "optimistic" ? "preset-btn--active" : ""}`}
                 onClick={() => handleScenarioPreset("optimistic")}
               >
-                戴维斯双击
+                偏高估值
               </button>
             </div>
           </div>
@@ -644,18 +620,18 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
                 </div>
                 <input
                   type="range"
-                  min="-5"
-                  max="30"
+                  min={growthMin}
+                  max={growthMax}
                   step="0.5"
                   value={growthRate}
                   onChange={(e) => handleSliderChange("growth", parseFloat(e.target.value))}
                   className="val-range-input"
                 />
                 <div className="slider-scale-row">
-                  <span>-5% (衰退)</span>
-                  <span>+8% (稳健)</span>
-                  <span>+20% (高增长)</span>
-                  <span>+30%</span>
+                  <span>{growthMin}%</span>
+                  <span>0%</span>
+                  <span>{Math.round(growthMax / 2)}%</span>
+                  <span>{growthMax}%</span>
                 </div>
               </div>
 
@@ -667,57 +643,37 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
                 </div>
                 <input
                   type="range"
-                  min="8"
-                  max="45"
+                  min="4"
+                  max="60"
                   step="0.5"
                   value={exitPe}
                   onChange={(e) => handleSliderChange("exitPe", parseFloat(e.target.value))}
                   className="val-range-input"
                 />
                 <div className="slider-scale-row">
-                  <span>8x (极低)</span>
-                  <span>{benchmarkPe ? `${benchmarkPe.toFixed(0)}x (中枢)` : "18x"}</span>
-                  <span>30x (溢价)</span>
-                  <span>45x</span>
+                  <span>4x</span>
+                  <span>{benchmarkPe.toFixed(1)}x (参考)</span>
+                  <span>30x</span>
+                  <span>60x</span>
                 </div>
               </div>
 
-              {/* Slider 3: Dividend & Repurchase Yield */}
-              <div className="val-slider-item">
-                <div className="slider-label-row">
-                  <span className="slider-label">年度现金分红 + 回购注销收益率</span>
-                  <span className="slider-value-badge">{shareholderYield.toFixed(1)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="8"
-                  step="0.5"
-                  value={shareholderYield}
-                  onChange={(e) => handleSliderChange("yield", parseFloat(e.target.value))}
-                  className="val-range-input"
-                />
-                <div className="slider-scale-row">
-                  <span>0% (无分红)</span>
-                  <span>2.5% (成熟均值)</span>
-                  <span>5.0% (高股息)</span>
-                  <span>8.0%</span>
-                </div>
-              </div>
             </div>
 
             {/* Right Column: Live Result Dashboard */}
             <div className="val-result-card">
               <div className="val-result-head">
-                <span className="val-result-title">预期 5 年复合年化回报率 (IRR / CAGR)</span>
+                <span className="val-result-title">5年年化价格回报（不含分红）</span>
                 <span className={`val-rating-pill ${tsrCalculations.ratingClass}`}>
                   {tsrCalculations.ratingTag}
                 </span>
               </div>
 
               <div className="val-irr-display">
-                <span className={`val-irr-number ${tsrCalculations.totalCagrPct >= 0 ? "val-irr--up" : "val-irr--dn"}`}>
-                  {tsrCalculations.totalCagrPct >= 0 ? `+${tsrCalculations.totalCagrPct}%` : `${tsrCalculations.totalCagrPct}%`}
+                <span className={`val-irr-number ${tsrCalculations.annualizedPriceReturnPct >= 0 ? "val-irr--up" : "val-irr--dn"}`}>
+                  {tsrCalculations.annualizedPriceReturnPct >= 0
+                    ? `+${tsrCalculations.annualizedPriceReturnPct}%`
+                    : `${tsrCalculations.annualizedPriceReturnPct}%`}
                 </span>
                 <span className="val-irr-unit">/ 年</span>
               </div>
@@ -732,11 +688,11 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
                   <span className="metric-val">{latestEps ? `${currencySymbol}${latestEps.toFixed(2)}` : "—"}</span>
                 </div>
                 <div className="val-result-metric-row">
-                  <span className="metric-label">5年后预测 EPS:</span>
+                  <span className="metric-label">5年后情景 EPS:</span>
                   <span className="metric-val font-semibold">{currencySymbol}{tsrCalculations.targetEps}</span>
                 </div>
                 <div className="val-result-metric-row">
-                  <span className="metric-label">5年后目标股价:</span>
+                  <span className="metric-label">5年后情景股价:</span>
                   <span className="metric-val font-semibold text-blue-600">{currencySymbol}{tsrCalculations.targetPrice}</span>
                 </div>
                 <div className="val-result-metric-row border-t border-slate-100 pt-2">
@@ -748,7 +704,7 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
               </div>
 
               <p className="val-formula-note">
-                计算逻辑：P(5y) = EPS(基期) × (1 + g)^5 × PE(退出)；年化回报叠加年均 {shareholderYield}% 现金分红再投资。
+                P(5y) = 基期 EPS × (1 + g)^5 × 退出 P/E；年化价格回报 = (目标价 / 当前价)^(1/5) − 1。
               </p>
             </div>
           </div>
@@ -757,4 +713,3 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
     </div>
   );
 }
-
