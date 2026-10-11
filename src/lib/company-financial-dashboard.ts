@@ -309,6 +309,30 @@ const metrics: MetricDef[] = [
     },
   },
   {
+    key: "ShareRepurchaseAmt",
+    zhLabel: "股票回购",
+    enLabel: "Share Repurchases",
+    hint: "回购普通股支付的现金支出",
+    kind: "money",
+    compute: (year, ctx) => {
+      const rep =
+        value(ctx, year, "ShareRepurchaseAmt") ??
+        value(ctx, year, "PaymentsForRepurchaseOfCommonStock");
+      return rep == null ? null : Math.abs(rep);
+    },
+  },
+  {
+    key: "DividendsPaid",
+    zhLabel: "现金分红",
+    enLabel: "Cash Dividends Paid",
+    hint: "分配股利支付的现金支出",
+    kind: "money",
+    compute: (year, ctx) => {
+      const div = value(ctx, year, "DividendsPaid");
+      return div == null ? null : Math.abs(div);
+    },
+  },
+  {
     key: "CapExToRevenue",
     zhLabel: "资本开支率",
     enLabel: "CapEx / Revenue",
@@ -418,6 +442,8 @@ const operatingKeys = [
   "CapEx",
   "FreeCashFlow",
   "FCFMargin",
+  "ShareRepurchaseAmt",
+  "DividendsPaid",
   "CashConversion",
   "CapExToRevenue",
   "AssetTurnover",

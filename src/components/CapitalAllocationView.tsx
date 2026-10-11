@@ -189,7 +189,9 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
               {formatAmount(stats.cumBuybacks)}
             </span>
             <span className="val-card-subtag val-tag--sub-slate">
-              {stats.buybackCoverage}/{stats.periodCount} 年有披露
+              {stats.cumBuybacks && stats.cumBuybacks > 0
+                ? `${stats.annuals.filter((a) => a.repurchaseAmt != null && a.repurchaseAmt > 0).length} 年有实施`
+                : "区间未回购"}
             </span>
           </div>
           <span className="val-card-hint">回购金额不等同于实际注销股数</span>
@@ -205,10 +207,12 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
               {formatAmount(stats.cumDividends)}
             </span>
             <span className="val-card-subtag val-tag--sub-slate">
-              {stats.dividendCoverage}/{stats.periodCount} 年有披露
+              {stats.cumDividends && stats.cumDividends > 0
+                ? `${stats.annuals.filter((a) => a.dividendsPaid != null && a.dividendsPaid > 0).length} 年有实施`
+                : "区间未分红"}
             </span>
           </div>
-          <span className="val-card-hint">未披露不按零计算</span>
+          <span className="val-card-hint">现金流量表披露的现金分红金额</span>
         </div>
 
         <div className="val-multiple-card">

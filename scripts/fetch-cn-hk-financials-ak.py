@@ -532,9 +532,8 @@ def fetch_cn_records(code: str, from_year: int) -> list[dict[str, object]]:
                     if pub_date is not None and not pd.isna(pub_date):
                         p_ts = pd.Timestamp(pub_date)
                         r_year = p_ts.year
-                        if r_year >= from_year and completed_fy_years:
-                            target_year = min(r_year, max(completed_fy_years))
-                            rep_by_year[target_year] = rep_by_year.get(target_year, 0.0) + amt
+                        if r_year >= from_year:
+                            rep_by_year[r_year] = rep_by_year.get(r_year, 0.0) + amt
 
             for r_year, total_amt in rep_by_year.items():
                 fy_date = f"{r_year}-12-31"
