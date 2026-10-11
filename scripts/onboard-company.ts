@@ -384,7 +384,7 @@ async function resolveCnHkCurrency(ticker: string, market: "cn" | "hk"): Promise
   }
 }
 
-function buildImportFinancialsStep(ticker: string, market: "cn" | "hk", code: string): Step {
+function buildImportFinancialsStep(ticker: string, market: "cn" | "hk", code: string, fromYear: string): Step {
   return {
     id: "import_financials",
     label: "导入财务数据（akshare 三大报表 → Financial）",
@@ -395,6 +395,7 @@ function buildImportFinancialsStep(ticker: string, market: "cn" | "hk", code: st
         "--market", market,
         "--ticker", ticker,
         "--currency", currency,
+        "--from-year", fromYear,
         "--import-db",
       ]);
     },
@@ -616,12 +617,25 @@ async function main() {
     id: "import_financials_fast",
     label: "导入财务数据（10-K 年度财报 → 10-Q 季度 → yfinance 降级兜底）",
     run: async () => {
-      const args = ["--ticker", ticker, "--from", fromYear, "--to", toYear, "--fast", "--filing-concurrency", "6"];
-      if (resolvedCik) args.push("--cik", resolvedCik);
+      // 优先使用高效纯 TS SEC 官方 REST 管道（0 Python, 全量法定三张主表）
+      let fastSucceeded = false;
       try {
-        await runNpmScript("import:10k", args);
-      } catch {
-        console.log(`[onboard-company] import:10k annual facts exited, checking for 10-Q quarterly fallback for ${ticker}...`);
+        const fastArgs = ["--ticker", ticker, "--from", fromYear, "--to", toYear];
+        if (resolvedCik) fastArgs.push("--cik", resolvedCik);
+        await runNpmScript("backfill:us-financials:fast", fastArgs);
+        fastSucceeded = true;
+      } catch (err) {
+        console.log(`[onboard-company] 快速 SEC REST 导入异常，回退到 edgartools import:10k:`, err);
+      }
+
+      if (!fastSucceeded) {
+        const args = ["--ticker", ticker, "--from", fromYear, "--to", toYear, "--fast", "--filing-concurrency", "6"];
+        if (resolvedCik) args.push("--cik", resolvedCik);
+        try {
+          await runNpmScript("import:10k", args);
+        } catch {
+          console.log(`[onboard-company] import:10k annual facts exited, checking for 10-Q quarterly fallback for ${ticker}...`);
+        }
       }
 
       // 降级检查 1：对于次新上市无 10-K 的公司（如 SpaceX），自动从 10-Q 季报抽取财务数据
@@ -756,7 +770,7 @@ async function main() {
   } else {
     const code = resolveCnHkCode(ticker, market);
     const seedEntityStep = buildSeedEntityStep(ticker, market, code);
-    const importFinancialsStep = buildImportFinancialsStep(ticker, market, code);
+    const importFinancialsStep = buildImportFinancialsStep(ticker, market, code, fromYear);
     const createAnnualExtSourceStep = buildCreateAnnualReportExtSourceStep(ticker, market, fromYear, code);
     const sliceAnnualReportStep = buildSliceAnnualReportStep(ticker, market, fromYear, code);
 

@@ -23,6 +23,8 @@
     "import:13f:range": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-13f-edgartools.ts --from 2024Q1 --to 2025Q4",
     "import:beneficial-ownership": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-beneficial-ownership.ts",
     "import:10k": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-10k-edgartools.ts",
+    "backfill:us-financials:fast": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-company-financials-fast.ts",
+    "backfill:phase12-financials": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/batch-backfill-phase12-financials.ts",
     "create:us-annual-extsource": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/create-us-annual-report-extsource.ts",
     "create:cn-hk-annual-extsource": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/create-cn-hk-annual-report-extsource.ts",
     "import:us-quarterly-financials": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-us-quarterly-financials.ts",
