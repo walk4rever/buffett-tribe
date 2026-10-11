@@ -49,7 +49,7 @@ function HolderActivity({ holder }: { holder: ValueLineHolder }) {
 
 export function MasterHoldingCards({
   holders,
-  title = "大师持仓",
+  title = "13F持仓",
   hint = "部落重仓与仓位明细",
 }: {
   holders: ValueLineHolder[];

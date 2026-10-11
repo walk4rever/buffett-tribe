@@ -9616,12 +9616,12 @@ body.layout-no-header {
   gap: 0.75rem;
 }
 
+.company-holdings-section,
 .company-reference-section {
   scroll-margin-top: 5rem;
-  padding-top: 2rem;
-  border-top: 1px solid var(--company-border-soft);
 }
 
+.company-holdings-section,
 .company-reference-section,
 .company-related-section {
   padding: 1.2rem 1.3rem 1.4rem;
@@ -9737,6 +9737,7 @@ body.layout-no-header {
 }
 
 @media (max-width: 640px) {
+  .company-holdings-section,
   .company-reference-section,
   .company-related-section {
     padding: 0.95rem 0.85rem 1rem;
