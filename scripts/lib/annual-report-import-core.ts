@@ -59,7 +59,9 @@ export type InlineXbrlDocument = {
   facts: InlineXbrlFact[];
 };
 
-type LineItemConfig = {
+import { CANONICAL_FINANCIAL_DICTIONARY, CanonicalLineItemConfig } from "../../src/lib/canonical-financial-dictionary";
+
+export type LineItemConfig = {
   key: string;
   tagsUsGaap: string[];
   tagsIfrs: string[];
@@ -67,108 +69,14 @@ type LineItemConfig = {
   periodType: "instant" | "duration";
 };
 
-export const LINE_ITEMS: LineItemConfig[] = [
-  {
-    key: "Revenue",
-    tagsUsGaap: ["RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "Revenues"],
-    tagsIfrs: ["Revenue"],
-    unitCandidates: ["USD"],
-    periodType: "duration",
-  },
-  {
-    key: "GrossProfit",
-    tagsUsGaap: ["GrossProfit"],
-    tagsIfrs: ["GrossProfit"],
-    unitCandidates: ["USD"],
-    periodType: "duration",
-  },
-  {
-    key: "OperatingIncome",
-    tagsUsGaap: ["OperatingIncomeLoss"],
-    tagsIfrs: ["ProfitLossFromOperatingActivities"],
-    unitCandidates: ["USD"],
-    periodType: "duration",
-  },
-  {
-    key: "NetIncome",
-    tagsUsGaap: ["NetIncomeLoss"],
-    tagsIfrs: ["ProfitLoss"],
-    unitCandidates: ["USD"],
-    periodType: "duration",
-  },
-  {
-    key: "OperatingCashFlow",
-    tagsUsGaap: ["NetCashProvidedByUsedInOperatingActivities"],
-    tagsIfrs: ["CashFlowsFromUsedInOperatingActivities"],
-    unitCandidates: ["USD"],
-    periodType: "duration",
-  },
-  {
-    key: "CapEx",
-    tagsUsGaap: ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsToAcquireProductiveAssets"],
-    tagsIfrs: ["PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities"],
-    unitCandidates: ["USD"],
-    periodType: "duration",
-  },
-  {
-    key: "TotalAssets",
-    tagsUsGaap: ["Assets"],
-    tagsIfrs: ["Assets"],
-    unitCandidates: ["USD"],
-    periodType: "instant",
-  },
-  {
-    key: "TotalLiabilities",
-    tagsUsGaap: ["Liabilities"],
-    tagsIfrs: ["Liabilities"],
-    unitCandidates: ["USD"],
-    periodType: "instant",
-  },
-  {
-    key: "ShareholdersEquity",
-    tagsUsGaap: ["StockholdersEquity"],
-    tagsIfrs: ["EquityAttributableToOwnersOfParent", "Equity"],
-    unitCandidates: ["USD"],
-    periodType: "instant",
-  },
-  {
-    key: "EPSBasic",
-    tagsUsGaap: ["EarningsPerShareBasic"],
-    tagsIfrs: ["BasicEarningsLossPerShare"],
-    unitCandidates: ["USD/shares", "USD-per-shares", "pure"],
-    periodType: "duration",
-  },
-  {
-    key: "EPSDiluted",
-    tagsUsGaap: ["EarningsPerShareDiluted"],
-    tagsIfrs: ["DilutedEarningsLossPerShare"],
-    unitCandidates: ["USD/shares", "USD-per-shares", "pure"],
-    periodType: "duration",
-  },
-  {
-    key: "ShareRepurchaseAmt",
-    tagsUsGaap: [
-      "PaymentsForRepurchaseOfCommonStock",
-      "PaymentsForRepurchaseOfEquity",
-      "TreasuryStockValueAcquiredCostMethod",
-      "StockRepurchasedDuringPeriodValue",
-    ],
-    tagsIfrs: [],
-    unitCandidates: ["USD"],
-    periodType: "duration",
-  },
-  {
-    key: "DividendsPaid",
-    tagsUsGaap: [
-      "PaymentsOfDividends",
-      "PaymentsOfDividendsCommonStock",
-      "PaymentsOfDividendsPreferredStock",
-    ],
-    tagsIfrs: ["DividendsPaid", "DividendsPaidClassifiedAsFinancingActivities"],
-    unitCandidates: ["USD"],
-    periodType: "duration",
-  },
-];
+export const LINE_ITEMS: LineItemConfig[] = CANONICAL_FINANCIAL_DICTIONARY.map((item) => ({
+  key: item.key,
+  tagsUsGaap: item.tagsUsGaap,
+  tagsIfrs: item.tagsIfrs,
+  unitCandidates: item.unitCandidates,
+  periodType: item.periodType,
+}));
+
 
 const TICKER_ALIASES: Record<string, string> = {
   "BRK.B": "BRK-B",

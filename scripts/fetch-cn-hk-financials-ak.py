@@ -192,6 +192,23 @@ FLOW_LINE_ITEMS = {
     "DividendsPaid",
 }
 
+CANONICAL_DICT_PATH = Path(__file__).resolve().parent / "lib" / "canonical-financial-dictionary.json"
+if CANONICAL_DICT_PATH.exists():
+    try:
+        with open(CANONICAL_DICT_PATH, "r", encoding="utf-8") as f:
+            _canon = json.load(f)
+        if "cnAliases" in _canon:
+            CN_COLUMN_MAP.update(_canon["cnAliases"])
+        if "hkAliases" in _canon:
+            HK_ITEM_NAME_MAP.update(_canon["hkAliases"])
+        if "instantItems" in _canon:
+            BALANCE_LINE_ITEMS.update(_canon["instantItems"])
+        if "durationItems" in _canon:
+            FLOW_LINE_ITEMS.update(_canon["durationItems"])
+    except Exception as e:
+        print(f"Warning: failed to load canonical financial dictionary: {e}", file=sys.stderr)
+
+
 
 
 def fetch_hk_records(code: str, from_year: int = 2020) -> list[dict[str, object]]:

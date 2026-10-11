@@ -55,19 +55,7 @@ async function main() {
     update: { metadata: { ticker, market, code } },
   });
 
-async function runPool<T>(items: T[], concurrency: number, fn: (item: T, index: number) => Promise<void>) {
-  let cursor = 0;
-  const workers = Array.from({ length: Math.max(1, concurrency) }, async () => {
-    while (true) {
-      const index = cursor++;
-      if (index >= items.length) return;
-      await fn(items[index], index);
-    }
-  });
-  await Promise.all(workers);
-}
-
-  // Deduplicate records by unique composite key before concurrent upserts
+  // Deduplicate records by unique composite key before batch insert
   const uniqueRecords: Record_[] = [];
   const seen = new Set<string>();
   for (const record of records) {
@@ -83,59 +71,44 @@ async function runPool<T>(items: T[], concurrency: number, fn: (item: T, index: 
 
   const importableRecords = uniqueRecords.filter((record) => record.value !== null);
   const skippedUnknown = uniqueRecords.length - importableRecords.length;
-  let written = 0;
-  const CONCURRENCY = 3;
-  console.time("  db-write");
-  await runPool(importableRecords, CONCURRENCY, async (record) => {
-    const periodEnd = new Date(record.periodEnd);
-    const periodType = record.periodType ?? "FY";
 
-    let attempts = 0;
-    while (true) {
-      try {
-        await db.financial.upsert({
-          where: {
-            entityId_periodEnd_periodType_lineItem: {
-              entityId: entity.id,
-              periodEnd,
-              periodType,
-              lineItem: record.lineItem,
-            },
-          },
-          create: {
-            entityId: entity.id,
-            sourceId: extSource.id,
-            periodEnd,
-            periodType,
-            lineItem: record.lineItem,
-            value: record.value,
-            unit: currency,
-            mappingRule: record.mappingRule,
-            confidence: record.confidence,
-          },
-          update: {
-            sourceId: extSource.id,
-            value: record.value,
-            unit: currency,
-            mappingRule: record.mappingRule,
-            confidence: record.confidence,
-          },
-        });
-        written++;
-        break;
-      } catch (err: unknown) {
-        attempts++;
-        if (attempts >= 3) throw err;
-        await new Promise((resolve) => setTimeout(resolve, 500 * attempts));
-      }
-    }
-  });
+  const recordsToInsert = importableRecords.map((record) => ({
+    entityId: entity.id,
+    sourceId: extSource.id,
+    periodEnd: new Date(record.periodEnd),
+    periodType: record.periodType ?? "FY",
+    lineItem: record.lineItem,
+    value: record.value,
+    unit: currency,
+    mappingRule: record.mappingRule,
+    confidence: record.confidence,
+  }));
+
+  const periodEnds = Array.from(new Set(recordsToInsert.map((r) => r.periodEnd.getTime()))).map((t) => new Date(t));
+
+  console.time("  db-write");
+  if (recordsToInsert.length > 0) {
+    // Delete existing records in the target periods for this company and bulk-insert new records
+    await db.$transaction([
+      db.financial.deleteMany({
+        where: {
+          entityId: entity.id,
+          periodEnd: { in: periodEnds },
+        },
+      }),
+      db.financial.createMany({
+        data: recordsToInsert,
+        skipDuplicates: true,
+      }),
+    ]);
+  }
   console.timeEnd("  db-write");
 
   console.log(
-    `Wrote ${written}/${records.length} Financial rows for entity ${entity.id} (unit=${currency}); skipped ${skippedUnknown} unknown amount(s)`,
+    `Wrote ${recordsToInsert.length}/${records.length} Financial rows for entity ${entity.id} (unit=${currency}); skipped ${skippedUnknown} unknown amount(s)`,
   );
   await db.$disconnect();
+
 }
 
 main().catch(async (err) => {

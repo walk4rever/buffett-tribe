@@ -293,11 +293,10 @@ export async function backfillCompanyFinancialsFast(params: {
     const extSource = sourceByAccession.get(filing.accession);
     if (!extSource) continue;
 
-    let totalAssets: number | null = null;
-    let shareholdersEquity: number | null = null;
+    const extractedValues = new Map<string, { value: number; unit: string }>();
 
     for (const item of LINE_ITEMS) {
-      let value = findBestAnnualFactValue(
+      const value = findBestAnnualFactValue(
         facts,
         item.tagsUsGaap,
         item.tagsIfrs,
@@ -306,16 +305,25 @@ export async function backfillCompanyFinancialsFast(params: {
         item.periodType,
       );
 
-      if (item.key === "TotalAssets" && value != null) totalAssets = value;
-      if (item.key === "ShareholdersEquity" && value != null) shareholdersEquity = value;
-
-      if (item.key === "TotalLiabilities" && value == null && totalAssets != null && shareholdersEquity != null) {
-        value = totalAssets - shareholdersEquity;
+      if (value != null) {
+        const unit = item.unitCandidates[0] ?? "USD";
+        extractedValues.set(item.key, { value, unit });
       }
+    }
 
-      if (value == null) continue;
+    // Standard accounting identity fallback: TotalLiabilities = TotalAssets - ShareholdersEquity
+    if (!extractedValues.has("TotalLiabilities")) {
+      const ta = extractedValues.get("TotalAssets");
+      const se = extractedValues.get("ShareholdersEquity");
+      if (ta != null && se != null) {
+        extractedValues.set("TotalLiabilities", {
+          value: ta.value - se.value,
+          unit: ta.unit,
+        });
+      }
+    }
 
-      const unit = item.unitCandidates[0] ?? "USD";
+    for (const [key, { value, unit }] of extractedValues.entries()) {
       const decimalVal = decimalFromNumber(value);
       if (!decimalVal) continue;
 
@@ -324,7 +332,7 @@ export async function backfillCompanyFinancialsFast(params: {
         sourceId: extSource.id,
         periodEnd: new Date(filing.reportDate),
         periodType: "FY",
-        lineItem: item.key,
+        lineItem: key,
         value: decimalVal,
         unit,
       });
@@ -375,7 +383,7 @@ async function main() {
 
   if (tickerArg || cikArg) {
     const entity = await db.entity.findFirst({
-      where: tickerArg ? { ticker: tickerArg } : { cik: cikArg },
+      where: tickerArg ? { ticker: tickerArg, cik: { not: null } } : { cik: cikArg },
       select: { id: true, ticker: true, cik: true, canonicalName: true },
     });
 
