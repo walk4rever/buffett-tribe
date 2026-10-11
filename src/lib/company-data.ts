@@ -425,7 +425,7 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
         value: true,
         unit: true,
       },
-      take: 400,
+      take: 2000,
     }),
   );
 

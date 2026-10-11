@@ -259,7 +259,7 @@ async function detectFundamentalHealth(
     },
     orderBy: { periodEnd: "desc" },
     select: { lineItem: true, value: true, periodEnd: true },
-    take: 30,
+    take: 300,
   });
 
   if (!rows.length) {
