@@ -20,10 +20,7 @@ import {
   getCompanyReferenceFilings,
   type CompanyReferenceFiling,
 } from "@/lib/company-data";
-import {
-  ManagementAnalysisSection,
-  parseManagementPayload,
-} from "@/components/CompanyGeneratedSections";
+import { CapitalAllocationView } from "@/components/CapitalAllocationView";
 import { ValuationAnalysisView } from "@/components/ValuationAnalysisView";
 import { buildCompanyFinancialDashboard } from "@/lib/company-financial-dashboard";
 import { formatShares } from "@/lib/master-data";
@@ -404,10 +401,11 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   const referenceYearGroups = groupAndFormatReferenceFilings(referenceFilings, company.cik);
   const tribeMemberById = new Map(tribeMembers.map((m) => [m.id, m] as const));
 
-  const managementArtifact = analysis?.management != null
-    ? { payload: analysis.management, generatedAt: analysis.updatedAt, source: analysis.source }
-    : null;
-  const hasManagement = managementArtifact != null && parseManagementPayload(managementArtifact.payload) != null;
+  const hasCapitalAllocation = Boolean(
+    valueLineData &&
+    valueLineData.annuals &&
+    valueLineData.annuals.length >= 2
+  );
   const hasValuation = Boolean(
     valueLineData &&
     valueLineData.annuals &&
@@ -486,11 +484,11 @@ export default async function CompanyPage({ params, searchParams }: Props) {
 
   const allTabs = [
     { id: "valueline",  label: "价值线",  desc: "数字价值线核心全景" },
-    { id: "business",   label: "商业模式", desc: "九宫格商业模式画布",  ...(!businessCanvas  ? { disabled: true } : {}) },
+    { id: "business",   label: "商业模式", desc: "九宫格商业模式画布",  ...(!businessCanvas      ? { disabled: true } : {}) },
+    { id: "value",      label: "竞争优势", desc: "护城河雷达与资本回报", ...(!hasRealMoat        ? { disabled: true } : {}) },
     { id: "financial",  label: "财务分析", desc: "年度趋势与明细" },
-    { id: "value",      label: "竞争优势", desc: "护城河雷达与资本回报", ...(!hasRealMoat    ? { disabled: true } : {}) },
-    { id: "management", label: "资本配置", desc: "资本回报与股东回报纪律",  ...(!hasManagement  ? { disabled: true } : {}) },
-    { id: "valuation",  label: "估值分析", desc: "历史分位与情景推演",  ...(!hasValuation   ? { disabled: true } : {}) },
+    { id: "management", label: "资本配置", desc: "资本去向与股东回报纪律",  ...(!hasCapitalAllocation ? { disabled: true } : {}) },
+    { id: "valuation",  label: "估值分析", desc: "历史分位与情景推演",  ...(!hasValuation       ? { disabled: true } : {}) },
     ...(showHoldingsTab ? [{ id: "holdings", label: "大师持仓", desc: "13F顶尖机构季度动向" }] : []),
   ];
 
@@ -542,15 +540,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
               )}
             </section>
 
-            {/* Tab 2: Financial Analysis */}
-            <section className="company-section" data-tab-panel="financial">
-              <CompanyFinancialDashboardComponent
-                dashboard={dashboard}
-                financials={financials}
-              />
-            </section>
-
-            {/* Tab 3: Value Analysis / Moat */}
+            {/* Tab: Value Analysis / Moat */}
             <section className="company-section" data-tab-panel="value">
               <div className="company-value-layout">
                 <div className="company-radar-card">
@@ -707,10 +697,18 @@ export default async function CompanyPage({ params, searchParams }: Props) {
               </div>
             </section>
 
-            {/* Tab 4: Capital Allocation */}
+            {/* Tab: Financial Analysis */}
+            <section className="company-section" data-tab-panel="financial">
+              <CompanyFinancialDashboardComponent
+                dashboard={dashboard}
+                financials={financials}
+              />
+            </section>
+
+            {/* Tab: Capital Allocation */}
             <section className="company-section" data-tab-panel="management">
-              {hasManagement && managementArtifact ? (
-                <ManagementAnalysisSection artifact={managementArtifact} usFiling={Boolean(company.cik)} />
+              {valueLineData && hasCapitalAllocation ? (
+                <CapitalAllocationView data={valueLineData} />
               ) : (
                 <div className="company-placeholder-grid">
                   <article className="company-placeholder-card">

@@ -576,10 +576,11 @@ async function main() {
     },
   };
 
-  // Phase 2 analysis steps: 3 qualitative dimension generators
-  // (generate:business-model, generate:value-analysis, generate:management-analysis)
-  // Note: Valuation analysis is now 100% computed dynamically in code (ValuationAnalysisView)
-  // from ValueLine fundamentals and real-time market prices, eliminating offline LLM latency.
+  // Phase 2 analysis steps: 2 qualitative dimension generators
+  // (generate:business-model, generate:value-analysis)
+  // Note: Valuation analysis (ValuationAnalysisView) and Capital Allocation (CapitalAllocationView)
+  // are now 100% computed dynamically in code from ValueLine fundamentals and real-time market prices,
+  // completely eliminating offline LLM batch latency.
   const phase2AnalysisSteps: Step[] = [
     {
       id: "generate_business_model",
@@ -596,13 +597,6 @@ async function main() {
       skip: skipGeneration,
       run: () => runNpmScript("generate:value-analysis", buildGenerateArgs(ticker, force)),
       verify: (entityId, stepStartedAt) => verifyCompanyAnalysisField(entityId, "moat", stepStartedAt, force),
-    },
-    {
-      id: "generate_management_analysis",
-      label: "生成管理分析（management_analysis）",
-      skip: skipGeneration,
-      run: () => runNpmScript("generate:management-analysis", buildGenerateArgs(ticker, force)),
-      verify: (entityId, stepStartedAt) => verifyCompanyAnalysisField(entityId, "management", stepStartedAt, force),
     },
   ];
 

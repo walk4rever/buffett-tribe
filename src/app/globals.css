@@ -9214,6 +9214,374 @@ body.layout-no-header {
   line-height: 1.45;
 }
 
+/* ── Capital Allocation Workbench (资本配置总账) ── */
+.cap-alloc-deep-dive {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+  margin-bottom: 2.5rem;
+}
+
+/* ── 1. Buffett $1 Rule Test Gauge ── */
+.cap-gauge-block {
+  margin-top: 1.25rem;
+  padding: 1.25rem 1.4rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.cap-gauge-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  font-size: 0.86rem;
+}
+
+.cap-gauge-title {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cap-gauge-subtitle {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.cap-gauge-subtitle strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.cap-gauge-track-wrap {
+  position: relative;
+  margin: 2.8rem 0 1.8rem;
+  padding: 0 4px;
+}
+
+.cap-gauge-track {
+  display: flex;
+  height: 22px;
+  border-radius: 11px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.cap-gauge-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 650;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  overflow: hidden;
+  letter-spacing: 0.02em;
+}
+
+.cap-gauge-seg--red {
+  background: linear-gradient(90deg, #dc2626, #ef4444);
+}
+
+.cap-gauge-seg--amber {
+  background: linear-gradient(90deg, #d97706, #f59e0b);
+}
+
+.cap-gauge-seg--green {
+  background: linear-gradient(90deg, #059669, #10b981);
+}
+
+.cap-gauge-seg--deep-green {
+  background: linear-gradient(90deg, #0f766e, #06b6d4);
+}
+
+/* 1.00x Benchmark Line */
+.cap-gauge-benchmark-line {
+  position: absolute;
+  top: -12px;
+  bottom: -12px;
+  width: 3px;
+  background: #0f172a;
+  z-index: 2;
+  box-shadow: 0 0 8px rgba(15, 23, 42, 0.35);
+  border-radius: 2px;
+}
+
+.cap-gauge-benchmark-label {
+  position: absolute;
+  bottom: -22px;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: #0f172a;
+  white-space: nowrap;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  background: #ffffff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Dynamic Needle Pointer */
+.cap-gauge-needle {
+  position: absolute;
+  top: -32px;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.cap-gauge-needle-bubble {
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.3);
+  font-feature-settings: "tnum";
+  letter-spacing: 0.01em;
+}
+
+.cap-gauge-needle-pin {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #0f172a;
+}
+
+.cap-gauge-desc {
+  margin: 1.2rem 0 0;
+  font-size: 0.82rem;
+  color: #475569;
+  line-height: 1.55;
+  padding-top: 0.8rem;
+  border-top: 1px dashed #e2e8f0;
+}
+
+/* ── 2. Step-Down Waterfall Flow ── */
+.cap-wf-steps-grid {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-top: 0.9rem;
+}
+
+@media (max-width: 900px) {
+  .cap-wf-steps-grid {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.cap-wf-step-card {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.7rem 0.65rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cap-wf-step-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05);
+}
+
+.cap-wf-step-card--base {
+  border-top: 3px solid #0284c7;
+  background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%);
+}
+
+.cap-wf-step-card--capex {
+  border-top: 3px solid #ef4444;
+  background: linear-gradient(180deg, #fef2f2 0%, #ffffff 100%);
+}
+
+.cap-wf-step-card--fcf {
+  border-top: 3px solid #10b981;
+  background: linear-gradient(180deg, #ecfdf5 0%, #ffffff 100%);
+}
+
+.cap-wf-step-card--buyback {
+  border-top: 3px solid #6366f1;
+  background: linear-gradient(180deg, #eef2ff 0%, #ffffff 100%);
+}
+
+.cap-wf-step-card--retained {
+  border-top: 3px solid #8b5cf6;
+  background: linear-gradient(180deg, #f5f3ff 0%, #ffffff 100%);
+}
+
+.cap-wf-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  align-self: center;
+  user-select: none;
+}
+
+@media (max-width: 900px) {
+  .cap-wf-connector {
+    margin: 0.15rem auto;
+  }
+}
+
+.cap-wf-step-badge {
+  font-size: 0.64rem;
+  font-weight: 650;
+  color: #64748b;
+  margin-bottom: 0.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.cap-wf-step-val {
+  font-size: 1.05rem;
+  font-weight: 750;
+  color: #0f172a;
+  margin-bottom: 0.2rem;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cap-wf-step-val--red {
+  color: #dc2626;
+}
+
+.cap-wf-step-val--green {
+  color: #059669;
+}
+
+.cap-wf-step-val--blue {
+  color: #4f46e5;
+}
+
+.cap-wf-step-val--purple {
+  color: #7c3aed;
+}
+
+.cap-wf-step-name {
+  font-size: 0.76rem;
+  font-weight: 650;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cap-wf-step-sub {
+  font-size: 0.66rem;
+  color: #64748b;
+  margin-top: 0.2rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 3. Dual-Axis Chart & HUD ── */
+.cap-chart-container {
+  width: 100%;
+  position: relative;
+  margin-top: 0.8rem;
+  padding: 0.5rem 0;
+}
+
+.cap-chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.cap-chart-hud {
+  font-size: 0.82rem;
+  color: #475569;
+  background: #f8fafc;
+  padding: 0.35rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  font-feature-settings: "tnum";
+}
+
+.cap-chart-hud strong {
+  color: #0f172a;
+}
+
+/* ── 4. Capital Allocation Table ── */
+.cap-table-wrap {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.cap-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  font-feature-settings: "tnum";
+}
+
+.cap-table th {
+  padding: 0.65rem 0.85rem;
+  font-weight: 650;
+  color: #475569;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cap-table th:first-child {
+  text-align: left;
+}
+
+.cap-table td {
+  padding: 0.7rem 0.85rem;
+  color: #1e293b;
+  border-bottom: 1px solid #f1f5f9;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cap-table td:first-child {
+  text-align: left;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.cap-table tbody tr:hover {
+  background: rgba(0, 113, 227, 0.03);
+}
+
 .company-reference-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));

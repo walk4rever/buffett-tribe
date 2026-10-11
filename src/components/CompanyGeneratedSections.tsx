@@ -28,9 +28,9 @@ type MasterView = {
 type ManagementPayload = {
   headline: string;
   capitalAllocation: { score: number | null; cards: AnalysisCard[] };
-  masterViews: MasterView[];
   alignment: { cards: AnalysisCard[] };
   watchlist: string[];
+  masterViews?: MasterView[];
 };
 
 type ScenarioItem = {
@@ -238,36 +238,9 @@ export function ManagementAnalysisSection({ artifact, usFiling }: { artifact: Ge
       ) : null}
 
       <p className="company-gen-disclaimer">
-        以上内容由 AI 基于{usFiling ? "SEC 公开文件" : "公司年报"}、财务数据与股东信生成，不构成任何投资建议。
+        以上内容由 AI 基于{usFiling ? "SEC 公开文件" : "公司年报"}与财务数据生成，不构成任何投资建议。
       </p>
     </>
-  );
-}
-
-export function MasterViewsSection({ artifact }: { artifact: GeneratedArtifact }) {
-  const data = parseManagementPayload(artifact.payload);
-  if (!data || !data.masterViews.length) return null;
-
-  return (
-    <div className="company-master-views-block" style={{ marginBottom: "2.2rem" }}>
-      <div className="company-financial-trend-head">
-        <div>
-          <h3>大师视角</h3>
-          <span className="dvl-section-subtitle">提炼致股东信、历史评价及 13F 调仓动向中的投资逻辑</span>
-        </div>
-        <GenMeta artifact={artifact} />
-      </div>
-      <div className="company-placeholder-grid company-placeholder-grid--two">
-        {data.masterViews.map((view) => (
-          <article key={view.master} className="company-placeholder-card">
-            <h3>{view.master}</h3>
-            <p>{view.view}</p>
-            {view.evidence ? <p className="company-gen-evidence">{view.evidence}</p> : null}
-            {view.sourceRef ? <p className="company-gen-source">来源：{view.sourceRef}</p> : null}
-          </article>
-        ))}
-      </div>
-    </div>
   );
 }
 

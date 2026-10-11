@@ -4,7 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [v0.47.0] - 2026-10-08
+## [v0.47.5] - 2026-10-11
+
+### Added
+- **资本配置（Capital Allocation）量化工作台全盘重构与解耦**：
+  - 新增 100% 纯代码驱动的资本配置量化工作台（`CapitalAllocationView.tsx`），秒级覆盖全库 Phase 1 标的；
+  - **巴菲特一美元检验标尺（$1 Benchmark Gauge）**：立体四色标尺 + 1.0x 及格基准红线 + 动态高对比度 Needle 游标；
+  - **经营现金流资本去向阶梯瀑布流（Step-Down Waterfall）**：5 步紧凑阶梯拆解（累计主营现金流 $\to$ 再投资支出 $\to$ 自由现金流 $\to$ 股票回购 $\to$ 留存/分红结余），消除换行；
+  - **总股本走廊与回购力度双轴趋势图**：消除拉伸变形，支持真实数值 Y-Ticks 刻度与图例指示器；
+  - **5 年滚动周期口径标准化**：统一为最近 5 个已披露财年，历年明细表最新财年倒序置顶。
+
+### Changed
+- **全局认知动线重构**：调整公司页 Tab 认知动线为 `价值线` $\to$ `商业模式` $\to$ `竞争优势` $\to$ `财务分析` $\to$ `资本配置` $\to$ `估值分析` $\to$ `大师持仓`；
+- **Phase 2 批处理脚本瘦身**：彻底剥离 `generate_management_analysis` 与大师视角（`masterViews`），大幅减轻批处理负载与 Token 消耗。
+
 
 ### Added
 - **品牌形象统一与 Logo 升级（Air7.fun 体系）**：
