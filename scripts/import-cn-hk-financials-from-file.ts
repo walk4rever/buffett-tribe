@@ -1,5 +1,8 @@
 import { readFileSync } from "node:fs";
 import db from "../src/lib/prisma";
+import { normalizeCurrencyCode } from "../src/lib/fx-rates-core";
+import { persistReportingCurrency } from "../src/lib/reporting-currency";
+import { upsertFinancialRows } from "./lib/upsert-financial-rows";
 
 type Record_ = {
   periodEnd: string;
@@ -24,10 +27,12 @@ async function main() {
 
   if (!filePath || !ticker || !code || !market || !currency) {
     console.error(
-      "Usage: tsx import-cn-hk-financials-from-file.ts <json-file> --ticker <T> --code <C> --market cn|hk --currency CNY|HKD|USD",
+      "Usage: tsx import-cn-hk-financials-from-file.ts <json-file> --ticker <T> --code <C> --market cn|hk --currency <ISO-4217>",
     );
     process.exit(1);
   }
+  const reportingCurrency = normalizeCurrencyCode(currency);
+  if (!reportingCurrency) throw new Error(`Invalid reporting currency code: ${currency}`);
 
   const records = JSON.parse(readFileSync(filePath, "utf-8")) as Record_[];
   if (!records.length) {
@@ -37,7 +42,7 @@ async function main() {
 
   const entity = await db.entity.findFirst({
     where: { type: "company", market, code },
-    select: { id: true },
+    select: { id: true, market: true },
   });
   if (!entity) {
     console.error(`No Entity found for market=${market} code=${code} — run the seed_entity step first`);
@@ -79,28 +84,15 @@ async function main() {
     periodType: record.periodType ?? "FY",
     lineItem: record.lineItem,
     value: record.value,
-    unit: currency,
+    unit: reportingCurrency,
     mappingRule: record.mappingRule,
     confidence: record.confidence,
   }));
 
-  const periodEnds = Array.from(new Set(recordsToInsert.map((r) => r.periodEnd.getTime()))).map((t) => new Date(t));
-
   console.time("  db-write");
+  await persistReportingCurrency(entity.id, entity.market, reportingCurrency);
   if (recordsToInsert.length > 0) {
-    // Delete existing records in the target periods for this company and bulk-insert new records
-    await db.$transaction([
-      db.financial.deleteMany({
-        where: {
-          entityId: entity.id,
-          periodEnd: { in: periodEnds },
-        },
-      }),
-      db.financial.createMany({
-        data: recordsToInsert,
-        skipDuplicates: true,
-      }),
-    ]);
+    await upsertFinancialRows(db, recordsToInsert);
   }
   console.timeEnd("  db-write");
 

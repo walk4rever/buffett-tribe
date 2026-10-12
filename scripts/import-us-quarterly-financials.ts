@@ -11,8 +11,11 @@
 
 import { pathToFileURL } from "node:url";
 import prisma from "@/lib/prisma";
+import { normalizeCurrencyCode } from "@/lib/fx-rates-core";
+import { persistReportingCurrency } from "@/lib/reporting-currency";
 import { getCompanyFacts, LINE_ITEMS } from "./lib/annual-report-import-core";
 import { archiveFilingArtifact, fetchFilingIndexFiles, fetchSecText } from "./lib/filing-archive";
+import { upsertFinancialRows } from "./lib/upsert-financial-rows";
 
 const db = prisma;
 
@@ -267,21 +270,19 @@ export async function importUsQuarterlyFinancialsForEntity(
 
   let totalUpserted = 0;
   if (financialRowsToInsert.length > 0) {
-    const periodEnds = Array.from(new Set(financialRowsToInsert.map((r) => r.periodEnd.toISOString()))).map((iso) => new Date(iso));
-    await db.$transaction([
-      db.financial.deleteMany({
-        where: {
-          entityId,
-          periodEnd: { in: periodEnds },
-          periodType: { in: ["Q1", "Q2", "Q3"] },
-        },
-      }),
-      db.financial.createMany({
-        data: financialRowsToInsert,
-        skipDuplicates: true,
-      }),
-    ]);
+    await upsertFinancialRows(db, financialRowsToInsert);
     totalUpserted = financialRowsToInsert.length;
+
+    const revenueCurrency = normalizeCurrencyCode(
+      financialRowsToInsert.find((row) => row.lineItem === "Revenue")?.unit,
+    );
+    if (revenueCurrency) {
+      const entity = await db.entity.findUnique({
+        where: { id: entityId },
+        select: { market: true },
+      });
+      await persistReportingCurrency(entityId, entity?.market ?? "us", revenueCurrency);
+    }
   }
 
   console.log(

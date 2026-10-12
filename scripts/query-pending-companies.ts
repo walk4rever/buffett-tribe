@@ -122,8 +122,8 @@ async function main() {
       canonicalName: c.canonicalName,
       market: c.market,
       cik: c.cik,
-      hasStockPrice: c._count.stockPrices > 0,
-      stockPriceCount: c._count.stockPrices
+      hasStockPrice: c.stockPriceCount > 0,
+      stockPriceCount: c.stockPriceCount
     }))
   };
 

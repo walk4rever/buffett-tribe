@@ -4,6 +4,7 @@ import { backfillCompanyFinancialsFast } from "./backfill-company-financials-fas
 import { getCompanyFinancials } from "../src/lib/company-data";
 import { computeCapitalAllocationStats } from "../src/lib/capital-allocation-metrics";
 import { buildCompanyFinancialDashboard } from "../src/lib/company-financial-dashboard";
+import { isSectorModelType13 } from "../src/lib/sector-classification";
 
 const US_COMPANIES = [
   "AAPL", "MSFT", "KO", "GOOGL", "COST", "BRK-B", "NVDA", "JNJ", "JPM", "AMZN"
@@ -90,7 +91,7 @@ async function verifyCompany(entityId: string, market: "US" | "CN" | "HK", symbo
       roe: null,
     }));
     const ca = computeCapitalAllocationStats(annualInputs);
-    capitalAllocationOk = ca.periodCount > 0;
+    capitalAllocationOk = (ca?.periodCount ?? 0) > 0;
   } catch {
     capitalAllocationOk = false;
   }
@@ -101,7 +102,9 @@ async function verifyCompany(entityId: string, market: "US" | "CN" | "HK", symbo
       {
         sector: entity?.sector || null,
         metadata: entity?.metadata || null,
-        sectorModelType: entity?.sectorModelType || null,
+        sectorModelType: isSectorModelType13(entity?.sectorModelType)
+          ? entity.sectorModelType
+          : null,
       },
       multiYearFinancials,
       currency,
@@ -156,7 +159,7 @@ async function main() {
       const res = await backfillCompanyFinancialsFast({
         entityId: entity.id,
         cik: entity.cik,
-        ticker: entity.ticker,
+        ticker: entity.ticker ?? ticker,
         fromYear: 2020,
       });
       console.log(`  Upserted ${res.financialRowsUpserted} financial rows across years [${res.years.join(", ")}] in ${res.durationMs}ms`);

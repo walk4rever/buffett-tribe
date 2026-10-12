@@ -10,6 +10,8 @@
  */
 
 import prisma from "../src/lib/prisma";
+import { normalizeCurrencyCode } from "../src/lib/fx-rates-core";
+import { persistReportingCurrency } from "../src/lib/reporting-currency";
 import {
   LINE_ITEMS,
   decimalFromNumber,
@@ -62,7 +64,7 @@ async function main() {
           }
         : {}),
     },
-    select: { id: true, cik: true, ticker: true, canonicalName: true },
+    select: { id: true, cik: true, ticker: true, canonicalName: true, market: true },
     orderBy: { canonicalName: "asc" },
   });
 
@@ -102,12 +104,14 @@ async function main() {
     let missing = 0;
     for (const row of ocfRows) {
       const reportDate = row.periodEnd.toISOString().slice(0, 10);
-      const value = findBestFactValue(facts, CAPEX.tagsUsGaap, CAPEX.tagsIfrs, CAPEX.unitCandidates, reportDate);
-      if (value == null) {
+      const fact = findBestFactValue(facts, CAPEX.tagsUsGaap, CAPEX.tagsIfrs, CAPEX.unitCandidates, reportDate);
+      if (fact == null) {
         missing += 1;
         continue;
       }
       if (!dryRun) {
+        const currency = normalizeCurrencyCode(fact.unit);
+        if (currency) await persistReportingCurrency(entity.id, entity.market, currency);
         await prisma.financial.upsert({
           where: {
             entityId_periodEnd_periodType_lineItem: {
@@ -123,13 +127,13 @@ async function main() {
             periodEnd: row.periodEnd,
             periodType: "FY",
             lineItem: "CapEx",
-            value: decimalFromNumber(value),
-            unit: "USD",
+            value: decimalFromNumber(fact.value),
+            unit: fact.unit,
             mappingRule: CAPEX.tagsUsGaap.map((t) => `us-gaap:${t}`).join("|"),
           },
           update: {
-            value: decimalFromNumber(value),
-            unit: "USD",
+            value: decimalFromNumber(fact.value),
+            unit: fact.unit,
           },
         });
       }

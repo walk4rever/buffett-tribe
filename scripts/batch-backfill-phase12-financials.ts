@@ -212,7 +212,14 @@ async function main() {
     ],
   });
 
-  const candidates: EntityCandidate[] = rawEntities.map((e) => ({
+  const entitiesWithTicker = rawEntities.filter(
+    (entity): entity is typeof entity & { ticker: string } => entity.ticker !== null,
+  );
+  if (entitiesWithTicker.length !== rawEntities.length) {
+    console.warn(`Skipping ${rawEntities.length - entitiesWithTicker.length} entities without a ticker.`);
+  }
+
+  const candidates: EntityCandidate[] = entitiesWithTicker.map((e) => ({
     id: e.id,
     ticker: e.ticker,
     market: e.market as Market,

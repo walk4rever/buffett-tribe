@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 import yfinance as yf
@@ -101,7 +102,10 @@ def process_df(df, ptype: str, mapping: dict[str, str], currency: str, items: li
 def fetch_financials(ticker: str) -> dict:
     t = yf.Ticker(ticker)
     info = getattr(t, "info", {}) or {}
-    currency = info.get("financialCurrency") or info.get("currency") or "USD"
+    currency_value = info.get("financialCurrency") or info.get("currency")
+    currency = str(currency_value).strip().upper() if currency_value else ""
+    if not re.fullmatch(r"[A-Z]{3}", currency):
+        currency = ""
 
     items: list[dict] = []
 

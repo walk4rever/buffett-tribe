@@ -26,6 +26,7 @@ import {
   buildStoredTextOnlyFilingSectionData,
 } from "./filing-section-storage";
 import { ImportTimer } from "./import-timer";
+import { normalizeCurrencyCode } from "../../src/lib/fx-rates-core";
 
 export const db = new PrismaClient();
 
@@ -119,6 +120,37 @@ export async function getCompanyFacts(cik: string) {
   }>;
 }
 
+export function selectBestFactCandidate(
+  candidates: Array<{ filed: string; value: number; unit: string }>,
+  unitCandidates: string[],
+) {
+  if (!candidates.length) return null;
+
+  const latestFiled = candidates.reduce(
+    (latest, candidate) => (candidate.filed > latest ? candidate.filed : latest),
+    candidates[0].filed,
+  );
+  const latestCandidates = candidates.filter((candidate) => candidate.filed === latestFiled);
+  const currencies = new Set(
+    latestCandidates
+      .map((candidate) => normalizeCurrencyCode(candidate.unit))
+      .filter((currency): currency is string => currency != null),
+  );
+  if (currencies.size > 1) return null;
+
+  const preferredUnits = new Map(unitCandidates.map((unit, index) => [unit, index]));
+  latestCandidates.sort((a, b) => {
+    const rank = (unit: string) =>
+      normalizeCurrencyCode(unit)
+        ? unitCandidates.length
+        : preferredUnits.get(unit) ?? unitCandidates.length;
+    return rank(a.unit) - rank(b.unit);
+  });
+
+  const candidate = latestCandidates[0];
+  return { value: candidate.value, unit: candidate.unit };
+}
+
 export function findBestFactValue(
   facts: Awaited<ReturnType<typeof getCompanyFacts>>,
   tagsUsGaap: string[],
@@ -128,7 +160,7 @@ export function findBestFactValue(
 ) {
   const gaap = facts.facts?.["us-gaap"] ?? {};
   const ifrs = facts.facts?.["ifrs-full"] ?? {};
-  const candidates: Array<{ filed: string; val: number }> = [];
+  const candidates: Array<{ filed: string; value: number; unit: string }> = [];
 
   const conceptSets = [
     { concepts: gaap, tags: tagsUsGaap },
@@ -140,22 +172,16 @@ export function findBestFactValue(
       const concept = set.concepts[tag];
       if (!concept?.units) continue;
 
-      const preferredUnitRows = unitCandidates.flatMap((unit) => {
-        const rows = concept.units?.[unit];
-        return rows ?? [];
-      });
-      const rowsToCheck =
-        preferredUnitRows.length > 0
-          ? preferredUnitRows
-          : Object.values(concept.units).flat();
-
-      for (const row of rowsToCheck) {
-        if (!row || row.end !== reportDate || typeof row.val !== "number") continue;
-        if (!ANNUAL_FORMS.has(row.form ?? "")) continue;
-        candidates.push({
-          filed: row.filed ?? "0000-00-00",
-          val: row.val,
-        });
+      for (const [unit, rows] of Object.entries(concept.units)) {
+        for (const row of rows) {
+          if (!row || row.end !== reportDate || typeof row.val !== "number") continue;
+          if (!ANNUAL_FORMS.has(row.form ?? "")) continue;
+          candidates.push({
+            filed: row.filed ?? "0000-00-00",
+            value: row.val,
+            unit,
+          });
+        }
       }
 
       if (candidates.length) break;
@@ -163,9 +189,7 @@ export function findBestFactValue(
     if (candidates.length) break;
   }
 
-  if (!candidates.length) return null;
-  candidates.sort((a, b) => (a.filed < b.filed ? 1 : -1));
-  return candidates[0].val;
+  return selectBestFactCandidate(candidates, unitCandidates);
 }
 
 export async function upsertFilingSectionsFromHtml(
@@ -616,7 +640,7 @@ export async function upsertCompanyEntity(cik: string, ticker: string, title: st
   // 1. Find by CIK (any type)
   const byCik = await db.entity.findFirst({
     where: { cik: { in: variants } },
-    select: { id: true, metadata: true, type: true, cik: true, sector: true },
+    select: { id: true, metadata: true, type: true, cik: true, sector: true, market: true },
   });
 
   let target = byCik;
@@ -629,7 +653,7 @@ export async function upsertCompanyEntity(cik: string, ticker: string, title: st
         type: "company",
         ticker: { equals: ticker, mode: "insensitive" },
       },
-      select: { id: true, metadata: true, type: true, cik: true, sector: true },
+      select: { id: true, metadata: true, type: true, cik: true, sector: true, market: true },
     });
     // Fallback to any type (handles legacy type=security entities)
     if (!target) {
@@ -637,7 +661,7 @@ export async function upsertCompanyEntity(cik: string, ticker: string, title: st
         where: {
           ticker: { equals: ticker, mode: "insensitive" },
         },
-        select: { id: true, metadata: true, type: true, cik: true, sector: true },
+        select: { id: true, metadata: true, type: true, cik: true, sector: true, market: true },
       });
     }
   }

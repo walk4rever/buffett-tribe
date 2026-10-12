@@ -14,6 +14,7 @@
  *   node --env-file=.env.local ./node_modules/.bin/tsx scripts/merge-all-duplicate-entities.ts
  */
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { normalizeCik } from "@/lib/cik";
 
 interface MergePair {
@@ -78,13 +79,18 @@ async function mergePair(pair: MergePair) {
     const mainHasProfile = !!mainAnalysis.profile;
     const dupHasProfile = !!dupAnalysis.profile;
     if (!mainHasProfile && dupHasProfile) {
+      const mergedAnalysis: Prisma.CompanyAnalysisUpdateInput = {};
+      if (dupAnalysis.profile != null) {
+        mergedAnalysis.profile = dupAnalysis.profile as Prisma.InputJsonValue;
+      }
+      const canvas = dupAnalysis.canvas ?? mainAnalysis.canvas;
+      if (canvas != null) mergedAnalysis.canvas = canvas as Prisma.InputJsonValue;
+      const business = dupAnalysis.business ?? mainAnalysis.business;
+      if (business != null) mergedAnalysis.business = business as Prisma.InputJsonValue;
+
       await prisma.companyAnalysis.update({
         where: { id: mainAnalysis.id },
-        data: {
-          profile: dupAnalysis.profile,
-          canvas: dupAnalysis.canvas ?? mainAnalysis.canvas,
-          business: dupAnalysis.business ?? mainAnalysis.business,
-        },
+        data: mergedAnalysis,
       });
       console.log(`[2/6] Copied profile/canvas/business from dup to main analysis`);
     } else {
@@ -263,7 +269,7 @@ async function mergePair(pair: MergePair) {
       code: updatedCode,
       aliases: [...aliases],
       onboardPhase: finalPhase,
-      metadata: meta,
+      metadata: meta as Prisma.InputJsonValue,
     },
   });
   console.log(`[6/6] Updated main entity: CIK=${targetCik}, ticker=${updatedTicker}, aliases=${[...aliases].join(",")}, onboardPhase=${finalPhase}`);
@@ -343,7 +349,7 @@ async function handleSnapAndArchDisambiguation() {
       ticker: "SNAP",
       code: "SNAP",
       cik: "0001564408",
-      metadata: meta,
+      metadata: meta as Prisma.InputJsonValue,
     },
   });
   console.log(`Restored Snap Inc entity: CIK=0001564408, ticker=SNAP, nameZh=Snap公司`);

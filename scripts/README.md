@@ -371,6 +371,20 @@ npm run import:company-stock-prices:yf -- --market cn,hk
 - **`cn,hk` 为什么是中午而不是凌晨（2026-09-11 修）**：原本是周六 01:00，即周五亚洲收盘后仅约 10 小时，Yahoo 那时还没结算完当日日线，返回的最后一根 bar `close` 是 NaN，被 `normalizeYahooChartResponse` 跳过——于是**每周都稳定丢掉周五那个交易日**。日志里其实一直有证据（同一 ticker `Replacing ... (8 rows)` 对 `checkpoint saved (9 rows ... -> 09-04)`，14 支亚洲标的无一例外），但没人逐行比对过；美股因为跑在周日 01:00（距周五 20:00 UTC 收盘 21 小时）从来没踩到，`Replacing`/`checkpoint` 行数始终相等。改到周六 12:00 后结算余量约 21 小时，与美股现有余量相当。`RESUME_OVERLAP_DAYS = 3` 意味着这个洞下一周会自动补上，所以历史里没有永久缺口（核查过 6 月以来全部亚洲标的，工作日缺口只有 6/19 端午和 7/1 香港回归日两个真实休市日）。同批给 `normalizeYahooChartResponse` 加了跳过行的 `WARNING` 日志，下次再发生不会再是静默的。
 - `.env.local`（仅 `DATABASE_URL`/`DIRECT_URL` 两行，不是本地完整的 `.env.local`）需要手动放到 `air7:/root/cron-job-buffett-tribe/.env.local`（`chmod 600`），rsync 不会同步它。
 
+汇率周更：
+
+- 命令：`npm run update:fx-rates`；包装脚本：[scripts/cron/update-fx-rates.sh](/Users/rafael/R129/buffett-tribe/scripts/cron/update-fx-rates.sh)。
+- 任务从已登记的公司报告币种与市场交易币种中动态筛出错配项，按币种调用 Yahoo Chart API，更新 `FxRate` 最新值；不写入每日历史汇率，也不请求同币种公司或 USD/USD。
+- 新字段上线后先预览并补齐既有公司：`npm run backfill:reporting-currencies` 默认只读；确认清单后显式加 `--apply` 才登记币种并抓取所需汇率。可先用 `--limit 20` 小批检查。
+- 建议在周日美股行情任务完成后，北京时间周一 03:00 执行：
+
+```cron
+0 3 * * 1 cd /root/cron-job-buffett-tribe && scripts/cron/update-fx-rates.sh >> logs/update-fx-rates.log 2>&1
+```
+
+- 失败的币种会单独记入日志，任务最终返回非零状态，已成功币种仍会更新。单家公司首次识别报告币种时也会尝试即时抓取；失败只告警，不会阻断财务数据导入。
+- 先应用 Prisma 迁移、补齐既有报告币种，再部署并添加 crontab。部署仍复用上方 `deploy-cron-job.sh`；操作前确认目标机器目录和数据库环境。
+
 ## 14. A股/港股财务数据导入入口
 
 - 文件：[fetch-cn-hk-financials-ak.py](/Users/rafael/R129/buffett-tribe/scripts/fetch-cn-hk-financials-ak.py)

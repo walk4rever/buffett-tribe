@@ -29,6 +29,8 @@ import {
   upsertFilingAttachments,
   upsertFilingSectionsFromHtml,
 } from "./lib/annual-report-import-core";
+import { normalizeCurrencyCode } from "../src/lib/fx-rates-core";
+import { persistReportingCurrency } from "../src/lib/reporting-currency";
 
 type EdgarToolsProfile = {
   name: string | null;
@@ -260,6 +262,28 @@ async function importEdgarToolsAnnualReports(params: {
     targetFilings = targetFilings.slice(0, 1);
   }
 
+  const reportingCurrencyCounts = new Map<string, number>();
+  for (const filing of targetFilings) {
+    const revenue = findBestFactValue(
+      facts,
+      LINE_ITEMS.find((item) => item.key === "Revenue")?.tagsUsGaap ?? [],
+      LINE_ITEMS.find((item) => item.key === "Revenue")?.tagsIfrs ?? [],
+      LINE_ITEMS.find((item) => item.key === "Revenue")?.unitCandidates ?? [],
+      filing.reportDate,
+    );
+    const currency = normalizeCurrencyCode(revenue?.unit);
+    if (currency) {
+      reportingCurrencyCounts.set(currency, (reportingCurrencyCounts.get(currency) ?? 0) + 1);
+    }
+  }
+  const rankedReportingCurrencies = [...reportingCurrencyCounts.entries()].sort((a, b) => b[1] - a[1]);
+  if (
+    rankedReportingCurrencies.length > 0 &&
+    rankedReportingCurrencies[0][1] > (rankedReportingCurrencies[1]?.[1] ?? 0)
+  ) {
+    await persistReportingCurrency(companyEntity.id, "us", rankedReportingCurrencies[0][0]);
+  }
+
   console.log(`Found ${targetFilings.length} annual filings from edgartools (${params.fromYear}-${params.toYear})`);
   console.log(
     params.financialsOnly
@@ -276,15 +300,14 @@ async function importEdgarToolsAnnualReports(params: {
       let missing = 0;
       await filingTimer.time("upsert derived financials (fast)", async () => {
         const results = await mapLimit(LINE_ITEMS, 5, async (item) => {
-          const companyFactsValue = findBestFactValue(
+          const companyFactsFact = findBestFactValue(
             facts,
             item.tagsUsGaap,
             item.tagsIfrs,
             item.unitCandidates,
             filing.reportDate,
           );
-          if (companyFactsValue == null) return { upserted: 0, missing: 1 };
-          const unit = item.unitCandidates[0];
+          if (companyFactsFact == null) return { upserted: 0, missing: 1 };
           await db.financial.upsert({
             where: {
               entityId_periodEnd_periodType_lineItem: {
@@ -300,13 +323,13 @@ async function importEdgarToolsAnnualReports(params: {
               periodEnd: new Date(filing.reportDate),
               periodType: "FY",
               lineItem: item.key,
-              value: decimalFromNumber(companyFactsValue),
-              unit,
+              value: decimalFromNumber(companyFactsFact.value),
+              unit: companyFactsFact.unit,
             },
             update: {
               sourceId: extSource.id,
-              value: decimalFromNumber(companyFactsValue),
-              unit,
+              value: decimalFromNumber(companyFactsFact.value),
+              unit: companyFactsFact.unit,
             },
           });
           return { upserted: 1, missing: 0 };
@@ -405,7 +428,7 @@ async function importEdgarToolsAnnualReports(params: {
 
     await filingTimer.time("upsert derived financials", async () => {
       const results = await mapLimit(LINE_ITEMS, 5, async (item) => {
-        const companyFactsValue = findBestFactValue(
+        const companyFactsFact = findBestFactValue(
           facts,
           item.tagsUsGaap,
           item.tagsIfrs,
@@ -413,8 +436,8 @@ async function importEdgarToolsAnnualReports(params: {
           filing.reportDate,
         );
 
-        let value = companyFactsValue;
-        let unit = item.unitCandidates[0];
+        let value = companyFactsFact?.value ?? null;
+        let unit = companyFactsFact?.unit ?? null;
         let usedFallback = false;
         if (value == null) {
           const inlineFact = pickInlineFactWithUnit(
@@ -433,6 +456,12 @@ async function importEdgarToolsAnnualReports(params: {
         }
 
         if (value == null) return { upserted: 0, missing: 1, fallbackUsed: 0 };
+        if (item.key === "Revenue") {
+          const currency = normalizeCurrencyCode(unit);
+          if (currency) {
+            await persistReportingCurrency(companyEntity.id, "us", currency);
+          }
+        }
 
         await db.financial.upsert({
           where: {

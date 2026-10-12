@@ -156,7 +156,7 @@ export function isValid13FEntry(entry: InfoTableEntry): boolean {
   if (!entry.cusip || entry.cusip === "000000000" || /^0+$/.test(entry.cusip)) return false;
   const issuer = entry.nameOfIssuer.trim().toUpperCase();
   if (issuer === "NA" || issuer === "N/A" || issuer === "NONE") return false;
-  if (entry.shares === 0n && entry.value === 0n) return false;
+  if (entry.shares === BigInt(0) && entry.value === BigInt(0)) return false;
   return true;
 }
 

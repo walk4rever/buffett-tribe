@@ -72,6 +72,8 @@
     "import:hk-interim-report": "sh -c 'PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python; exec \"$PY\" scripts/fetch-hk-interim-report.py \"$@\"' sh",
     "import:cn-interim-report": "sh -c 'PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python; exec \"$PY\" scripts/fetch-cn-interim-report.py \"$@\"' sh",
     "import:company-stock-prices:yf": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-company-stock-prices-yf.ts",
+    "update:fx-rates": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/update-fx-rates.ts",
+    "backfill:reporting-currencies": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-reporting-currencies.ts",
     "mark:delisted-tickers": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/mark-delisted-tickers.ts",
     "mark:delisted-tickers:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/mark-delisted-tickers.ts --dry-run",
     "backfill:capex": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-capex.ts",

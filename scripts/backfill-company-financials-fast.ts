@@ -22,6 +22,7 @@ import {
   LINE_ITEMS,
   decimalFromNumber,
   getCompanyFacts,
+  selectBestFactCandidate,
 } from "./lib/annual-report-import-core";
 import {
   fetchSecSubmissionFile,
@@ -32,6 +33,9 @@ import {
   pickRecentAnnualFilings,
   type SecRecentFiling,
 } from "./lib/sec-company-profile";
+import { upsertFinancialRows } from "./lib/upsert-financial-rows";
+import { normalizeCurrencyCode } from "../src/lib/fx-rates-core";
+import { persistReportingCurrency } from "../src/lib/reporting-currency";
 
 const db = new PrismaClient();
 
@@ -63,7 +67,7 @@ function findBestAnnualFactValue(
 ): { val: number; unit: string } | null {
   const gaap = facts.facts?.["us-gaap"] ?? {};
   const ifrs = facts.facts?.["ifrs-full"] ?? {};
-  const candidates: Array<{ filed: string; val: number; unit: string }> = [];
+  const candidates: Array<{ filed: string; value: number; unit: string }> = [];
 
   const conceptSets = [
     { concepts: gaap, tags: tagsUsGaap },
@@ -75,11 +79,7 @@ function findBestAnnualFactValue(
       const concept = set.concepts[tag];
       if (!concept?.units) continue;
 
-      // 1. Check preferred unit candidates first
-      for (const unit of unitCandidates) {
-        const rows = concept.units[unit];
-        if (!rows || rows.length === 0) continue;
-
+      for (const [unit, rows] of Object.entries(concept.units)) {
         for (const row of rows) {
           if (!row || row.end !== reportDate || typeof row.val !== "number") continue;
           if (!ANNUAL_FORMS.has(row.form ?? "")) continue;
@@ -92,33 +92,9 @@ function findBestAnnualFactValue(
 
           candidates.push({
             filed: row.filed ?? "0000-00-00",
-            val: row.val,
+            value: row.val,
             unit,
           });
-        }
-
-        if (candidates.length) break;
-      }
-
-      // 2. Fallback to any remaining units in concept if none matched preferred
-      if (!candidates.length) {
-        for (const [unit, rows] of Object.entries(concept.units)) {
-          for (const row of rows) {
-            if (!row || row.end !== reportDate || typeof row.val !== "number") continue;
-            if (!ANNUAL_FORMS.has(row.form ?? "")) continue;
-
-            if (periodType === "duration" && row.start) {
-              const days = (new Date(row.end).getTime() - new Date(row.start).getTime()) / 86400000;
-              if (days < 300) continue;
-            }
-
-            candidates.push({
-              filed: row.filed ?? "0000-00-00",
-              val: row.val,
-              unit,
-            });
-          }
-          if (candidates.length) break;
         }
       }
 
@@ -127,9 +103,8 @@ function findBestAnnualFactValue(
     if (candidates.length) break;
   }
 
-  if (!candidates.length) return null;
-  candidates.sort((a, b) => (a.filed < b.filed ? 1 : -1));
-  return { val: candidates[0].val, unit: candidates[0].unit };
+  const match = selectBestFactCandidate(candidates, unitCandidates);
+  return match ? { val: match.value, unit: match.unit } : null;
 }
 
 /**
@@ -257,7 +232,7 @@ export async function backfillCompanyFinancialsFast(params: {
     where: { id: params.entityId },
     data: {
       sector: existingEntity?.sector ?? sector,
-      metadata: updatedMeta,
+      metadata: updatedMeta as Prisma.InputJsonValue,
     },
   });
 
@@ -403,7 +378,7 @@ export async function backfillCompanyFinancialsFast(params: {
 
     for (const [key, { value, unit }] of extractedValues.entries()) {
       const decimalVal = decimalFromNumber(value);
-      if (!decimalVal) continue;
+      if (decimalVal == null) continue;
 
       financialRowsToInsert.push({
         entityId: params.entityId,
@@ -411,28 +386,26 @@ export async function backfillCompanyFinancialsFast(params: {
         periodEnd: new Date(filing.reportDate),
         periodType: "FY",
         lineItem: key,
-        value: decimalVal,
+        value: new Prisma.Decimal(decimalVal),
         unit,
       });
     }
   }
 
-  // 6. Fast batch transaction: delete target range & insert in one roundtrip
+  // 6. Upsert only facts returned by SEC; absent facts must not erase stored data.
   if (financialRowsToInsert.length) {
-    const periodEnds = targetFilings.map((f) => new Date(f.reportDate));
-    await db.$transaction([
-      db.financial.deleteMany({
-        where: {
-          entityId: params.entityId,
-          periodEnd: { in: periodEnds },
-          periodType: "FY",
-        },
-      }),
-      db.financial.createMany({
-        data: financialRowsToInsert,
-        skipDuplicates: true,
-      }),
-    ]);
+    await upsertFinancialRows(db, financialRowsToInsert);
+  }
+
+  const revenueCurrencies = new Map<string, number>();
+  for (const row of financialRowsToInsert) {
+    if (row.lineItem !== "Revenue") continue;
+    const currency = normalizeCurrencyCode(row.unit);
+    if (currency) revenueCurrencies.set(currency, (revenueCurrencies.get(currency) ?? 0) + 1);
+  }
+  const rankedCurrencies = [...revenueCurrencies.entries()].sort((a, b) => b[1] - a[1]);
+  if (rankedCurrencies.length && rankedCurrencies[0][1] > (rankedCurrencies[1]?.[1] ?? 0)) {
+    await persistReportingCurrency(params.entityId, "us", rankedCurrencies[0][0]);
   }
 
   return {

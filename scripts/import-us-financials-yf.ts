@@ -14,6 +14,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import db from "../src/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { normalizeCurrencyCode } from "../src/lib/fx-rates-core";
+import { persistReportingCurrency } from "../src/lib/reporting-currency";
 
 const execFileAsync = promisify(execFile);
 
@@ -53,7 +55,7 @@ export async function importUsFinancialsFromYfinance(ticker: string): Promise<nu
       market: "us",
       OR: [{ ticker: upperTicker }, { code: upperTicker }],
     },
-    select: { id: true, canonicalName: true },
+    select: { id: true, canonicalName: true, market: true },
   });
 
   if (!entity) {
@@ -72,6 +74,8 @@ export async function importUsFinancialsFromYfinance(ticker: string): Promise<nu
     console.log(`[yfinance-financials] No financials returned for ${upperTicker}`);
     return 0;
   }
+  const reportingCurrency = normalizeCurrencyCode(parsed.currency);
+  await persistReportingCurrency(entity.id, entity.market, reportingCurrency);
 
   // Create or retrieve stable ExtSource row
   const accessionNumber = "yfinance-financials";
@@ -133,12 +137,12 @@ export async function importUsFinancialsFromYfinance(ticker: string): Promise<nu
         periodType: record.periodType,
         lineItem: record.lineItem,
         value: new Prisma.Decimal(record.value),
-        unit: record.unit || parsed.currency || "USD",
+        unit: normalizeCurrencyCode(record.unit) ?? reportingCurrency,
         confidence: 1,
       },
       update: {
         value: new Prisma.Decimal(record.value),
-        unit: record.unit || parsed.currency || "USD",
+        unit: normalizeCurrencyCode(record.unit) ?? reportingCurrency,
       },
     });
     written++;

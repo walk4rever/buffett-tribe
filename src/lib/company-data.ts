@@ -1,6 +1,7 @@
 import { cache } from "react";
 import db from "@/lib/prisma";
 import { formatUsdInYi } from "@/lib/currency";
+import { resolveReportingCurrency } from "@/lib/reporting-currency-core";
 import { computeHoldingActivity, computeShareDeltaPct } from "@/lib/holding-activity";
 import { normalizeTicker } from "@/lib/ticker";
 import {
@@ -368,7 +369,7 @@ export async function getEntityFamilyIds(entityId: string) {
   return siblings
     .sort((a, b) => {
       const score = (x: (typeof siblings)[number]) => (x.cik ? 100 : 0);
-      return score(b) - score(a);
+      return score(b) - score(a) || a.id.localeCompare(b.id);
     })
     .map((s) => s.id);
 }
@@ -424,17 +425,29 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
         lineItem: true,
         value: true,
         unit: true,
+        source: { select: { filedAt: true } },
       },
       take: 2000,
     }),
   );
 
-  const byYear = new Map<number, { periodEnd: Date; items: Record<string, string> }>();
+  const byYear = new Map<number, {
+    periodEnd: Date;
+    disclosedAt: Date | null;
+    items: Record<string, string>;
+  }>();
   for (const row of rows) {
     const year = row.periodEnd.getUTCFullYear();
-    if (!byYear.has(year)) byYear.set(year, { periodEnd: row.periodEnd, items: {} });
+    if (!byYear.has(year)) {
+      byYear.set(year, { periodEnd: row.periodEnd, disclosedAt: row.source.filedAt, items: {} });
+    }
     const bucket = byYear.get(year)!;
-    if (row.periodEnd > bucket.periodEnd) bucket.periodEnd = row.periodEnd;
+    if (row.periodEnd > bucket.periodEnd) {
+      bucket.periodEnd = row.periodEnd;
+      bucket.disclosedAt = row.source.filedAt;
+    } else if (!bucket.disclosedAt && row.source.filedAt) {
+      bucket.disclosedAt = row.source.filedAt;
+    }
     if (!(row.lineItem in bucket.items) && row.value != null) {
       bucket.items[row.lineItem] = row.value.toString();
     }
@@ -451,7 +464,12 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
     )
     .sort((a, b) => b[0] - a[0])
     .slice(0, limit)
-    .map(([year, data]) => ({ year, periodEnd: data.periodEnd, items: data.items }));
+    .map(([year, data]) => ({
+      year,
+      periodEnd: data.periodEnd,
+      disclosedAt: data.disclosedAt,
+      items: data.items,
+    }));
 }
 
 /**
@@ -464,13 +482,25 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
  */
 export async function getFinancialsCurrency(entityId: string): Promise<string | null> {
   const familyIds = await getEntityFamilyIds(entityId);
-  const row = await retryOnce(async () =>
-    db.financial.findFirst({
-      where: { entityId: { in: familyIds }, periodType: "FY", unit: { not: null } },
-      select: { unit: true },
+  const entities = await retryOnce(async () =>
+    db.entity.findMany({
+      where: { id: { in: familyIds } },
+      select: { id: true, reportingCurrency: true, metadata: true },
     }),
   );
-  return row?.unit ?? null;
+  const registeredCurrency = resolveReportingCurrency(entityId, familyIds, entities, []);
+  if (registeredCurrency) return registeredCurrency;
+
+  const financialUnits = await retryOnce(async () =>
+    db.financial.findMany({
+      where: { entityId: { in: familyIds }, periodType: "FY", unit: { not: null } },
+      select: { entityId: true, periodEnd: true, unit: true },
+      orderBy: { periodEnd: "desc" },
+      take: 500,
+    }),
+  );
+
+  return resolveReportingCurrency(entityId, familyIds, entities, financialUnits);
 }
 
 export type HolderRow = {

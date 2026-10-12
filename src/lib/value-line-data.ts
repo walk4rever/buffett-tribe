@@ -6,13 +6,16 @@ import {
   formatSecurityClassLabel,
   getCompanyHolderTrends,
   getCompanyFinancials,
+  getFinancialsCurrency,
   getCompanySecurities,
   getRecentHolders,
   parseCompanyIdentifier,
 } from "@/lib/company-data";
 import { getTribeMembers } from "@/lib/tribe";
 import { getLatestPortfolioValueUsd } from "@/lib/master-data";
-import { formatUsdInYi } from "@/lib/currency";
+import { currencySymbol, formatUsdInYi } from "@/lib/currency";
+import { convertCurrency, currenciesNeededForConversion, normalizeCurrencyCode, tradingCurrencyForMarket } from "@/lib/fx-rates-core";
+import { getLatestFxRates } from "@/lib/fx-rates";
 import {
   selectTopMasterHolders,
   type MasterHolderTrendPoint,
@@ -22,6 +25,11 @@ import {
   calculateReturnOnAverageBalance,
   normalizeAnnualsStockSplits,
 } from "@/lib/financial-math";
+import {
+  buildHistoricalPeSeries,
+  computeHistoricalPeMetrics,
+  getAnnualEpsAvailableOnDate,
+} from "@/lib/valuation-analysis-metrics";
 import {
   type SectorModelType13,
   getExplicitSectorModel13Info,
@@ -38,6 +46,7 @@ function parseNum(items: Record<string, string | number> | undefined, key: strin
 
 export type ValueLineAnnualData = {
   year: number;
+  disclosedAt?: string | null;
   revenue: number | null;
   netIncome: number | null;
   operatingCashFlow: number | null;
@@ -46,6 +55,9 @@ export type ValueLineAnnualData = {
   shareholdersEquity: number | null;
   totalAssets: number | null;
   totalLiabilities: number | null;
+  cashAndCashEquivalents: number | null;
+  shortTermDebt: number | null;
+  longTermDebt: number | null;
   roe: number | null; // percentage, e.g. 24.5
   eps: number | null;
   shares: number | null;
@@ -98,7 +110,9 @@ export type ValueLineSecurityOption = {
   pbRatio: number | null;
 
   pricePoints: Array<{ date: string; close: number }>;
+  historicalPePoints: Array<{ date: string; close: number; eps: number; pe: number }>;
   valueLinePoints: Array<{ date: string; value: number }>;
+  benchmarkPe: number | null;
   valuationStatus: "undervalued" | "fair" | "overvalued" | "insufficient";
   valuationDiffPct: number | null;
 };
@@ -112,6 +126,10 @@ export type ValueLineData = {
   industry: string | null;
   exchange: string | null;
   market: "us" | "hk" | "cn";
+  reportingCurrency: string | null;
+  tradingCurrency: string | null;
+  valuationCurrencyAvailable: boolean;
+  valuationAnnuals: ValueLineAnnualData[];
   href: string;
   dvlHref: string;
 
@@ -135,6 +153,7 @@ export type ValueLineData = {
 
   // Price history points (e.g. monthly for compact sparkline)
   pricePoints: Array<{ date: string; close: number }>;
+  historicalPePoints: Array<{ date: string; close: number; eps: number; pe: number }>;
 
   // Value Line Corridor (Price vs. Earnings Corridor)
   valueLinePoints: Array<{ date: string; value: number }>;
@@ -183,7 +202,6 @@ export type ValueLineData = {
   // Capital Allocation specifics
   shareCountChangePct5Y: number | null; // e.g. -14.2%
   buybackLabel: string | null;          // "🔥 5年回购 -14.2%" or "⚠️ 5年稀释 +8.5%"
-  totalBuyback5YUsd: number | null;     // Total cash spent on share repurchase (backward compat)
   totalBuyback5Y: number | null;
   buybackAmountLabel: string | null;    // e.g. "5年累计回购 ¥89.9亿"
   safetyLabel: string;                  // "手握净现金 / 低负债" | "负债适度受控" | "高杠杆警惕"
@@ -225,6 +243,7 @@ export async function getValueLineData(
     sectorModelType: true,
     market: true,
     cik: true,
+    reportingCurrency: true,
     metadata: true,
     analyses: {
       select: {
@@ -295,7 +314,25 @@ export async function getValueLineData(
   const industry = typeof meta.industry === "string" ? meta.industry : null;
   const exchange = typeof meta.exchange === "string" ? meta.exchange : null;
   const market = (entity.market as "hk" | "cn" | null) ?? "us";
-  const currency = typeof meta.currency === "string" ? meta.currency : market === "cn" ? "CNY" : market === "hk" ? "HKD" : "USD";
+  const reportingCurrency =
+    normalizeCurrencyCode(entity.reportingCurrency) ??
+    normalizeCurrencyCode(await getFinancialsCurrency(entity.id)) ??
+    normalizeCurrencyCode(typeof meta.currency === "string" ? meta.currency : null);
+  const tradingCurrency = tradingCurrencyForMarket(market);
+  const neededFxCurrencies = currenciesNeededForConversion([{
+    reportingCurrency,
+    tradingCurrency,
+  }]);
+  const fxRates = await getLatestFxRates(neededFxCurrencies);
+  const convertFinancialValue = (value: number | null) =>
+    reportingCurrency && tradingCurrency
+      ? convertCurrency(value, reportingCurrency, tradingCurrency, fxRates)
+      : null;
+  const fxRateToTradingCurrency = convertFinancialValue(1);
+  const valuationCurrencyAvailable =
+    reportingCurrency != null &&
+    tradingCurrency != null &&
+    (reportingCurrency === tradingCurrency || fxRateToTradingCurrency != null);
   const href = formatCompanyUrl(entity) ?? `/company/${canonicalTicker}`;
   const dvlHref = formatDvlUrl(entity) ?? `/company/${canonicalTicker}`;
 
@@ -313,6 +350,9 @@ export async function getValueLineData(
       const priorEquity = parseNum(financialsByYear.get(f.year - 1)?.items, "ShareholdersEquity");
       const assets = parseNum(f.items, "TotalAssets");
       const liabilities = parseNum(f.items, "TotalLiabilities");
+      const cash = parseNum(f.items, "CashAndCashEquivalents") ?? parseNum(f.items, "CashEndOfPeriod");
+      const shortTermDebt = parseNum(f.items, "ShortTermDebt");
+      const longTermDebt = parseNum(f.items, "LongTermDebt");
       const epsRaw = parseNum(f.items, "EPSDiluted") ?? parseNum(f.items, "EPSBasic");
       const repAmtRaw =
         parseNum(f.items, "ShareRepurchaseAmt") ??
@@ -342,6 +382,7 @@ export async function getValueLineData(
 
       return {
         year: f.year,
+        disclosedAt: f.disclosedAt?.toISOString().slice(0, 10) ?? null,
         revenue: rev,
         netIncome: net,
         operatingCashFlow: ocf,
@@ -350,6 +391,9 @@ export async function getValueLineData(
         shareholdersEquity: equity,
         totalAssets: assets,
         totalLiabilities: liabilities,
+        cashAndCashEquivalents: cash,
+        shortTermDebt,
+        longTermDebt,
         roe,
         eps,
         shares,
@@ -362,6 +406,23 @@ export async function getValueLineData(
 
   // Normalize historical shares & EPS for stock splits so older years are on the latest share basis
   const annuals: ValueLineAnnualData[] = normalizeAnnualsStockSplits(rawAnnuals);
+  const valuationAnnuals: ValueLineAnnualData[] = annuals.map((annual) => ({
+    ...annual,
+    revenue: convertFinancialValue(annual.revenue),
+    netIncome: convertFinancialValue(annual.netIncome),
+    operatingCashFlow: convertFinancialValue(annual.operatingCashFlow),
+    capEx: convertFinancialValue(annual.capEx),
+    freeCashFlow: convertFinancialValue(annual.freeCashFlow),
+    shareholdersEquity: convertFinancialValue(annual.shareholdersEquity),
+    totalAssets: convertFinancialValue(annual.totalAssets),
+    totalLiabilities: convertFinancialValue(annual.totalLiabilities),
+    cashAndCashEquivalents: convertFinancialValue(annual.cashAndCashEquivalents),
+    shortTermDebt: convertFinancialValue(annual.shortTermDebt),
+    longTermDebt: convertFinancialValue(annual.longTermDebt),
+    eps: convertFinancialValue(annual.eps),
+    repurchaseAmt: convertFinancialValue(annual.repurchaseAmt),
+    dividendsPaid: convertFinancialValue(annual.dividendsPaid),
+  }));
 
   // Value Triad & Capital Allocation Metrics
   const recentAnnuals = annuals.slice(-5);
@@ -390,7 +451,14 @@ export async function getValueLineData(
       ? Number(((latestAnnual.totalLiabilities / latestAnnual.totalAssets) * 100).toFixed(1))
       : null;
 
-  const isNetCash = debtToAssetsRatio != null ? debtToAssetsRatio < 40 : false;
+  const hasCompleteDebtAndCash =
+    latestAnnual?.cashAndCashEquivalents != null &&
+    latestAnnual.shortTermDebt != null &&
+    latestAnnual.longTermDebt != null;
+  const isNetCash = hasCompleteDebtAndCash
+    ? latestAnnual.cashAndCashEquivalents! >
+      latestAnnual.shortTermDebt! + latestAnnual.longTermDebt!
+    : false;
 
   // Only an explicitly persisted 13-way classification selects adaptive valuation logic.
   const sectorModel = getExplicitSectorModel13Info(entity.sectorModelType);
@@ -486,10 +554,12 @@ export async function getValueLineData(
 
   // ── Metric 4: Balance Sheet & Safety ──
   let metric4Title = "资产负债与安全性";
-  let metric4Badge = isNetCash ? "净现金充沛" : "适度杠杆";
+  let metric4Badge = isNetCash ? "现金高于有息债务" : "数据不足";
   let metric4BadgeClass = isNetCash ? "vl-badge--cash" : "vl-badge--neutral";
   const metric4MainNum = debtToAssetsRatio != null ? `${debtToAssetsRatio}%` : "—";
-  let metric4SubText = "负债稳健可控";
+  let metric4SubText = isNetCash
+    ? "现金高于已披露短期与长期借款"
+    : "有息债务或现金数据不完整，无法判断净现金";
 
   if (sectorModelType === "banks" || sectorModelType === "insurance") {
     metric4Title = "资本结构与偿付准备";
@@ -506,24 +576,28 @@ export async function getValueLineData(
     metric4Badge = isNetCash
       ? "手握充沛现金"
       : debtToAssetsRatio && debtToAssetsRatio > 60
-        ? "警惕下行期负债"
-        : "周期防守稳健";
+        ? "总负债率偏高"
+        : "净现金数据不足";
     metric4BadgeClass = isNetCash
       ? "vl-badge--cash"
       : debtToAssetsRatio && debtToAssetsRatio > 60
         ? "vl-badge--alert"
         : "vl-badge--neutral";
-    metric4SubText = "需具备穿越大宗商品低谷期的充沛偿债与现金安全垫";
+    metric4SubText = "总负债率不能替代现金与有息债务净额";
   } else if (sectorModelType === "conglomerate") {
     metric4Title = "资本实力与流动性储备";
-    metric4Badge = isNetCash ? "巨额现金储备" : "稳健资本底座";
-    metric4BadgeClass = "vl-badge--cash";
-    metric4SubText = "手握充沛现金与流动性 · 具备逆周期资本配置能力";
+    metric4Badge = isNetCash ? "现金高于有息债务" : "净现金数据不足";
+    metric4BadgeClass = isNetCash ? "vl-badge--cash" : "vl-badge--neutral";
+    metric4SubText = "需同时核实现金、短期借款与长期借款";
   } else if (debtToAssetsRatio != null) {
-    if (debtToAssetsRatio < 35 || isNetCash) {
-      metric4Badge = "净现金充沛";
+    if (isNetCash) {
+      metric4Badge = "现金高于有息债务";
       metric4BadgeClass = "vl-badge--cash";
-      metric4SubText = "手握净现金 / 低负债安全边际";
+      metric4SubText = "现金高于已披露短期与长期借款";
+    } else if (debtToAssetsRatio < 35) {
+      metric4Badge = "总负债率较低";
+      metric4BadgeClass = "vl-badge--neutral";
+      metric4SubText = "总负债 / 总资产；不代表净现金或偿债安全";
     } else if (debtToAssetsRatio > 65) {
       metric4Badge = "高杠杆警惕";
       metric4BadgeClass = "vl-badge--alert";
@@ -545,9 +619,9 @@ export async function getValueLineData(
     const newestShs = annualsWithShares[annualsWithShares.length - 1].shares!;
     shareCountChangePct5Y = Number((((newestShs - oldestShs) / oldestShs) * 100).toFixed(1));
     if (shareCountChangePct5Y <= -3) {
-      buybackLabel = `🔥 5年注销回购 ${Math.abs(shareCountChangePct5Y)}%`;
+      buybackLabel = `5年股数净减少 ${Math.abs(shareCountChangePct5Y)}%`;
     } else if (shareCountChangePct5Y >= 5) {
-      buybackLabel = `⚠️ 5年增发稀释 +${shareCountChangePct5Y}%`;
+      buybackLabel = `5年股数净增加 +${shareCountChangePct5Y}%`;
     } else {
       buybackLabel = `股本稳定 (${shareCountChangePct5Y > 0 ? "+" : ""}${shareCountChangePct5Y}%)`;
     }
@@ -555,10 +629,9 @@ export async function getValueLineData(
 
   const totalBuyback5Y =
     recentAnnuals.reduce((acc, a) => acc + (a.repurchaseAmt ?? 0), 0) || null;
-  const totalBuyback5YUsd = totalBuyback5Y;
-  const sym = currency === "USD" ? "$" : currency === "HKD" ? "HK$" : "¥";
+  const sym = reportingCurrency ? currencySymbol(reportingCurrency) : "";
   const buybackAmountLabel =
-    totalBuyback5Y != null && totalBuyback5Y > 0
+    reportingCurrency && totalBuyback5Y != null && totalBuyback5Y > 0
       ? `5年累计回购 ${sym}${formatUsdInYi(totalBuyback5Y)}`
       : null;
 
@@ -629,9 +702,11 @@ export async function getValueLineData(
     }
   }
 
-  const latestNetIncome = latestAnnual?.netIncome ?? null;
-  const latestEquity = latestAnnual?.shareholdersEquity ?? null;
-  const latestEps = latestAnnual?.eps ?? null;
+  const latestValuationAnnual =
+    valuationAnnuals[valuationAnnuals.length - 1] ?? null;
+  const latestNetIncome = latestValuationAnnual?.netIncome ?? null;
+  const latestEquity = latestValuationAnnual?.shareholdersEquity ?? null;
+  const latestEps = latestValuationAnnual?.eps ?? null;
 
   // Fallback to most recent known shares if latest annual has null shares
   const lastKnownShares =
@@ -639,16 +714,6 @@ export async function getValueLineData(
   const sharesOutstanding = latestAnnual?.shares ?? lastKnownShares;
 
   // EPS by year map for corridor
-  const epsByYear = new Map<number, number>();
-  recentAnnuals.forEach((a) => {
-    if (a.eps != null && a.eps > 0) {
-      epsByYear.set(a.year, a.eps);
-    }
-  });
-
-  const minAvailableYear = recentAnnuals[0]?.year ?? 2020;
-  const maxAvailableYear = recentAnnuals[recentAnnuals.length - 1]?.year ?? 2025;
-
   // 2. Fetch all securities and stock price histories for multi-ticker support
   const rawSecurities = await getCompanySecurities(entity.id);
 
@@ -698,117 +763,49 @@ export async function getValueLineData(
     }
   }
 
-  // Find price rows that align with the EPS anchor price for historical PE calculation
-  let anchorRows = primaryRows;
-  if (epsAnchorPrice != null) {
-    const matchedTicker = validTickers.find((t) => {
-      const p = priceRowsByTicker.get(t);
-      const lastClose = p?.length ? Number(p[p.length - 1].close) : 0;
-      return Math.abs(lastClose - epsAnchorPrice) < 1;
-    });
-    if (matchedTicker && priceRowsByTicker.has(matchedTicker)) {
-      anchorRows = priceRowsByTicker.get(matchedTicker)!;
-    }
-  }
-
-  // Calculate historical median PE across past fiscal years (no circular reasoning!)
-  const historicalPes: number[] = [];
-  for (const a of recentAnnuals) {
-    if (a.eps != null && a.eps > 0) {
-      const pNear = anchorRows.find((p) => p.date.toISOString().startsWith(`${a.year}`));
-      if (pNear && Number(pNear.close) > 0) {
-        const pe = Number(pNear.close) / a.eps;
-        if (pe >= 6 && pe <= 60) {
-          historicalPes.push(pe);
-        }
-      }
-    }
-  }
-
-  let benchmarkPe = sectorModel?.benchmarkPE ?? null;
-  if (historicalPes.length >= 2) {
-    historicalPes.sort((a, b) => a - b);
-
-    // Remove outliers using IQR method for cyclical/volatile stocks
-    if (historicalPes.length >= 4) {
-      const q1Index = Math.floor(historicalPes.length * 0.25);
-      const q3Index = Math.floor(historicalPes.length * 0.75);
-      const q1 = historicalPes[q1Index];
-      const q3 = historicalPes[q3Index];
-      const iqr = q3 - q1;
-      const lowerBound = q1 - 1.5 * iqr;
-      const upperBound = q3 + 1.5 * iqr;
-
-      const filteredPes = historicalPes.filter(pe => pe >= lowerBound && pe <= upperBound);
-
-      // Only use filtered if we still have enough data points
-      if (filteredPes.length >= 2) {
-        const mid = Math.floor(filteredPes.length / 2);
-        const median =
-          filteredPes.length % 2 === 0
-            ? (filteredPes[mid - 1] + filteredPes[mid]) / 2
-            : filteredPes[mid];
-        benchmarkPe = Number(median.toFixed(1));
-      } else {
-        // Fallback to simple median if filtering removes too much
-        const mid = Math.floor(historicalPes.length / 2);
-        const median =
-          historicalPes.length % 2 === 0
-            ? (historicalPes[mid - 1] + historicalPes[mid]) / 2
-            : historicalPes[mid];
-        benchmarkPe = Number(median.toFixed(1));
-      }
-    } else {
-      // Not enough data for IQR, use simple median
-      const mid = Math.floor(historicalPes.length / 2);
-      const median =
-        historicalPes.length % 2 === 0
-          ? (historicalPes[mid - 1] + historicalPes[mid]) / 2
-          : historicalPes[mid];
-      benchmarkPe = Number(median.toFixed(1));
-    }
-  } else if (sectorModelType) {
+  let sectorBenchmarkPe = sectorModel?.benchmarkPE ?? null;
+  if (sectorModelType) {
     // Use a category-specific PE anchor only when a 13-way classification exists.
     switch (sectorModelType) {
       case "banks":
       case "insurance":
-        benchmarkPe = roeAvg5Y && roeAvg5Y >= 12 ? 8.0 : 6.5;
+        sectorBenchmarkPe = roeAvg5Y && roeAvg5Y >= 12 ? 8.0 : 6.5;
         break;
       case "utilities":
-        benchmarkPe = 14.0;
+        sectorBenchmarkPe = 14.0;
         break;
       case "energy_materials":
-        benchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 10.0 : 8.0;
+        sectorBenchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 10.0 : 8.0;
         break;
       case "consumer_brand":
-        benchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 24.0 : roeAvg5Y && roeAvg5Y >= 12 ? 20.0 : 16.0;
+        sectorBenchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 24.0 : roeAvg5Y && roeAvg5Y >= 12 ? 20.0 : 16.0;
         break;
       case "healthcare":
-        benchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 22.0 : roeAvg5Y && roeAvg5Y >= 12 ? 18.0 : 15.0;
+        sectorBenchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 22.0 : roeAvg5Y && roeAvg5Y >= 12 ? 18.0 : 15.0;
         break;
       case "software_platform":
       case "semiconductor_hardware":
-        benchmarkPe = roeAvg5Y && roeAvg5Y >= 20 ? 28.0 : roeAvg5Y && roeAvg5Y >= 12 ? 22.0 : 18.0;
+        sectorBenchmarkPe = roeAvg5Y && roeAvg5Y >= 20 ? 28.0 : roeAvg5Y && roeAvg5Y >= 12 ? 22.0 : 18.0;
         break;
       case "capital_markets":
-        benchmarkPe = roeAvg5Y && roeAvg5Y >= 20 ? 24.0 : roeAvg5Y && roeAvg5Y >= 15 ? 20.0 : 16.0;
+        sectorBenchmarkPe = roeAvg5Y && roeAvg5Y >= 20 ? 24.0 : roeAvg5Y && roeAvg5Y >= 15 ? 20.0 : 16.0;
         break;
       case "real_estate":
-        benchmarkPe = 12.0; // PE less relevant for REITs; NAV/PB more appropriate
+        sectorBenchmarkPe = 12.0; // PE less relevant for REITs; NAV/PB more appropriate
         break;
       case "telecommunications":
-        benchmarkPe = 14.0; // Utility-like, stable dividend payers
+        sectorBenchmarkPe = 14.0; // Utility-like, stable dividend payers
         break;
       case "conglomerate":
-        benchmarkPe = 18.0;
+        sectorBenchmarkPe = 18.0;
         break;
       case "industrial":
-        benchmarkPe = roeAvg5Y && roeAvg5Y > 15 ? 18.0 : 15.0;
+        sectorBenchmarkPe = roeAvg5Y && roeAvg5Y > 15 ? 18.0 : 15.0;
         break;
     }
   }
-  if (benchmarkPe != null) {
-    benchmarkPe = Math.max(6, Math.min(42, benchmarkPe));
+  if (sectorBenchmarkPe != null) {
+    sectorBenchmarkPe = Math.max(6, Math.min(42, sectorBenchmarkPe));
   }
 
   // Build security options
@@ -843,6 +840,17 @@ export async function getValueLineData(
         secShares = sharesOutstanding != null ? Math.round(sharesOutstanding / priceScale) : null;
       }
     }
+    const shareClassEpsScale =
+      secEps != null && latestEps != null && latestEps > 0
+        ? secEps / latestEps
+        : 1;
+    const securityAnnuals = valuationAnnuals.map((annual) => ({
+      ...annual,
+      eps:
+        annual.eps != null
+          ? Number((annual.eps * shareClassEpsScale).toFixed(6))
+          : null,
+    }));
 
     const step = Math.max(1, Math.floor(pRows.length / 45));
     const pricePoints = pRows
@@ -852,28 +860,26 @@ export async function getValueLineData(
         close: Number(p.close),
       }));
 
-    const valuationBenchmarkPe = benchmarkPe;
+    const historicalPePoints = valuationCurrencyAvailable
+      ? buildHistoricalPeSeries(pricePoints, securityAnnuals)
+      : [];
+    const historicalMedianPe =
+      computeHistoricalPeMetrics(historicalPePoints, null).peMedian;
+    const valuationBenchmarkPe = valuationCurrencyAvailable
+      ? historicalMedianPe ?? sectorBenchmarkPe
+      : null;
     const valueLinePoints =
       valuationBenchmarkPe == null
         ? []
         : pricePoints.map((p) => {
-      const pointYear = parseInt(p.date.slice(0, 4), 10);
-      const clampedYear = Math.max(minAvailableYear, Math.min(maxAvailableYear, pointYear));
-      const rawEpsVal =
-        epsByYear.get(clampedYear) ??
-        epsByYear.get(maxAvailableYear) ??
-        (latestPrice != null ? latestPrice / valuationBenchmarkPe : 1);
-      
-      const epsVal = secEps != null && latestEps != null && latestEps > 0
-        ? rawEpsVal * (secEps / latestEps)
-        : rawEpsVal;
-
-      const val = Number((epsVal * valuationBenchmarkPe).toFixed(2));
+      const annual = getAnnualEpsAvailableOnDate(securityAnnuals, p.date);
+      if (!annual?.eps) return null;
+      const val = Number((annual.eps * valuationBenchmarkPe).toFixed(2));
       return {
         date: p.date,
         value: val,
       };
-    });
+    }).filter((point): point is { date: string; value: number } => point != null);
 
     const marketCap =
       latestPrice != null && secShares != null && secShares > 0
@@ -881,9 +887,9 @@ export async function getValueLineData(
         : null;
 
     let peRatio: number | null = null;
-    if (latestPrice != null && secEps != null && secEps > 0) {
+    if (valuationCurrencyAvailable && latestPrice != null && secEps != null && secEps > 0) {
       peRatio = Number((latestPrice / secEps).toFixed(1));
-    } else if (marketCap != null && latestNetIncome != null && latestNetIncome > 0) {
+    } else if (valuationCurrencyAvailable && marketCap != null && latestNetIncome != null && latestNetIncome > 0) {
       peRatio = Number((marketCap / latestNetIncome).toFixed(1));
     }
     if (peRatio != null && (peRatio <= 0 || peRatio > 1000)) {
@@ -891,7 +897,7 @@ export async function getValueLineData(
     }
 
     let pbRatio: number | null = null;
-    if (marketCap != null && latestEquity != null && latestEquity > 0) {
+    if (valuationCurrencyAvailable && marketCap != null && latestEquity != null && latestEquity > 0) {
       const rawPb = marketCap / latestEquity;
       if (rawPb > 0 && rawPb <= 500) {
         pbRatio = rawPb < 0.2 ? Number(rawPb.toFixed(2)) : Number(rawPb.toFixed(1));
@@ -936,7 +942,9 @@ export async function getValueLineData(
       peRatio,
       pbRatio,
       pricePoints,
+      historicalPePoints,
       valueLinePoints,
+      benchmarkPe: valuationBenchmarkPe,
       valuationStatus,
       valuationDiffPct,
     };
@@ -962,7 +970,9 @@ export async function getValueLineData(
   const peRatio = activeSec?.peRatio ?? null;
   const pbRatio = activeSec?.pbRatio ?? null;
   const pricePoints = activeSec?.pricePoints ?? [];
+  const historicalPePoints = activeSec?.historicalPePoints ?? [];
   const valueLinePoints = activeSec?.valueLinePoints ?? [];
+  const benchmarkPe = activeSec?.benchmarkPe ?? null;
   const valuationStatus = activeSec?.valuationStatus ?? "insufficient";
   const valuationDiffPct = activeSec?.valuationDiffPct ?? null;
 
@@ -1220,6 +1230,10 @@ export async function getValueLineData(
     industry,
     exchange,
     market,
+    reportingCurrency,
+    tradingCurrency,
+    valuationCurrencyAvailable,
+    valuationAnnuals,
     href,
     dvlHref,
 
@@ -1239,6 +1253,7 @@ export async function getValueLineData(
     pbRatio,
 
     pricePoints,
+    historicalPePoints,
     valueLinePoints,
     benchmarkPe,
     valuationStatus,
@@ -1278,7 +1293,6 @@ export async function getValueLineData(
 
     shareCountChangePct5Y,
     buybackLabel,
-    totalBuyback5YUsd,
     totalBuyback5Y,
     buybackAmountLabel,
     safetyLabel,

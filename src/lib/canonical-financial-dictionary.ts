@@ -2530,12 +2530,8 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "CNY",
       "HKD"
     ],
-    "tagsUsGaap": [
-      "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"
-    ],
-    "tagsIfrs": [
-      "CashAndCashEquivalents"
-    ],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
     "cnAliases": [
       "期初现金及现金等价物余额"
     ],

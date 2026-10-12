@@ -577,9 +577,9 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
               }`}
             >
               {data.shareCountChangePct5Y != null && data.shareCountChangePct5Y <= -3
-                ? "注销回购"
+                ? "股数净减少"
                 : data.shareCountChangePct5Y != null && data.shareCountChangePct5Y >= 5
-                  ? "稀释预警"
+                  ? "股数净增加"
                   : data.totalBuyback5Y && data.totalBuyback5Y > 0
                     ? "持续回购"
                     : "股本平稳"}

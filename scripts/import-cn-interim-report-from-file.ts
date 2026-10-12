@@ -101,6 +101,7 @@ async function main() {
           { entityId: entity.id, sourceId: extSource.id, cik: entity.cik, accession: accessionNumber },
           sectionName,
           chunkText,
+          null,
         );
         await db.filingSection.upsert({
           where: { sourceId_section: { sourceId: extSource.id, section: sectionName } },

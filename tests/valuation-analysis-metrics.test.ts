@@ -36,6 +36,21 @@ describe("buildHistoricalPeSeries", () => {
     expect(series).toEqual([]);
   });
 
+  it("does not use an annual EPS before its filing disclosure date", () => {
+    const series = buildHistoricalPeSeries(
+      [
+        { date: "2025-01-15", close: 200 },
+        { date: "2025-03-15", close: 200 },
+      ],
+      [
+        { year: 2023, eps: 5, disclosedAt: "2024-02-01" },
+        { year: 2024, eps: 10, disclosedAt: "2025-02-20" },
+      ],
+    );
+
+    expect(series.map((point) => point.eps)).toEqual([5, 10]);
+  });
+
   it("omits non-positive earnings and invalid prices", () => {
     const series = buildHistoricalPeSeries(
       [

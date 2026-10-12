@@ -259,6 +259,7 @@ model Entity {
   ticker        String?
   market        String? // 'us' | 'hk' | 'cn' — exchange market; cik is us-only
   code          String? // exchange-specific code: 'AAPL' (us), '00700' (hk), '600519' (cn)
+  reportingCurrency String? // verified currency used in financial statements
   sector        String?
   sectorModelType String? // 13-way classification from SectorModelType13; legacy values are read-only during migration
   onboardPhase        Int       @default(0) // 0: Stub/Phase0, 1: Phase1, 2: Phase2
@@ -705,6 +706,15 @@ model StockPrice {
   @@unique([ticker, date])
 }
 
+model FxRate {
+  currency  String   @id
+  rateToUsd Decimal  @db.Decimal(20, 10)
+  asOfDate  DateTime @db.Date
+  ticker    String
+  source    String   @default("yahoo-chart")
+  updatedAt DateTime @updatedAt
+}
+
 // ============================================================================
 // Document — master PDF / speech / article library (formerly hardcoded in src/lib/documents.ts)
 // ============================================================================
@@ -808,4 +818,3 @@ model WisdomChunk {
   @@index([pageId], map: "idx_chunks_page")
   @@map("content_chunks")
 }
-

@@ -347,9 +347,12 @@ async function main() {
       orderBy: { periodEnd: "desc" },
     });
     const totalRep = repurchases.reduce((sum, r) => sum + Number(r.value), 0);
+    const latestShareSummary = latestShare?.value == null
+      ? "无"
+      : `${(Number(latestShare.value) / 1e8).toFixed(2)} 亿股 (${new Date(latestShare.periodEnd).getFullYear()})`;
 
     console.log(
-      `  - ${e.code} ${e.canonicalName}: 最新 FY 股本 = ${latestShare ? (latestShare.value / 1e8).toFixed(2) + " 亿股 (" + new Date(latestShare.periodEnd).getFullYear() + ")" : "无"} | 累计回购 = ${(totalRep / 1e8).toFixed(2)} 亿元 (${repurchases.length} 年记录)`
+      `  - ${e.code} ${e.canonicalName}: 最新 FY 股本 = ${latestShareSummary} | 累计回购 = ${(totalRep / 1e8).toFixed(2)} 亿元 (${repurchases.length} 年记录)`
     );
   }
 

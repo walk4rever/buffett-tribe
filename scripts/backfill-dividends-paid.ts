@@ -8,6 +8,8 @@
  */
 
 import prisma from "../src/lib/prisma";
+import { normalizeCurrencyCode } from "../src/lib/fx-rates-core";
+import { persistReportingCurrency } from "../src/lib/reporting-currency";
 import {
   LINE_ITEMS,
   decimalFromNumber,
@@ -63,7 +65,7 @@ async function main() {
           }
         : {}),
     },
-    select: { id: true, cik: true, ticker: true, canonicalName: true },
+    select: { id: true, cik: true, ticker: true, canonicalName: true, market: true },
     orderBy: { canonicalName: "asc" },
   });
 
@@ -126,19 +128,21 @@ async function main() {
         continue;
       }
 
-      const value = findBestFactValue(
+      const fact = findBestFactValue(
         facts,
         DIVIDENDS.tagsUsGaap,
         DIVIDENDS.tagsIfrs,
         DIVIDENDS.unitCandidates,
         reportDate,
       );
-      if (value == null) {
+      if (fact == null) {
         missingFacts += 1;
         continue;
       }
 
       if (!dryRun) {
+        const currency = normalizeCurrencyCode(fact.unit);
+        if (currency) await persistReportingCurrency(entity.id, entity.market, currency);
         await prisma.financial.create({
           data: {
             entityId: entity.id,
@@ -146,8 +150,8 @@ async function main() {
             periodEnd: row.periodEnd,
             periodType: "FY",
             lineItem: "DividendsPaid",
-            value: decimalFromNumber(value),
-            unit: "USD",
+            value: decimalFromNumber(fact.value),
+            unit: fact.unit,
             mappingRule: [
               ...DIVIDENDS.tagsUsGaap.map((tag) => `us-gaap:${tag}`),
               ...DIVIDENDS.tagsIfrs.map((tag) => `ifrs-full:${tag}`),

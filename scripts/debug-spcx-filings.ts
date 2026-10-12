@@ -12,7 +12,7 @@ async function main() {
     return;
   }
 
-  console.log(`Entity: ${entity.name} (${entity.ticker})`);
+  console.log(`Entity: ${entity.canonicalName} (${entity.ticker})`);
   console.log(`CIK: ${entity.cik}\n`);
 
   // Get all filings

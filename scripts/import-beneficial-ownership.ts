@@ -201,6 +201,8 @@ function parse13D(xml: Edgar13DDoc, filerCik: string, filerName: string): Parsed
   const header = formData?.coverPageHeader;
   const issuer = header?.issuerInfo;
   if (!formData || !header || !issuer) return null;
+  const issuerCik = normalizeCik(String(issuer.issuerCIK ?? ""));
+  if (!issuerCik) return null;
 
   const persons = asArray(formData.reportingPersons?.reportingPersonInfo);
   const paddedCik = padCik(filerCik);
@@ -210,7 +212,7 @@ function parse13D(xml: Edgar13DDoc, filerCik: string, filerName: string): Parsed
   if (!match) return null;
 
   return {
-    issuerCik: normalizeCik(String(issuer.issuerCIK ?? "")),
+    issuerCik,
     issuerName: String(issuer.issuerName ?? ""),
     securitiesClassTitle: header.securitiesClassTitle
       ? String(header.securitiesClassTitle)
@@ -231,6 +233,8 @@ function parse13G(xml: Edgar13GDoc, filerName: string): ParsedOwnership | null {
   const header = formData?.coverPageHeader;
   const issuer = header?.issuerInfo;
   if (!formData || !header || !issuer) return null;
+  const issuerCik = normalizeCik(String(issuer.issuerCik ?? ""));
+  if (!issuerCik) return null;
 
   // 13G's reporting-person blocks don't expose a CIK field the way 13D's do — match by name.
   const persons = asArray(formData.coverPageHeaderReportingPersonDetails);
@@ -240,7 +244,7 @@ function parse13G(xml: Edgar13GDoc, filerName: string): ParsedOwnership | null {
   const powers = match.reportingPersonBeneficiallyOwnedNumberOfShares ?? {};
 
   return {
-    issuerCik: normalizeCik(String(issuer.issuerCik ?? "")),
+    issuerCik,
     issuerName: String(issuer.issuerName ?? ""),
     securitiesClassTitle: header.securitiesClassTitle
       ? String(header.securitiesClassTitle)

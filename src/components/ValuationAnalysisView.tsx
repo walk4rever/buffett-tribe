@@ -2,24 +2,12 @@
 
 import { useMemo, useState } from "react";
 import type { ValueLineData } from "@/lib/value-line-data";
+import { currencySymbol as getCurrencySymbol } from "@/lib/currency";
 import { computeScenarios } from "@/lib/valuation-metrics";
 import {
-  buildHistoricalPeSeries,
   computeAnnualEpsGrowthPct,
   computeHistoricalPeMetrics,
 } from "@/lib/valuation-analysis-metrics";
-
-function getCurrencySymbol(market: "us" | "hk" | "cn"): { symbol: string; code: string } {
-  switch (market) {
-    case "cn":
-      return { symbol: "¥", code: "CNY" };
-    case "hk":
-      return { symbol: "HK$", code: "HKD" };
-    case "us":
-    default:
-      return { symbol: "$", code: "USD" };
-  }
-}
 
 /**
  * Catmull-Rom to Cubic Bezier Spline for smooth financial curves
@@ -47,11 +35,15 @@ type ValuationAnalysisViewProps = {
 };
 
 export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
-  const { symbol: currencySymbol } = getCurrencySymbol(data.market);
+  const priceCurrencySymbol = data.tradingCurrency
+    ? getCurrencySymbol(data.tradingCurrency)
+    : "";
 
   // Active pricing & fundamentals
   const latestPrice = data.latestPrice ?? (data.pricePoints.length ? data.pricePoints[data.pricePoints.length - 1].close : null);
-  const latestAnnual = data.annuals.length ? data.annuals[data.annuals.length - 1] : null;
+  const latestAnnual = data.valuationAnnuals.length
+    ? data.valuationAnnuals[data.valuationAnnuals.length - 1]
+    : null;
   const latestEps = latestAnnual?.eps ?? null;
   const currentPe =
     data.peRatio ??
@@ -61,17 +53,15 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
 
   // 1. Compute Historical PE Percentile
   const historicalPeSeries = useMemo(
-    () => buildHistoricalPeSeries(data.pricePoints, data.annuals),
-    [data.pricePoints, data.annuals],
+    () => data.historicalPePoints,
+    [data.historicalPePoints],
   );
   const historicalPeMetrics = useMemo(() => {
     return computeHistoricalPeMetrics(historicalPeSeries, currentPe);
   }, [historicalPeSeries, currentPe]);
   const hasHistoricalBenchmark =
     historicalPeMetrics.sampleCount >= 2 && historicalPeMetrics.peMedian != null;
-  const benchmarkPe = hasHistoricalBenchmark
-    ? historicalPeMetrics.peMedian
-    : data.benchmarkPe;
+  const benchmarkPe = data.benchmarkPe;
 
   // FCF Yield & Additional Multiples
   const fcfYield = useMemo(() => {
@@ -191,9 +181,9 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
     }
 
     const yTicks = [
-      { y: getY(yMin), label: `${currencySymbol}${yMin.toFixed(0)}` },
-      { y: getY(yMin + (yMax - yMin) * 0.5), label: `${currencySymbol}${(yMin + (yMax - yMin) * 0.5).toFixed(0)}` },
-      { y: getY(yMax), label: `${currencySymbol}${yMax.toFixed(0)}` },
+      { y: getY(yMin), label: `${priceCurrencySymbol}${yMin.toFixed(0)}` },
+      { y: getY(yMin + (yMax - yMin) * 0.5), label: `${priceCurrencySymbol}${(yMin + (yMax - yMin) * 0.5).toFixed(0)}` },
+      { y: getY(yMax), label: `${priceCurrencySymbol}${yMax.toFixed(0)}` },
     ];
 
     const yearTicks: Array<{ x: number; label: string }> = [];
@@ -224,15 +214,15 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
       yMin,
       yMax,
     };
-  }, [historicalPeSeries, benchmarkPe, currencySymbol]);
+  }, [historicalPeSeries, benchmarkPe, priceCurrencySymbol]);
 
   // Interactive Hover State for PE-Band
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   // 3. Interactive 5-Year TSR Simulator State
   const defaultGrowth = useMemo(
-    () => computeAnnualEpsGrowthPct(data.annuals),
-    [data.annuals],
+    () => computeAnnualEpsGrowthPct(data.valuationAnnuals),
+    [data.valuationAnnuals],
   );
   const growthMin = Math.min(-90, Math.floor((defaultGrowth ?? 0) / 10) * 10);
   const growthMax = Math.max(100, Math.ceil((defaultGrowth ?? 0) / 10) * 10);
@@ -321,7 +311,16 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
             <h3 className="val-title">估值分析与历史 P/E 参考</h3>
             <span className={`val-status-badge ${marginOfSafetyClass}`}>{marginOfSafetyTag}</span>
           </div>
-          <p className="val-subtitle">{marginOfSafetyDesc}</p>
+          <p className="val-subtitle">
+            {marginOfSafetyDesc}
+            {!data.valuationCurrencyAvailable
+              ? " · 报告币种或汇率数据不足，跨币种估值暂不可用"
+              : ` · 财报 ${data.reportingCurrency} / 估值 ${data.tradingCurrency}${
+                  data.reportingCurrency !== data.tradingCurrency
+                    ? "，历史按最新汇率折算"
+                    : ""
+                }`}
+          </p>
         </div>
         <span className="company-gen-meta">
           实时精算 · 数据基准 {data.latestPriceDate || "最新收盘"}
@@ -369,7 +368,9 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
           <div className="val-card-val-row">
             <span className="val-card-val">{fcfYield != null ? `${fcfYield}%` : "—"}</span>
           </div>
-          <span className="val-card-hint">最新年报 FCF / 当前市值</span>
+          <span className="val-card-hint">
+            最新年报 FCF / 当前市值{data.reportingCurrency ? ` · ${data.tradingCurrency}` : ""}
+          </span>
         </div>
 
         <div className="val-multiple-card">
@@ -414,7 +415,10 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
             <div>
               <h4 className="val-block-title">历史 P/E 参考带</h4>
               <span className="val-block-desc">
-                按最近可得完整年度 EPS 与{hasHistoricalBenchmark ? "历史中位数" : "系统参考值"}计算；不代表未来目标价。
+                {data.reportingCurrency && data.reportingCurrency !== data.tradingCurrency
+                  ? "按最新汇率折算；"
+                  : ""}
+                按披露日可得 EPS 与{hasHistoricalBenchmark ? "历史中位数" : "系统参考值"}计算；不代表未来目标价。
               </span>
             </div>
 
@@ -436,7 +440,7 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
             </div>
             <div className="val-hud-col">
               <span className="val-hud-label">股价:</span>
-              <span className="val-hud-value val-hud-value--blue">{currencySymbol}{activePoint?.price.toFixed(2)}</span>
+              <span className="val-hud-value val-hud-value--blue">{priceCurrencySymbol}{activePoint?.price.toFixed(2)}</span>
             </div>
             <div className="val-hud-col">
                   <span className="val-hud-label">对应年度 EPS P/E:</span>
@@ -444,7 +448,7 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
             </div>
             <div className="val-hud-col">
               <span className="val-hud-label">参考 P/E 股价:</span>
-              <span className="val-hud-value val-hud-value--amber">{currencySymbol}{activePoint?.b1_0.toFixed(2)}</span>
+              <span className="val-hud-value val-hud-value--amber">{priceCurrencySymbol}{activePoint?.b1_0.toFixed(2)}</span>
             </div>
             <div className="val-hud-col">
               <span className="val-hud-label">通道状态:</span>
@@ -681,19 +685,19 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
               <div className="val-result-metrics">
                 <div className="val-result-metric-row">
                   <span className="metric-label">当前基准股价:</span>
-                  <span className="metric-val">{currencySymbol}{latestPrice.toFixed(2)}</span>
+                  <span className="metric-val">{priceCurrencySymbol}{latestPrice.toFixed(2)}</span>
                 </div>
                 <div className="val-result-metric-row">
                   <span className="metric-label">当前基期 EPS:</span>
-                  <span className="metric-val">{latestEps ? `${currencySymbol}${latestEps.toFixed(2)}` : "—"}</span>
+                  <span className="metric-val">{latestEps ? `${priceCurrencySymbol}${latestEps.toFixed(2)}` : "—"}</span>
                 </div>
                 <div className="val-result-metric-row">
                   <span className="metric-label">5年后情景 EPS:</span>
-                  <span className="metric-val font-semibold">{currencySymbol}{tsrCalculations.targetEps}</span>
+                  <span className="metric-val font-semibold">{priceCurrencySymbol}{tsrCalculations.targetEps}</span>
                 </div>
                 <div className="val-result-metric-row">
                   <span className="metric-label">5年后情景股价:</span>
-                  <span className="metric-val font-semibold text-blue-600">{currencySymbol}{tsrCalculations.targetPrice}</span>
+                  <span className="metric-val font-semibold text-blue-600">{priceCurrencySymbol}{tsrCalculations.targetPrice}</span>
                 </div>
                 <div className="val-result-metric-row border-t border-slate-100 pt-2">
                   <span className="metric-label">累计股价空间:</span>

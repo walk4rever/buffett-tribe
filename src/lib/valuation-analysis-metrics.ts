@@ -1,6 +1,7 @@
 export type AnnualEps = {
   year: number;
   eps: number | null;
+  disclosedAt?: string | null;
 };
 
 export type HistoricalPrice = {
@@ -21,6 +22,32 @@ export type HistoricalPeMetrics = {
   sampleCount: number;
 };
 
+export function getAnnualEpsAvailableOnDate(
+  annuals: AnnualEps[],
+  date: string,
+): AnnualEps | null {
+  const priceYear = Number(date.slice(0, 4));
+  if (!Number.isFinite(priceYear)) return null;
+
+  return annuals
+    .filter((annual) => {
+      if (
+        !Number.isFinite(annual.year) ||
+        annual.eps == null ||
+        !Number.isFinite(annual.eps) ||
+        annual.eps <= 0
+      ) {
+        return false;
+      }
+      if (!annual.disclosedAt) return annual.year < priceYear;
+      const disclosedAt = new Date(annual.disclosedAt);
+      return !Number.isNaN(disclosedAt.getTime()) &&
+        disclosedAt.toISOString().slice(0, 10) <= date;
+    })
+    .sort((a, b) => a.year - b.year)
+    .at(-1) ?? null;
+}
+
 export function buildHistoricalPeSeries(
   prices: HistoricalPrice[],
   annuals: AnnualEps[],
@@ -37,14 +64,11 @@ export function buildHistoricalPeSeries(
     .sort((a, b) => a.year - b.year);
 
   return prices.flatMap((price) => {
-    const priceYear = Number(price.date.slice(0, 4));
-    if (!Number.isFinite(priceYear) || !Number.isFinite(price.close) || price.close <= 0) {
+    if (!Number.isFinite(price.close) || price.close <= 0) {
       return [];
     }
 
-    const annual = validAnnuals
-      .filter((candidate) => candidate.year < priceYear)
-      .at(-1);
+    const annual = getAnnualEpsAvailableOnDate(validAnnuals, price.date);
     if (!annual?.eps) return [];
 
     const pe = price.close / annual.eps;

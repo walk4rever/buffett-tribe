@@ -37,6 +37,9 @@ describe("DividendsPaid financial mapping", () => {
       "2024-12-31",
     );
 
-    expect(value).toBe(-125000000);
+    expect(value).toEqual({
+      value: -125000000,
+      unit: "USD",
+    });
   });
 });

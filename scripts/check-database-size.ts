@@ -32,7 +32,7 @@ async function main() {
   console.log("Table Name".padEnd(40), "Size".padEnd(15), "Bytes");
   console.log("-".repeat(70));
 
-  let totalBytes = 0n;
+  let totalBytes = BigInt(0);
   for (const row of result) {
     const fullName = `${row.schemaname}.${row.tablename}`;
     console.log(

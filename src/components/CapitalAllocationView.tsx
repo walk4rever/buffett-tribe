@@ -2,24 +2,12 @@
 
 import { useMemo, useState } from "react";
 import type { ValueLineData } from "@/lib/value-line-data";
-import { formatUsdInYi } from "@/lib/currency";
+import { currencySymbol, formatUsdInYi } from "@/lib/currency";
 import { computeCapitalAllocationStats } from "@/lib/capital-allocation-metrics";
 
 type CapitalAllocationViewProps = {
   data: ValueLineData;
 };
-
-function getCurrencySymbol(market: "us" | "hk" | "cn"): string {
-  switch (market) {
-    case "cn":
-      return "¥";
-    case "hk":
-      return "HK$";
-    case "us":
-    default:
-      return "$";
-  }
-}
 
 /**
  * Catmull-Rom to Cubic Bezier Spline for smooth share count curves
@@ -43,7 +31,9 @@ function buildSmoothSpline(pts: Array<{ x: number; y: number }>): string {
 }
 
 export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
-  const currencySym = getCurrencySymbol(data.market);
+  const currencySym = data.reportingCurrency
+    ? currencySymbol(data.reportingCurrency)
+    : "";
   const [hoverYearIdx, setHoverYearIdx] = useState<number | null>(null);
 
   const stats = useMemo(() => {
@@ -85,7 +75,9 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
   const shareDesc =
     "比较区间首尾披露股数变化；净变化不能单独说明回购注销或股权稀释的原因。";
   const formatAmount = (value: number | null) =>
-    value == null ? "—" : `${currencySym}${formatUsdInYi(value)}`;
+    value == null
+      ? "—"
+      : `${currencySym ? `${currencySym} ` : ""}${formatUsdInYi(value)}`;
 
   let reinvestIntensity = "轻资产型";
   if (stats.capexPct != null && stats.capexPct > 50) {
@@ -157,6 +149,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
           </div>
           <p className="val-subtitle">
             FY{stats.earliestYear}–FY{stats.latestYear} · {periodCountLabel} · {flowCoverageLabel}
+            {data.reportingCurrency ? ` · ${data.reportingCurrency}` : " · 币种待确认"}
           </p>
         </div>
       </div>
