@@ -2,7 +2,14 @@ import { readFileSync } from "node:fs";
 import db from "../src/lib/prisma";
 import { normalizeCurrencyCode } from "../src/lib/fx-rates-core";
 import { persistReportingCurrency } from "../src/lib/reporting-currency";
+import { withShortWriteTransaction } from "../src/lib/db-short-write";
 import { upsertFinancialRows } from "./lib/upsert-financial-rows";
+
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(signal, () => {
+    console.warn(`[financial-import] ${signal} received; finishing the current import cleanly.`);
+  });
+}
 
 type Record_ = {
   periodEnd: string;
@@ -29,7 +36,8 @@ async function main() {
     console.error(
       "Usage: tsx import-cn-hk-financials-from-file.ts <json-file> --ticker <T> --code <C> --market cn|hk --currency <ISO-4217>",
     );
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
   const reportingCurrency = normalizeCurrencyCode(currency);
   if (!reportingCurrency) throw new Error(`Invalid reporting currency code: ${currency}`);
@@ -37,7 +45,8 @@ async function main() {
   const records = JSON.parse(readFileSync(filePath, "utf-8")) as Record_[];
   if (!records.length) {
     console.error("Empty records file");
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   const entity = await db.entity.findFirst({
@@ -46,7 +55,8 @@ async function main() {
   });
   if (!entity) {
     console.error(`No Entity found for market=${market} code=${code} — run the seed_entity step first`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   // Stable accessionNumber so reruns reuse the same ExtSource row instead of
@@ -54,11 +64,13 @@ async function main() {
   // this kind — the (filerEntityId, accessionNumber) unique constraint only
   // helps once accessionNumber is non-null and consistent across runs).
   const accessionNumber = "akshare-annual";
-  const extSource = await db.extSource.upsert({
-    where: { ExtSource_filer_accession_unique: { filerEntityId: entity.id, accessionNumber } },
-    create: { kind: "akshare", filerEntityId: entity.id, accessionNumber, metadata: { ticker, market, code } },
-    update: { metadata: { ticker, market, code } },
-  });
+  const extSource = await withShortWriteTransaction(db, (tx) =>
+    tx.extSource.upsert({
+      where: { ExtSource_filer_accession_unique: { filerEntityId: entity.id, accessionNumber } },
+      create: { kind: "akshare", filerEntityId: entity.id, accessionNumber, metadata: { ticker, market, code } },
+      update: { metadata: { ticker, market, code } },
+    }),
+  );
 
   // Deduplicate records by unique composite key before batch insert
   const uniqueRecords: Record_[] = [];
@@ -103,8 +115,9 @@ async function main() {
 
 }
 
-main().catch(async (err) => {
+main().catch((err) => {
   console.error(err);
+  process.exitCode = 1;
+}).finally(async () => {
   await db.$disconnect();
-  process.exit(1);
 });

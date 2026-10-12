@@ -3,7 +3,7 @@
  *
  * Shared annual-report storage and parsing primitives.
  */
-import { PrismaClient } from "@prisma/client";
+import db from "../../src/lib/prisma";
 import * as cheerio from "cheerio";
 import { hasChineseText, issuerKey, normalizeEnglishName } from "../../src/lib/company-name-map";
 import { normalizeCik, getCikLookupVariants } from "../../src/lib/cik";
@@ -28,7 +28,7 @@ import {
 import { ImportTimer } from "./import-timer";
 import { normalizeCurrencyCode } from "../../src/lib/fx-rates-core";
 
-export const db = new PrismaClient();
+export { db };
 
 type QuarterFact = {
   start?: string;

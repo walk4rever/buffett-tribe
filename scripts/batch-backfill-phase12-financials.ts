@@ -26,12 +26,14 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { spawn } from "node:child_process";
 import path from "node:path";
 import prisma from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
+import { normalizeCurrencyCode } from "../src/lib/fx-rates-core";
+import { persistReportingCurrency } from "../src/lib/reporting-currency";
 import { backfillCompanyFinancialsFast } from "./backfill-company-financials-fast";
 import { CN_HK_SEEDS } from "./lib/cn-hk-company-seeds";
+import { runProcessGroup } from "./lib/run-process-group";
 import {
   resolveHkCurrencyFromAnnualReport,
   resolveHkCurrencyViaYfinance,
@@ -48,7 +50,7 @@ interface EntityCandidate {
   canonicalName: string;
   onboardPhase: number;
   priority: number;
-  currency?: string;
+  reportingCurrency: string | null;
 }
 
 interface CheckpointData {
@@ -58,6 +60,16 @@ interface CheckpointData {
 }
 
 const CHECKPOINT_PATH = path.join(process.cwd(), ".cache", "batch-backfill-phase12-financials.json");
+const shutdownController = new AbortController();
+let shutdownRequested = false;
+
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(signal, () => {
+    shutdownRequested = true;
+    console.warn(`[backfill] ${signal} received; stopping after the active company is safe.`);
+    shutdownController.abort();
+  });
+}
 
 function getArg(flag: string): string | undefined {
   const args = process.argv.slice(2);
@@ -90,26 +102,17 @@ function saveCheckpoint(data: CheckpointData) {
   writeFileSync(CHECKPOINT_PATH, JSON.stringify(data, null, 2), "utf8");
 }
 
-function runCommand(cmd: string, args: string[]): Promise<{ exitCode: number; output: string }> {
-  return new Promise((resolve) => {
-    const child = spawn(cmd, args, { cwd: process.cwd(), env: process.env });
-    let stdout = "";
-    let stderr = "";
-
-    child.stdout.on("data", (d) => {
-      stdout += d.toString();
-    });
-    child.stderr.on("data", (d) => {
-      stderr += d.toString();
-    });
-
-    child.on("close", (code) => {
-      resolve({ exitCode: code ?? 1, output: stdout + (stderr ? `\n${stderr}` : "") });
-    });
+function runCommand(cmd: string, args: string[]) {
+  return runProcessGroup(cmd, args, {
+    cwd: process.cwd(),
+    env: process.env,
+    signal: shutdownController.signal,
   });
 }
 
 async function resolveCompanyCurrency(entity: EntityCandidate): Promise<string> {
+  const registeredCurrency = normalizeCurrencyCode(entity.reportingCurrency);
+  if (registeredCurrency) return registeredCurrency;
   if (entity.market === "us") return "USD";
   if (entity.market === "cn") return "CNY";
 
@@ -122,7 +125,8 @@ async function resolveCompanyCurrency(entity: EntityCandidate): Promise<string> 
     where: { entityId: entity.id },
     select: { unit: true },
   });
-  if (existingFin?.unit) return existingFin.unit;
+  const existingCurrency = normalizeCurrencyCode(existingFin?.unit);
+  if (existingCurrency) return existingCurrency;
 
   // Extract from stored annual report text if available
   try {
@@ -131,7 +135,7 @@ async function resolveCompanyCurrency(entity: EntityCandidate): Promise<string> 
   } catch {}
 
   // Fallback to Yahoo Finance metadata
-  const fromYf = resolveHkCurrencyViaYfinance(entity.ticker);
+  const fromYf = normalizeCurrencyCode(resolveHkCurrencyViaYfinance(entity.ticker));
   if (fromYf) return fromYf;
 
   return "HKD";
@@ -144,6 +148,8 @@ async function backfillCnHkCompany(
 ): Promise<{ rowsUpserted: number }> {
   const code = entity.code || entity.ticker.split(".")[0];
   const pyCmd = existsSync(".venv/bin/python") ? ".venv/bin/python" : "python3";
+
+  await persistReportingCurrency(entity.id, entity.market, currency);
 
   const args = [
     "scripts/fetch-cn-hk-financials-ak.py",
@@ -204,6 +210,7 @@ async function main() {
       canonicalName: true,
       onboardPhase: true,
       priority: true,
+      reportingCurrency: true,
     },
     orderBy: [
       { priority: "desc" },
@@ -228,6 +235,7 @@ async function main() {
     canonicalName: e.canonicalName,
     onboardPhase: e.onboardPhase ?? 0,
     priority: e.priority ?? 0,
+    reportingCurrency: e.reportingCurrency,
   }));
 
   const checkpoint = loadCheckpoint();
@@ -259,7 +267,7 @@ async function main() {
   let successCount = 0;
   let failCount = 0;
 
-  for (let i = 0; i < slicedCandidates.length; i++) {
+  for (let i = 0; i < slicedCandidates.length && !shutdownRequested; i++) {
     const c = slicedCandidates[i];
     const prefix = `[${i + 1}/${slicedCandidates.length}] [${c.market.toUpperCase()}] ${c.ticker}`;
     const companyStart = Date.now();
@@ -296,14 +304,18 @@ async function main() {
       const costMs = Date.now() - companyStart;
       console.log(`✓ ${prefix} complete: ${rowsUpserted} facts (${(costMs / 1000).toFixed(1)}s)`);
     } catch (err) {
-      failCount++;
-      const errMsg = err instanceof Error ? err.message : String(err);
-      checkpoint.failed[c.ticker] = {
-        timestamp: new Date().toISOString(),
-        error: errMsg,
-      };
-      saveCheckpoint(checkpoint);
-      console.error(`✗ ${prefix} failed: ${errMsg}`);
+      if (shutdownRequested) {
+        console.warn(`↩ ${prefix} interrupted; leaving it uncheckpointed for a safe retry.`);
+      } else {
+        failCount++;
+        const errMsg = err instanceof Error ? err.message : String(err);
+        checkpoint.failed[c.ticker] = {
+          timestamp: new Date().toISOString(),
+          error: errMsg,
+        };
+        saveCheckpoint(checkpoint);
+        console.error(`✗ ${prefix} failed: ${errMsg}`);
+      }
     }
 
     if (delayMs > 0 && i < slicedCandidates.length - 1) {
@@ -313,7 +325,11 @@ async function main() {
 
   const totalCostSec = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log("\n==================================================================");
-  console.log(`🎉 Batch Run Finished in ${totalCostSec}s:`);
+  console.log(
+    shutdownRequested
+      ? `Backfill stopped cleanly after ${totalCostSec}s; unfinished companies remain resumable.`
+      : `🎉 Batch Run Finished in ${totalCostSec}s:`,
+  );
   console.log(`  - Succeeded: ${successCount}`);
   console.log(`  - Failed: ${failCount}`);
   console.log("==================================================================");
@@ -322,7 +338,7 @@ async function main() {
 main()
   .catch((err) => {
     console.error("Fatal error:", err);
-    process.exit(1);
+    process.exitCode = 1;
   })
   .finally(async () => {
     await prisma.$disconnect();

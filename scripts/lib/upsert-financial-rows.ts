@@ -1,6 +1,74 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 
-type FinancialWriteClient = Pick<PrismaClient, "$transaction" | "financial">;
+import { Prisma, type PrismaClient } from "@prisma/client";
+
+const MAX_ROWS_PER_TRANSACTION = 50;
+
+type FinancialWriteClient = Pick<PrismaClient, "$executeRaw" | "$transaction" | "financial">;
+
+function compareFinancialRows(
+  left: Prisma.FinancialCreateManyInput,
+  right: Prisma.FinancialCreateManyInput,
+) {
+  return (
+    left.entityId.localeCompare(right.entityId) ||
+    new Date(left.periodEnd).getTime() - new Date(right.periodEnd).getTime() ||
+    left.periodType.localeCompare(right.periodType) ||
+    left.lineItem.localeCompare(right.lineItem)
+  );
+}
+
+function financialRowKey(row: Prisma.FinancialCreateManyInput) {
+  return JSON.stringify([
+    row.entityId,
+    new Date(row.periodEnd).toISOString(),
+    row.periodType,
+    row.lineItem,
+  ]);
+}
+
+function createUpsertStatement(rows: Prisma.FinancialCreateManyInput[]) {
+  const values = rows.map((row) =>
+    Prisma.sql`(
+      ${randomUUID()},
+      ${row.entityId},
+      ${row.sourceId},
+      ${row.periodEnd},
+      ${row.periodType},
+      ${row.lineItem},
+      ${row.value ?? null},
+      ${row.unit ?? null},
+      ${row.rawXbrlTag ?? null},
+      ${row.mappingRule ?? null},
+      ${row.confidence ?? 1}
+    )`,
+  );
+
+  return Prisma.sql`
+    INSERT INTO "Financial" (
+      "id",
+      "entityId",
+      "sourceId",
+      "periodEnd",
+      "periodType",
+      "lineItem",
+      "value",
+      "unit",
+      "rawXbrlTag",
+      "mappingRule",
+      "confidence"
+    )
+    VALUES ${Prisma.join(values)}
+    ON CONFLICT ("entityId", "periodEnd", "periodType", "lineItem")
+    DO UPDATE SET
+      "sourceId" = EXCLUDED."sourceId",
+      "value" = EXCLUDED."value",
+      "unit" = EXCLUDED."unit",
+      "rawXbrlTag" = EXCLUDED."rawXbrlTag",
+      "mappingRule" = EXCLUDED."mappingRule",
+      "confidence" = EXCLUDED."confidence"
+  `;
+}
 
 export async function upsertFinancialRows(
   db: FinancialWriteClient,
@@ -8,28 +76,18 @@ export async function upsertFinancialRows(
 ): Promise<number> {
   if (!rows.length) return 0;
 
-  const operations = rows.map((row) =>
-    db.financial.upsert({
-      where: {
-        entityId_periodEnd_periodType_lineItem: {
-          entityId: row.entityId,
-          periodEnd: row.periodEnd,
-          periodType: row.periodType,
-          lineItem: row.lineItem,
-        },
-      },
-      create: row,
-      update: {
-        sourceId: row.sourceId,
-        value: row.value,
-        unit: row.unit,
-        rawXbrlTag: row.rawXbrlTag,
-        mappingRule: row.mappingRule,
-        confidence: row.confidence,
-      },
-    }),
-  );
+  const deduplicatedRows = new Map<string, Prisma.FinancialCreateManyInput>();
+  for (const row of rows) deduplicatedRows.set(financialRowKey(row), row);
+  const sortedRows = [...deduplicatedRows.values()].sort(compareFinancialRows);
+  for (let offset = 0; offset < sortedRows.length; offset += MAX_ROWS_PER_TRANSACTION) {
+    const chunk = sortedRows.slice(offset, offset + MAX_ROWS_PER_TRANSACTION);
+    const operations = [
+      db.$executeRaw`SET LOCAL lock_timeout = '5s'`,
+      db.$executeRaw`SET LOCAL statement_timeout = '30s'`,
+      db.$executeRaw(createUpsertStatement(chunk)),
+    ];
+    await db.$transaction(operations);
+  }
 
-  await db.$transaction(operations);
-  return rows.length;
+  return sortedRows.length;
 }

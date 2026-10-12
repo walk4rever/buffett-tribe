@@ -15,8 +15,9 @@
 
 import * as dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { pathToFileURL } from "node:url";
+import db from "../src/lib/prisma";
 import {
   ANNUAL_FORMS,
   LINE_ITEMS,
@@ -36,8 +37,7 @@ import {
 import { upsertFinancialRows } from "./lib/upsert-financial-rows";
 import { normalizeCurrencyCode } from "../src/lib/fx-rates-core";
 import { persistReportingCurrency } from "../src/lib/reporting-currency";
-
-const db = new PrismaClient();
+import { withShortWriteTransaction } from "../src/lib/db-short-write";
 
 function getArg(flag: string): string | undefined {
   const idx = process.argv.indexOf(flag);
@@ -211,7 +211,7 @@ export async function backfillCompanyFinancialsFast(params: {
   const sector = mapSectorFromSic(profile.sic, profile.sicDescription);
   const existingEntity = await db.entity.findUnique({
     where: { id: params.entityId },
-    select: { sector: true, metadata: true },
+    select: { sector: true, metadata: true, reportingCurrency: true },
   });
 
   const existingMeta = (existingEntity?.metadata as Record<string, unknown>) ?? {};
@@ -228,13 +228,15 @@ export async function backfillCompanyFinancialsFast(params: {
       profile.stateOfIncorporationDescription ?? existingMeta.stateOfIncorporationDescription,
   };
 
-  await db.entity.update({
-    where: { id: params.entityId },
-    data: {
-      sector: existingEntity?.sector ?? sector,
-      metadata: updatedMeta as Prisma.InputJsonValue,
-    },
-  });
+  await withShortWriteTransaction(db, (tx) =>
+    tx.entity.update({
+      where: { id: params.entityId },
+      data: {
+        sector: existingEntity?.sector ?? sector,
+        metadata: updatedMeta as Prisma.InputJsonValue,
+      },
+    }),
+  );
 
   // 4. Batch resolve ExtSources
   const accessions = targetFilings.map((f) => f.accession);
@@ -270,7 +272,9 @@ export async function backfillCompanyFinancialsFast(params: {
   }
 
   if (extSourcesToCreate.length) {
-    await db.extSource.createMany({ data: extSourcesToCreate, skipDuplicates: true });
+    await withShortWriteTransaction(db, (tx) =>
+      tx.extSource.createMany({ data: extSourcesToCreate, skipDuplicates: true }),
+    );
     const refreshed = await db.extSource.findMany({
       where: { filerEntityId: params.entityId, accessionNumber: { in: accessions } },
     });
@@ -392,11 +396,7 @@ export async function backfillCompanyFinancialsFast(params: {
     }
   }
 
-  // 6. Upsert only facts returned by SEC; absent facts must not erase stored data.
-  if (financialRowsToInsert.length) {
-    await upsertFinancialRows(db, financialRowsToInsert);
-  }
-
+  // Register the report currency and attempt a current FX quote before writing facts.
   const revenueCurrencies = new Map<string, number>();
   for (const row of financialRowsToInsert) {
     if (row.lineItem !== "Revenue") continue;
@@ -404,8 +404,17 @@ export async function backfillCompanyFinancialsFast(params: {
     if (currency) revenueCurrencies.set(currency, (revenueCurrencies.get(currency) ?? 0) + 1);
   }
   const rankedCurrencies = [...revenueCurrencies.entries()].sort((a, b) => b[1] - a[1]);
-  if (rankedCurrencies.length && rankedCurrencies[0][1] > (rankedCurrencies[1]?.[1] ?? 0)) {
-    await persistReportingCurrency(params.entityId, "us", rankedCurrencies[0][0]);
+  const importedCurrency =
+    rankedCurrencies.length && rankedCurrencies[0][1] > (rankedCurrencies[1]?.[1] ?? 0)
+      ? rankedCurrencies[0][0]
+      : normalizeCurrencyCode(existingEntity?.reportingCurrency);
+  if (importedCurrency) {
+    await persistReportingCurrency(params.entityId, "us", importedCurrency);
+  }
+
+  // Upsert only facts returned by SEC; absent facts must not erase stored data.
+  if (financialRowsToInsert.length) {
+    await upsertFinancialRows(db, financialRowsToInsert);
   }
 
   return {
@@ -440,7 +449,8 @@ async function main() {
 
     if (!entity || !entity.cik) {
       console.error(`Error: Entity not found or missing CIK for ${tickerArg ?? cikArg}`);
-      process.exit(1);
+      process.exitCode = 1;
+      return;
     }
 
     console.log(`Backfilling [${entity.ticker ?? entity.canonicalName}] (CIK ${entity.cik})...`);
@@ -460,7 +470,7 @@ async function main() {
       console.log(`   - Years covered: [${res.years.join(", ")}]`);
     } catch (err) {
       console.error("❌ Failed:", err);
-      process.exit(1);
+      process.exitCode = 1;
     }
     return;
   }
@@ -548,7 +558,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   main()
     .catch((e) => {
       console.error(e);
-      process.exit(1);
+      process.exitCode = 1;
     })
     .finally(async () => {
       await db.$disconnect();

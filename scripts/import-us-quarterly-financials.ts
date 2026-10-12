@@ -270,9 +270,6 @@ export async function importUsQuarterlyFinancialsForEntity(
 
   let totalUpserted = 0;
   if (financialRowsToInsert.length > 0) {
-    await upsertFinancialRows(db, financialRowsToInsert);
-    totalUpserted = financialRowsToInsert.length;
-
     const revenueCurrency = normalizeCurrencyCode(
       financialRowsToInsert.find((row) => row.lineItem === "Revenue")?.unit,
     );
@@ -283,6 +280,9 @@ export async function importUsQuarterlyFinancialsForEntity(
       });
       await persistReportingCurrency(entityId, entity?.market ?? "us", revenueCurrency);
     }
+
+    await upsertFinancialRows(db, financialRowsToInsert);
+    totalUpserted = financialRowsToInsert.length;
   }
 
   console.log(

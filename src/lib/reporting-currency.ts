@@ -1,5 +1,6 @@
 import db from "@/lib/prisma";
 import { ensureFxRatesForPair } from "@/lib/fx-rates";
+import { withShortWriteTransaction } from "@/lib/db-short-write";
 import {
   normalizeCurrencyCode,
   tradingCurrencyForMarket,
@@ -13,10 +14,12 @@ export async function persistReportingCurrency(
   const reportingCurrency = normalizeCurrencyCode(currency);
   if (!reportingCurrency) return null;
 
-  await db.entity.update({
-    where: { id: entityId },
-    data: { reportingCurrency },
-  });
+  await withShortWriteTransaction(db, (tx) =>
+    tx.entity.update({
+      where: { id: entityId },
+      data: { reportingCurrency },
+    }),
+  );
 
   const tradingCurrency = tradingCurrencyForMarket(market);
   if (tradingCurrency && reportingCurrency !== tradingCurrency) {
