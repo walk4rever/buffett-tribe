@@ -1,0 +1,926 @@
+[
+  {
+    "statement": "Income Statement",
+    "id": "IFIS000000",
+    "label": "IncomeStatement",
+    "parent": null,
+    "level": 0
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS000590",
+    "label": "Gross Profit",
+    "parent": "IncomeStatement",
+    "level": 1
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS001170",
+    "label": "Total Revenue",
+    "parent": "Gross Profit",
+    "level": 2
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS001839",
+    "label": "Business Revenue",
+    "parent": "Total Revenue",
+    "level": 3
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS000200",
+    "label": "Cost of Revenue",
+    "parent": "Gross Profit",
+    "level": 2
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS003118",
+    "label": "Cost of Goods and Services",
+    "parent": "Cost of Revenue",
+    "level": 3
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS001220",
+    "label": "Operating Income/Expenses",
+    "parent": "IncomeStatement",
+    "level": 1
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS001700",
+    "label": "Selling, General and Administrative Expenses",
+    "parent": "Operating Income/Expenses",
+    "level": 2
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS001620",
+    "label": "Research and Development Expenses",
+    "parent": "Operating Income/Expenses",
+    "level": 2
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS001230",
+    "label": "Total Operating Profit/Loss",
+    "parent": "IncomeStatement",
+    "level": 1
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS001917",
+    "label": "Non-Operating Income/Expenses, Total",
+    "parent": "IncomeStatement",
+    "level": 1
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS000930",
+    "label": "Total Net Finance Income/Expense",
+    "parent": "Non-Operating Income/Expenses, Total",
+    "level": 2
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS002367",
+    "label": "Net Interest Income/Expense",
+    "parent": "Total Net Finance Income/Expense",
+    "level": 3
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS200292",
+    "label": "Other Income/Expense, Non-Operating",
+    "parent": "Non-Operating Income/Expenses, Total",
+    "level": 2
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS001490",
+    "label": "Pretax Income",
+    "parent": "IncomeStatement",
+    "level": 1
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS001560",
+    "label": "Provision for Income Tax",
+    "parent": "IncomeStatement",
+    "level": 1
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS001110",
+    "label": "Net Income from Continuing Operations",
+    "parent": "IncomeStatement",
+    "level": 1
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS001977",
+    "label": "Net Income after Extraordinary Items and Discontinued Operations",
+    "parent": "IncomeStatement",
+    "level": 1
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS001090",
+    "label": "Net Income after Non-Controlling/Minority Interests",
+    "parent": "IncomeStatement",
+    "level": 1
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS001100",
+    "label": "Net Income Available to Common Stockholders",
+    "parent": "IncomeStatement",
+    "level": 1
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS002230",
+    "label": "Diluted Net Income Available to Common Stockholders",
+    "parent": "IncomeStatement",
+    "level": 1
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS002156",
+    "label": "Income Statement Supplemental Section",
+    "parent": "IncomeStatement",
+    "level": 1
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS003147",
+    "label": "Reported Normalized and Operating Income/Expense Supplemental Section",
+    "parent": "Income Statement Supplemental Section",
+    "level": 2
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS003203",
+    "label": "Total Revenue as Reported, Supplemental",
+    "parent": "Reported Normalized and Operating Income/Expense Supplemental Section",
+    "level": 3
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS003137",
+    "label": "Operating Expense as Reported, Supplemental",
+    "parent": "Reported Normalized and Operating Income/Expense Supplemental Section",
+    "level": 3
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS003138",
+    "label": "Total Operating Profit/Loss as Reported, Supplemental",
+    "parent": "Reported Normalized and Operating Income/Expense Supplemental Section",
+    "level": 3
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS002229",
+    "label": "Reported Normalized Income",
+    "parent": "Reported Normalized and Operating Income/Expense Supplemental Section",
+    "level": 3
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS002303",
+    "label": "Reported Effective Tax Rate",
+    "parent": "Reported Normalized and Operating Income/Expense Supplemental Section",
+    "level": 3
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFES000000",
+    "label": "EpsAndWaso",
+    "parent": null,
+    "level": 0
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS000150",
+    "label": "Basic Weighted Average Shares Outstanding",
+    "parent": "EpsAndWaso",
+    "level": 1
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS000330",
+    "label": "Diluted Weighted Average Shares Outstanding",
+    "parent": "EpsAndWaso",
+    "level": 1
+  },
+  {
+    "statement": "Income Statement",
+    "id": "ORISZ00026",
+    "label": "Total Dividend Per Share",
+    "parent": "EpsAndWaso",
+    "level": 1
+  },
+  {
+    "statement": "Income Statement",
+    "id": "ORISZ00021",
+    "label": "Regular Dividend Per Share Calc",
+    "parent": "Total Dividend Per Share",
+    "level": 2
+  },
+  {
+    "statement": "Income Statement",
+    "id": "IFIS101199",
+    "label": "Reported Normalized Diluted EPS",
+    "parent": "EpsAndWaso",
+    "level": 1
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS000000",
+    "label": "BalanceSheet",
+    "parent": null,
+    "level": 0
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS002270",
+    "label": "Total Assets",
+    "parent": "BalanceSheet",
+    "level": 1
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS000470",
+    "label": "Total Current Assets",
+    "parent": "Total Assets",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS000350",
+    "label": "Cash, Cash Equivalents and Short Term Investments",
+    "parent": "Total Current Assets",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS001130",
+    "label": "Inventories",
+    "parent": "Total Current Assets",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS200660",
+    "label": "Trade and Other Receivables, Current",
+    "parent": "Total Current Assets",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS001550",
+    "label": "Other Current Assets",
+    "parent": "Total Current Assets",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS002330",
+    "label": "Total Non-Current Assets",
+    "parent": "Total Assets",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS001450",
+    "label": "Net Property, Plant and Equipment",
+    "parent": "Total Non-Current Assets",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS001020",
+    "label": "Net Intangible Assets",
+    "parent": "Total Non-Current Assets",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS002310",
+    "label": "Total Long Term Investments",
+    "parent": "Total Non-Current Assets",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS000700",
+    "label": "Deferred Tax Assets, Non-Current",
+    "parent": "Total Non-Current Assets",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS001650",
+    "label": "Other Non-Current Assets",
+    "parent": "Total Non-Current Assets",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS002646",
+    "label": "Total Liabilities",
+    "parent": "BalanceSheet",
+    "level": 1
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS000500",
+    "label": "Total Current Liabilities",
+    "parent": "Total Liabilities",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS002716",
+    "label": "Payables and Accrued Expenses, Current",
+    "parent": "Total Current Liabilities",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS100734",
+    "label": "Financial Liabilities, Current",
+    "parent": "Total Current Liabilities",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS000610",
+    "label": "Deferred Liabilities, Current",
+    "parent": "Total Current Liabilities",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS001570",
+    "label": "Other Current Liabilities",
+    "parent": "Total Current Liabilities",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS002647",
+    "label": "Total Non-Current Liabilities",
+    "parent": "Total Liabilities",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS100735",
+    "label": "Financial Liabilities, Non-Current",
+    "parent": "Total Non-Current Liabilities",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS003143",
+    "label": "Tax Liabilities, Non-Current",
+    "parent": "Total Non-Current Liabilities",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS002805",
+    "label": "Deferred Liabilities, Non-Current",
+    "parent": "Total Non-Current Liabilities",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS002717",
+    "label": "Payables and Accrued Expenses, Non-Current",
+    "parent": "Total Non-Current Liabilities",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS002480",
+    "label": "Other Non-Current Liabilities",
+    "parent": "Total Non-Current Liabilities",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS002220",
+    "label": "Total Equity",
+    "parent": "BalanceSheet",
+    "level": 1
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS200140",
+    "label": "Equity Attributable to Parent Stockholders",
+    "parent": "Total Equity",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS003308",
+    "label": "Paid in Capital",
+    "parent": "Equity Attributable to Parent Stockholders",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS002100",
+    "label": "Retained Earnings/Accumulated Deficit",
+    "parent": "Equity Attributable to Parent Stockholders",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "IFBS002737",
+    "label": "Reserves/Accumulated Comprehensive Income/Losses",
+    "parent": "Equity Attributable to Parent Stockholders",
+    "level": 3
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000001",
+    "label": "Debt Maturity Schedule Total",
+    "parent": "BalanceSheet",
+    "level": 1
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000002",
+    "label": "Debt due in Year 1",
+    "parent": "Debt Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000003",
+    "label": "Debt due in Year 2",
+    "parent": "Debt Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000004",
+    "label": "Debt due in Year 3",
+    "parent": "Debt Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000005",
+    "label": "Debt due in Year 4",
+    "parent": "Debt Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000006",
+    "label": "Debt due in Year 5",
+    "parent": "Debt Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000007",
+    "label": "Debt due Beyond",
+    "parent": "Debt Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000008",
+    "label": "Debt - Interests Charges and Other Adjustments",
+    "parent": "Debt Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000009",
+    "label": "Capital Lease Obligation Maturity Schedule Total",
+    "parent": "BalanceSheet",
+    "level": 1
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000010",
+    "label": "Capital Lease due in Year 1",
+    "parent": "Capital Lease Obligation Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000011",
+    "label": "Capital Lease due in Year 2",
+    "parent": "Capital Lease Obligation Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000012",
+    "label": "Capital Lease due in Year 3",
+    "parent": "Capital Lease Obligation Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000013",
+    "label": "Capital Lease due in Year 4",
+    "parent": "Capital Lease Obligation Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000014",
+    "label": "Capital Lease due in Year 5",
+    "parent": "Capital Lease Obligation Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000015",
+    "label": "Capital Lease due Beyond",
+    "parent": "Capital Lease Obligation Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000016",
+    "label": "Capital Lease - Interests Charges and Other Adjustments",
+    "parent": "Capital Lease Obligation Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000017",
+    "label": "Operating Lease Obligation Maturity Schedule Total",
+    "parent": "BalanceSheet",
+    "level": 1
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000018",
+    "label": "Operating Lease due in Year 1",
+    "parent": "Operating Lease Obligation Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000019",
+    "label": "Operating Lease due in Year 2",
+    "parent": "Operating Lease Obligation Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000020",
+    "label": "Operating Lease due in Year 3",
+    "parent": "Operating Lease Obligation Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000021",
+    "label": "Operating Lease due in Year 4",
+    "parent": "Operating Lease Obligation Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000022",
+    "label": "Operating Lease due in Year 5",
+    "parent": "Operating Lease Obligation Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000023",
+    "label": "Operating Lease due Beyond",
+    "parent": "Operating Lease Obligation Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000024",
+    "label": "Operating Lease - Interests Charges and Other Adjustments",
+    "parent": "Operating Lease Obligation Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000025",
+    "label": "Other Contractual Obligations Maturity Schedule Total",
+    "parent": "BalanceSheet",
+    "level": 1
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000026",
+    "label": "Other Contractual Obligations due in Year 1",
+    "parent": "Other Contractual Obligations Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000028",
+    "label": "Other Contractual Obligations due in Year 3",
+    "parent": "Other Contractual Obligations Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000030",
+    "label": "Other Contractual Obligations due in Year 5",
+    "parent": "Other Contractual Obligations Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000031",
+    "label": "Other Contractual Obligations due Beyond",
+    "parent": "Other Contractual Obligations Maturity Schedule Total",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000033",
+    "label": "Total Lease Liability",
+    "parent": "BalanceSheet",
+    "level": 1
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000034",
+    "label": "Total Lease Liability - Due in year 1",
+    "parent": "Total Lease Liability",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000035",
+    "label": "Total Lease Liability - Due in year 2",
+    "parent": "Total Lease Liability",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000036",
+    "label": "Total Lease Liability - Due in year 3",
+    "parent": "Total Lease Liability",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000037",
+    "label": "Total Lease Liability - Due in year 4",
+    "parent": "Total Lease Liability",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000038",
+    "label": "Total Lease Liability - Due in year 5",
+    "parent": "Total Lease Liability",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000039",
+    "label": "Total Lease Liability - Beyond",
+    "parent": "Total Lease Liability",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000040",
+    "label": "Total Lease Liability - Interest Charges and Other Adjustments",
+    "parent": "Total Lease Liability",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000041",
+    "label": "Total Contractual Obligations",
+    "parent": "BalanceSheet",
+    "level": 1
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000042",
+    "label": "Total Contractual Obligations due in Year 1",
+    "parent": "Total Contractual Obligations",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000043",
+    "label": "Total Contractual Obligations due in Year 2",
+    "parent": "Total Contractual Obligations",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000044",
+    "label": "Total Contractual Obligations due in Year 3",
+    "parent": "Total Contractual Obligations",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000045",
+    "label": "Total Contractual Obligations due in Year 4",
+    "parent": "Total Contractual Obligations",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000046",
+    "label": "Total Contractual Obligations due in Year 5",
+    "parent": "Total Contractual Obligations",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000047",
+    "label": "Total Contractual Obligations due Beyond",
+    "parent": "Total Contractual Obligations",
+    "level": 2
+  },
+  {
+    "statement": "Balance Sheet",
+    "id": "DMBS000048",
+    "label": "Total Contractual Obligations - Interests Charges and Other Adjustments",
+    "parent": "Total Contractual Obligations",
+    "level": 2
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF000000",
+    "label": "CashFlow",
+    "parent": null,
+    "level": 0
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF000150",
+    "label": "Cash Flow from Operating Activities, Indirect",
+    "parent": "CashFlow",
+    "level": 1
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF001591",
+    "label": "Net Cash Flow from Continuing Operating Activities, Indirect",
+    "parent": "Cash Flow from Operating Activities, Indirect",
+    "level": 2
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF200620",
+    "label": "Cash Generated from Operating Activities",
+    "parent": "Net Cash Flow from Continuing Operating Activities, Indirect",
+    "level": 3
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF000140",
+    "label": "Cash Flow from Investing Activities",
+    "parent": "CashFlow",
+    "level": 1
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF001510",
+    "label": "Cash Flow from Continuing Investing Activities",
+    "parent": "Cash Flow from Investing Activities",
+    "level": 2
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF001330",
+    "label": "Purchase/Sale and Disposal of Property, Plant and Equipment, Net",
+    "parent": "Cash Flow from Continuing Investing Activities",
+    "level": 3
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF001300",
+    "label": "Purchase/Sale of Business, Net",
+    "parent": "Cash Flow from Continuing Investing Activities",
+    "level": 3
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF001320",
+    "label": "Purchase/Sale of Investments, Net",
+    "parent": "Cash Flow from Continuing Investing Activities",
+    "level": 3
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF000910",
+    "label": "Other Investing Cash Flow",
+    "parent": "Cash Flow from Continuing Investing Activities",
+    "level": 3
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF000130",
+    "label": "Cash Flow from Financing Activities",
+    "parent": "CashFlow",
+    "level": 1
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF001509",
+    "label": "Cash Flow from Continuing Financing Activities",
+    "parent": "Cash Flow from Financing Activities",
+    "level": 2
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF000760",
+    "label": "Issuance of/Payments for Common Stock, Net",
+    "parent": "Cash Flow from Continuing Financing Activities",
+    "level": 3
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF000770",
+    "label": "Issuance of/Repayments for Debt, Net",
+    "parent": "Cash Flow from Continuing Financing Activities",
+    "level": 3
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF002150",
+    "label": "Cash Dividends and Interest Paid",
+    "parent": "Cash Flow from Continuing Financing Activities",
+    "level": 3
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF000900",
+    "label": "Other Financing Cash Flow",
+    "parent": "Cash Flow from Continuing Financing Activities",
+    "level": 3
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF000170",
+    "label": "Cash and Cash Equivalents, End of Period",
+    "parent": "CashFlow",
+    "level": 1
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF000280",
+    "label": "Change in Cash",
+    "parent": "Cash and Cash Equivalents, End of Period",
+    "level": 2
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF000160",
+    "label": "Cash and Cash Equivalents, Beginning of Period",
+    "parent": "Cash and Cash Equivalents, End of Period",
+    "level": 2
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF001730",
+    "label": "Cash Flow Supplemental Section",
+    "parent": "CashFlow",
+    "level": 1
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF002210",
+    "label": "Change in Cash as Reported, Supplemental",
+    "parent": "Cash Flow Supplemental Section",
+    "level": 2
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF001580",
+    "label": "Income Tax Paid, Supplemental",
+    "parent": "Cash Flow Supplemental Section",
+    "level": 2
+  },
+  {
+    "statement": "Cash Flow Statement",
+    "id": "IFCF001731",
+    "label": "Interest Paid, Supplemental",
+    "parent": "Cash Flow Supplemental Section",
+    "level": 2
+  }
+]

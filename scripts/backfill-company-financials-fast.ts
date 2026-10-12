@@ -13,6 +13,8 @@
  *   npx tsx scripts/backfill-company-financials-fast.ts --all-pending --dry-run
  */
 
+import * as dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
 import { PrismaClient, Prisma } from "@prisma/client";
 import { pathToFileURL } from "node:url";
 import {
@@ -58,10 +60,10 @@ function findBestAnnualFactValue(
   unitCandidates: string[],
   reportDate: string,
   periodType: "instant" | "duration",
-): number | null {
+): { val: number; unit: string } | null {
   const gaap = facts.facts?.["us-gaap"] ?? {};
   const ifrs = facts.facts?.["ifrs-full"] ?? {};
-  const candidates: Array<{ filed: string; val: number }> = [];
+  const candidates: Array<{ filed: string; val: number; unit: string }> = [];
 
   const conceptSets = [
     { concepts: gaap, tags: tagsUsGaap },
@@ -73,23 +75,51 @@ function findBestAnnualFactValue(
       const concept = set.concepts[tag];
       if (!concept?.units) continue;
 
-      const preferredUnitRows = unitCandidates.flatMap((unit) => concept.units?.[unit] ?? []);
-      const rowsToCheck = preferredUnitRows.length > 0 ? preferredUnitRows : Object.values(concept.units).flat();
+      // 1. Check preferred unit candidates first
+      for (const unit of unitCandidates) {
+        const rows = concept.units[unit];
+        if (!rows || rows.length === 0) continue;
 
-      for (const row of rowsToCheck) {
-        if (!row || row.end !== reportDate || typeof row.val !== "number") continue;
-        if (!ANNUAL_FORMS.has(row.form ?? "")) continue;
+        for (const row of rows) {
+          if (!row || row.end !== reportDate || typeof row.val !== "number") continue;
+          if (!ANNUAL_FORMS.has(row.form ?? "")) continue;
 
-        // Ensure duration facts span a full annual period (~365 days), not a single quarter (~90 days)
-        if (periodType === "duration" && row.start) {
-          const days = (new Date(row.end).getTime() - new Date(row.start).getTime()) / 86400000;
-          if (days < 300) continue;
+          // Ensure duration facts span a full annual period (~365 days), not a single quarter (~90 days)
+          if (periodType === "duration" && row.start) {
+            const days = (new Date(row.end).getTime() - new Date(row.start).getTime()) / 86400000;
+            if (days < 300) continue;
+          }
+
+          candidates.push({
+            filed: row.filed ?? "0000-00-00",
+            val: row.val,
+            unit,
+          });
         }
 
-        candidates.push({
-          filed: row.filed ?? "0000-00-00",
-          val: row.val,
-        });
+        if (candidates.length) break;
+      }
+
+      // 2. Fallback to any remaining units in concept if none matched preferred
+      if (!candidates.length) {
+        for (const [unit, rows] of Object.entries(concept.units)) {
+          for (const row of rows) {
+            if (!row || row.end !== reportDate || typeof row.val !== "number") continue;
+            if (!ANNUAL_FORMS.has(row.form ?? "")) continue;
+
+            if (periodType === "duration" && row.start) {
+              const days = (new Date(row.end).getTime() - new Date(row.start).getTime()) / 86400000;
+              if (days < 300) continue;
+            }
+
+            candidates.push({
+              filed: row.filed ?? "0000-00-00",
+              val: row.val,
+              unit,
+            });
+          }
+          if (candidates.length) break;
+        }
       }
 
       if (candidates.length) break;
@@ -99,7 +129,7 @@ function findBestAnnualFactValue(
 
   if (!candidates.length) return null;
   candidates.sort((a, b) => (a.filed < b.filed ? 1 : -1));
-  return candidates[0].val;
+  return { val: candidates[0].val, unit: candidates[0].unit };
 }
 
 /**
@@ -296,7 +326,7 @@ export async function backfillCompanyFinancialsFast(params: {
     const extractedValues = new Map<string, { value: number; unit: string }>();
 
     for (const item of LINE_ITEMS) {
-      const value = findBestAnnualFactValue(
+      const match = findBestAnnualFactValue(
         facts,
         item.tagsUsGaap,
         item.tagsIfrs,
@@ -305,13 +335,13 @@ export async function backfillCompanyFinancialsFast(params: {
         item.periodType,
       );
 
-      if (value != null) {
-        const unit = item.unitCandidates[0] ?? "USD";
-        extractedValues.set(item.key, { value, unit });
+      if (match != null) {
+        extractedValues.set(item.key, { value: match.val, unit: match.unit });
       }
     }
 
-    // Standard accounting identity fallback: TotalLiabilities = TotalAssets - ShareholdersEquity
+    // Standard accounting identities fallback:
+    // 1. TotalLiabilities = TotalAssets - ShareholdersEquity
     if (!extractedValues.has("TotalLiabilities")) {
       const ta = extractedValues.get("TotalAssets");
       const se = extractedValues.get("ShareholdersEquity");
@@ -319,6 +349,54 @@ export async function backfillCompanyFinancialsFast(params: {
         extractedValues.set("TotalLiabilities", {
           value: ta.value - se.value,
           unit: ta.unit,
+        });
+      }
+    }
+
+    // 2. CostOfRevenue = Revenue - GrossProfit
+    if (!extractedValues.has("CostOfRevenue")) {
+      const rev = extractedValues.get("Revenue");
+      const gp = extractedValues.get("GrossProfit");
+      if (rev != null && gp != null) {
+        extractedValues.set("CostOfRevenue", {
+          value: rev.value - gp.value,
+          unit: rev.unit,
+        });
+      }
+    }
+
+    // 3. NetInterestIncome = InterestIncome - InterestExpense (for banks / lenders)
+    if (!extractedValues.has("NetInterestIncome")) {
+      const ii = extractedValues.get("InterestIncome");
+      const ie = extractedValues.get("InterestExpense");
+      if (ii != null && ie != null) {
+        extractedValues.set("NetInterestIncome", {
+          value: ii.value - ie.value,
+          unit: ii.unit,
+        });
+      }
+    }
+
+    // 4. NonInterestIncome = Revenue - NetInterestIncome (for banks)
+    if (!extractedValues.has("NonInterestIncome")) {
+      const rev = extractedValues.get("Revenue");
+      const nii = extractedValues.get("NetInterestIncome");
+      if (rev != null && nii != null && rev.value > nii.value) {
+        extractedValues.set("NonInterestIncome", {
+          value: rev.value - nii.value,
+          unit: rev.unit,
+        });
+      }
+    }
+
+    // 5. IncomeTaxExpense = |TotalProfit - NetIncome|
+    if (!extractedValues.has("IncomeTaxExpense")) {
+      const tp = extractedValues.get("TotalProfit");
+      const ni = extractedValues.get("NetIncome");
+      if (tp != null && ni != null) {
+        extractedValues.set("IncomeTaxExpense", {
+          value: Math.abs(tp.value - ni.value),
+          unit: tp.unit,
         });
       }
     }

@@ -1,2243 +1,3055 @@
-{
-  "items": [
-    {
-      "key": "Revenue",
-      "nameZh": "营业收入",
-      "nameEn": "Revenue / Turnover",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "RevenueFromContractWithCustomerExcludingAssessedTax",
-        "SalesRevenueNet",
-        "Revenues",
-        "RevenueFromContractWithCustomerIncludingAssessedTax"
-      ],
-      "tagsIfrs": [
-        "Revenue",
-        "GrossRevenue"
-      ],
-      "cnAliases": [
-        "营业收入",
-        "营业总收入"
-      ],
-      "hkAliases": [
-        "营业额",
-        "经营收入总额",
-        "营业收入",
-        "收益"
-      ]
-    },
-    {
-      "key": "CostOfRevenue",
-      "nameZh": "营业成本",
-      "nameEn": "Cost of Revenue / Goods Sold",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "CostOfGoodsAndServicesSold",
-        "CostOfRevenue"
-      ],
-      "tagsIfrs": [
-        "CostOfSales"
-      ],
-      "cnAliases": [
-        "营业成本",
-        "主营业务成本"
-      ],
-      "hkAliases": [
-        "销售成本",
-        "营业成本"
-      ]
-    },
-    {
-      "key": "GrossProfit",
-      "nameZh": "毛利",
-      "nameEn": "Gross Profit",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "GrossProfit"
-      ],
-      "tagsIfrs": [
-        "GrossProfit"
-      ],
-      "cnAliases": [
-        "毛利"
-      ],
-      "hkAliases": [
-        "毛利"
-      ]
-    },
-    {
-      "key": "TaxesAndSurcharges",
-      "nameZh": "税金及附加",
-      "nameEn": "Taxes and Surcharges",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "TaxesOtherThanIncomeTaxes"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "税金及附加",
-        "营业税金及附加"
-      ],
-      "hkAliases": [
-        "税金及附加"
-      ]
-    },
-    {
-      "key": "SellingExpense",
-      "nameZh": "销售费用",
-      "nameEn": "Selling Expense",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "SellingExpense",
-        "SellingAndMarketingExpense"
-      ],
-      "tagsIfrs": [
-        "DistributionCosts"
-      ],
-      "cnAliases": [
-        "销售费用"
-      ],
-      "hkAliases": [
-        "销售及分销费用",
-        "销售费用"
-      ]
-    },
-    {
-      "key": "AdministrativeExpense",
-      "nameZh": "管理费用",
-      "nameEn": "Administrative Expense",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "GeneralAndAdministrativeExpense"
-      ],
-      "tagsIfrs": [
-        "AdministrativeExpense"
-      ],
-      "cnAliases": [
-        "管理费用"
-      ],
-      "hkAliases": [
-        "行政开支",
-        "一般及行政费用",
-        "管理费用"
-      ]
-    },
-    {
-      "key": "RnDExpense",
-      "nameZh": "研发费用",
-      "nameEn": "Research & Development Expense",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "ResearchAndDevelopmentExpense"
-      ],
-      "tagsIfrs": [
-        "ResearchAndDevelopmentExpense"
-      ],
-      "cnAliases": [
-        "研发费用",
-        "研发支出"
-      ],
-      "hkAliases": [
-        "研发费用",
-        "研发支出"
-      ]
-    },
-    {
-      "key": "SGAExpense",
-      "nameZh": "销售与管理费用",
-      "nameEn": "SG&A Expense",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "SellingGeneralAndAdministrativeExpense"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "销售及管理费用"
-      ],
-      "hkAliases": [
-        "销售及行政开支"
-      ]
-    },
-    {
-      "key": "FinancialExpense",
-      "nameZh": "财务费用",
-      "nameEn": "Financial Expense",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "InterestAndDebtExpense"
-      ],
-      "tagsIfrs": [
-        "FinanceCosts"
-      ],
-      "cnAliases": [
-        "财务费用"
-      ],
-      "hkAliases": [
-        "财务费用",
-        "融资成本"
-      ]
-    },
-    {
-      "key": "InterestIncome",
-      "nameZh": "利息收入",
-      "nameEn": "Interest Income",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "InterestAndDividendIncomeOperating",
-        "InterestIncomeOperating"
-      ],
-      "tagsIfrs": [
-        "InterestIncome"
-      ],
-      "cnAliases": [
-        "利息收入"
-      ],
-      "hkAliases": [
-        "利息收入"
-      ]
-    },
-    {
-      "key": "InterestExpense",
-      "nameZh": "利息支出",
-      "nameEn": "Interest Expense",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "InterestExpense"
-      ],
-      "tagsIfrs": [
-        "InterestExpense"
-      ],
-      "cnAliases": [
-        "利息支出"
-      ],
-      "hkAliases": [
-        "利息支出"
-      ]
-    },
-    {
-      "key": "NetInterestIncome",
-      "nameZh": "利息净收入",
-      "nameEn": "Net Interest Income (Banking)",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "InterestIncomeExpenseNet"
-      ],
-      "tagsIfrs": [
-        "NetInterestIncome"
-      ],
-      "cnAliases": [
-        "利息净收入"
-      ],
-      "hkAliases": [
-        "利息净收入",
-        "净利息收入"
-      ]
-    },
-    {
-      "key": "NonInterestIncome",
-      "nameZh": "非利息收入 / 手续费佣金净收入",
-      "nameEn": "Non-Interest Income",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "NoninterestIncome"
-      ],
-      "tagsIfrs": [
-        "FeeAndCommissionIncome"
-      ],
-      "cnAliases": [
-        "手续费及佣金净收入",
-        "非利息净收入"
-      ],
-      "hkAliases": [
-        "服务费及佣金净收入",
-        "非利息收入"
-      ]
-    },
-    {
-      "key": "InvestmentIncome",
-      "nameZh": "投资收益",
-      "nameEn": "Investment Income",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "InvestmentIncomeNet"
-      ],
-      "tagsIfrs": [
-        "InvestmentIncome"
-      ],
-      "cnAliases": [
-        "投资收益",
-        "其中:对联营企业和合营企业的投资收益"
-      ],
-      "hkAliases": [
-        "投资收益",
-        "应占联营公司溢利"
-      ]
-    },
-    {
-      "key": "FairValueChangeIncome",
-      "nameZh": "公允价值变动收益",
-      "nameEn": "Gain/Loss on Fair Value Changes",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "FairValueNetDerivativeAssetLiabilityMeasuredOnRecurringBasisChangeInUnrealizedGainLoss"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "公允价值变动收益",
-        "公允价值变动净收益"
-      ],
-      "hkAliases": [
-        "公允价值变动损益"
-      ]
-    },
-    {
-      "key": "ProvisionForCreditLosses",
-      "nameZh": "信用减值损失 / 贷款减值准备计提",
-      "nameEn": "Provision for Credit Losses",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "ProvisionForLoanLeaseAndOtherLosses",
-        "CreditLossExpenseReversal"
-      ],
-      "tagsIfrs": [
-        "ImpairmentLossReversalOfImpairmentLossRecognisedInProfitOrLoss"
-      ],
-      "cnAliases": [
-        "信用减值损失",
-        "资产减值损失"
-      ],
-      "hkAliases": [
-        "预期信用损失",
-        "贷款减值拨备"
-      ]
-    },
-    {
-      "key": "OperatingIncome",
-      "nameZh": "营业利润",
-      "nameEn": "Operating Income / Operating Profit",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "OperatingIncomeLoss"
-      ],
-      "tagsIfrs": [
-        "ProfitLossFromOperatingActivities"
-      ],
-      "cnAliases": [
-        "营业利润"
-      ],
-      "hkAliases": [
-        "经营溢利",
-        "营业利润"
-      ]
-    },
-    {
-      "key": "NonOperatingIncome",
-      "nameZh": "营业外收入",
-      "nameEn": "Non-Operating Income",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "NonoperatingIncomeExpense"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "营业外收入"
-      ],
-      "hkAliases": [
-        "营业外收入"
-      ]
-    },
-    {
-      "key": "NonOperatingExpense",
-      "nameZh": "营业外支出",
-      "nameEn": "Non-Operating Expense",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "营业外支出"
-      ],
-      "hkAliases": [
-        "营业外支出"
-      ]
-    },
-    {
-      "key": "TotalProfit",
-      "nameZh": "利润总额",
-      "nameEn": "Income before Tax (EBT)",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments"
-      ],
-      "tagsIfrs": [
-        "ProfitLossBeforeTax"
-      ],
-      "cnAliases": [
-        "利润总额"
-      ],
-      "hkAliases": [
-        "除税前溢利",
-        "税前利润"
-      ]
-    },
-    {
-      "key": "IncomeTaxExpense",
-      "nameZh": "所得税费用",
-      "nameEn": "Income Tax Expense",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "IncomeTaxExpenseBenefit"
-      ],
-      "tagsIfrs": [
-        "IncomeTaxExpenseContinuingOperations"
-      ],
-      "cnAliases": [
-        "所得税费用"
-      ],
-      "hkAliases": [
-        "所得税开支",
-        "税项"
-      ]
-    },
-    {
-      "key": "NetIncome",
-      "nameZh": "净利润 (归母)",
-      "nameEn": "Net Income Attributable to Parent",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "NetIncomeLoss"
-      ],
-      "tagsIfrs": [
-        "ProfitLoss",
-        "ProfitLossAttributableToOwnersOfParent"
-      ],
-      "cnAliases": [
-        "归属于母公司所有者的净利润",
-        "归属于母公司的净利润",
-        "归属于母公司股东的净利润"
-      ],
-      "hkAliases": [
-        "股东应占溢利",
-        "股东应占利润",
-        "本公司拥有人应占溢利"
-      ]
-    },
-    {
-      "key": "MinorityInterestIncome",
-      "nameZh": "少数股东损益",
-      "nameEn": "Minority Interest in Earnings",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "NetIncomeLossAttributableToNoncontrollingInterest"
-      ],
-      "tagsIfrs": [
-        "ProfitLossAttributableToNonControllingInterests"
-      ],
-      "cnAliases": [
-        "少数股东损益"
-      ],
-      "hkAliases": [
-        "非控股权益应占溢利"
-      ]
-    },
-    {
-      "key": "EPSBasic",
-      "nameZh": "基本每股收益",
-      "nameEn": "Basic EPS",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD/shares",
-        "USD-per-shares",
-        "pure",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "EarningsPerShareBasic"
-      ],
-      "tagsIfrs": [
-        "BasicEarningsLossPerShare"
-      ],
-      "cnAliases": [
-        "基本每股收益"
-      ],
-      "hkAliases": [
-        "每股基本盈利"
-      ]
-    },
-    {
-      "key": "EPSDiluted",
-      "nameZh": "稀释每股收益",
-      "nameEn": "Diluted EPS",
-      "statement": "income_statement",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD/shares",
-        "USD-per-shares",
-        "pure",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "EarningsPerShareDiluted"
-      ],
-      "tagsIfrs": [
-        "DilutedEarningsLossPerShare"
-      ],
-      "cnAliases": [
-        "稀释每股收益"
-      ],
-      "hkAliases": [
-        "每股摊薄盈利"
-      ]
-    },
-    {
-      "key": "CashAndCashEquivalents",
-      "nameZh": "现金及现金等价物 / 货币资金",
-      "nameEn": "Cash and Cash Equivalents",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "CashAndCashEquivalentsAtCarryingValue",
-        "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"
-      ],
-      "tagsIfrs": [
-        "CashAndCashEquivalents"
-      ],
-      "cnAliases": [
-        "货币资金"
-      ],
-      "hkAliases": [
-        "现金及现金等价物",
-        "银行结余及现金"
-      ]
-    },
-    {
-      "key": "ShortTermInvestments",
-      "nameZh": "交易性金融资产 / 短期投资",
-      "nameEn": "Short-Term Investments / Marketable Securities",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "MarketableSecuritiesCurrent",
-        "ShortTermInvestments"
-      ],
-      "tagsIfrs": [
-        "OtherCurrentFinancialAssets"
-      ],
-      "cnAliases": [
-        "交易性金融资产"
-      ],
-      "hkAliases": [
-        "短期投资",
-        "按公允价值计入损益的金融资产"
-      ]
-    },
-    {
-      "key": "NotesReceivable",
-      "nameZh": "应收票据",
-      "nameEn": "Notes Receivable",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "NotesReceivableNet"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "应收票据"
-      ],
-      "hkAliases": [
-        "应收票据"
-      ]
-    },
-    {
-      "key": "AccountsReceivable",
-      "nameZh": "应收账款",
-      "nameEn": "Accounts Receivable",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "AccountsReceivableNetCurrent"
-      ],
-      "tagsIfrs": [
-        "TradeAndOtherCurrentReceivables"
-      ],
-      "cnAliases": [
-        "应收账款"
-      ],
-      "hkAliases": [
-        "应收账款及应收票据",
-        "贸易及其他应收款项"
-      ]
-    },
-    {
-      "key": "Prepayments",
-      "nameZh": "预付款项",
-      "nameEn": "Prepayments",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "PrepaidExpenseCurrent"
-      ],
-      "tagsIfrs": [
-        "PrepaymentsCurrent"
-      ],
-      "cnAliases": [
-        "预付款项"
-      ],
-      "hkAliases": [
-        "预付款项及按金"
-      ]
-    },
-    {
-      "key": "OtherReceivables",
-      "nameZh": "其他应收款",
-      "nameEn": "Other Receivables",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "OtherReceivablesNetCurrent"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "其他应收款"
-      ],
-      "hkAliases": [
-        "其他应收款项"
-      ]
-    },
-    {
-      "key": "Inventory",
-      "nameZh": "存货",
-      "nameEn": "Inventory",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "InventoryNet"
-      ],
-      "tagsIfrs": [
-        "Inventories"
-      ],
-      "cnAliases": [
-        "存货"
-      ],
-      "hkAliases": [
-        "存货"
-      ]
-    },
-    {
-      "key": "ContractAssets",
-      "nameZh": "合同资产",
-      "nameEn": "Contract Assets",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "ContractWithCustomerAssetNetCurrent"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "合同资产"
-      ],
-      "hkAliases": [
-        "合同资产"
-      ]
-    },
-    {
-      "key": "TotalCurrentAssets",
-      "nameZh": "流动资产合计",
-      "nameEn": "Total Current Assets",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "AssetsCurrent"
-      ],
-      "tagsIfrs": [
-        "CurrentAssets"
-      ],
-      "cnAliases": [
-        "流动资产合计"
-      ],
-      "hkAliases": [
-        "流动资产合计",
-        "流动资产总额"
-      ]
-    },
-    {
-      "key": "TotalLoans",
-      "nameZh": "客户贷款及垫款总额 (银行专属)",
-      "nameEn": "Total Loans & Advances",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "LoansAndLeasesReceivableNetReportedAmount"
-      ],
-      "tagsIfrs": [
-        "LoansAndAdvancesToCustomers"
-      ],
-      "cnAliases": [
-        "发放贷款和垫款",
-        "发放贷款及垫款"
-      ],
-      "hkAliases": [
-        "客户贷款及垫款",
-        "贷款及垫款"
-      ]
-    },
-    {
-      "key": "LongTermEquityInvestments",
-      "nameZh": "长期股权投资",
-      "nameEn": "Long-Term Equity Investments",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "EquityMethodInvestments"
-      ],
-      "tagsIfrs": [
-        "InvestmentsInAssociates"
-      ],
-      "cnAliases": [
-        "长期股权投资"
-      ],
-      "hkAliases": [
-        "于联营公司之权益",
-        "长期股权投资"
-      ]
-    },
-    {
-      "key": "InvestmentProperty",
-      "nameZh": "投资性房地产",
-      "nameEn": "Investment Property",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "RealEstateInvestmentPropertyAtCost"
-      ],
-      "tagsIfrs": [
-        "InvestmentProperty"
-      ],
-      "cnAliases": [
-        "投资性房地产"
-      ],
-      "hkAliases": [
-        "投资物业"
-      ]
-    },
-    {
-      "key": "PropertyPlantEquipmentNet",
-      "nameZh": "固定资产 / 物业厂房及设备",
-      "nameEn": "Property, Plant & Equipment (Net)",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "PropertyPlantAndEquipmentNet"
-      ],
-      "tagsIfrs": [
-        "PropertyPlantAndEquipment"
-      ],
-      "cnAliases": [
-        "固定资产"
-      ],
-      "hkAliases": [
-        "物业、厂房及设备",
-        "固定资产"
-      ]
-    },
-    {
-      "key": "ConstructionInProgress",
-      "nameZh": "在建工程",
-      "nameEn": "Construction in Progress",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "在建工程"
-      ],
-      "hkAliases": [
-        "在建工程"
-      ]
-    },
-    {
-      "key": "RightOfUseAssets",
-      "nameZh": "使用权资产",
-      "nameEn": "Operating Lease Right-of-Use Assets",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "OperatingLeaseRightOfUseAsset"
-      ],
-      "tagsIfrs": [
-        "RightOfUseAssets"
-      ],
-      "cnAliases": [
-        "使用权资产"
-      ],
-      "hkAliases": [
-        "使用权资产"
-      ]
-    },
-    {
-      "key": "IntangibleAssets",
-      "nameZh": "无形资产",
-      "nameEn": "Intangible Assets",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "FiniteLivedIntangibleAssetsNet"
-      ],
-      "tagsIfrs": [
-        "IntangibleAssetsOtherThanGoodwill"
-      ],
-      "cnAliases": [
-        "无形资产"
-      ],
-      "hkAliases": [
-        "无形资产"
-      ]
-    },
-    {
-      "key": "Goodwill",
-      "nameZh": "商誉",
-      "nameEn": "Goodwill",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "Goodwill"
-      ],
-      "tagsIfrs": [
-        "Goodwill"
-      ],
-      "cnAliases": [
-        "商誉"
-      ],
-      "hkAliases": [
-        "商誉"
-      ]
-    },
-    {
-      "key": "DeferredTaxAssets",
-      "nameZh": "递延所得税资产",
-      "nameEn": "Deferred Tax Assets",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "DeferredTaxAssetsNetNoncurrent"
-      ],
-      "tagsIfrs": [
-        "DeferredTaxAssets"
-      ],
-      "cnAliases": [
-        "递延所得税资产"
-      ],
-      "hkAliases": [
-        "递延税项资产"
-      ]
-    },
-    {
-      "key": "TotalNonCurrentAssets",
-      "nameZh": "非流动资产合计",
-      "nameEn": "Total Non-Current Assets",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [],
-      "tagsIfrs": [
-        "NonCurrentAssets"
-      ],
-      "cnAliases": [
-        "非流动资产合计"
-      ],
-      "hkAliases": [
-        "非流动资产总额"
-      ]
-    },
-    {
-      "key": "TotalAssets",
-      "nameZh": "资产总计",
-      "nameEn": "Total Assets",
-      "statement": "balance_sheet_asset",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "Assets"
-      ],
-      "tagsIfrs": [
-        "Assets"
-      ],
-      "cnAliases": [
-        "资产总计",
-        "资产总额"
-      ],
-      "hkAliases": [
-        "总资产",
-        "资产总额"
-      ]
-    },
-    {
-      "key": "ShortTermDebt",
-      "nameZh": "短期借款",
-      "nameEn": "Short-Term Debt / Borrowings",
-      "statement": "balance_sheet_liability",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "ShortTermBorrowings",
-        "DebtCurrent"
-      ],
-      "tagsIfrs": [
-        "CurrentBorrowings"
-      ],
-      "cnAliases": [
-        "短期借款"
-      ],
-      "hkAliases": [
-        "短期借款",
-        "流动银行借贷"
-      ]
-    },
-    {
-      "key": "AccountsPayable",
-      "nameZh": "应付账款",
-      "nameEn": "Accounts Payable",
-      "statement": "balance_sheet_liability",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "AccountsPayableCurrent"
-      ],
-      "tagsIfrs": [
-        "TradeAndOtherCurrentPayables"
-      ],
-      "cnAliases": [
-        "应付账款"
-      ],
-      "hkAliases": [
-        "应付账款及应收票据",
-        "贸易及其他应付款项"
-      ]
-    },
-    {
-      "key": "ContractLiabilities",
-      "nameZh": "合同负债 / 预收款项",
-      "nameEn": "Contract Liabilities / Deferred Revenue",
-      "statement": "balance_sheet_liability",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "ContractWithCustomerLiabilityCurrent"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "合同负债",
-        "预收款项"
-      ],
-      "hkAliases": [
-        "合同负债",
-        "预收款项"
-      ]
-    },
-    {
-      "key": "EmployeeBenefitsPayable",
-      "nameZh": "应付职工薪酬",
-      "nameEn": "Employee Benefits Payable",
-      "statement": "balance_sheet_liability",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "EmployeeRelatedLiabilitiesCurrent"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "应付职工薪酬"
-      ],
-      "hkAliases": [
-        "应付职工薪酬"
-      ]
-    },
-    {
-      "key": "TaxesPayable",
-      "nameZh": "应交税费",
-      "nameEn": "Taxes Payable",
-      "statement": "balance_sheet_liability",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "AccruedIncomeTaxesCurrent"
-      ],
-      "tagsIfrs": [
-        "CurrentTaxLiabilities"
-      ],
-      "cnAliases": [
-        "应交税费"
-      ],
-      "hkAliases": [
-        "应交税金",
-        "当期税项负债"
-      ]
-    },
-    {
-      "key": "OtherPayables",
-      "nameZh": "其他应付款",
-      "nameEn": "Other Payables",
-      "statement": "balance_sheet_liability",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "OtherPayablesCurrent"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "其他应付款"
-      ],
-      "hkAliases": [
-        "其他应付款项"
-      ]
-    },
-    {
-      "key": "NonCurrentLiabilitiesDueWithinOneYear",
-      "nameZh": "一年内到期的非流动负债",
-      "nameEn": "Current Portion of Long-Term Debt",
-      "statement": "balance_sheet_liability",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "LongTermDebtCurrent"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "一年内到期的非流动负债"
-      ],
-      "hkAliases": [
-        "一年内到期的非流动负债"
-      ]
-    },
-    {
-      "key": "TotalCurrentLiabilities",
-      "nameZh": "流动负债合计",
-      "nameEn": "Total Current Liabilities",
-      "statement": "balance_sheet_liability",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "LiabilitiesCurrent"
-      ],
-      "tagsIfrs": [
-        "CurrentLiabilities"
-      ],
-      "cnAliases": [
-        "流动负债合计"
-      ],
-      "hkAliases": [
-        "流动负债总额",
-        "流动负债合计"
-      ]
-    },
-    {
-      "key": "TotalDeposits",
-      "nameZh": "客户存款 (银行专属)",
-      "nameEn": "Customer Deposits",
-      "statement": "balance_sheet_liability",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "Deposits"
-      ],
-      "tagsIfrs": [
-        "DepositsFromCustomers"
-      ],
-      "cnAliases": [
-        "吸收存款及同业存放",
-        "吸收存款"
-      ],
-      "hkAliases": [
-        "客户存款",
-        "吸收存款"
-      ]
-    },
-    {
-      "key": "LongTermDebt",
-      "nameZh": "长期借款 / 应付债券",
-      "nameEn": "Long-Term Debt",
-      "statement": "balance_sheet_liability",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "LongTermDebtNoncurrent"
-      ],
-      "tagsIfrs": [
-        "NonCurrentBorrowings"
-      ],
-      "cnAliases": [
-        "长期借款",
-        "应付债券"
-      ],
-      "hkAliases": [
-        "长期银行借贷",
-        "非流动银行借款"
-      ]
-    },
-    {
-      "key": "LeaseLiabilities",
-      "nameZh": "租赁负债",
-      "nameEn": "Operating Lease Liabilities",
-      "statement": "balance_sheet_liability",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "OperatingLeaseLiabilityNoncurrent"
-      ],
-      "tagsIfrs": [
-        "NonCurrentLeaseLiabilities"
-      ],
-      "cnAliases": [
-        "租赁负债"
-      ],
-      "hkAliases": [
-        "租赁负债"
-      ]
-    },
-    {
-      "key": "DeferredTaxLiabilities",
-      "nameZh": "递延所得税负债",
-      "nameEn": "Deferred Tax Liabilities",
-      "statement": "balance_sheet_liability",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "DeferredTaxLiabilitiesNoncurrent"
-      ],
-      "tagsIfrs": [
-        "DeferredTaxLiabilities"
-      ],
-      "cnAliases": [
-        "递延所得税负债"
-      ],
-      "hkAliases": [
-        "递延税项负债"
-      ]
-    },
-    {
-      "key": "TotalNonCurrentLiabilities",
-      "nameZh": "非流动负债合计",
-      "nameEn": "Total Non-Current Liabilities",
-      "statement": "balance_sheet_liability",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [],
-      "tagsIfrs": [
-        "NonCurrentLiabilities"
-      ],
-      "cnAliases": [
-        "非流动负债合计"
-      ],
-      "hkAliases": [
-        "非流动负债总额"
-      ]
-    },
-    {
-      "key": "TotalDebt",
-      "nameZh": "总有息负债 (长短借款合计)",
-      "nameEn": "Total Debt (Interest-Bearing)",
-      "statement": "balance_sheet_liability",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "DebtInstrumentCarryingAmount"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [],
-      "hkAliases": []
-    },
-    {
-      "key": "TotalLiabilities",
-      "nameZh": "负债合计",
-      "nameEn": "Total Liabilities",
-      "statement": "balance_sheet_liability",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "Liabilities"
-      ],
-      "tagsIfrs": [
-        "Liabilities"
-      ],
-      "cnAliases": [
-        "负债合计",
-        "负债总额"
-      ],
-      "hkAliases": [
-        "总负债",
-        "负债总额"
-      ]
-    },
-    {
-      "key": "CommonStockSharesOutstanding",
-      "nameZh": "实收资本 / 普通股期末总股本",
-      "nameEn": "Common Stock Shares Outstanding",
-      "statement": "balance_sheet_equity",
-      "periodType": "instant",
-      "unitCandidates": [
-        "shares",
-        "pure",
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "CommonStockSharesOutstanding",
-        "WeightedAverageNumberOfDilutedSharesOutstanding",
-        "CommonStockSharesIssued",
-        "EntityCommonStockSharesOutstanding"
-      ],
-      "tagsIfrs": [
-        "NumberOfSharesOutstanding"
-      ],
-      "cnAliases": [
-        "实收资本(或股本)",
-        "实收资本（或股本）",
-        "股本",
-        "实收资本",
-        "实收资本净额"
-      ],
-      "hkAliases": [
-        "已发行股本",
-        "股份代号",
-        "股本"
-      ]
-    },
-    {
-      "key": "CapitalSurplus",
-      "nameZh": "资本公积",
-      "nameEn": "Additional Paid-in Capital / Capital Surplus",
-      "statement": "balance_sheet_equity",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "AdditionalPaidInCapital"
-      ],
-      "tagsIfrs": [
-        "SharePremium"
-      ],
-      "cnAliases": [
-        "资本公积"
-      ],
-      "hkAliases": [
-        "股份溢价",
-        "资本公积"
-      ]
-    },
-    {
-      "key": "RetainedEarnings",
-      "nameZh": "未分配利润 / 留存收益",
-      "nameEn": "Retained Earnings",
-      "statement": "balance_sheet_equity",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "RetainedEarningsAccumulatedDeficit"
-      ],
-      "tagsIfrs": [
-        "RetainedEarnings"
-      ],
-      "cnAliases": [
-        "未分配利润"
-      ],
-      "hkAliases": [
-        "保留溢利",
-        "滚存溢利"
-      ]
-    },
-    {
-      "key": "ShareholdersEquity",
-      "nameZh": "归属于母公司股东权益 (净资产)",
-      "nameEn": "Shareholders' Equity",
-      "statement": "balance_sheet_equity",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "StockholdersEquity"
-      ],
-      "tagsIfrs": [
-        "EquityAttributableToOwnersOfParent",
-        "Equity"
-      ],
-      "cnAliases": [
-        "所有者权益(或股东权益)合计",
-        "所有者权益合计",
-        "归属于母公司股东权益合计",
-        "归属于母公司的股东权益合计",
-        "归属于母公司所有者权益合计",
-        "归属于母公司股东的权益"
-      ],
-      "hkAliases": [
-        "股东权益",
-        "归属于母公司股东权益",
-        "权益总额",
-        "所有者权益合计"
-      ]
-    },
-    {
-      "key": "MinorityInterest",
-      "nameZh": "少数股东权益",
-      "nameEn": "Minority Interest / Non-Controlling Interest",
-      "statement": "balance_sheet_equity",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "MinorityInterest"
-      ],
-      "tagsIfrs": [
-        "NonControllingInterests"
-      ],
-      "cnAliases": [
-        "少数股东权益"
-      ],
-      "hkAliases": [
-        "非控股权益"
-      ]
-    },
-    {
-      "key": "TotalEquity",
-      "nameZh": "所有者权益合计",
-      "nameEn": "Total Equity",
-      "statement": "balance_sheet_equity",
-      "periodType": "instant",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"
-      ],
-      "tagsIfrs": [
-        "TotalEquity"
-      ],
-      "cnAliases": [
-        "所有者权益合计"
-      ],
-      "hkAliases": [
-        "权益总额"
-      ]
-    },
-    {
-      "key": "CashReceivedFromSales",
-      "nameZh": "销售商品、提供劳务收到的现金",
-      "nameEn": "Cash from Sales / Customer Receipts",
-      "statement": "cash_flow",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "销售商品、提供劳务收到的现金"
-      ],
-      "hkAliases": [
-        "客户收入所收取的现金"
-      ]
-    },
-    {
-      "key": "OperatingCashFlow",
-      "nameZh": "经营活动产生的现金流量净额 (OCF)",
-      "nameEn": "Operating Cash Flow",
-      "statement": "cash_flow",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "NetCashProvidedByUsedInOperatingActivities"
-      ],
-      "tagsIfrs": [
-        "CashFlowsFromUsedInOperatingActivities"
-      ],
-      "cnAliases": [
-        "经营活动产生的现金流量净额"
-      ],
-      "hkAliases": [
-        "经营业务现金净额",
-        "经营活动产生之现金净额"
-      ]
-    },
-    {
-      "key": "CapEx",
-      "nameZh": "资本开支 (购建固定资产现金支付)",
-      "nameEn": "Capital Expenditures (CapEx)",
-      "statement": "cash_flow",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "PaymentsToAcquirePropertyPlantAndEquipment",
-        "PaymentsToAcquireProductiveAssets"
-      ],
-      "tagsIfrs": [
-        "PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities"
-      ],
-      "cnAliases": [
-        "购建固定资产、无形资产和其他长期资产所支付的现金",
-        "购建固定资产、无形资产和其他长期资产支付的现金"
-      ],
-      "hkAliases": [
-        "购建固定资产",
-        "购买物业、厂房及设备"
-      ]
-    },
-    {
-      "key": "CashReceivedFromDisposalOfAssets",
-      "nameZh": "处置资产收回的现金净额",
-      "nameEn": "Proceeds from Disposal of Fixed Assets",
-      "statement": "cash_flow",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "ProceedsFromSaleOfPropertyPlantAndEquipment"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "处置固定资产、无形资产和其他长期资产收回的现金净额"
-      ],
-      "hkAliases": [
-        "处置物业、厂房及设备"
-      ]
-    },
-    {
-      "key": "CashPaidForInvestments",
-      "nameZh": "投资支付的现金",
-      "nameEn": "Payments for Investments",
-      "statement": "cash_flow",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "PaymentsToAcquireInvestments"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "投资支付的现金"
-      ],
-      "hkAliases": [
-        "投资支付的现金"
-      ]
-    },
-    {
-      "key": "InvestingCashFlow",
-      "nameZh": "投资活动产生的现金流量净额",
-      "nameEn": "Investing Cash Flow",
-      "statement": "cash_flow",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "NetCashProvidedByUsedInInvestingActivities"
-      ],
-      "tagsIfrs": [
-        "CashFlowsFromUsedInInvestingActivities"
-      ],
-      "cnAliases": [
-        "投资活动产生的现金流量净额"
-      ],
-      "hkAliases": [
-        "投资业务现金净额",
-        "投资活动产生之现金净额"
-      ]
-    },
-    {
-      "key": "CashReceivedFromBorrowings",
-      "nameZh": "取得借款收到的现金",
-      "nameEn": "Proceeds from Borrowings",
-      "statement": "cash_flow",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "ProceedsFromIssuanceOfLongTermDebt"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "取得借款收到的现金"
-      ],
-      "hkAliases": [
-        "取得银行借贷"
-      ]
-    },
-    {
-      "key": "CashRepaymentsOfBorrowings",
-      "nameZh": "偿还债务支付的现金",
-      "nameEn": "Repayments of Borrowings",
-      "statement": "cash_flow",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "RepaymentsOfLongTermDebt"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "偿还债务支付的现金"
-      ],
-      "hkAliases": [
-        "偿还银行借款"
-      ]
-    },
-    {
-      "key": "DividendsPaid",
-      "nameZh": "现金分红总额 (分配股利/利润现金支出)",
-      "nameEn": "Cash Dividends Paid",
-      "statement": "cash_flow",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "PaymentsOfDividends",
-        "PaymentsOfDividendsCommonStock",
-        "PaymentsOfDividendsPreferredStock"
-      ],
-      "tagsIfrs": [
-        "DividendsPaid",
-        "DividendsPaidClassifiedAsFinancingActivities"
-      ],
-      "cnAliases": [
-        "分配股利、利润支付的现金",
-        "分配股利、利润所支付的现金",
-        "分配股利、利润或偿付利息支付的现金"
-      ],
-      "hkAliases": [
-        "支付股息",
-        "已付股息",
-        "已付股息(融资)",
-        "股息支付"
-      ]
-    },
-    {
-      "key": "ShareRepurchaseAmt",
-      "nameZh": "股票回购总额 (回购股份现金支出)",
-      "nameEn": "Share Repurchases (Common Stock)",
-      "statement": "cash_flow",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "PaymentsForRepurchaseOfCommonStock",
-        "PaymentsForRepurchaseOfEquity",
-        "TreasuryStockValueAcquiredCostMethod",
-        "StockRepurchasedDuringPeriodValue"
-      ],
-      "tagsIfrs": [],
-      "cnAliases": [
-        "回购股份支付的现金"
-      ],
-      "hkAliases": [
-        "回购股份",
-        "购回股份"
-      ]
-    },
-    {
-      "key": "FinancingCashFlow",
-      "nameZh": "筹资活动产生的现金流量净额",
-      "nameEn": "Financing Cash Flow",
-      "statement": "cash_flow",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "NetCashProvidedByUsedInFinancingActivities"
-      ],
-      "tagsIfrs": [
-        "CashFlowsFromUsedInFinancingActivities"
-      ],
-      "cnAliases": [
-        "筹资活动产生的现金流量净额"
-      ],
-      "hkAliases": [
-        "融资业务现金净额",
-        "筹资活动产生之现金净额"
-      ]
-    },
-    {
-      "key": "NetChangeInCash",
-      "nameZh": "现金及现金等价物净增加额",
-      "nameEn": "Net Change in Cash",
-      "statement": "cash_flow",
-      "periodType": "duration",
-      "unitCandidates": [
-        "USD",
-        "CNY",
-        "HKD"
-      ],
-      "tagsUsGaap": [
-        "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect"
-      ],
-      "tagsIfrs": [
-        "IncreaseDecreaseInCashAndCashEquivalents"
-      ],
-      "cnAliases": [
-        "现金及现金等价物净增加额"
-      ],
-      "hkAliases": [
-        "现金及现金等价物之净增加"
-      ]
-    }
-  ],
-  "cnAliases": {
-    "营业收入": "Revenue",
-    "营业总收入": "Revenue",
-    "营业成本": "CostOfRevenue",
-    "主营业务成本": "CostOfRevenue",
-    "毛利": "GrossProfit",
-    "税金及附加": "TaxesAndSurcharges",
-    "营业税金及附加": "TaxesAndSurcharges",
-    "销售费用": "SellingExpense",
-    "管理费用": "AdministrativeExpense",
-    "研发费用": "RnDExpense",
-    "研发支出": "RnDExpense",
-    "销售及管理费用": "SGAExpense",
-    "财务费用": "FinancialExpense",
-    "利息收入": "InterestIncome",
-    "利息支出": "InterestExpense",
-    "利息净收入": "NetInterestIncome",
-    "手续费及佣金净收入": "NonInterestIncome",
-    "非利息净收入": "NonInterestIncome",
-    "投资收益": "InvestmentIncome",
-    "其中:对联营企业和合营企业的投资收益": "InvestmentIncome",
-    "公允价值变动收益": "FairValueChangeIncome",
-    "公允价值变动净收益": "FairValueChangeIncome",
-    "信用减值损失": "ProvisionForCreditLosses",
-    "资产减值损失": "ProvisionForCreditLosses",
-    "营业利润": "OperatingIncome",
-    "营业外收入": "NonOperatingIncome",
-    "营业外支出": "NonOperatingExpense",
-    "利润总额": "TotalProfit",
-    "所得税费用": "IncomeTaxExpense",
-    "归属于母公司所有者的净利润": "NetIncome",
-    "归属于母公司的净利润": "NetIncome",
-    "归属于母公司股东的净利润": "NetIncome",
-    "少数股东损益": "MinorityInterestIncome",
-    "基本每股收益": "EPSBasic",
-    "稀释每股收益": "EPSDiluted",
-    "货币资金": "CashAndCashEquivalents",
-    "交易性金融资产": "ShortTermInvestments",
-    "应收票据": "NotesReceivable",
-    "应收账款": "AccountsReceivable",
-    "预付款项": "Prepayments",
-    "其他应收款": "OtherReceivables",
-    "存货": "Inventory",
-    "合同资产": "ContractAssets",
-    "流动资产合计": "TotalCurrentAssets",
-    "发放贷款和垫款": "TotalLoans",
-    "发放贷款及垫款": "TotalLoans",
-    "长期股权投资": "LongTermEquityInvestments",
-    "投资性房地产": "InvestmentProperty",
-    "固定资产": "PropertyPlantEquipmentNet",
-    "在建工程": "ConstructionInProgress",
-    "使用权资产": "RightOfUseAssets",
-    "无形资产": "IntangibleAssets",
-    "商誉": "Goodwill",
-    "递延所得税资产": "DeferredTaxAssets",
-    "非流动资产合计": "TotalNonCurrentAssets",
-    "资产总计": "TotalAssets",
-    "资产总额": "TotalAssets",
-    "短期借款": "ShortTermDebt",
-    "应付账款": "AccountsPayable",
-    "合同负债": "ContractLiabilities",
-    "预收款项": "ContractLiabilities",
-    "应付职工薪酬": "EmployeeBenefitsPayable",
-    "应交税费": "TaxesPayable",
-    "其他应付款": "OtherPayables",
-    "一年内到期的非流动负债": "NonCurrentLiabilitiesDueWithinOneYear",
-    "流动负债合计": "TotalCurrentLiabilities",
-    "吸收存款及同业存放": "TotalDeposits",
-    "吸收存款": "TotalDeposits",
-    "长期借款": "LongTermDebt",
-    "应付债券": "LongTermDebt",
-    "租赁负债": "LeaseLiabilities",
-    "递延所得税负债": "DeferredTaxLiabilities",
-    "非流动负债合计": "TotalNonCurrentLiabilities",
-    "负债合计": "TotalLiabilities",
-    "负债总额": "TotalLiabilities",
-    "实收资本(或股本)": "CommonStockSharesOutstanding",
-    "实收资本（或股本）": "CommonStockSharesOutstanding",
-    "股本": "CommonStockSharesOutstanding",
-    "实收资本": "CommonStockSharesOutstanding",
-    "实收资本净额": "CommonStockSharesOutstanding",
-    "资本公积": "CapitalSurplus",
-    "未分配利润": "RetainedEarnings",
-    "所有者权益(或股东权益)合计": "ShareholdersEquity",
-    "所有者权益合计": "ShareholdersEquity",
-    "归属于母公司股东权益合计": "ShareholdersEquity",
-    "归属于母公司的股东权益合计": "ShareholdersEquity",
-    "归属于母公司所有者权益合计": "ShareholdersEquity",
-    "归属于母公司股东的权益": "ShareholdersEquity",
-    "少数股东权益": "MinorityInterest",
-    "销售商品、提供劳务收到的现金": "CashReceivedFromSales",
-    "经营活动产生的现金流量净额": "OperatingCashFlow",
-    "购建固定资产、无形资产和其他长期资产所支付的现金": "CapEx",
-    "购建固定资产、无形资产和其他长期资产支付的现金": "CapEx",
-    "处置固定资产、无形资产和其他长期资产收回的现金净额": "CashReceivedFromDisposalOfAssets",
-    "投资支付的现金": "CashPaidForInvestments",
-    "投资活动产生的现金流量净额": "InvestingCashFlow",
-    "取得借款收到的现金": "CashReceivedFromBorrowings",
-    "偿还债务支付的现金": "CashRepaymentsOfBorrowings",
-    "分配股利、利润支付的现金": "DividendsPaid",
-    "分配股利、利润所支付的现金": "DividendsPaid",
-    "分配股利、利润或偿付利息支付的现金": "DividendsPaid",
-    "回购股份支付的现金": "ShareRepurchaseAmt",
-    "筹资活动产生的现金流量净额": "FinancingCashFlow",
-    "现金及现金等价物净增加额": "NetChangeInCash"
+[
+  {
+    "key": "Revenue",
+    "nameZh": "营业收入",
+    "nameEn": "Revenue / Turnover",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "Revenues",
+      "RevenueFromContractWithCustomerExcludingAssessedTax",
+      "RevenueFromContractWithCustomerIncludingAssessedTax",
+      "SalesRevenueNet",
+      "InterestAndNoninterestRevenue",
+      "RevenuesNetOfInterestExpense",
+      "InterestIncomeExpenseAfterProvisionForLoanLossesAndNoninterestIncome"
+    ],
+    "tagsIfrs": [
+      "RevenueFromSaleOfOilAndGasProducts",
+      "OilAndGasRevenue",
+      "Revenue",
+      "GrossRevenue"
+    ],
+    "cnAliases": [
+      "营业收入",
+      "营业总收入"
+    ],
+    "hkAliases": [
+      "营业额",
+      "经营收入总额",
+      "营业收入",
+      "收益"
+    ],
+    "morningstarId": "IFIS001170"
   },
-  "hkAliases": {
-    "营业额": "Revenue",
-    "经营收入总额": "Revenue",
-    "营业收入": "Revenue",
-    "收益": "Revenue",
-    "销售成本": "CostOfRevenue",
-    "营业成本": "CostOfRevenue",
-    "毛利": "GrossProfit",
-    "税金及附加": "TaxesAndSurcharges",
-    "销售及分销费用": "SellingExpense",
-    "销售费用": "SellingExpense",
-    "行政开支": "AdministrativeExpense",
-    "一般及行政费用": "AdministrativeExpense",
-    "管理费用": "AdministrativeExpense",
-    "研发费用": "RnDExpense",
-    "研发支出": "RnDExpense",
-    "销售及行政开支": "SGAExpense",
-    "财务费用": "FinancialExpense",
-    "融资成本": "FinancialExpense",
-    "利息收入": "InterestIncome",
-    "利息支出": "InterestExpense",
-    "利息净收入": "NetInterestIncome",
-    "净利息收入": "NetInterestIncome",
-    "服务费及佣金净收入": "NonInterestIncome",
-    "非利息收入": "NonInterestIncome",
-    "投资收益": "InvestmentIncome",
-    "应占联营公司溢利": "InvestmentIncome",
-    "公允价值变动损益": "FairValueChangeIncome",
-    "预期信用损失": "ProvisionForCreditLosses",
-    "贷款减值拨备": "ProvisionForCreditLosses",
-    "经营溢利": "OperatingIncome",
-    "营业利润": "OperatingIncome",
-    "营业外收入": "NonOperatingIncome",
-    "营业外支出": "NonOperatingExpense",
-    "除税前溢利": "TotalProfit",
-    "税前利润": "TotalProfit",
-    "所得税开支": "IncomeTaxExpense",
-    "税项": "IncomeTaxExpense",
-    "股东应占溢利": "NetIncome",
-    "股东应占利润": "NetIncome",
-    "本公司拥有人应占溢利": "NetIncome",
-    "非控股权益应占溢利": "MinorityInterestIncome",
-    "每股基本盈利": "EPSBasic",
-    "每股摊薄盈利": "EPSDiluted",
-    "现金及现金等价物": "CashAndCashEquivalents",
-    "银行结余及现金": "CashAndCashEquivalents",
-    "短期投资": "ShortTermInvestments",
-    "按公允价值计入损益的金融资产": "ShortTermInvestments",
-    "应收票据": "NotesReceivable",
-    "应收账款及应收票据": "AccountsReceivable",
-    "贸易及其他应收款项": "AccountsReceivable",
-    "预付款项及按金": "Prepayments",
-    "其他应收款项": "OtherReceivables",
-    "存货": "Inventory",
-    "合同资产": "ContractAssets",
-    "流动资产合计": "TotalCurrentAssets",
-    "流动资产总额": "TotalCurrentAssets",
-    "客户贷款及垫款": "TotalLoans",
-    "贷款及垫款": "TotalLoans",
-    "于联营公司之权益": "LongTermEquityInvestments",
-    "长期股权投资": "LongTermEquityInvestments",
-    "投资物业": "InvestmentProperty",
-    "物业、厂房及设备": "PropertyPlantEquipmentNet",
-    "固定资产": "PropertyPlantEquipmentNet",
-    "在建工程": "ConstructionInProgress",
-    "使用权资产": "RightOfUseAssets",
-    "无形资产": "IntangibleAssets",
-    "商誉": "Goodwill",
-    "递延税项资产": "DeferredTaxAssets",
-    "非流动资产总额": "TotalNonCurrentAssets",
-    "总资产": "TotalAssets",
-    "资产总额": "TotalAssets",
-    "短期借款": "ShortTermDebt",
-    "流动银行借贷": "ShortTermDebt",
-    "应付账款及应收票据": "AccountsPayable",
-    "贸易及其他应付款项": "AccountsPayable",
-    "合同负债": "ContractLiabilities",
-    "预收款项": "ContractLiabilities",
-    "应付职工薪酬": "EmployeeBenefitsPayable",
-    "应交税金": "TaxesPayable",
-    "当期税项负债": "TaxesPayable",
-    "其他应付款项": "OtherPayables",
-    "一年内到期的非流动负债": "NonCurrentLiabilitiesDueWithinOneYear",
-    "流动负债总额": "TotalCurrentLiabilities",
-    "流动负债合计": "TotalCurrentLiabilities",
-    "客户存款": "TotalDeposits",
-    "吸收存款": "TotalDeposits",
-    "长期银行借贷": "LongTermDebt",
-    "非流动银行借款": "LongTermDebt",
-    "租赁负债": "LeaseLiabilities",
-    "递延税项负债": "DeferredTaxLiabilities",
-    "非流动负债总额": "TotalNonCurrentLiabilities",
-    "总负债": "TotalLiabilities",
-    "负债总额": "TotalLiabilities",
-    "已发行股本": "CommonStockSharesOutstanding",
-    "股份代号": "CommonStockSharesOutstanding",
-    "股本": "CommonStockSharesOutstanding",
-    "股份溢价": "CapitalSurplus",
-    "资本公积": "CapitalSurplus",
-    "保留溢利": "RetainedEarnings",
-    "滚存溢利": "RetainedEarnings",
-    "股东权益": "ShareholdersEquity",
-    "归属于母公司股东权益": "ShareholdersEquity",
-    "权益总额": "ShareholdersEquity",
-    "所有者权益合计": "ShareholdersEquity",
-    "非控股权益": "MinorityInterest",
-    "客户收入所收取的现金": "CashReceivedFromSales",
-    "经营业务现金净额": "OperatingCashFlow",
-    "经营活动产生之现金净额": "OperatingCashFlow",
-    "购建固定资产": "CapEx",
-    "购买物业、厂房及设备": "CapEx",
-    "处置物业、厂房及设备": "CashReceivedFromDisposalOfAssets",
-    "投资支付的现金": "CashPaidForInvestments",
-    "投资业务现金净额": "InvestingCashFlow",
-    "投资活动产生之现金净额": "InvestingCashFlow",
-    "取得银行借贷": "CashReceivedFromBorrowings",
-    "偿还银行借款": "CashRepaymentsOfBorrowings",
-    "支付股息": "DividendsPaid",
-    "已付股息": "DividendsPaid",
-    "已付股息(融资)": "DividendsPaid",
-    "股息支付": "DividendsPaid",
-    "回购股份": "ShareRepurchaseAmt",
-    "购回股份": "ShareRepurchaseAmt",
-    "融资业务现金净额": "FinancingCashFlow",
-    "筹资活动产生之现金净额": "FinancingCashFlow",
-    "现金及现金等价物之净增加": "NetChangeInCash"
+  {
+    "key": "CostOfRevenue",
+    "nameZh": "营业成本",
+    "nameEn": "Cost of Revenue / Goods Sold",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "CostOfGoodsAndServicesSold",
+      "CostOfRevenue",
+      "CostOfServices",
+      "CostOfGoodsAndServiceExcludingDepreciationDepletionAndAmortization"
+    ],
+    "tagsIfrs": [
+      "CostOfSales"
+    ],
+    "cnAliases": [
+      "营业成本",
+      "主营业务成本"
+    ],
+    "hkAliases": [
+      "销售成本",
+      "营业成本",
+      "收入成本"
+    ],
+    "morningstarId": "IFIS000200"
   },
-  "instantItems": [
-    "CashAndCashEquivalents",
-    "ShortTermInvestments",
-    "NotesReceivable",
-    "AccountsReceivable",
-    "Prepayments",
-    "OtherReceivables",
-    "Inventory",
-    "ContractAssets",
-    "TotalCurrentAssets",
-    "TotalLoans",
-    "LongTermEquityInvestments",
-    "InvestmentProperty",
-    "PropertyPlantEquipmentNet",
-    "ConstructionInProgress",
-    "RightOfUseAssets",
-    "IntangibleAssets",
-    "Goodwill",
-    "DeferredTaxAssets",
-    "TotalNonCurrentAssets",
-    "TotalAssets",
-    "ShortTermDebt",
-    "AccountsPayable",
-    "ContractLiabilities",
-    "EmployeeBenefitsPayable",
-    "TaxesPayable",
-    "OtherPayables",
-    "NonCurrentLiabilitiesDueWithinOneYear",
-    "TotalCurrentLiabilities",
-    "TotalDeposits",
-    "LongTermDebt",
-    "LeaseLiabilities",
-    "DeferredTaxLiabilities",
-    "TotalNonCurrentLiabilities",
-    "TotalDebt",
-    "TotalLiabilities",
-    "CommonStockSharesOutstanding",
-    "CapitalSurplus",
-    "RetainedEarnings",
-    "ShareholdersEquity",
-    "MinorityInterest",
-    "TotalEquity"
-  ],
-  "durationItems": [
-    "Revenue",
-    "CostOfRevenue",
-    "GrossProfit",
-    "TaxesAndSurcharges",
-    "SellingExpense",
-    "AdministrativeExpense",
-    "RnDExpense",
-    "SGAExpense",
-    "FinancialExpense",
-    "InterestIncome",
-    "InterestExpense",
-    "NetInterestIncome",
-    "NonInterestIncome",
-    "InvestmentIncome",
-    "FairValueChangeIncome",
-    "ProvisionForCreditLosses",
-    "OperatingIncome",
-    "NonOperatingIncome",
-    "NonOperatingExpense",
-    "TotalProfit",
-    "IncomeTaxExpense",
-    "NetIncome",
-    "MinorityInterestIncome",
-    "EPSBasic",
-    "EPSDiluted",
-    "CashReceivedFromSales",
-    "OperatingCashFlow",
-    "CapEx",
-    "CashReceivedFromDisposalOfAssets",
-    "CashPaidForInvestments",
-    "InvestingCashFlow",
-    "CashReceivedFromBorrowings",
-    "CashRepaymentsOfBorrowings",
-    "DividendsPaid",
-    "ShareRepurchaseAmt",
-    "FinancingCashFlow",
-    "NetChangeInCash"
-  ]
-}
+  {
+    "key": "GrossProfit",
+    "nameZh": "毛利",
+    "nameEn": "Gross Profit",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "GrossProfit"
+    ],
+    "tagsIfrs": [
+      "GrossProfit"
+    ],
+    "cnAliases": [
+      "毛利"
+    ],
+    "hkAliases": [
+      "毛利"
+    ],
+    "morningstarId": "IFIS000590"
+  },
+  {
+    "key": "TaxesAndSurcharges",
+    "nameZh": "税金及附加",
+    "nameEn": "Taxes and Surcharges",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "TaxesOtherThanIncomeTaxes"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "税金及附加",
+      "营业税金及附加"
+    ],
+    "hkAliases": [
+      "税金及附加"
+    ]
+  },
+  {
+    "key": "SellingExpense",
+    "nameZh": "销售费用",
+    "nameEn": "Selling Expense",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "SellingExpense",
+      "SellingAndMarketingExpense"
+    ],
+    "tagsIfrs": [
+      "DistributionCosts"
+    ],
+    "cnAliases": [
+      "销售费用"
+    ],
+    "hkAliases": [
+      "销售及分销费用",
+      "销售费用"
+    ],
+    "morningstarId": "IFIS001700"
+  },
+  {
+    "key": "AdministrativeExpense",
+    "nameZh": "管理费用",
+    "nameEn": "Administrative Expense",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "GeneralAndAdministrativeExpense"
+    ],
+    "tagsIfrs": [
+      "AdministrativeExpense"
+    ],
+    "cnAliases": [
+      "管理费用"
+    ],
+    "hkAliases": [
+      "行政开支",
+      "一般及行政费用",
+      "管理费用"
+    ],
+    "morningstarId": "IFIS001700"
+  },
+  {
+    "key": "RnDExpense",
+    "nameZh": "研发费用",
+    "nameEn": "Research & Development Expense",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "ResearchAndDevelopmentExpense"
+    ],
+    "tagsIfrs": [
+      "ResearchAndDevelopmentExpense"
+    ],
+    "cnAliases": [
+      "研发费用",
+      "研发支出"
+    ],
+    "hkAliases": [
+      "研发费用",
+      "研发支出"
+    ],
+    "morningstarId": "IFIS001620"
+  },
+  {
+    "key": "SGAExpense",
+    "nameZh": "销售与管理费用",
+    "nameEn": "SG&A Expense",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "SellingGeneralAndAdministrativeExpense"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "销售及管理费用"
+    ],
+    "hkAliases": [
+      "销售及行政开支"
+    ],
+    "morningstarId": "IFIS001700"
+  },
+  {
+    "key": "FinancialExpense",
+    "nameZh": "财务费用",
+    "nameEn": "Financial Expense",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "InterestAndDebtExpense"
+    ],
+    "tagsIfrs": [
+      "FinanceCosts"
+    ],
+    "cnAliases": [
+      "财务费用"
+    ],
+    "hkAliases": [
+      "财务费用",
+      "融资成本"
+    ],
+    "morningstarId": "IFIS000930"
+  },
+  {
+    "key": "InterestIncome",
+    "nameZh": "利息收入",
+    "nameEn": "Interest Income",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "InterestAndDividendIncomeOperating",
+      "InterestIncomeOperating"
+    ],
+    "tagsIfrs": [
+      "InterestRevenueCalculatedUsingEffectiveInterestMethod",
+      "RevenueFromInterest",
+      "InterestIncome"
+    ],
+    "cnAliases": [
+      "利息收入"
+    ],
+    "hkAliases": [
+      "利息收入"
+    ]
+  },
+  {
+    "key": "InterestExpense",
+    "nameZh": "利息支出",
+    "nameEn": "Interest Expense",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "InterestExpense"
+    ],
+    "tagsIfrs": [
+      "InterestExpense"
+    ],
+    "cnAliases": [
+      "利息支出"
+    ],
+    "hkAliases": [
+      "利息支出"
+    ]
+  },
+  {
+    "key": "NetInterestIncome",
+    "nameZh": "利息净收入",
+    "nameEn": "Net Interest Income (Banking)",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "InterestIncomeExpenseNet"
+    ],
+    "tagsIfrs": [
+      "NetInterestIncome"
+    ],
+    "cnAliases": [
+      "利息净收入"
+    ],
+    "hkAliases": [
+      "利息净收入",
+      "净利息收入"
+    ],
+    "morningstarId": "IFIS002367"
+  },
+  {
+    "key": "NonInterestIncome",
+    "nameZh": "非利息收入 / 手续费佣金净收入",
+    "nameEn": "Non-Interest Income",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "NoninterestIncome"
+    ],
+    "tagsIfrs": [
+      "FeeAndCommissionIncome"
+    ],
+    "cnAliases": [
+      "手续费及佣金净收入",
+      "非利息净收入"
+    ],
+    "hkAliases": [
+      "服务费及佣金净收入",
+      "非利息收入"
+    ]
+  },
+  {
+    "key": "InvestmentIncome",
+    "nameZh": "投资收益",
+    "nameEn": "Investment Income",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "InvestmentIncomeNet"
+    ],
+    "tagsIfrs": [
+      "InvestmentIncome"
+    ],
+    "cnAliases": [
+      "投资收益",
+      "其中:对联营企业和合营企业的投资收益"
+    ],
+    "hkAliases": [
+      "投资收益",
+      "应占联营公司溢利"
+    ]
+  },
+  {
+    "key": "FairValueChangeIncome",
+    "nameZh": "公允价值变动收益",
+    "nameEn": "Gain/Loss on Fair Value Changes",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "FairValueNetDerivativeAssetLiabilityMeasuredOnRecurringBasisChangeInUnrealizedGainLoss"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "公允价值变动收益",
+      "公允价值变动净收益"
+    ],
+    "hkAliases": [
+      "公允价值变动损益"
+    ]
+  },
+  {
+    "key": "ProvisionForCreditLosses",
+    "nameZh": "信用减值损失 / 贷款减值准备计提",
+    "nameEn": "Provision for Credit Losses",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "ProvisionForLoanLeaseAndOtherLosses",
+      "CreditLossExpenseReversal",
+      "ProvisionForLoanAndLeaseLosses",
+      "CreditLossExpense",
+      "FinancingReceivableExcludingAccruedInterestCreditLossExpenseReversal"
+    ],
+    "tagsIfrs": [
+      "ImpairmentLossReversalOfImpairmentLossRecognisedInProfitOrLoss",
+      "AdjustmentsForImpairmentLossReversalOfImpairmentLossRecognisedInProfitOrLoss"
+    ],
+    "cnAliases": [
+      "信用减值损失",
+      "资产减值损失"
+    ],
+    "hkAliases": [
+      "预期信用损失",
+      "贷款减值拨备"
+    ]
+  },
+  {
+    "key": "OperatingIncome",
+    "nameZh": "营业利润",
+    "nameEn": "Operating Income / Operating Profit",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "OperatingIncomeLoss"
+    ],
+    "tagsIfrs": [
+      "ProfitLossFromOperatingActivities"
+    ],
+    "cnAliases": [
+      "营业利润"
+    ],
+    "hkAliases": [
+      "经营溢利",
+      "营业利润"
+    ],
+    "morningstarId": "IFIS001230"
+  },
+  {
+    "key": "NonOperatingIncome",
+    "nameZh": "营业外收入",
+    "nameEn": "Non-Operating Income",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "NonoperatingIncomeExpense"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "营业外收入"
+    ],
+    "hkAliases": [
+      "营业外收入"
+    ]
+  },
+  {
+    "key": "NonOperatingExpense",
+    "nameZh": "营业外支出",
+    "nameEn": "Non-Operating Expense",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "营业外支出"
+    ],
+    "hkAliases": [
+      "营业外支出"
+    ]
+  },
+  {
+    "key": "TotalProfit",
+    "nameZh": "利润总额",
+    "nameEn": "Income before Tax (EBT)",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
+      "IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments",
+      "IncomeLossFromContinuingOperationsBeforeIncomeTaxes"
+    ],
+    "tagsIfrs": [
+      "ProfitLossBeforeTax"
+    ],
+    "cnAliases": [
+      "利润总额"
+    ],
+    "hkAliases": [
+      "除税前溢利",
+      "税前利润"
+    ],
+    "morningstarId": "IFIS001490"
+  },
+  {
+    "key": "IncomeTaxExpense",
+    "nameZh": "所得税费用",
+    "nameEn": "Income Tax Expense",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "IncomeTaxExpenseBenefit"
+    ],
+    "tagsIfrs": [
+      "IncomeTaxExpenseContinuingOperations"
+    ],
+    "cnAliases": [
+      "所得税费用"
+    ],
+    "hkAliases": [
+      "所得税开支",
+      "税项"
+    ],
+    "morningstarId": "IFIS001560"
+  },
+  {
+    "key": "NetIncome",
+    "nameZh": "净利润 (归母)",
+    "nameEn": "Net Income Attributable to Parent",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "NetIncomeLossAvailableToCommonStockholdersBasic",
+      "NetIncomeLoss",
+      "ProfitLoss"
+    ],
+    "tagsIfrs": [
+      "ProfitLossAttributableToOwnersOfParent",
+      "ProfitLoss"
+    ],
+    "cnAliases": [
+      "归属于母公司所有者的净利润",
+      "归属于母公司的净利润",
+      "归属于母公司股东的净利润"
+    ],
+    "hkAliases": [
+      "股东应占溢利",
+      "股东应占利润",
+      "本公司拥有人应占溢利"
+    ],
+    "morningstarId": "IFIS001100"
+  },
+  {
+    "key": "MinorityInterestIncome",
+    "nameZh": "少数股东损益",
+    "nameEn": "Minority Interest in Earnings",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "NetIncomeLossAttributableToNoncontrollingInterest"
+    ],
+    "tagsIfrs": [
+      "ProfitLossAttributableToNonControllingInterests"
+    ],
+    "cnAliases": [
+      "少数股东损益"
+    ],
+    "hkAliases": [
+      "非控股权益应占溢利"
+    ]
+  },
+  {
+    "key": "EPSBasic",
+    "nameZh": "基本每股收益",
+    "nameEn": "Basic EPS",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD/shares",
+      "USD-per-shares",
+      "pure",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "EarningsPerShareBasic"
+    ],
+    "tagsIfrs": [
+      "BasicEarningsLossPerShare"
+    ],
+    "cnAliases": [
+      "基本每股收益"
+    ],
+    "hkAliases": [
+      "每股基本盈利"
+    ],
+    "morningstarId": "IFIS000150"
+  },
+  {
+    "key": "EPSDiluted",
+    "nameZh": "稀释每股收益",
+    "nameEn": "Diluted EPS",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD/shares",
+      "USD-per-shares",
+      "pure",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "EarningsPerShareDiluted"
+    ],
+    "tagsIfrs": [
+      "DilutedEarningsLossPerShare"
+    ],
+    "cnAliases": [
+      "稀释每股收益"
+    ],
+    "hkAliases": [
+      "每股摊薄盈利"
+    ],
+    "morningstarId": "IFIS101199"
+  },
+  {
+    "key": "CashAndCashEquivalents",
+    "nameZh": "现金及现金等价物 / 货币资金",
+    "nameEn": "Cash and Cash Equivalents",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "CashAndCashEquivalentsAtCarryingValue",
+      "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+      "CashCashEquivalentsAndShortTermInvestments"
+    ],
+    "tagsIfrs": [
+      "CashAndCashEquivalents"
+    ],
+    "cnAliases": [
+      "货币资金"
+    ],
+    "hkAliases": [
+      "现金及现金等价物",
+      "银行结余及现金",
+      "银行结余及定期存款",
+      "现金及等价物",
+      "期末现金",
+      "期末现金及等价物"
+    ],
+    "morningstarId": "IFBS000350"
+  },
+  {
+    "key": "ShortTermInvestments",
+    "nameZh": "交易性金融资产 / 短期投资",
+    "nameEn": "Short-Term Investments / Marketable Securities",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "MarketableSecuritiesCurrent",
+      "MarketableSecurities",
+      "ShortTermInvestments",
+      "OtherShortTermInvestments"
+    ],
+    "tagsIfrs": [
+      "OtherCurrentFinancialAssets"
+    ],
+    "cnAliases": [
+      "交易性金融资产"
+    ],
+    "hkAliases": [
+      "短期投资",
+      "按公允价值计入损益的金融资产",
+      "短期存款",
+      "定期存款"
+    ],
+    "morningstarId": "IFBS000350"
+  },
+  {
+    "key": "NotesReceivable",
+    "nameZh": "应收票据",
+    "nameEn": "Notes Receivable",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "NotesReceivableNet"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "应收票据"
+    ],
+    "hkAliases": [
+      "应收票据"
+    ]
+  },
+  {
+    "key": "AccountsReceivable",
+    "nameZh": "应收账款",
+    "nameEn": "Accounts Receivable",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "AccountsReceivableNetCurrent"
+    ],
+    "tagsIfrs": [
+      "TradeAndOtherCurrentReceivables"
+    ],
+    "cnAliases": [
+      "应收账款"
+    ],
+    "hkAliases": [
+      "应收账款及应收票据",
+      "贸易及其他应收款项"
+    ],
+    "morningstarId": "IFBS200660"
+  },
+  {
+    "key": "Prepayments",
+    "nameZh": "预付款项",
+    "nameEn": "Prepayments",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "PrepaidExpenseCurrent"
+    ],
+    "tagsIfrs": [
+      "PrepaymentsCurrent"
+    ],
+    "cnAliases": [
+      "预付款项"
+    ],
+    "hkAliases": [
+      "预付款项及按金"
+    ]
+  },
+  {
+    "key": "OtherReceivables",
+    "nameZh": "其他应收款",
+    "nameEn": "Other Receivables",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "OtherReceivablesNetCurrent"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "其他应收款"
+    ],
+    "hkAliases": [
+      "其他应收款项"
+    ]
+  },
+  {
+    "key": "Inventory",
+    "nameZh": "存货",
+    "nameEn": "Inventory",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "InventoryNet"
+    ],
+    "tagsIfrs": [
+      "Inventories"
+    ],
+    "cnAliases": [
+      "存货"
+    ],
+    "hkAliases": [
+      "存货"
+    ],
+    "morningstarId": "IFBS001130"
+  },
+  {
+    "key": "ContractAssets",
+    "nameZh": "合同资产",
+    "nameEn": "Contract Assets",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "ContractWithCustomerAssetNetCurrent"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "合同资产"
+    ],
+    "hkAliases": [
+      "合同资产"
+    ]
+  },
+  {
+    "key": "TotalCurrentAssets",
+    "nameZh": "流动资产合计",
+    "nameEn": "Total Current Assets",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "AssetsCurrent"
+    ],
+    "tagsIfrs": [
+      "CurrentAssets"
+    ],
+    "cnAliases": [
+      "流动资产合计"
+    ],
+    "hkAliases": [
+      "流动资产合计",
+      "流动资产总额"
+    ],
+    "morningstarId": "IFBS000470"
+  },
+  {
+    "key": "TotalLoans",
+    "nameZh": "客户贷款及垫款总额 (银行专属)",
+    "nameEn": "Total Loans & Advances",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "LoansAndLeasesReceivableNetReportedAmount"
+    ],
+    "tagsIfrs": [
+      "LoansAndAdvancesToCustomers"
+    ],
+    "cnAliases": [
+      "发放贷款和垫款",
+      "发放贷款及垫款"
+    ],
+    "hkAliases": [
+      "客户贷款及垫款",
+      "贷款及垫款"
+    ]
+  },
+  {
+    "key": "LongTermEquityInvestments",
+    "nameZh": "长期股权投资",
+    "nameEn": "Long-Term Equity Investments",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "EquityMethodInvestments"
+    ],
+    "tagsIfrs": [
+      "InvestmentsInAssociates"
+    ],
+    "cnAliases": [
+      "长期股权投资"
+    ],
+    "hkAliases": [
+      "于联营公司之权益",
+      "长期股权投资"
+    ]
+  },
+  {
+    "key": "InvestmentProperty",
+    "nameZh": "投资性房地产",
+    "nameEn": "Investment Property",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "RealEstateInvestmentPropertyAtCost"
+    ],
+    "tagsIfrs": [
+      "InvestmentProperty"
+    ],
+    "cnAliases": [
+      "投资性房地产"
+    ],
+    "hkAliases": [
+      "投资物业"
+    ]
+  },
+  {
+    "key": "PropertyPlantEquipmentNet",
+    "nameZh": "固定资产 / 物业厂房及设备",
+    "nameEn": "Property, Plant & Equipment (Net)",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "PropertyPlantAndEquipmentNet"
+    ],
+    "tagsIfrs": [
+      "PropertyPlantAndEquipment"
+    ],
+    "cnAliases": [
+      "固定资产"
+    ],
+    "hkAliases": [
+      "物业、厂房及设备",
+      "固定资产"
+    ],
+    "morningstarId": "IFBS001450"
+  },
+  {
+    "key": "ConstructionInProgress",
+    "nameZh": "在建工程",
+    "nameEn": "Construction in Progress",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "在建工程"
+    ],
+    "hkAliases": [
+      "在建工程"
+    ]
+  },
+  {
+    "key": "RightOfUseAssets",
+    "nameZh": "使用权资产",
+    "nameEn": "Operating Lease Right-of-Use Assets",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "OperatingLeaseRightOfUseAsset"
+    ],
+    "tagsIfrs": [
+      "RightOfUseAssets"
+    ],
+    "cnAliases": [
+      "使用权资产"
+    ],
+    "hkAliases": [
+      "使用权资产"
+    ]
+  },
+  {
+    "key": "IntangibleAssets",
+    "nameZh": "无形资产",
+    "nameEn": "Intangible Assets",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "FiniteLivedIntangibleAssetsNet"
+    ],
+    "tagsIfrs": [
+      "IntangibleAssetsOtherThanGoodwill"
+    ],
+    "cnAliases": [
+      "无形资产"
+    ],
+    "hkAliases": [
+      "无形资产"
+    ],
+    "morningstarId": "IFBS001020"
+  },
+  {
+    "key": "Goodwill",
+    "nameZh": "商誉",
+    "nameEn": "Goodwill",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "Goodwill"
+    ],
+    "tagsIfrs": [
+      "Goodwill"
+    ],
+    "cnAliases": [
+      "商誉"
+    ],
+    "hkAliases": [
+      "商誉"
+    ]
+  },
+  {
+    "key": "DeferredTaxAssets",
+    "nameZh": "递延所得税资产",
+    "nameEn": "Deferred Tax Assets",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "DeferredTaxAssetsNetNoncurrent"
+    ],
+    "tagsIfrs": [
+      "DeferredTaxAssets"
+    ],
+    "cnAliases": [
+      "递延所得税资产"
+    ],
+    "hkAliases": [
+      "递延税项资产"
+    ],
+    "morningstarId": "IFBS000700"
+  },
+  {
+    "key": "TotalNonCurrentAssets",
+    "nameZh": "非流动资产合计",
+    "nameEn": "Total Non-Current Assets",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [],
+    "tagsIfrs": [
+      "NonCurrentAssets"
+    ],
+    "cnAliases": [
+      "非流动资产合计"
+    ],
+    "hkAliases": [
+      "非流动资产总额"
+    ],
+    "morningstarId": "IFBS002330"
+  },
+  {
+    "key": "TotalAssets",
+    "nameZh": "资产总计",
+    "nameEn": "Total Assets",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "Assets"
+    ],
+    "tagsIfrs": [
+      "Assets"
+    ],
+    "cnAliases": [
+      "资产总计",
+      "资产总额"
+    ],
+    "hkAliases": [
+      "总资产",
+      "资产总额"
+    ],
+    "morningstarId": "IFBS002270"
+  },
+  {
+    "key": "ShortTermDebt",
+    "nameZh": "短期借款",
+    "nameEn": "Short-Term Debt / Borrowings",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "ShortTermBorrowings",
+      "DebtCurrent"
+    ],
+    "tagsIfrs": [
+      "CurrentBorrowings"
+    ],
+    "cnAliases": [
+      "短期借款"
+    ],
+    "hkAliases": [
+      "短期借款",
+      "流动银行借贷"
+    ],
+    "morningstarId": "IFBS100734"
+  },
+  {
+    "key": "AccountsPayable",
+    "nameZh": "应付账款",
+    "nameEn": "Accounts Payable",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "AccountsPayableCurrent"
+    ],
+    "tagsIfrs": [
+      "TradeAndOtherCurrentPayables"
+    ],
+    "cnAliases": [
+      "应付账款"
+    ],
+    "hkAliases": [
+      "应付账款及应收票据",
+      "贸易及其他应付款项"
+    ],
+    "morningstarId": "IFBS002716"
+  },
+  {
+    "key": "ContractLiabilities",
+    "nameZh": "合同负债 / 预收款项",
+    "nameEn": "Contract Liabilities / Deferred Revenue",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "ContractWithCustomerLiabilityCurrent"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "合同负债",
+      "预收款项"
+    ],
+    "hkAliases": [
+      "合同负债",
+      "预收款项"
+    ],
+    "morningstarId": "IFBS000610"
+  },
+  {
+    "key": "EmployeeBenefitsPayable",
+    "nameZh": "应付职工薪酬",
+    "nameEn": "Employee Benefits Payable",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "EmployeeRelatedLiabilitiesCurrent"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "应付职工薪酬"
+    ],
+    "hkAliases": [
+      "应付职工薪酬"
+    ]
+  },
+  {
+    "key": "TaxesPayable",
+    "nameZh": "应交税费",
+    "nameEn": "Taxes Payable",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "AccruedIncomeTaxesCurrent"
+    ],
+    "tagsIfrs": [
+      "CurrentTaxLiabilities"
+    ],
+    "cnAliases": [
+      "应交税费"
+    ],
+    "hkAliases": [
+      "应交税金",
+      "当期税项负债"
+    ]
+  },
+  {
+    "key": "OtherPayables",
+    "nameZh": "其他应付款",
+    "nameEn": "Other Payables",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "OtherPayablesCurrent"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "其他应付款"
+    ],
+    "hkAliases": [
+      "其他应付款项"
+    ]
+  },
+  {
+    "key": "NonCurrentLiabilitiesDueWithinOneYear",
+    "nameZh": "一年内到期的非流动负债",
+    "nameEn": "Current Portion of Long-Term Debt",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "LongTermDebtCurrent"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "一年内到期的非流动负债"
+    ],
+    "hkAliases": [
+      "一年内到期的非流动负债"
+    ]
+  },
+  {
+    "key": "TotalCurrentLiabilities",
+    "nameZh": "流动负债合计",
+    "nameEn": "Total Current Liabilities",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "LiabilitiesCurrent"
+    ],
+    "tagsIfrs": [
+      "CurrentLiabilities"
+    ],
+    "cnAliases": [
+      "流动负债合计"
+    ],
+    "hkAliases": [
+      "流动负债总额",
+      "流动负债合计"
+    ],
+    "morningstarId": "IFBS000500"
+  },
+  {
+    "key": "TotalDeposits",
+    "nameZh": "客户存款 (银行专属)",
+    "nameEn": "Customer Deposits",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "Deposits"
+    ],
+    "tagsIfrs": [
+      "DepositsFromCustomers"
+    ],
+    "cnAliases": [
+      "吸收存款及同业存放",
+      "吸收存款"
+    ],
+    "hkAliases": [
+      "客户存款",
+      "吸收存款"
+    ]
+  },
+  {
+    "key": "LongTermDebt",
+    "nameZh": "长期借款 / 应付债券",
+    "nameEn": "Long-Term Debt",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "LongTermDebtNoncurrent"
+    ],
+    "tagsIfrs": [
+      "NonCurrentBorrowings"
+    ],
+    "cnAliases": [
+      "长期借款",
+      "应付债券"
+    ],
+    "hkAliases": [
+      "长期银行借贷",
+      "非流动银行借款"
+    ],
+    "morningstarId": "IFBS100735"
+  },
+  {
+    "key": "LeaseLiabilities",
+    "nameZh": "租赁负债",
+    "nameEn": "Operating Lease Liabilities",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "OperatingLeaseLiabilityNoncurrent"
+    ],
+    "tagsIfrs": [
+      "NonCurrentLeaseLiabilities"
+    ],
+    "cnAliases": [
+      "租赁负债"
+    ],
+    "hkAliases": [
+      "租赁负债"
+    ]
+  },
+  {
+    "key": "DeferredTaxLiabilities",
+    "nameZh": "递延所得税负债",
+    "nameEn": "Deferred Tax Liabilities",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "DeferredTaxLiabilitiesNoncurrent"
+    ],
+    "tagsIfrs": [
+      "DeferredTaxLiabilities"
+    ],
+    "cnAliases": [
+      "递延所得税负债"
+    ],
+    "hkAliases": [
+      "递延税项负债"
+    ],
+    "morningstarId": "IFBS003143"
+  },
+  {
+    "key": "TotalNonCurrentLiabilities",
+    "nameZh": "非流动负债合计",
+    "nameEn": "Total Non-Current Liabilities",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [],
+    "tagsIfrs": [
+      "NonCurrentLiabilities"
+    ],
+    "cnAliases": [
+      "非流动负债合计"
+    ],
+    "hkAliases": [
+      "非流动负债总额"
+    ],
+    "morningstarId": "IFBS002647"
+  },
+  {
+    "key": "TotalDebt",
+    "nameZh": "总有息负债 (长短借款合计)",
+    "nameEn": "Total Debt (Interest-Bearing)",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "DebtInstrumentCarryingAmount"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [],
+    "hkAliases": []
+  },
+  {
+    "key": "TotalLiabilities",
+    "nameZh": "负债合计",
+    "nameEn": "Total Liabilities",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "Liabilities"
+    ],
+    "tagsIfrs": [
+      "Liabilities"
+    ],
+    "cnAliases": [
+      "负债合计",
+      "负债总额"
+    ],
+    "hkAliases": [
+      "总负债",
+      "负债总额"
+    ],
+    "morningstarId": "IFBS002646"
+  },
+  {
+    "key": "CommonStockSharesOutstanding",
+    "nameZh": "实收资本 / 普通股期末总股本",
+    "nameEn": "Common Stock Shares Outstanding",
+    "statement": "balance_sheet_equity",
+    "periodType": "instant",
+    "unitCandidates": [
+      "shares",
+      "pure",
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "CommonStockSharesOutstanding",
+      "WeightedAverageNumberOfDilutedSharesOutstanding",
+      "CommonStockSharesIssued",
+      "EntityCommonStockSharesOutstanding"
+    ],
+    "tagsIfrs": [
+      "NumberOfSharesOutstanding"
+    ],
+    "cnAliases": [
+      "实收资本(或股本)",
+      "实收资本（或股本）",
+      "股本",
+      "实收资本",
+      "实收资本净额"
+    ],
+    "hkAliases": [
+      "已发行股本",
+      "股份代号",
+      "股本"
+    ],
+    "morningstarId": "IFBS003308"
+  },
+  {
+    "key": "CapitalSurplus",
+    "nameZh": "资本公积",
+    "nameEn": "Additional Paid-in Capital / Capital Surplus",
+    "statement": "balance_sheet_equity",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "AdditionalPaidInCapital"
+    ],
+    "tagsIfrs": [
+      "SharePremium"
+    ],
+    "cnAliases": [
+      "资本公积"
+    ],
+    "hkAliases": [
+      "股份溢价",
+      "资本公积"
+    ]
+  },
+  {
+    "key": "RetainedEarnings",
+    "nameZh": "未分配利润 / 留存收益",
+    "nameEn": "Retained Earnings",
+    "statement": "balance_sheet_equity",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "RetainedEarningsAccumulatedDeficit"
+    ],
+    "tagsIfrs": [
+      "RetainedEarnings"
+    ],
+    "cnAliases": [
+      "未分配利润"
+    ],
+    "hkAliases": [
+      "保留溢利",
+      "滚存溢利"
+    ],
+    "morningstarId": "IFBS002100"
+  },
+  {
+    "key": "ShareholdersEquity",
+    "nameZh": "归属于母公司股东权益 (净资产)",
+    "nameEn": "Shareholders' Equity",
+    "statement": "balance_sheet_equity",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "StockholdersEquity",
+      "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"
+    ],
+    "tagsIfrs": [
+      "EquityAttributableToOwnersOfParent",
+      "Equity"
+    ],
+    "cnAliases": [
+      "归属于母公司股东权益合计",
+      "归属于母公司的股东权益合计",
+      "归属于母公司所有者权益合计",
+      "归属于母公司股东的权益"
+    ],
+    "hkAliases": [
+      "股东权益",
+      "归属于母公司股东权益"
+    ],
+    "morningstarId": "IFBS200140"
+  },
+  {
+    "key": "MinorityInterest",
+    "nameZh": "少数股东权益",
+    "nameEn": "Minority Interest / Non-Controlling Interest",
+    "statement": "balance_sheet_equity",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "MinorityInterest"
+    ],
+    "tagsIfrs": [
+      "NonControllingInterests"
+    ],
+    "cnAliases": [
+      "少数股东权益"
+    ],
+    "hkAliases": [
+      "非控股权益"
+    ]
+  },
+  {
+    "key": "TotalEquity",
+    "nameZh": "所有者权益合计",
+    "nameEn": "Total Equity",
+    "statement": "balance_sheet_equity",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"
+    ],
+    "tagsIfrs": [
+      "TotalEquity"
+    ],
+    "cnAliases": [
+      "所有者权益(或股东权益)合计",
+      "所有者权益合计"
+    ],
+    "hkAliases": [
+      "权益总额",
+      "所有者权益合计"
+    ],
+    "morningstarId": "IFBS002220"
+  },
+  {
+    "key": "CashReceivedFromSales",
+    "nameZh": "销售商品、提供劳务收到的现金",
+    "nameEn": "Cash from Sales / Customer Receipts",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "销售商品、提供劳务收到的现金"
+    ],
+    "hkAliases": [
+      "客户收入所收取的现金"
+    ]
+  },
+  {
+    "key": "OperatingCashFlow",
+    "nameZh": "经营活动产生的现金流量净额 (OCF)",
+    "nameEn": "Operating Cash Flow",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "NetCashProvidedByUsedInOperatingActivities"
+    ],
+    "tagsIfrs": [
+      "CashFlowsFromUsedInOperatingActivities"
+    ],
+    "cnAliases": [
+      "经营活动产生的现金流量净额"
+    ],
+    "hkAliases": [
+      "经营业务现金净额",
+      "经营活动产生之现金净额"
+    ],
+    "morningstarId": "IFCF000150"
+  },
+  {
+    "key": "CapEx",
+    "nameZh": "资本开支 (购建固定资产现金支付)",
+    "nameEn": "Capital Expenditures (CapEx)",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "PaymentsToAcquirePropertyPlantAndEquipment",
+      "PaymentsToAcquireProductiveAssets"
+    ],
+    "tagsIfrs": [
+      "PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities"
+    ],
+    "cnAliases": [
+      "购建固定资产、无形资产和其他长期资产所支付的现金",
+      "购建固定资产、无形资产和其他长期资产支付的现金"
+    ],
+    "hkAliases": [
+      "购建固定资产",
+      "购买物业、厂房及设备"
+    ],
+    "morningstarId": "IFCF001330"
+  },
+  {
+    "key": "CashReceivedFromDisposalOfAssets",
+    "nameZh": "处置资产收回的现金净额",
+    "nameEn": "Proceeds from Disposal of Fixed Assets",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "ProceedsFromSaleOfPropertyPlantAndEquipment"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "处置固定资产、无形资产和其他长期资产收回的现金净额"
+    ],
+    "hkAliases": [
+      "处置物业、厂房及设备"
+    ]
+  },
+  {
+    "key": "CashPaidForInvestments",
+    "nameZh": "投资支付的现金",
+    "nameEn": "Payments for Investments",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "PaymentsToAcquireInvestments"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "投资支付的现金"
+    ],
+    "hkAliases": [
+      "投资支付的现金"
+    ]
+  },
+  {
+    "key": "InvestingCashFlow",
+    "nameZh": "投资活动产生的现金流量净额",
+    "nameEn": "Investing Cash Flow",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "NetCashProvidedByUsedInInvestingActivities",
+      "NetCashProvidedByUsedInInvestingActivitiesContinuingOperations"
+    ],
+    "tagsIfrs": [
+      "CashFlowsFromUsedInInvestingActivities"
+    ],
+    "cnAliases": [
+      "投资活动产生的现金流量净额"
+    ],
+    "hkAliases": [
+      "投资业务现金净额",
+      "投资活动产生之现金净额"
+    ],
+    "morningstarId": "IFCF000140"
+  },
+  {
+    "key": "CashReceivedFromBorrowings",
+    "nameZh": "取得借款收到的现金",
+    "nameEn": "Proceeds from Borrowings",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "ProceedsFromIssuanceOfLongTermDebt"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "取得借款收到的现金"
+    ],
+    "hkAliases": [
+      "取得银行借贷"
+    ]
+  },
+  {
+    "key": "CashRepaymentsOfBorrowings",
+    "nameZh": "偿还债务支付的现金",
+    "nameEn": "Repayments of Borrowings",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "RepaymentsOfLongTermDebt"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "偿还债务支付的现金"
+    ],
+    "hkAliases": [
+      "偿还银行借款"
+    ]
+  },
+  {
+    "key": "DividendsPaid",
+    "nameZh": "现金分红总额 (分配股利/利润现金支出)",
+    "nameEn": "Cash Dividends Paid",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "PaymentsOfDividends",
+      "PaymentsOfDividendsCommonStock",
+      "PaymentsOfDividendsPreferredStock",
+      "PaymentsOfOrdinaryDividends",
+      "DividendsCommonStockCash",
+      "DividendsCash",
+      "PaymentsOfDividendsCommonStockAndPreferredStock"
+    ],
+    "tagsIfrs": [
+      "DividendsPaid",
+      "DividendsPaidClassifiedAsFinancingActivities"
+    ],
+    "cnAliases": [
+      "分配股利、利润支付的现金",
+      "分配股利、利润所支付的现金",
+      "分配股利、利润或偿付利息支付的现金"
+    ],
+    "hkAliases": [
+      "支付股息",
+      "已付股息",
+      "已付股息(融资)",
+      "股息支付",
+      "向母公司所有者派付股息",
+      "支付给股东的股息"
+    ],
+    "morningstarId": "IFCF002150"
+  },
+  {
+    "key": "ShareRepurchaseAmt",
+    "nameZh": "股票回购总额 (回购股份现金支出)",
+    "nameEn": "Share Repurchases (Common Stock)",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "PaymentsForRepurchaseOfCommonStock",
+      "PaymentsForRepurchaseOfEquity",
+      "TreasuryStockValueAcquiredCostMethod",
+      "StockRepurchasedDuringPeriodValue"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "回购股份支付的现金"
+    ],
+    "hkAliases": [
+      "回购股份",
+      "购回股份"
+    ],
+    "morningstarId": "IFCF000760"
+  },
+  {
+    "key": "FinancingCashFlow",
+    "nameZh": "筹资活动产生的现金流量净额",
+    "nameEn": "Financing Cash Flow",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "NetCashProvidedByUsedInFinancingActivities",
+      "NetCashProvidedByUsedInFinancingActivitiesContinuingOperations"
+    ],
+    "tagsIfrs": [
+      "CashFlowsFromUsedInFinancingActivities"
+    ],
+    "cnAliases": [
+      "筹资活动产生的现金流量净额"
+    ],
+    "hkAliases": [
+      "融资业务现金净额",
+      "筹资活动产生之现金净额"
+    ],
+    "morningstarId": "IFCF000130"
+  },
+  {
+    "key": "NetChangeInCash",
+    "nameZh": "现金及现金等价物净增加额",
+    "nameEn": "Net Change in Cash",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect"
+    ],
+    "tagsIfrs": [
+      "IncreaseDecreaseInCashAndCashEquivalents"
+    ],
+    "cnAliases": [
+      "现金及现金等价物净增加额"
+    ],
+    "hkAliases": [
+      "现金及现金等价物之净增加"
+    ],
+    "morningstarId": "IFCF000280"
+  },
+  {
+    "key": "NetIncomeContinuingOperations",
+    "nameZh": "持续经营净利润",
+    "nameEn": "Net Income from Continuing Operations",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "morningstarId": "IFIS001110",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "IncomeLossFromContinuingOperationsIncludingPortionAttributableToNoncontrollingInterest",
+      "IncomeLossFromContinuingOperations"
+    ],
+    "tagsIfrs": [
+      "ProfitLossFromContinuingOperations"
+    ],
+    "cnAliases": [
+      "持续经营净利润"
+    ],
+    "hkAliases": [
+      "持续经营业务溢利",
+      "来自持续经营的溢利"
+    ]
+  },
+  {
+    "key": "WeightedAverageShares",
+    "nameZh": "基本加权平均股数",
+    "nameEn": "Basic Weighted Average Shares",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "morningstarId": "IFIS000150",
+    "unitCandidates": [
+      "shares"
+    ],
+    "tagsUsGaap": [
+      "WeightedAverageNumberOfSharesOutstandingBasic",
+      "WeightedAverageNumberOfShareOutstandingBasicAndDiluted"
+    ],
+    "tagsIfrs": [
+      "WeightedAverageNumberOfOrdinarySharesOutstandingBasic"
+    ],
+    "cnAliases": [
+      "基本加权平均股份数"
+    ],
+    "hkAliases": [
+      "基本加权平均股份数"
+    ]
+  },
+  {
+    "key": "WeightedAverageSharesDiluted",
+    "nameZh": "稀释加权平均股数",
+    "nameEn": "Diluted Weighted Average Shares",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "morningstarId": "IFIS000330",
+    "unitCandidates": [
+      "shares"
+    ],
+    "tagsUsGaap": [
+      "WeightedAverageNumberOfDilutedSharesOutstanding"
+    ],
+    "tagsIfrs": [
+      "WeightedAverageNumberOfOrdinarySharesOutstandingDiluted"
+    ],
+    "cnAliases": [
+      "稀释加权平均股份数"
+    ],
+    "hkAliases": [
+      "摊薄加权平均股份数"
+    ]
+  },
+  {
+    "key": "DividendPerShare",
+    "nameZh": "每股股利 (分红)",
+    "nameEn": "Total Dividend Per Share",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "morningstarId": "ORISZ00026",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "CommonStockDividendsPerShareDeclared",
+      "CommonStockDividendsPerShareCashPaid"
+    ],
+    "tagsIfrs": [
+      "DividendsPaidPerShare"
+    ],
+    "cnAliases": [
+      "每股股利",
+      "每股派息"
+    ],
+    "hkAliases": [
+      "每股股息",
+      "每股派息"
+    ]
+  },
+  {
+    "key": "OtherCurrentAssets",
+    "nameZh": "其他流动资产",
+    "nameEn": "Other Current Assets",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "morningstarId": "IFBS001550",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "OtherAssetsCurrent"
+    ],
+    "tagsIfrs": [
+      "OtherCurrentAssets"
+    ],
+    "cnAliases": [
+      "其他流动资产"
+    ],
+    "hkAliases": [
+      "其他流动资产"
+    ]
+  },
+  {
+    "key": "LongTermInvestments",
+    "nameZh": "长期投资合计",
+    "nameEn": "Total Long Term Investments",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "morningstarId": "IFBS002310",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "LongTermInvestments",
+      "OtherInvestmentsNoncurrent"
+    ],
+    "tagsIfrs": [
+      "OtherNoncurrentFinancialAssets"
+    ],
+    "cnAliases": [
+      "长期投资",
+      "其他非流动金融资产"
+    ],
+    "hkAliases": [
+      "非流动金融资产",
+      "长期投资"
+    ]
+  },
+  {
+    "key": "OtherNonCurrentAssets",
+    "nameZh": "其他非流动资产",
+    "nameEn": "Other Non-Current Assets",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "morningstarId": "IFBS001650",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "OtherAssetsNoncurrent"
+    ],
+    "tagsIfrs": [
+      "OtherNoncurrentAssets"
+    ],
+    "cnAliases": [
+      "其他非流动资产"
+    ],
+    "hkAliases": [
+      "其他非流动资产"
+    ]
+  },
+  {
+    "key": "OtherCurrentLiabilities",
+    "nameZh": "其他流动负债",
+    "nameEn": "Other Current Liabilities",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "morningstarId": "IFBS001570",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "OtherLiabilitiesCurrent"
+    ],
+    "tagsIfrs": [
+      "OtherCurrentLiabilities"
+    ],
+    "cnAliases": [
+      "其他流动负债"
+    ],
+    "hkAliases": [
+      "其他流动负债"
+    ]
+  },
+  {
+    "key": "DeferredLiabilitiesNonCurrent",
+    "nameZh": "非流动递延负债",
+    "nameEn": "Deferred Liabilities, Non-Current",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "morningstarId": "IFBS002805",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "DeferredRevenueNoncurrent",
+      "ContractWithCustomerLiabilityNoncurrent"
+    ],
+    "tagsIfrs": [
+      "OtherNoncurrentLiabilities"
+    ],
+    "cnAliases": [
+      "递延收益"
+    ],
+    "hkAliases": [
+      "非流动递延收入"
+    ]
+  },
+  {
+    "key": "OtherNonCurrentLiabilities",
+    "nameZh": "其他非流动负债",
+    "nameEn": "Other Non-Current Liabilities",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "morningstarId": "IFBS002480",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "OtherLiabilitiesNoncurrent"
+    ],
+    "tagsIfrs": [
+      "OtherNoncurrentLiabilities"
+    ],
+    "cnAliases": [
+      "其他非流动负债"
+    ],
+    "hkAliases": [
+      "其他非流动负债"
+    ]
+  },
+  {
+    "key": "ComprehensiveIncomeReserves",
+    "nameZh": "其他综合收益 / 储备",
+    "nameEn": "Reserves / Accumulated OCI",
+    "statement": "balance_sheet_equity",
+    "periodType": "instant",
+    "morningstarId": "IFBS002737",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "AccumulatedOtherComprehensiveIncomeLossNetOfTax"
+    ],
+    "tagsIfrs": [
+      "OtherReserves"
+    ],
+    "cnAliases": [
+      "其他综合收益"
+    ],
+    "hkAliases": [
+      "其他储备"
+    ]
+  },
+  {
+    "key": "CashGeneratedFromOperations",
+    "nameZh": "经营现金产生额",
+    "nameEn": "Cash Generated from Operations",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "morningstarId": "IFCF200620",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "NetCashProvidedByUsedInOperatingActivities"
+    ],
+    "tagsIfrs": [
+      "CashFlowsFromOperations"
+    ],
+    "cnAliases": [
+      "经营活动现金流量净额"
+    ],
+    "hkAliases": [
+      "经营业务所得现金"
+    ]
+  },
+  {
+    "key": "PurchaseSaleOfPPE",
+    "nameZh": "购置固定资产/厂房设备净额",
+    "nameEn": "Purchase/Sale of PPE, Net",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "morningstarId": "IFCF001330",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "PaymentsToAcquirePropertyPlantAndEquipment",
+      "PaymentsToAcquireProductiveAssets"
+    ],
+    "tagsIfrs": [
+      "PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities"
+    ],
+    "cnAliases": [
+      "购建固定资产、无形资产和其他长期资产支付的现金"
+    ],
+    "hkAliases": [
+      "购买物业、厂房及设备"
+    ]
+  },
+  {
+    "key": "PurchaseSaleOfBusinessNet",
+    "nameZh": "收购与处置业务/子公司净现金",
+    "nameEn": "Purchase/Sale of Business, Net",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "morningstarId": "IFCF001300",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "PaymentsToAcquireBusinessesNetOfCashAcquired"
+    ],
+    "tagsIfrs": [
+      "CashFlowsUsedInObtainingControlOfSubsidiariesOrOtherBusinessesClassifiedAsInvestingActivities"
+    ],
+    "cnAliases": [
+      "取得子公司及其他营业单位支付的现金净额"
+    ],
+    "hkAliases": [
+      "收购附属公司之现金流出净额"
+    ]
+  },
+  {
+    "key": "PurchaseSaleOfInvestmentsNet",
+    "nameZh": "购买/收回投资现金净额",
+    "nameEn": "Purchase/Sale of Investments, Net",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "morningstarId": "IFCF001320",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "PaymentsToAcquireMarketableSecurities",
+      "PaymentsToAcquireInvestments"
+    ],
+    "tagsIfrs": [
+      "PurchaseOfFinancialInstrumentsClassifiedAsInvestingActivities"
+    ],
+    "cnAliases": [
+      "投资支付的现金"
+    ],
+    "hkAliases": [
+      "购买金融资产支付的现金"
+    ]
+  },
+  {
+    "key": "OtherInvestingCashFlow",
+    "nameZh": "其他投资现金流量",
+    "nameEn": "Other Investing Cash Flow",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "morningstarId": "IFCF000910",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "PaymentsForProceedsFromOtherInvestingActivities"
+    ],
+    "tagsIfrs": [
+      "OtherInflowsOutflowsOfCashClassifiedAsInvestingActivities"
+    ],
+    "cnAliases": [
+      "支付其他与投资活动有关的现金"
+    ],
+    "hkAliases": [
+      "其他投资活动现金流"
+    ]
+  },
+  {
+    "key": "NetDebtIssuance",
+    "nameZh": "债务发行与偿还净额",
+    "nameEn": "Issuance of/Repayments for Debt, Net",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "morningstarId": "IFCF000770",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "ProceedsFromRepaymentsOfShortTermDebt",
+      "ProceedsFromIssuanceOfLongTermDebt",
+      "RepaymentsOfLongTermDebt"
+    ],
+    "tagsIfrs": [
+      "CashFlowsFromUsedInIncreaseDecreaseInCurrentBorrowings"
+    ],
+    "cnAliases": [
+      "取得借款收到的现金",
+      "偿还债务支付的现金"
+    ],
+    "hkAliases": [
+      "新增借贷所得款项",
+      "偿还借贷"
+    ]
+  },
+  {
+    "key": "OtherFinancingCashFlow",
+    "nameZh": "其他筹资现金流量",
+    "nameEn": "Other Financing Cash Flow",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "morningstarId": "IFCF000900",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "ProceedsFromPaymentsForOtherFinancingActivities"
+    ],
+    "tagsIfrs": [
+      "OtherInflowsOutflowsOfCashClassifiedAsFinancingActivities"
+    ],
+    "cnAliases": [
+      "支付其他与筹资活动有关的现金"
+    ],
+    "hkAliases": [
+      "其他筹资活动现金流"
+    ]
+  },
+  {
+    "key": "CashEndOfPeriod",
+    "nameZh": "期末现金及现金等价物余额",
+    "nameEn": "Cash and Cash Equivalents, End of Period",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "morningstarId": "IFCF000170",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"
+    ],
+    "tagsIfrs": [
+      "CashAndCashEquivalents"
+    ],
+    "cnAliases": [
+      "期末现金及现金等价物余额"
+    ],
+    "hkAliases": [
+      "期末现金及现金等价物"
+    ]
+  },
+  {
+    "key": "CashBeginningOfPeriod",
+    "nameZh": "期初现金及现金等价物余额",
+    "nameEn": "Cash and Cash Equivalents, Beginning of Period",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "morningstarId": "IFCF000160",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"
+    ],
+    "tagsIfrs": [
+      "CashAndCashEquivalents"
+    ],
+    "cnAliases": [
+      "期初现金及现金等价物余额"
+    ],
+    "hkAliases": [
+      "期初现金及现金等价物"
+    ]
+  },
+  {
+    "key": "IncomeTaxPaid",
+    "nameZh": "已付所得税 (补充披露)",
+    "nameEn": "Income Tax Paid, Supplemental",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "morningstarId": "IFCF001580",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "IncomeTaxesPaidNet"
+    ],
+    "tagsIfrs": [
+      "IncomeTaxesPaidRefundClassifiedAsOperatingActivities"
+    ],
+    "cnAliases": [
+      "支付的各项税费"
+    ],
+    "hkAliases": [
+      "已付所得税",
+      "已付税项"
+    ]
+  },
+  {
+    "key": "InterestPaid",
+    "nameZh": "已付利息 (补充披露)",
+    "nameEn": "Interest Paid, Supplemental",
+    "statement": "cash_flow",
+    "periodType": "duration",
+    "morningstarId": "IFCF001731",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "InterestPaidNet"
+    ],
+    "tagsIfrs": [
+      "InterestPaidClassifiedAsOperatingActivities"
+    ],
+    "cnAliases": [
+      "分配股利、利润或偿付利息支付的现金"
+    ],
+    "hkAliases": [
+      "已付利息"
+    ]
+  },
+  {
+    "key": "InterestExpenseBank",
+    "nameZh": "利息支出 (金融)",
+    "nameEn": "Interest Expense (Financial)",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "morningstarId": "IFIS000730",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "InterestExpenseOperating",
+      "InterestExpense"
+    ],
+    "tagsIfrs": [
+      "InterestExpense"
+    ],
+    "cnAliases": [
+      "利息支出"
+    ],
+    "hkAliases": [
+      "Interest expense",
+      "利息支出"
+    ],
+    "description": "吸收存款及向中央银行借款产生的利息支出"
+  },
+  {
+    "key": "NetFeeAndCommissionIncome",
+    "nameZh": "手续费及佣金净收入",
+    "nameEn": "Net Fee and Commission Income",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "morningstarId": "IFIS000460",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "FeesAndCommissionsNet",
+      "CommissionAndFees"
+    ],
+    "tagsIfrs": [
+      "FeeAndCommissionIncomeNet"
+    ],
+    "cnAliases": [
+      "手续费及佣金净收入",
+      "手续费净收入"
+    ],
+    "hkAliases": [
+      "Fee and commission income",
+      "手续费及佣金净收入"
+    ],
+    "description": "中间业务收入：投行、托管、信用卡、理财中介佣金"
+  },
+  {
+    "key": "NonInterestExpense",
+    "nameZh": "业务及管理费 / 营业支出",
+    "nameEn": "Non-Interest Expense / Operating Expenses",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "morningstarId": "IFIS003143",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "NoninterestExpense"
+    ],
+    "tagsIfrs": [
+      "OperatingExpenses"
+    ],
+    "cnAliases": [
+      "业务及管理费",
+      "营业支出"
+    ],
+    "hkAliases": [
+      "Operating expenses",
+      "业务及管理费"
+    ],
+    "description": "商业银行及金融机构日常经营的薪酬、网点与IT开支"
+  },
+  {
+    "key": "NetPremiumsEarned",
+    "nameZh": "已赚保费净额",
+    "nameEn": "Net Premiums Earned",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "morningstarId": "IFIS001480",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "PremiumsEarnedNet"
+    ],
+    "tagsIfrs": [
+      "InsuranceRevenue",
+      "NetEarnedPremiums"
+    ],
+    "cnAliases": [
+      "已赚保费",
+      "保险业务收入",
+      "已赚保费净额"
+    ],
+    "hkAliases": [
+      "Net earned premiums",
+      "已赚保费",
+      "保险业务收入"
+    ],
+    "description": "扣除分保费和未到期责任准备金提转差后的实际已赚取保费"
+  },
+  {
+    "key": "NetInvestmentIncome",
+    "nameZh": "净投资收益 (金融/保险)",
+    "nameEn": "Net Investment Income",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "morningstarId": "IFIS001130",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "NetInvestmentIncome",
+      "InvestmentIncomeNet"
+    ],
+    "tagsIfrs": [
+      "NetInvestmentIncome"
+    ],
+    "cnAliases": [
+      "投资收益",
+      "净投资收益"
+    ],
+    "hkAliases": [
+      "Net investment income",
+      "投资收益"
+    ],
+    "description": "保险公司庞大浮存金的利息、股息、债息及公允价值变动"
+  },
+  {
+    "key": "PolicyClaimsAndBenefits",
+    "nameZh": "赔付支出与保单利益净额",
+    "nameEn": "Policy Claims, Benefits and Losses Net",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "morningstarId": "IFIS001420",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "PolicyholderBenefitsAndClaims"
+    ],
+    "tagsIfrs": [
+      "InsuranceServiceExpenses",
+      "NetClaimsAndBenefits"
+    ],
+    "cnAliases": [
+      "退保金",
+      "赔付支出",
+      "退保及赔付支出净额"
+    ],
+    "hkAliases": [
+      "Net claims and benefits",
+      "赔付款项及利益支出",
+      "保险服务费用"
+    ],
+    "description": "扣除摊回分保赔款后的实际保单理赔与满期给付"
+  },
+  {
+    "key": "ChangeInInsuranceReserves",
+    "nameZh": "提取保险责任准备金净额",
+    "nameEn": "Change in Insurance Contract Liabilities / Reserves",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "morningstarId": "IFIS001840",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "IncreaseDecreaseInContractLiabilities"
+    ],
+    "tagsIfrs": [
+      "ChangeInInsuranceContractLiabilities"
+    ],
+    "cnAliases": [
+      "提取保险责任准备金",
+      "提取未到期责任准备金净额"
+    ],
+    "hkAliases": [
+      "Change in insurance contract liabilities",
+      "提取保险责任准备金"
+    ],
+    "description": "保险公司为未来长期理赔义务而在当期计提锁定的负债增加额"
+  },
+  {
+    "key": "PolicyAcquisitionAmortization",
+    "nameZh": "递延保单获取成本摊销",
+    "nameEn": "Amortization of Deferred Policy Acquisition Costs",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "morningstarId": "IFIS001380",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "DeferredPolicyAcquisitionCostAmortizationExpense"
+    ],
+    "tagsIfrs": [
+      "AmortizationOfInsuranceAcquisitionCashFlows"
+    ],
+    "cnAliases": [
+      "保单获取成本摊销"
+    ],
+    "hkAliases": [
+      "Amortization of deferred acquisition costs",
+      "保单获取成本摊销"
+    ],
+    "description": "销售保单发生的前期佣金支出在保单生命周期内的逐年摊销"
+  },
+  {
+    "key": "NetLoans",
+    "nameZh": "客户贷款及垫款净额",
+    "nameEn": "Net Loans and Advances to Customers",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "morningstarId": "IFBS100702",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "FinancingReceivableExcludingAccruedInterestAfterAllowanceForCreditLoss",
+      "LoansAndLeasesReceivableNetReportedAmount",
+      "LoansAndLeasesReceivableNetReported",
+      "LoansAndLeasesReceivableNetOfDeferredIncome"
+    ],
+    "tagsIfrs": [
+      "LoansAndAdvancesToCustomers"
+    ],
+    "cnAliases": [
+      "发放贷款和垫款",
+      "发放贷款及垫款净额",
+      "客户贷款净额"
+    ],
+    "hkAliases": [
+      "Loans and advances to customers",
+      "发放贷款及垫款净额"
+    ],
+    "description": "银行最核心盈利资产：贷款总额扣除坏账拨备后的净值"
+  },
+  {
+    "key": "GrossLoans",
+    "nameZh": "发放贷款及垫款总额",
+    "nameEn": "Gross Loans and Advances",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "morningstarId": "IFBS003322",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "LoansAndLeasesReceivableGross"
+    ],
+    "tagsIfrs": [
+      "GrossLoansAndAdvances"
+    ],
+    "cnAliases": [
+      "客户贷款总额",
+      "发放贷款总额"
+    ],
+    "hkAliases": [
+      "Gross loans and advances",
+      "发放贷款及垫款总额"
+    ],
+    "description": "尚未扣除拨备的银行全部对公与零售贷款原值"
+  },
+  {
+    "key": "LoanLossAllowance",
+    "nameZh": "贷款损失准备 (资产负债表拨备余额)",
+    "nameEn": "Allowance for Loan and Lease Losses",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "morningstarId": "IFBS000180",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "AllowanceForLoanAndLeaseLosses"
+    ],
+    "tagsIfrs": [
+      "AllowanceForImpairmentLossesOnLoans"
+    ],
+    "cnAliases": [
+      "贷款损失准备"
+    ],
+    "hkAliases": [
+      "Impairment allowances on loans",
+      "贷款损失准备"
+    ],
+    "description": "资产负债表上累计计提的贷款坏账拨备资金池"
+  },
+  {
+    "key": "DueToCentralBanks",
+    "nameZh": "向中央银行借款",
+    "nameEn": "Due to Central Banks / Borrowings",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "morningstarId": "IFBS200350",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "BorrowingsFromFederalReserveBanks"
+    ],
+    "tagsIfrs": [
+      "DepositsFromCentralBanks"
+    ],
+    "cnAliases": [
+      "向中央银行借款"
+    ],
+    "hkAliases": [
+      "Due to central banks",
+      "向中央银行借款"
+    ],
+    "description": "央行再贴现、MLF 等政策性借款工具负债"
+  },
+  {
+    "key": "TotalInvestments",
+    "nameZh": "投资资产总计 (金融/保险)",
+    "nameEn": "Total Investments Portfolio",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "morningstarId": "IFBS003343",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "InvestmentSecurities",
+      "FinancialAssets"
+    ],
+    "tagsIfrs": [
+      "FinancialInvestments"
+    ],
+    "cnAliases": [
+      "金融投资资产",
+      "投资资产",
+      "金融资产"
+    ],
+    "hkAliases": [
+      "Financial investments",
+      "投资资产",
+      "投资组合"
+    ],
+    "description": "保险公司与投行持有的股票、固定收益债券、基金及不动产总投资"
+  },
+  {
+    "key": "ReinsuranceAssets",
+    "nameZh": "分保合同资产",
+    "nameEn": "Reinsurance Contract Assets",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "morningstarId": "IFBS200550",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "ReinsuranceRecoverables"
+    ],
+    "tagsIfrs": [
+      "ReinsuranceContractAssets"
+    ],
+    "cnAliases": [
+      "分保合同资产",
+      "应收分保准备金"
+    ],
+    "hkAliases": [
+      "Reinsurance contract assets",
+      "分保合同资产"
+    ],
+    "description": "分保给再保险公司的合同资产及应收摊回准备金"
+  },
+  {
+    "key": "DeferredPolicyAcquisitionCosts",
+    "nameZh": "递延保单获取成本 (DAC)",
+    "nameEn": "Deferred Policy Acquisition Costs (DAC)",
+    "statement": "balance_sheet_asset",
+    "periodType": "instant",
+    "morningstarId": "IFBS000620",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "DeferredPolicyAcquisitionCosts"
+    ],
+    "tagsIfrs": [
+      "InsuranceAcquisitionCashFlowsAsset"
+    ],
+    "cnAliases": [
+      "递延保单获取成本"
+    ],
+    "hkAliases": [
+      "Deferred acquisition costs",
+      "递延保单获取成本"
+    ],
+    "description": "资本化的待摊销保单销售佣金与承保获取成本"
+  },
+  {
+    "key": "InsuranceContractLiabilities",
+    "nameZh": "保险合同负债及准备金",
+    "nameEn": "Insurance Contract Liabilities & Reserves",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "morningstarId": "IFBS200610",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "LiabilityForFuturePolicyBenefits",
+      "InsuranceLiabilities"
+    ],
+    "tagsIfrs": [
+      "InsuranceContractLiabilities"
+    ],
+    "cnAliases": [
+      "保险合同负债",
+      "未到期责任准备金",
+      "寿险责任准备金"
+    ],
+    "hkAliases": [
+      "Insurance contract liabilities",
+      "保险合同负债"
+    ],
+    "description": "保险公司最大负债项：未来未决赔款、寿险准备金及合同服务边际(CSM)"
+  },
+  {
+    "key": "InvestmentContractLiabilities",
+    "nameZh": "投资合同负债",
+    "nameEn": "Investment Contract Liabilities",
+    "statement": "balance_sheet_liability",
+    "periodType": "instant",
+    "morningstarId": "IFBS200650",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "InvestmentContractLiabilities"
+    ],
+    "tagsIfrs": [
+      "InvestmentContractLiabilities"
+    ],
+    "cnAliases": [
+      "投资合同负债"
+    ],
+    "hkAliases": [
+      "Investment contract liabilities",
+      "投资合同负债"
+    ],
+    "description": "投连险、万能险等不具重大保险风险的客户投资账户负债"
+  }
+]

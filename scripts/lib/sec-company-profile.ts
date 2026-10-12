@@ -100,16 +100,49 @@ export function mapSectorFromSic(sic: string | null, sicDescription: string | nu
   return null;
 }
 
+export async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = 3,
+  initialDelayMs = 500,
+): Promise<Response> {
+  let attempt = 0;
+  while (true) {
+    attempt++;
+    try {
+      const res = await fetch(url, options);
+      if (res.ok) return res;
+      if (res.status === 404) return res;
+
+      if (attempt <= maxRetries && (res.status === 429 || res.status >= 500)) {
+        const delay = initialDelayMs * Math.pow(2, attempt - 1);
+        console.warn(`[SEC fetch] HTTP ${res.status} for ${url}. Retrying in ${delay}ms (attempt ${attempt}/${maxRetries})...`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      return res;
+    } catch (err) {
+      if (attempt <= maxRetries) {
+        const delay = initialDelayMs * Math.pow(2, attempt - 1);
+        console.warn(`[SEC fetch] Network error for ${url}. Retrying in ${delay}ms (attempt ${attempt}/${maxRetries})...`, err);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 export async function fetchSecSubmissions(cik: string) {
   const padded = cik.padStart(10, "0");
-  const res = await fetch(`${EDGAR}/submissions/CIK${padded}.json`, { headers: HEADERS });
-  if (!res.ok) throw new Error(`Submissions fetch failed for CIK ${cik}`);
+  const res = await fetchWithRetry(`${EDGAR}/submissions/CIK${padded}.json`, { headers: HEADERS });
+  if (!res.ok) throw new Error(`Submissions fetch failed for CIK ${cik} (HTTP ${res.status})`);
   return res.json() as Promise<SubmissionPayload>;
 }
 
 export async function fetchSecSubmissionFile(name: string) {
-  const res = await fetch(`${EDGAR}/submissions/${name}`, { headers: HEADERS });
-  if (!res.ok) throw new Error(`Submission file fetch failed: ${name}`);
+  const res = await fetchWithRetry(`${EDGAR}/submissions/${name}`, { headers: HEADERS });
+  if (!res.ok) throw new Error(`Submission file fetch failed: ${name} (HTTP ${res.status})`);
   return res.json() as Promise<SubmissionRecent>;
 }
 

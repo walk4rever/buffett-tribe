@@ -68,16 +68,36 @@ HK_ITEM_NAME_MAP: dict[str, str] = {
     "经营收入总额": "Revenue",  # insurer template (002003999, incl. investment income)
     "毛利": "GrossProfit",  # industrial only; insurers/banks have none
     "经营溢利": "OperatingIncome",  # same name in both templates
+    "除税前溢利": "TotalProfit",  # pretax profit
+    "税项": "IncomeTaxExpense",  # income tax
     "股东应占溢利": "NetIncome",  # attributable to shareholders, matches US convention
     "每股基本盈利": "EPSBasic",
     "每股摊薄盈利": "EPSDiluted",
+    # 保险与金融专属利润表
+    "净已赚保费": "NetPremiumsEarned",
+    "投资收益": "NetInvestmentIncome",
+    "赔付支出": "PolicyClaimsAndBenefits",
+    "利息收入": "InterestIncome",
+    "利息支出": "InterestExpenseBank",
     # 资产负债表 (balance sheet)
     "总资产": "TotalAssets",
     "总负债": "TotalLiabilities",
     "股东权益": "ShareholdersEquity",  # industrial: attributable (excl. 少数股东权益)
+    "股东权益合计": "TotalEquity",
     "归属于母公司股东权益": "ShareholdersEquity",  # insurer template
+    # 保险与金融专属资产负债表
+    "指定以公允价值记账之金融资产": "TotalInvestments",
+    "可供出售证券": "TotalInvestments",
+    "其他投资": "TotalInvestments",
+    "投资物业": "TotalInvestments",
+    "保险合同负债": "InsuranceContractLiabilities",
+    "保险准备金": "InsuranceContractLiabilities",
+    "再保险资产": "ReinsuranceAssets",
+    "客户贷款及垫款净额": "NetLoans",
     # 现金流量表 (cash flow statement)
     "经营业务现金净额": "OperatingCashFlow",
+    "投资业务现金净额": "InvestingCashFlow",
+    "现金净额": "FinancingCashFlow",
     "购建固定资产": "CapEx",
     "回购股份": "ShareRepurchaseAmt",  # see suspicious-repurchase check in check-all-company-financials.ts
     "支付股息": "DividendsPaid",
@@ -120,12 +140,25 @@ CN_COLUMN_MAP: dict[str, str] = {
     "股本": "CommonStockSharesOutstanding",
     "实收资本": "CommonStockSharesOutstanding",
     "实收资本净额": "CommonStockSharesOutstanding",
-    "所有者权益(或股东权益)合计": "ShareholdersEquity",
-    "所有者权益合计": "ShareholdersEquity",  # insurance & industrial variant
+    "所有者权益(或股东权益)合计": "TotalEquity",
+    "所有者权益合计": "TotalEquity",  # total equity (parent + minority)
     "归属于母公司股东权益合计": "ShareholdersEquity",
     "归属于母公司的股东权益合计": "ShareholdersEquity",  # insurance variant
     "归属于母公司所有者权益合计": "ShareholdersEquity",
-    "归属于母公司股东的权益": "ShareholdersEquity",  # bank template
+    # 银行与金融专属科目
+    "利息净收入": "NetInterestIncome",
+    "净利息收入": "NetInterestIncome",
+    "减:所得税": "IncomeTaxExpense",
+    "所得税费用": "IncomeTaxExpense",
+    "非利息净收入": "NonInterestIncome",
+    "业务及管理费": "NonInterestExpense",
+    "信用减值损失": "ProvisionForCreditLosses",
+    "资产减值损失": "ProvisionForCreditLosses",
+    "发放贷款及垫款净额": "NetLoans",
+    "发放贷款及垫款": "GrossLoans",
+    "减:贷款损失准备": "LoanLossAllowance",
+    "客户存款(吸收存款)": "TotalDeposits",
+    "吸收存款及同业存放": "TotalDeposits",
     # 现金流量表 (cash flow statement)
     "经营活动产生的现金流量净额": "OperatingCashFlow",
     "购建固定资产、无形资产和其他长期资产所支付的现金": "CapEx",
@@ -197,14 +230,29 @@ if CANONICAL_DICT_PATH.exists():
     try:
         with open(CANONICAL_DICT_PATH, "r", encoding="utf-8") as f:
             _canon = json.load(f)
-        if "cnAliases" in _canon:
-            CN_COLUMN_MAP.update(_canon["cnAliases"])
-        if "hkAliases" in _canon:
-            HK_ITEM_NAME_MAP.update(_canon["hkAliases"])
-        if "instantItems" in _canon:
-            BALANCE_LINE_ITEMS.update(_canon["instantItems"])
-        if "durationItems" in _canon:
-            FLOW_LINE_ITEMS.update(_canon["durationItems"])
+        if isinstance(_canon, list):
+            for item in _canon:
+                k = item.get("key")
+                pt = item.get("periodType")
+                if pt == "instant":
+                    BALANCE_LINE_ITEMS.add(k)
+                else:
+                    FLOW_LINE_ITEMS.add(k)
+                for alias in item.get("cnAliases", []):
+                    if alias not in CN_COLUMN_MAP:
+                        CN_COLUMN_MAP[alias] = k
+                for alias in item.get("hkAliases", []):
+                    if alias not in HK_ITEM_NAME_MAP:
+                        HK_ITEM_NAME_MAP[alias] = k
+        elif isinstance(_canon, dict):
+            if "cnAliases" in _canon:
+                CN_COLUMN_MAP.update(_canon["cnAliases"])
+            if "hkAliases" in _canon:
+                HK_ITEM_NAME_MAP.update(_canon["hkAliases"])
+            if "instantItems" in _canon:
+                BALANCE_LINE_ITEMS.update(_canon["instantItems"])
+            if "durationItems" in _canon:
+                FLOW_LINE_ITEMS.update(_canon["durationItems"])
     except Exception as e:
         print(f"Warning: failed to load canonical financial dictionary: {e}", file=sys.stderr)
 
@@ -235,7 +283,9 @@ def fetch_hk_records(code: str, from_year: int = 2020) -> list[dict[str, object]
             if amount is None:
                 continue
             bucket = raw_hk.setdefault((period_end, date_type_code), {})
-            if line_item not in bucket:
+            if line_item == "TotalInvestments":
+                bucket[line_item] = bucket.get(line_item, 0.0) + amount
+            elif line_item not in bucket:
                 bucket[line_item] = amount
 
     # Group available periods by year
@@ -268,6 +318,17 @@ def fetch_hk_records(code: str, from_year: int = 2020) -> list[dict[str, object]
         # 1. FY full year records (from 001)
         if "001" in periods:
             fy_date, fy_items = periods["001"]
+            if "Revenue" in fy_items and "GrossProfit" in fy_items and "CostOfRevenue" not in fy_items:
+                fy_items["CostOfRevenue"] = fy_items["Revenue"] - fy_items["GrossProfit"]
+            if "TotalAssets" in fy_items and "ShareholdersEquity" in fy_items and "TotalLiabilities" not in fy_items:
+                fy_items["TotalLiabilities"] = fy_items["TotalAssets"] - fy_items["ShareholdersEquity"]
+            if "InterestIncome" in fy_items and "InterestExpense" in fy_items and "NetInterestIncome" not in fy_items:
+                fy_items["NetInterestIncome"] = fy_items["InterestIncome"] - fy_items["InterestExpense"]
+            if "Revenue" in fy_items and "NetInterestIncome" in fy_items and "NonInterestIncome" not in fy_items:
+                if fy_items["Revenue"] > fy_items["NetInterestIncome"]:
+                    fy_items["NonInterestIncome"] = fy_items["Revenue"] - fy_items["NetInterestIncome"]
+            if "TotalProfit" in fy_items and "NetIncome" in fy_items and "IncomeTaxExpense" not in fy_items:
+                fy_items["IncomeTaxExpense"] = abs(fy_items["TotalProfit"] - fy_items["NetIncome"])
             for item, val in fy_items.items():
                 add_rec(fy_date, "FY", item, val)
 

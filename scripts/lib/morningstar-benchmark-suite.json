@@ -1,0 +1,873 @@
+[
+  {
+    "ticker": "AAPL",
+    "name": "Apple Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000000GY",
+    "category": "US 10-K Tech / Hardware / Services"
+  },
+  {
+    "ticker": "MSFT",
+    "name": "Microsoft Corporation",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000003MH",
+    "category": "US 10-K Cloud / Software"
+  },
+  {
+    "ticker": "KO",
+    "name": "The Coca-Cola Company",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000001BW",
+    "category": "US 10-K Consumer Goods / High Dividend"
+  },
+  {
+    "ticker": "BRK-B",
+    "name": "Berkshire Hathaway Inc. Class B",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000000RD",
+    "category": "US 10-K Conglomerate / Insurance"
+  },
+  {
+    "ticker": "JPM",
+    "name": "JPMorgan Chase & Co.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P0000031C",
+    "category": "US 10-K Commercial & Investment Banking"
+  },
+  {
+    "ticker": "NVDA",
+    "name": "NVIDIA Corporation",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000003RE",
+    "category": "US 10-K Semiconductor / High Growth"
+  },
+  {
+    "ticker": "BABA",
+    "name": "Alibaba Group Holding Limited",
+    "market": "us",
+    "form": "20-F",
+    "secId": "0P00013K81",
+    "category": "US 20-F China E-Commerce / Cloud (IFRS)",
+    "reportingCurrency": "CNY"
+  },
+  {
+    "ticker": "TSM",
+    "name": "Taiwan Semiconductor Manufacturing Co.",
+    "market": "us",
+    "form": "20-F",
+    "secId": "0P000005AR",
+    "category": "US 20-F Foundry / High CapEx (IFRS)",
+    "reportingCurrency": "TWD"
+  },
+  {
+    "ticker": "ASML",
+    "name": "ASML Holding N.V.",
+    "market": "us",
+    "form": "20-F",
+    "secId": "0P0000002X",
+    "category": "US 20-F European Semiconductor Equipment (IFRS/US GAAP)",
+    "cik": "0000937966",
+    "reportingCurrency": "EUR"
+  },
+  {
+    "ticker": "NVO",
+    "name": "Novo Nordisk A/S",
+    "market": "us",
+    "form": "20-F",
+    "secId": "0P000003ZK",
+    "category": "US 20-F European Healthcare / Pharma (IFRS)",
+    "cik": "0000353278",
+    "reportingCurrency": "DKK"
+  },
+  {
+    "ticker": "SHOP",
+    "name": "Shopify Inc.",
+    "market": "us",
+    "form": "40-F",
+    "secId": "0P00015ZGZ",
+    "category": "US 40-F Canadian Tech SaaS (US GAAP / MJDS)",
+    "cik": "0001594805",
+    "reportingCurrency": "USD"
+  },
+  {
+    "ticker": "ENB",
+    "name": "Enbridge Inc.",
+    "market": "us",
+    "form": "40-F",
+    "secId": "0P000001XR",
+    "category": "US 40-F Canadian Energy Infrastructure (US GAAP / MJDS)",
+    "cik": "0000895728",
+    "reportingCurrency": "CAD"
+  },
+  {
+    "ticker": "600519",
+    "name": "贵州茅台 (Kweichow Moutai)",
+    "market": "cn",
+    "form": "A-Share",
+    "secId": "0P00007XB5",
+    "category": "CN A-Share High Margin Consumer Goods"
+  },
+  {
+    "ticker": "600036",
+    "name": "招商银行 (China Merchants Bank)",
+    "market": "cn",
+    "form": "A-Share",
+    "secId": "0P00007WZY",
+    "category": "CN A-Share Commercial Banking Template"
+  },
+  {
+    "ticker": "000333",
+    "name": "美的集团 (Midea Group)",
+    "market": "cn",
+    "form": "A-Share",
+    "secId": "0P00011OUW",
+    "category": "CN A-Share Manufacturing & Global Consumer"
+  },
+  {
+    "ticker": "300750",
+    "name": "宁德时代 (CATL)",
+    "market": "cn",
+    "form": "A-Share",
+    "secId": "0P0001DIGQ",
+    "category": "CN A-Share EV Battery / High CapEx Growth"
+  },
+  {
+    "ticker": "601088",
+    "name": "中国神华 (China Shenhua Energy)",
+    "market": "cn",
+    "form": "A-Share",
+    "secId": "0P00009RME",
+    "category": "CN A-Share Resource / High Dividend Cash Flow"
+  },
+  {
+    "ticker": "601668",
+    "name": "中国建筑 (China State Construction)",
+    "market": "cn",
+    "form": "A-Share",
+    "secId": "0P0000KRX0",
+    "category": "CN A-Share Infrastructure Construction"
+  },
+  {
+    "ticker": "300760",
+    "name": "迈瑞医疗 (Mindray Medical)",
+    "market": "cn",
+    "form": "A-Share",
+    "secId": "0P0001EUD5",
+    "category": "CN A-Share Medical Device / High R&D"
+  },
+  {
+    "ticker": "600887",
+    "name": "伊利股份 (Yili Group)",
+    "market": "cn",
+    "form": "A-Share",
+    "secId": "0P00007XKK",
+    "category": "CN A-Share Dairy / Consumer Staple"
+  },
+  {
+    "ticker": "000568",
+    "name": "泸州老窖 (Luzhou Laojiao)",
+    "market": "cn",
+    "form": "A-Share",
+    "secId": "0P00007WUR",
+    "category": "CN A-Share Liquor / High ROE"
+  },
+  {
+    "ticker": "002415",
+    "name": "海康威视 (Hikvision)",
+    "market": "cn",
+    "form": "A-Share",
+    "secId": "0P0000OXBW",
+    "category": "CN A-Share AIoT / Surveillance & Hardware"
+  },
+  {
+    "ticker": "0700.HK",
+    "name": "腾讯控股 (Tencent Holdings)",
+    "market": "hk",
+    "form": "HK-Share",
+    "secId": "0P00009S22",
+    "category": "HK Tech Giant / Entertainment & Cloud (IFRS)"
+  },
+  {
+    "ticker": "3690.HK",
+    "name": "美团 (Meituan)",
+    "market": "hk",
+    "form": "HK-Share",
+    "secId": "0P0001EHWO",
+    "category": "HK Local Life Services (IFRS)"
+  },
+  {
+    "ticker": "0883.HK",
+    "name": "中国海洋石油 (CNOOC)",
+    "market": "hk",
+    "form": "HK-Share",
+    "secId": "0P00009S3U",
+    "category": "HK Energy / Offshore Oil & Gas (IFRS)"
+  },
+  {
+    "ticker": "1299.HK",
+    "name": "友邦保险 (AIA Group)",
+    "market": "hk",
+    "form": "HK-Share",
+    "secId": "0P0000Q79U",
+    "category": "HK Life Insurance Template (IFRS 17)",
+    "reportingCurrency": "USD"
+  },
+  {
+    "ticker": "9633.HK",
+    "name": "农夫山泉 (Nongfu Spring)",
+    "market": "hk",
+    "form": "HK-Share",
+    "secId": "0P0001KLQB",
+    "category": "HK Consumer Beverage (IFRS)"
+  },
+  {
+    "ticker": "2020.HK",
+    "name": "安踏体育 (ANTA Sports)",
+    "market": "hk",
+    "form": "HK-Share",
+    "secId": "0P00009S8V",
+    "category": "HK Sportswear & Multi-Brand (IFRS)"
+  },
+  {
+    "ticker": "1211.HK",
+    "name": "比亚迪股份 (BYD Company)",
+    "market": "hk",
+    "form": "HK-Share",
+    "secId": "0P00009S7R",
+    "category": "HK EV & Battery Manufacturing (CAS/IFRS)"
+  },
+  {
+    "ticker": "9992.HK",
+    "name": "泡泡玛特 (Pop Mart)",
+    "market": "hk",
+    "form": "HK-Share",
+    "secId": "0P0001L8KX",
+    "category": "HK Pop Culture / IP Retail (IFRS)"
+  },
+  {
+    "ticker": "GOOGL",
+    "name": "Alphabet Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000002HD",
+    "cik": "0001652044",
+    "category": "US 10-K Tech / Cloud / AI"
+  },
+  {
+    "ticker": "AMZN",
+    "name": "Amazon.com, Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000000B7",
+    "cik": "0001018724",
+    "category": "US 10-K Cloud / E-Commerce / Logistics"
+  },
+  {
+    "ticker": "META",
+    "name": "Meta Platforms, Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P0000W3KZ",
+    "cik": "0001326801",
+    "category": "US 10-K Digital Advertising / Social"
+  },
+  {
+    "ticker": "TSLA",
+    "name": "Tesla, Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P0000OQN8",
+    "cik": "0001318605",
+    "category": "US 10-K EV / Clean Energy / Tech"
+  },
+  {
+    "ticker": "JNJ",
+    "name": "Johnson & Johnson",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P0000032S",
+    "cik": "0000200406",
+    "category": "US 10-K Healthcare / Pharma"
+  },
+  {
+    "ticker": "PG",
+    "name": "The Procter & Gamble Company",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000004GV",
+    "cik": "0000080424",
+    "category": "US 10-K Consumer Staples"
+  },
+  {
+    "ticker": "UNH",
+    "name": "UnitedHealth Group Incorporated",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000005NU",
+    "cik": "0000731766",
+    "category": "US 10-K Managed Healthcare"
+  },
+  {
+    "ticker": "HD",
+    "name": "The Home Depot, Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000002OY",
+    "cik": "0000354950",
+    "category": "US 10-K Home Improvement Retail"
+  },
+  {
+    "ticker": "LLY",
+    "name": "Eli Lilly and Company",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000001WJ",
+    "cik": "0000059478",
+    "category": "US 10-K Healthcare / Biotechnology"
+  },
+  {
+    "ticker": "ABBV",
+    "name": "AbbVie Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P0000XPGW",
+    "cik": "0001551152",
+    "category": "US 10-K Healthcare / BioPharma"
+  },
+  {
+    "ticker": "MRK",
+    "name": "Merck & Co., Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000003KE",
+    "cik": "0000310158",
+    "category": "US 10-K Healthcare / Oncology"
+  },
+  {
+    "ticker": "PEP",
+    "name": "PepsiCo, Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000004B0",
+    "cik": "0000077476",
+    "category": "US 10-K Consumer Beverages / Snacks"
+  },
+  {
+    "ticker": "CVX",
+    "name": "Chevron Corporation",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P00000185",
+    "cik": "0000093410",
+    "category": "US 10-K Integrated Energy"
+  },
+  {
+    "ticker": "XOM",
+    "name": "Exxon Mobil Corporation",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P00000220",
+    "cik": "0000034088",
+    "category": "US 10-K Integrated Energy / Petrochemical"
+  },
+  {
+    "ticker": "WMT",
+    "name": "Walmart Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000005UH",
+    "cik": "0000104169",
+    "category": "US 10-K Global Retail"
+  },
+  {
+    "ticker": "COST",
+    "name": "Costco Wholesale Corporation",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000001IK",
+    "cik": "0000909832",
+    "category": "US 10-K Membership Warehouse Club"
+  },
+  {
+    "ticker": "BAC",
+    "name": "Bank of America Corporation",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000000PA",
+    "cik": "0000070858",
+    "category": "US 10-K Commercial Banking"
+  },
+  {
+    "ticker": "WFC",
+    "name": "Wells Fargo & Company",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000005WD",
+    "cik": "0000072971",
+    "category": "US 10-K Commercial Banking"
+  },
+  {
+    "ticker": "MS",
+    "name": "Morgan Stanley",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000003PC",
+    "cik": "0000895421",
+    "category": "US 10-K Investment Bank / Wealth"
+  },
+  {
+    "ticker": "GS",
+    "name": "The Goldman Sachs Group, Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000002H5",
+    "cik": "0000886982",
+    "category": "US 10-K Investment Banking / Trading"
+  },
+  {
+    "ticker": "CAT",
+    "name": "Caterpillar Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P0000014I",
+    "cik": "0000018230",
+    "category": "US 10-K Heavy Machinery / Industrials"
+  },
+  {
+    "ticker": "GE",
+    "name": "General Electric Company",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000002DO",
+    "cik": "0000040545",
+    "category": "US 10-K Aerospace / Defense / Energy"
+  },
+  {
+    "ticker": "V",
+    "name": "Visa Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P0000CPCP",
+    "cik": "0001403161",
+    "category": "US 10-K Global Payment Network"
+  },
+  {
+    "ticker": "MA",
+    "name": "Mastercard Incorporated",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P00005U6B",
+    "cik": "0001141391",
+    "category": "US 10-K Global Payment Network"
+  },
+  {
+    "ticker": "MCD",
+    "name": "McDonald's Corporation",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000003IJ",
+    "cik": "0000063908",
+    "category": "US 10-K Consumer Services / Restaurant Franchise"
+  },
+  {
+    "ticker": "INTC",
+    "name": "Intel Corporation",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000002X8",
+    "cik": "0000050863",
+    "category": "US 10-K Semiconductor / IDM"
+  },
+  {
+    "ticker": "CSCO",
+    "name": "Cisco Systems, Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P0000019Y",
+    "cik": "0000858877",
+    "category": "US 10-K Networking Equipment"
+  },
+  {
+    "ticker": "NFLX",
+    "name": "Netflix, Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000003UP",
+    "cik": "0001065280",
+    "category": "US 10-K Streaming Media"
+  },
+  {
+    "ticker": "ABT",
+    "name": "Abbott Laboratories",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P0000003P",
+    "cik": "0000001800",
+    "category": "US 10-K Healthcare Devices / Diagnostics"
+  },
+  {
+    "ticker": "ORCL",
+    "name": "Oracle Corporation",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P0000043L",
+    "cik": "0001341439",
+    "category": "US 10-K Enterprise Database / Cloud"
+  },
+  {
+    "ticker": "CRM",
+    "name": "Salesforce, Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000004T1",
+    "cik": "0001108524",
+    "category": "US 10-K SaaS / Enterprise CRM"
+  },
+  {
+    "ticker": "PFE",
+    "name": "Pfizer Inc.",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000004C0",
+    "cik": "0000078003",
+    "category": "US 10-K Biopharma / Vaccines"
+  },
+  {
+    "ticker": "PDD",
+    "name": "PDD Holdings Inc.",
+    "market": "us",
+    "form": "20-F",
+    "secId": "0P0001DZXT",
+    "cik": "0001737806",
+    "reportingCurrency": "CNY",
+    "category": "US 20-F E-Commerce / Consumer Tech"
+  },
+  {
+    "ticker": "JD",
+    "name": "JD.com, Inc.",
+    "market": "us",
+    "form": "20-F",
+    "secId": "0P000132LM",
+    "cik": "0001549802",
+    "reportingCurrency": "CNY",
+    "category": "US 20-F Supply Chain / E-Commerce"
+  },
+  {
+    "ticker": "NTES",
+    "name": "NetEase, Inc.",
+    "market": "us",
+    "form": "20-F",
+    "secId": "0P000003UF",
+    "cik": "0001110646",
+    "reportingCurrency": "CNY",
+    "category": "US 20-F Online Gaming / Digital Media"
+  },
+  {
+    "ticker": "BIDU",
+    "name": "Baidu, Inc.",
+    "market": "us",
+    "form": "20-F",
+    "secId": "0P000000OE",
+    "cik": "0001329099",
+    "reportingCurrency": "CNY",
+    "category": "US 20-F AI / Search / Autonomous Driving"
+  },
+  {
+    "ticker": "SE",
+    "name": "Sea Limited",
+    "market": "us",
+    "form": "20-F",
+    "secId": "0P0001BRQ3",
+    "cik": "0001703399",
+    "reportingCurrency": "USD",
+    "category": "US 20-F Southeast Asia Gaming / E-Commerce"
+  },
+  {
+    "ticker": "AZN",
+    "name": "AstraZeneca PLC",
+    "market": "us",
+    "form": "20-F",
+    "secId": "0P0000CAZC",
+    "cik": "0000901832",
+    "reportingCurrency": "USD",
+    "category": "US 20-F Biopharma / Oncology"
+  },
+  {
+    "ticker": "SAP",
+    "name": "SAP SE",
+    "market": "us",
+    "form": "20-F",
+    "secId": "0P00009QRW",
+    "cik": "0001000184",
+    "reportingCurrency": "EUR",
+    "category": "US 20-F Enterprise Software / ERP"
+  },
+  {
+    "ticker": "LIN",
+    "name": "Linde plc",
+    "market": "us",
+    "form": "10-K",
+    "secId": "0P000004FA",
+    "cik": "0001707925",
+    "category": "US 10-K Industrial Gases / Chemicals"
+  },
+  {
+    "ticker": "BP",
+    "name": "BP p.l.c.",
+    "market": "us",
+    "form": "20-F",
+    "secId": "0P000000NV",
+    "cik": "0000313807",
+    "reportingCurrency": "USD",
+    "category": "US 20-F Integrated Energy"
+  },
+  {
+    "ticker": "SHEL",
+    "name": "Shell plc",
+    "market": "us",
+    "form": "20-F",
+    "secId": "0P00007OU3",
+    "cik": "0001306965",
+    "reportingCurrency": "USD",
+    "category": "US 20-F Integrated Energy / LNG"
+  },
+  {
+    "ticker": "TTE",
+    "name": "TotalEnergies SE",
+    "market": "us",
+    "form": "20-F",
+    "secId": "0P0000C2SQ",
+    "cik": "0000879764",
+    "reportingCurrency": "USD",
+    "category": "US 20-F Multi-Energy Global Major"
+  },
+  {
+    "ticker": "CNQ",
+    "name": "Canadian Natural Resources Limited",
+    "market": "us",
+    "form": "40-F",
+    "secId": "0P0000011I",
+    "cik": "0001017413",
+    "reportingCurrency": "CAD",
+    "category": "US 40-F Canadian Oil Sands & E&P"
+  },
+  {
+    "ticker": "RY",
+    "name": "Royal Bank of Canada",
+    "market": "us",
+    "form": "40-F",
+    "secId": "0P0000687Q",
+    "cik": "0001000275",
+    "reportingCurrency": "CAD",
+    "category": "US 40-F Major Canadian Commercial Bank"
+  },
+  {
+    "ticker": "TD",
+    "name": "The Toronto-Dominion Bank",
+    "market": "us",
+    "form": "40-F",
+    "secId": "0P00006899",
+    "cik": "0000947263",
+    "reportingCurrency": "CAD",
+    "category": "US 40-F North American Banking"
+  },
+  {
+    "ticker": "000651",
+    "name": "格力电器",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P00007WWE",
+    "category": "A-Share CAS HVAC / White Goods"
+  },
+  {
+    "ticker": "000895",
+    "name": "双汇发展",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P00007XQ9",
+    "category": "A-Share CAS Meat Processing / Consumer Goods"
+  },
+  {
+    "ticker": "000725",
+    "name": "京东方A",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P00007XN8",
+    "category": "A-Share CAS Display Panels / High CapEx"
+  },
+  {
+    "ticker": "000009",
+    "name": "中国宝安",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P00007WQJ",
+    "category": "A-Share CAS Conglomerate / High Tech Materials"
+  },
+  {
+    "ticker": "000338",
+    "name": "潍柴动力",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P00009G1U",
+    "category": "A-Share CAS Heavy Duty Engines / Commercial Vehicles"
+  },
+  {
+    "ticker": "000157",
+    "name": "中联重科",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P00007WS6",
+    "category": "A-Share CAS Construction Machinery"
+  },
+  {
+    "ticker": "002352",
+    "name": "顺丰控股",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P0000NHEB",
+    "category": "A-Share CAS Express Logistics"
+  },
+  {
+    "ticker": "000060",
+    "name": "中金岭南",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P00007WRL",
+    "category": "A-Share CAS Non-ferrous Metals"
+  },
+  {
+    "ticker": "000786",
+    "name": "北新建材",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P00007XO8",
+    "category": "A-Share CAS Gypsum Board / Building Materials"
+  },
+  {
+    "ticker": "601857",
+    "name": "中国石油",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P00009VQM",
+    "category": "A-Share CAS Oil & Gas Exploration / Refining"
+  },
+  {
+    "ticker": "600900",
+    "name": "长江电力",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P00007XKW",
+    "category": "A-Share CAS Clean Hydropower / Regulated Utility"
+  },
+  {
+    "ticker": "600276",
+    "name": "恒瑞医药",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P00007X5S",
+    "category": "A-Share CAS Innovative Pharmaceuticals"
+  },
+  {
+    "ticker": "601318",
+    "name": "中国平安",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P00009G1T",
+    "category": "A-Share CAS Integrated Insurance & Financial Group"
+  },
+  {
+    "ticker": "000858",
+    "name": "五粮液",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P00007XPM",
+    "category": "A-Share CAS Premium Liquor / Consumer"
+  },
+  {
+    "ticker": "603288",
+    "name": "海天味业",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P00011X4L",
+    "category": "A-Share CAS Condiments / FMCG"
+  },
+  {
+    "ticker": "688981",
+    "name": "中芯国际",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P0001KCDM",
+    "category": "A-Share CAS Foundry / Semiconductor",
+    "reportingCurrency": "USD"
+  },
+  {
+    "ticker": "002594",
+    "name": "比亚迪",
+    "market": "cn",
+    "form": "A-Share CAS",
+    "secId": "0P0000TLIB",
+    "category": "A-Share CAS New Energy Vehicles / Batteries"
+  },
+  {
+    "ticker": "0168.HK",
+    "name": "Tsingtao Brewery",
+    "market": "hk",
+    "form": "HK IFRS/CAS",
+    "secId": "0P00009RSO",
+    "category": "HK Beer & Beverages FMCG"
+  },
+  {
+    "ticker": "0386.HK",
+    "name": "Sinopec Corp",
+    "market": "hk",
+    "form": "HK IFRS/CAS",
+    "secId": "0P00009RX7",
+    "category": "HK Refining / Petrochemicals"
+  },
+  {
+    "ticker": "0268.HK",
+    "name": "Kingdee International Software",
+    "market": "hk",
+    "form": "HK IFRS",
+    "secId": "0P00009RUU",
+    "category": "HK Enterprise Cloud ERP / SaaS"
+  },
+  {
+    "ticker": "0177.HK",
+    "name": "Jiangsu Expressway",
+    "market": "hk",
+    "form": "HK IFRS/CAS",
+    "secId": "0P00009RSW",
+    "category": "HK Toll Roads / Infrastructure"
+  },
+  {
+    "ticker": "0317.HK",
+    "name": "CSSC Offshore Marine",
+    "market": "hk",
+    "form": "HK IFRS/CAS",
+    "secId": "0P00009RVV",
+    "category": "HK Shipbuilding / Marine Engineering"
+  },
+  {
+    "ticker": "1810.HK",
+    "name": "Xiaomi Corporation",
+    "market": "hk",
+    "form": "HK IFRS",
+    "secId": "0P0001DXNO",
+    "category": "HK Consumer Tech / Smart EV"
+  },
+  {
+    "ticker": "0941.HK",
+    "name": "China Mobile Limited",
+    "market": "hk",
+    "form": "HK IFRS",
+    "secId": "0P00009S4L",
+    "category": "HK Telecommunications Carrier"
+  }
+]

@@ -31,6 +31,11 @@ import path from "node:path";
 import prisma from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { backfillCompanyFinancialsFast } from "./backfill-company-financials-fast";
+import { CN_HK_SEEDS } from "./lib/cn-hk-company-seeds";
+import {
+  resolveHkCurrencyFromAnnualReport,
+  resolveHkCurrencyViaYfinance,
+} from "./lib/cn-hk-currency-resolve";
 
 type Market = "us" | "cn" | "hk";
 
@@ -108,12 +113,26 @@ async function resolveCompanyCurrency(entity: EntityCandidate): Promise<string> 
   if (entity.market === "us") return "USD";
   if (entity.market === "cn") return "CNY";
 
+  // Check manual seed override
+  const seed = CN_HK_SEEDS[entity.ticker];
+  if (seed?.currency) return seed.currency;
+
   // For HK, inspect existing Financial record unit
   const existingFin = await prisma.financial.findFirst({
     where: { entityId: entity.id },
     select: { unit: true },
   });
   if (existingFin?.unit) return existingFin.unit;
+
+  // Extract from stored annual report text if available
+  try {
+    const fromReport = await resolveHkCurrencyFromAnnualReport(entity.id);
+    if (fromReport) return fromReport;
+  } catch {}
+
+  // Fallback to Yahoo Finance metadata
+  const fromYf = resolveHkCurrencyViaYfinance(entity.ticker);
+  if (fromYf) return fromYf;
 
   return "HKD";
 }

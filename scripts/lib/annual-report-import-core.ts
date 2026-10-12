@@ -9,6 +9,7 @@ import { hasChineseText, issuerKey, normalizeEnglishName } from "../../src/lib/c
 import { normalizeCik, getCikLookupVariants } from "../../src/lib/cik";
 import { translateCompanyNameToZh, upsertNameMapEntries } from "./company-name-zh";
 import {
+  fetchWithRetry,
   mapSectorFromSic,
   type SecCompanyProfile,
 } from "./sec-company-profile";
@@ -108,8 +109,8 @@ export function normalizeTicker(ticker: string): string {
 
 export async function getCompanyFacts(cik: string) {
   const padded = cik.padStart(10, "0");
-  const res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${padded}.json`, { headers: SEC_HEADERS });
-  if (!res.ok) throw new Error(`CompanyFacts fetch failed for CIK ${cik}`);
+  const res = await fetchWithRetry(`https://data.sec.gov/api/xbrl/companyfacts/CIK${padded}.json`, { headers: SEC_HEADERS });
+  if (!res.ok) throw new Error(`CompanyFacts fetch failed for CIK ${cik} (HTTP ${res.status})`);
   return res.json() as Promise<{
     facts?: {
       "us-gaap"?: Record<string, { units?: Record<string, QuarterFact[]> }>;

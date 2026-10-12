@@ -6,6 +6,7 @@ import type {
   FinancialYearItems,
 } from "@/lib/company-financial-dashboard";
 import { FINANCIAL_DATA_START_YEAR } from "@/lib/financial-period";
+import { currencyDisplayName } from "@/lib/currency";
 
 export interface CompanyFinancialDashboardProps {
   dashboard: DashboardType;
@@ -131,6 +132,9 @@ export function CompanyFinancialDashboardComponent({
       <section className="company-financial-trends" aria-labelledby="financial-trends-title">
         <div className="company-financial-trend-head">
           <h3 id="financial-trends-title">关键指标趋势</h3>
+          {dashboard.currency ? (
+            <span>报告币种：{currencyDisplayName(dashboard.currency)}</span>
+          ) : null}
         </div>
 
         {dashboard.trends.length ? (
@@ -150,9 +154,12 @@ export function CompanyFinancialDashboardComponent({
       <section className="company-financial-history" aria-labelledby="financial-history-title">
         <div className="company-financial-trend-head">
           <h3 id="financial-history-title">年度明细</h3>
+          {dashboard.currency ? (
+            <span>报告币种：{currencyDisplayName(dashboard.currency)} · 金额单位：亿元</span>
+          ) : null}
         </div>
         <p className="company-financial-method-note">
-          明细 FY {yearRange}（{displayYears.length} 年）；缺少必要输入时显示“—”，同比不跨年补算，不以零填补。
+          明细 FY {yearRange}（{displayYears.length} 年）{dashboard.currency ? ` · 报告币种：${currencyDisplayName(dashboard.currency)}` : ""}；缺少必要输入时显示“—”，同比不跨年补算，不以零填补。
         </p>
 
         {dashboard.rows.length ? (

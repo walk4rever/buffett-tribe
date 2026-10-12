@@ -929,6 +929,32 @@ RACE 是在 SEC inline XBRL 这种**已经标准化**的格式上花了数天、
 - **Phase 3**：`scripts/generate-quarterly-flash.ts` + `CompanyAnalysis.quarterlyFlash` 前端速评卡片上线。
 - **Phase 4**：`scripts/update-company.ts` 跨市场增量检测管线泛化 + 财报季 cron 自动调度。
 
+### 法定三张表标准化词典与晨星 100 家基准标定（2026-10-12 定案，v0.47.7）
+
+为了彻底解决此前财务事实入库仅覆盖 12 个基础科目、银行业存贷款/利差缺失、多币种 ADR 错误标记为美元、会计科目长尾缺失等问题，系统完成了跨市场 35 项法定标准三张表的全面规范化与晨星黄金测试集校准：
+
+#### 1. 35 项法定标准科目词典 (`CANONICAL_FINANCIAL_DICTIONARY`)
+- **利润表（Income Statement）**：Revenue, CostOfRevenue, GrossProfit, RnDExpense, SGAExpense, OperatingIncome, TotalProfit, IncomeTaxExpense, NetIncome, NetInterestIncome（净利息收入）, NonInterestIncome（非利息收入）, InterestIncome, InterestExpense, EPSBasic, EPSDiluted。
+- **资产负债表（Balance Sheet）**：CashAndCashEquivalents, ShortTermInvestments, AccountsReceivable, Inventories, CurrentAssets, TotalAssets, AccountsPayable, ShortTermDebt, CurrentLiabilities, LongTermDebt, TotalLiabilities, ShareholdersEquity, NetLoans（发放贷款及垫款净额）, TotalDeposits（客户存款总额）, Goodwill, IntangibleAssets。
+- **现金流量表（Cash Flow）**：OperatingCashFlow, CapEx, FreeCashFlow, DividendsPaid, ShareRepurchaseAmt。
+
+#### 2. 晨星（Morningstar）100 家覆盖标定基准
+- 建立 100 家跨美/中/港多行业覆盖的测试套件（`scripts/lib/morningstar-benchmark-suite.json`，含传统制造、科技 SaaS、欧股/加股 ADR、银行金融、能源公用、消费零售），基于晨星专业研报事实进行跨期比对校准。
+- 经过三轮递进优化，全库平均对齐率由 59.7% 提升至 **88.33%**，工业级可用（≥80%）标的达 88 家，15 家达成 100% 绝对一致。
+
+#### 3. 5 大标准会计恒等式自动兜底推导
+在入库管道中固化标准会计恒等式推导，消除数据源长尾漏报：
+1. $TotalLiabilities = TotalAssets - ShareholdersEquity$
+2. $CostOfRevenue = Revenue - GrossProfit$
+3. $NetInterestIncome = InterestIncome - InterestExpense$（金融业）
+4. $NonInterestIncome = Revenue - NetInterestIncome$（金融业）
+5. $IncomeTaxExpense = |TotalProfit - NetIncome|$
+
+#### 4. 多币种（Reporting Currency）动态保留与 Web 呈现
+- 美股/ADR SEC CompanyFacts 原生提取不再硬编码 USD，动态捕获 `EUR`, `CAD`, `CNY`, `DKK`, `TWD` 等法定报告币种并入库。
+- 前端币种前缀全景拓展（`€`, `C$`, `£`, `¥`, `kr`, `NT$`），表头显著展示报告币种 Badge（如 `报告币种：欧元 (EUR)`）。
+- 银行业专属仪表盘上线：为 JPM、工商银行等金融标的完整呈现净利息收入、非利息收入、贷款净额与客户存款。
+
 ### 技术方案（实际实现，非原计划伪代码）
 
 #### 数据库

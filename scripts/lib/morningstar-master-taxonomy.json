@@ -1,0 +1,4562 @@
+[
+  {
+    "dataPointId": "IFIS000000",
+    "label": "IncomeStatement",
+    "statement": "incomeStatement",
+    "level": 0,
+    "parents": [],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS000590",
+    "label": "Gross Profit",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001170",
+    "label": "Total Revenue",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS000000",
+      "IFIS000590"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001839",
+    "label": "Business Revenue",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001170"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS000200",
+    "label": "Cost of Revenue",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS000590"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003118",
+    "label": "Cost of Goods and Services",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS000200"
+    ],
+    "templates": [
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001220",
+    "label": "Operating Income/Expenses",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001700",
+    "label": "Selling, General and Administrative Expenses",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS001220",
+      "IFIS003143",
+      "IFIS003149"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001620",
+    "label": "Research and Development Expenses",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS001220"
+    ],
+    "templates": [
+      "Industrial"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001230",
+    "label": "Total Operating Profit/Loss",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001917",
+    "label": "Non-Operating Income/Expenses, Total",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS000930",
+    "label": "Total Net Finance Income/Expense",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS001917",
+      "IFIS003149"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS002367",
+    "label": "Net Interest Income/Expense",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS000930"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS200292",
+    "label": "Other Income/Expense, Non-Operating",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS001917"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001490",
+    "label": "Pretax Income",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001560",
+    "label": "Provision for Income Tax",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001110",
+    "label": "Net Income from Continuing Operations",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001977",
+    "label": "Net Income after Extraordinary Items and Discontinued Operations",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001090",
+    "label": "Net Income after Non-Controlling/Minority Interests",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001100",
+    "label": "Net Income Available to Common Stockholders",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS002230",
+    "label": "Diluted Net Income Available to Common Stockholders",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS002156",
+    "label": "Income Statement Supplemental Section",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003147",
+    "label": "Reported Normalized and Operating Income/Expense Supplemental Section",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS002156"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003203",
+    "label": "Total Revenue as Reported, Supplemental",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS003147"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003137",
+    "label": "Operating Expense as Reported, Supplemental",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS003147"
+    ],
+    "templates": [
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003138",
+    "label": "Total Operating Profit/Loss as Reported, Supplemental",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS003147"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS002229",
+    "label": "Reported Normalized Income",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS003147"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS002303",
+    "label": "Reported Effective Tax Rate",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS003147"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFES000000",
+    "label": "EpsAndWaso",
+    "statement": "incomeStatement",
+    "level": 0,
+    "parents": [],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS000150",
+    "label": "Basic Weighted Average Shares Outstanding",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFES000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS000330",
+    "label": "Diluted Weighted Average Shares Outstanding",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFES000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "ORISZ00026",
+    "label": "Total Dividend Per Share",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFES000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "ORISZ00021",
+    "label": "Regular Dividend Per Share Calc",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "ORISZ00026"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS101199",
+    "label": "Reported Normalized Diluted EPS",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFES000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "FinancialServices_US",
+      "Industrial",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS000000",
+    "label": "BalanceSheet",
+    "statement": "balanceSheet",
+    "level": 0,
+    "parents": [],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002270",
+    "label": "Total Assets",
+    "statement": "balanceSheet",
+    "level": 1,
+    "parents": [
+      "IFBS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS000470",
+    "label": "Total Current Assets",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS000350",
+    "label": "Cash, Cash Equivalents and Short Term Investments",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000470"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS001130",
+    "label": "Inventories",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000470",
+      "IFBS002270"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS200660",
+    "label": "Trade and Other Receivables, Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000470"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS001550",
+    "label": "Other Current Assets",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000470"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002330",
+    "label": "Total Non-Current Assets",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS001450",
+    "label": "Net Property, Plant and Equipment",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002270",
+      "IFBS002330"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS001020",
+    "label": "Net Intangible Assets",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002270",
+      "IFBS002330"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002310",
+    "label": "Total Long Term Investments",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002330"
+    ],
+    "templates": [
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS000700",
+    "label": "Deferred Tax Assets, Non-Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000670",
+      "IFBS002330"
+    ],
+    "templates": [
+      "Bank_CN",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS001650",
+    "label": "Other Non-Current Assets",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002330"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002646",
+    "label": "Total Liabilities",
+    "statement": "balanceSheet",
+    "level": 1,
+    "parents": [
+      "IFBS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS000500",
+    "label": "Total Current Liabilities",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002646"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002716",
+    "label": "Payables and Accrued Expenses, Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000500"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS100734",
+    "label": "Financial Liabilities, Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000500"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS000610",
+    "label": "Deferred Liabilities, Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000500"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS001570",
+    "label": "Other Current Liabilities",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000500"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002647",
+    "label": "Total Non-Current Liabilities",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002646"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS100735",
+    "label": "Financial Liabilities, Non-Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002647"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS003143",
+    "label": "Tax Liabilities, Non-Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002647"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002805",
+    "label": "Deferred Liabilities, Non-Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002647"
+    ],
+    "templates": [
+      "Industrial"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002717",
+    "label": "Payables and Accrued Expenses, Non-Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002647"
+    ],
+    "templates": [
+      "Industrial"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002480",
+    "label": "Other Non-Current Liabilities",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002647"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002220",
+    "label": "Total Equity",
+    "statement": "balanceSheet",
+    "level": 1,
+    "parents": [
+      "IFBS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS200140",
+    "label": "Equity Attributable to Parent Stockholders",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002220"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS003308",
+    "label": "Paid in Capital",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS200140"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002100",
+    "label": "Retained Earnings/Accumulated Deficit",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS200140"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002737",
+    "label": "Reserves/Accumulated Comprehensive Income/Losses",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS200140"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000001",
+    "label": "Debt Maturity Schedule Total",
+    "statement": "balanceSheet",
+    "level": 1,
+    "parents": [
+      "IFBS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000002",
+    "label": "Debt due in Year 1",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000001"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000003",
+    "label": "Debt due in Year 2",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000001"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000004",
+    "label": "Debt due in Year 3",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000001"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000005",
+    "label": "Debt due in Year 4",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000001"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000006",
+    "label": "Debt due in Year 5",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000001"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000007",
+    "label": "Debt due Beyond",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000001"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000008",
+    "label": "Debt - Interests Charges and Other Adjustments",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000001"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000009",
+    "label": "Capital Lease Obligation Maturity Schedule Total",
+    "statement": "balanceSheet",
+    "level": 1,
+    "parents": [
+      "IFBS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000010",
+    "label": "Capital Lease due in Year 1",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000009"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000011",
+    "label": "Capital Lease due in Year 2",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000009"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000012",
+    "label": "Capital Lease due in Year 3",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000009"
+    ],
+    "templates": [
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000013",
+    "label": "Capital Lease due in Year 4",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000009"
+    ],
+    "templates": [
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000014",
+    "label": "Capital Lease due in Year 5",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000009"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000015",
+    "label": "Capital Lease due Beyond",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000009"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000016",
+    "label": "Capital Lease - Interests Charges and Other Adjustments",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000009"
+    ],
+    "templates": [
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000017",
+    "label": "Operating Lease Obligation Maturity Schedule Total",
+    "statement": "balanceSheet",
+    "level": 1,
+    "parents": [
+      "IFBS000000"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000018",
+    "label": "Operating Lease due in Year 1",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000017"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000019",
+    "label": "Operating Lease due in Year 2",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000017"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000020",
+    "label": "Operating Lease due in Year 3",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000017"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000021",
+    "label": "Operating Lease due in Year 4",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000017"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000022",
+    "label": "Operating Lease due in Year 5",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000017"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000023",
+    "label": "Operating Lease due Beyond",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000017"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000024",
+    "label": "Operating Lease - Interests Charges and Other Adjustments",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000017"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000025",
+    "label": "Other Contractual Obligations Maturity Schedule Total",
+    "statement": "balanceSheet",
+    "level": 1,
+    "parents": [
+      "IFBS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000026",
+    "label": "Other Contractual Obligations due in Year 1",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000025"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000028",
+    "label": "Other Contractual Obligations due in Year 3",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000025"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000030",
+    "label": "Other Contractual Obligations due in Year 5",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000025"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000031",
+    "label": "Other Contractual Obligations due Beyond",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000025"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000033",
+    "label": "Total Lease Liability",
+    "statement": "balanceSheet",
+    "level": 1,
+    "parents": [
+      "IFBS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000034",
+    "label": "Total Lease Liability - Due in year 1",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000033"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000035",
+    "label": "Total Lease Liability - Due in year 2",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000033"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000036",
+    "label": "Total Lease Liability - Due in year 3",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000033"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000037",
+    "label": "Total Lease Liability - Due in year 4",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000033"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000038",
+    "label": "Total Lease Liability - Due in year 5",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000033"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000039",
+    "label": "Total Lease Liability - Beyond",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000033"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000040",
+    "label": "Total Lease Liability - Interest Charges and Other Adjustments",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000033"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000041",
+    "label": "Total Contractual Obligations",
+    "statement": "balanceSheet",
+    "level": 1,
+    "parents": [
+      "IFBS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000042",
+    "label": "Total Contractual Obligations due in Year 1",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000041"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000043",
+    "label": "Total Contractual Obligations due in Year 2",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000041"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000044",
+    "label": "Total Contractual Obligations due in Year 3",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000041"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000045",
+    "label": "Total Contractual Obligations due in Year 4",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000041"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000046",
+    "label": "Total Contractual Obligations due in Year 5",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000041"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000047",
+    "label": "Total Contractual Obligations due Beyond",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000041"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000048",
+    "label": "Total Contractual Obligations - Interests Charges and Other Adjustments",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000041"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF000000",
+    "label": "CashFlow",
+    "statement": "cashFlow",
+    "level": 0,
+    "parents": [],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF000150",
+    "label": "Cash Flow from Operating Activities, Indirect",
+    "statement": "cashFlow",
+    "level": 1,
+    "parents": [
+      "IFCF000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001591",
+    "label": "Net Cash Flow from Continuing Operating Activities, Indirect",
+    "statement": "cashFlow",
+    "level": 2,
+    "parents": [
+      "IFCF000150"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF200620",
+    "label": "Cash Generated from Operating Activities",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001591"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF000140",
+    "label": "Cash Flow from Investing Activities",
+    "statement": "cashFlow",
+    "level": 1,
+    "parents": [
+      "IFCF000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001510",
+    "label": "Cash Flow from Continuing Investing Activities",
+    "statement": "cashFlow",
+    "level": 2,
+    "parents": [
+      "IFCF000140"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001330",
+    "label": "Purchase/Sale and Disposal of Property, Plant and Equipment, Net",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001510"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001300",
+    "label": "Purchase/Sale of Business, Net",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001510"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001320",
+    "label": "Purchase/Sale of Investments, Net",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001510"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFCF000910",
+    "label": "Other Investing Cash Flow",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001510"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFCF000130",
+    "label": "Cash Flow from Financing Activities",
+    "statement": "cashFlow",
+    "level": 1,
+    "parents": [
+      "IFCF000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001509",
+    "label": "Cash Flow from Continuing Financing Activities",
+    "statement": "cashFlow",
+    "level": 2,
+    "parents": [
+      "IFCF000130"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF000760",
+    "label": "Issuance of/Payments for Common Stock, Net",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001509"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF000770",
+    "label": "Issuance of/Repayments for Debt, Net",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001509"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF002150",
+    "label": "Cash Dividends and Interest Paid",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001509"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF000900",
+    "label": "Other Financing Cash Flow",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001509"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFCF000170",
+    "label": "Cash and Cash Equivalents, End of Period",
+    "statement": "cashFlow",
+    "level": 1,
+    "parents": [
+      "IFCF000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF000280",
+    "label": "Change in Cash",
+    "statement": "cashFlow",
+    "level": 2,
+    "parents": [
+      "IFCF000170"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF000160",
+    "label": "Cash and Cash Equivalents, Beginning of Period",
+    "statement": "cashFlow",
+    "level": 2,
+    "parents": [
+      "IFCF000170"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001730",
+    "label": "Cash Flow Supplemental Section",
+    "statement": "cashFlow",
+    "level": 1,
+    "parents": [
+      "IFCF000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF002210",
+    "label": "Change in Cash as Reported, Supplemental",
+    "statement": "cashFlow",
+    "level": 2,
+    "parents": [
+      "IFCF001730"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001580",
+    "label": "Income Tax Paid, Supplemental",
+    "statement": "cashFlow",
+    "level": 2,
+    "parents": [
+      "IFCF001730"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001731",
+    "label": "Interest Paid, Supplemental",
+    "statement": "cashFlow",
+    "level": 2,
+    "parents": [
+      "IFCF001730"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003119",
+    "label": "Depreciation & Amortization, Cost of Revenue",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS000200"
+    ],
+    "templates": [
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS101208",
+    "label": "Other Income/Expense, Operating",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS001220"
+    ],
+    "templates": [
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003104",
+    "label": "Other Expenses, Operating",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS101208"
+    ],
+    "templates": [
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS101192",
+    "label": "Other Finance Income/Expenses",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS000930"
+    ],
+    "templates": [
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001915",
+    "label": "Net Investment Income",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS001917"
+    ],
+    "templates": [
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS101191",
+    "label": "Income from Associates, Joint Ventures and Other Participating Interests",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001915",
+      "IFIS003142",
+      "IFIS003149"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Conglomerate_US",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001882",
+    "label": "Gain/Loss on Foreign Exchange",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001915"
+    ],
+    "templates": [
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS101189",
+    "label": "Irregular Income/Expenses",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS001917",
+      "IFIS003142",
+      "IFIS003149"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001856",
+    "label": "Disposal of Businesses",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS101189"
+    ],
+    "templates": [
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001877",
+    "label": "Asset Disposals",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS101189"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001892",
+    "label": "Impairment/Write Off/Write Down of Capital Assets",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS101189"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001887",
+    "label": "Goodwill Impairment/Write Off",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS101189"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001982",
+    "label": "Impairment/Write Off/Write Down of Other Assets",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS101189"
+    ],
+    "templates": [
+      "Bank_CN",
+      "FinancialServices_US",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS002098",
+    "label": "Merger and Acquisition Income/Expense",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS101189"
+    ],
+    "templates": [
+      "Bank_US",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001040",
+    "label": "Non-Controlling/Minority Interests",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Conglomerate_US",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001470",
+    "label": "Preferred/Other Stock Distribution",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "Bank_US",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS000020",
+    "label": "Preferred Stock Dividends",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS001470"
+    ],
+    "templates": [
+      "Bank_US",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003177",
+    "label": "Reported Normalized EBIT",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS003147"
+    ],
+    "templates": [
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003176",
+    "label": "Reported Normalized EBITDA",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS003147"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFIS101198",
+    "label": "Reported Normalized Basic EPS",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFES000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "FinancialServices_US",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002607",
+    "label": "Cash Restricted or Pledged, Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000470"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002631",
+    "label": "Derivative Investment and Hedging Assets, Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000470"
+    ],
+    "templates": [
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002959",
+    "label": "Regulatory Assets, Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000470"
+    ],
+    "templates": [
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS200060",
+    "label": "Cash Restricted or Pledged, Non-Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002330"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS001890",
+    "label": "Provisions, Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000500"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS003020",
+    "label": "Regulatory Liabilities, Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000500"
+    ],
+    "templates": [
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS001780",
+    "label": "Preferred Securities Outside Stock Equity",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002647"
+    ],
+    "templates": [
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS200130",
+    "label": "Other Equity Interest",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS200140"
+    ],
+    "templates": [
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFBS001381",
+    "label": "Non-Controlling/Minority Interests",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002220"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Conglomerate_US",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF200270",
+    "label": "Dividend Received, CFO Indirect",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001591"
+    ],
+    "templates": [
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF000061",
+    "label": "Capital Expenditure, Reported",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001510"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001629",
+    "label": "Payment for Loan Granted and Repayments Received, Net",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001510"
+    ],
+    "templates": [
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001310",
+    "label": "Purchase/Sale of Intangibles, Net",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001510"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001651",
+    "label": "Purchase/Sale of Equity Investments",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001510"
+    ],
+    "templates": [
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF002051",
+    "label": "Purchase/Sale of Other Non-Current Assets, Net",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001510"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFCF200390",
+    "label": "Dividends Received/Paid, CFI",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001510"
+    ],
+    "templates": [
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF000790",
+    "label": "Issuance of/Payments for Preferred Stock, Net",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001509"
+    ],
+    "templates": [
+      "Bank_US",
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001615",
+    "label": "Net Movement in Non-Controlling/Minority Interest",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001509"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF100478",
+    "label": "Cash Dividends Paid to Non-Controlling/Minority Interests",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001509"
+    ],
+    "templates": [
+      "Industrial_Energy"
+    ]
+  },
+  {
+    "dataPointId": "IFCF000650",
+    "label": "Effect of Exchange Rate Changes",
+    "statement": "cashFlow",
+    "level": 2,
+    "parents": [
+      "IFCF000170"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "FinancialServices_US",
+      "Industrial_Energy",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001120",
+    "label": "Net Interest Income",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS001170"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS101200",
+    "label": "Interest Income, Revenue",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001120",
+      "IFIS001130"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS000730",
+    "label": "Interest Expense, Cost of Revenue",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001120"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003140",
+    "label": "Non-Interest Income",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS001170"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS000460",
+    "label": "Net Fees and Commission Income",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS003140"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001130",
+    "label": "Net Investment Income, Revenue",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001170",
+      "IFIS003140"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001913",
+    "label": "Net Foreign Exchange Gain/Loss, Revenue",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001170",
+      "IFIS003140"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS000960",
+    "label": "Net Investment Banking Income",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS003140"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001958",
+    "label": "Rental Income, Revenue",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001170",
+      "IFIS003140"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS002228",
+    "label": "Other Revenue",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001170",
+      "IFIS003140"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS200280",
+    "label": "Provision and Impairment for Loan Losses and Credit Risk",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003142",
+    "label": "Non-Interest Expenses and Other Income",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003143",
+    "label": "Non-Interest Expenses",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS003142"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003151",
+    "label": "Other Non-Interest Expenses",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS003143"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS002698",
+    "label": "Litigation Income/Expense",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS101189"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003107",
+    "label": "Other Irregular Income/Expenses",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS101189"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS002046",
+    "label": "Other Distributions",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS001470"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003204",
+    "label": "Reported Non-Interest Income",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS003147"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS200342",
+    "label": "Reported Non-Interest Expense",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS003147"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS000320",
+    "label": "Cash and Cash Equivalents",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS000300",
+    "label": "Cash",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000320"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002667",
+    "label": "Deposits with Banks and Other Financial Institutions",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000320"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002613",
+    "label": "Central Bank Funds Sold, Securities Purchased under Reverse Repurchase Agreements and Securities Borrowed",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002779",
+    "label": "Central Bank Funds Sold and Securities Purchased under Reverse Repurchase Agreements",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002613"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002742",
+    "label": "Securities Borrowed",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002613"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS200330",
+    "label": "Assets Pledged as Collateral Subject to Sale or Repledging",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS100702",
+    "label": "Loans and Advances",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270",
+      "IFBS003343"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS003322",
+    "label": "Gross Loans and Advances",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS100702"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS000180",
+    "label": "Loan Loss Allowance/Adjustment",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS100702"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002681",
+    "label": "Loans Held-for-Sale",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS003343",
+    "label": "Total Investments",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS003315",
+    "label": "Investment in Financial Assets",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS003343"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002728",
+    "label": "Receivables",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS200661",
+    "label": "Trade/Accounts Receivable",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002728"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS001050",
+    "label": "Gross Property, Plant and Equipment",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS001450"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002655",
+    "label": "Gross Goodwill and Other Intangible Assets",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS001020"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS001530",
+    "label": "Other Assets",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002611",
+    "label": "Central Bank Funds Purchased, Securities Sold under Reverse Repurchase Agreements and Securities Loaned",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002646"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002300",
+    "label": "Total Deposits",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002646"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002689",
+    "label": "Non-Interest-Bearing/Demand Deposits",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002300"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002664",
+    "label": "Interest-Bearing/Time/Savings Deposits",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002300"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS100710",
+    "label": "Trading and Financial Liabilities",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002646"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002839",
+    "label": "Financial Liabilities Held for Trading",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS100710"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS003339",
+    "label": "Debt and Capital Lease Obligations",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS100710"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002715",
+    "label": "Payables and Accrued Expenses",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002646"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002867",
+    "label": "Trade and Other Payables",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002715"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002530",
+    "label": "Other Liabilities",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002646"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002777",
+    "label": "Stock Options/Warrants/DeferredShares/ConvertibleDebentures",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS200140"
+    ],
+    "templates": [
+      "Bank_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF200010",
+    "label": "Cash Flow from/Used in Operating Activities, Direct",
+    "statement": "cashFlow",
+    "level": 1,
+    "parents": [
+      "IFCF000000"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001951",
+    "label": "Originations and Purchases of Loans Held for Sale",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001591"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001952",
+    "label": "Proceeds from Sales of Loans Held for Sale",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001591"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFCF200290",
+    "label": "Other Operating Cash Flow",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001591"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001130",
+    "label": "Change in Central Bank Funds Sold, Securities Purchased under REPOs and Securities Borrowed",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001510"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001655",
+    "label": "Receipts and Payments for Loans, Net",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001510"
+    ],
+    "templates": [
+      "Bank_US",
+      "Conglomerate_US"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001640",
+    "label": "Change in Central Bank Funds Purchased, Securities Sold under REPOs and Securities Loaned",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001509"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001678",
+    "label": "Change in Deposits",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001509"
+    ],
+    "templates": [
+      "Bank_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001855",
+    "label": "Depreciation, Amortization and Depletion",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001220",
+      "IFIS003143",
+      "IFIS003149"
+    ],
+    "templates": [
+      "Bank_CN",
+      "FinancialServices_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001370",
+    "label": "Taxes Other Than Income Taxes",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS003143"
+    ],
+    "templates": [
+      "Bank_CN"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003126",
+    "label": "Other Income/Expenses",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS003142",
+      "IFIS003149"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS000310",
+    "label": "Cash Equivalents",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000320"
+    ],
+    "templates": [
+      "Bank_CN"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002609",
+    "label": "Due from Banks",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000320"
+    ],
+    "templates": [
+      "Bank_CN"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002608",
+    "label": "Deposits and Balances at Central Banks",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000320"
+    ],
+    "templates": [
+      "Bank_CN"
+    ]
+  },
+  {
+    "dataPointId": "IFBS001320",
+    "label": "Long Term Equity Investments",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS003343"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002709",
+    "label": "Other Receivables",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002728"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Conglomerate_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002567",
+    "label": "Accumulated Depreciation and Impairment",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS001450"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS100681",
+    "label": "Investment Properties and Properties Held for Development",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002656",
+    "label": "Gross Investment Properties and Properties Held for Development",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS100681"
+    ],
+    "templates": [
+      "Bank_CN"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002564",
+    "label": "Accumulated Depreciation of Investment Properties and Properties Held for Development",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS100681"
+    ],
+    "templates": [
+      "Bank_CN"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002549",
+    "label": "Accumulated Amortization and Impairment",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS001020"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS000670",
+    "label": "Deferred Tax Assets",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS200350",
+    "label": "Advances/Borrowings from Central Banks",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002646"
+    ],
+    "templates": [
+      "Bank_CN"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002610",
+    "label": "Central Bank Funds Purchased and Securities Sold under Reverse Repurchase Agreements",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002611"
+    ],
+    "templates": [
+      "Bank_CN"
+    ]
+  },
+  {
+    "dataPointId": "IFBS100707",
+    "label": "Deposits by Banks and Instituitions",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002300"
+    ],
+    "templates": [
+      "Bank_CN"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002856",
+    "label": "Other Deposits",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002300"
+    ],
+    "templates": [
+      "Bank_CN"
+    ]
+  },
+  {
+    "dataPointId": "IFBS100692",
+    "label": "Derivative and Hedging Liabilities",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS100710"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS200500",
+    "label": "Deferred Income/Customer Advances",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002646"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS000660",
+    "label": "Deferred Income/Customer Advances/Billings in Excess of Cost, Non-Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS200500"
+    ],
+    "templates": [
+      "Bank_CN"
+    ]
+  },
+  {
+    "dataPointId": "IFBS003147",
+    "label": "Tax Liabilities",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002646"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS200530",
+    "label": "Deferred Tax Liabilities",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS003147"
+    ],
+    "templates": [
+      "Bank_CN",
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS003313",
+    "label": "Equity Attributable to Holders of Perpetual Capital Securities",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS200140"
+    ],
+    "templates": [
+      "Bank_CN"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001590",
+    "label": "Net Cash Flow from Continuing Operating Activities, Direct",
+    "statement": "cashFlow",
+    "level": 2,
+    "parents": [
+      "IFCF200010"
+    ],
+    "templates": [
+      "Bank_CN"
+    ]
+  },
+  {
+    "dataPointId": "IFCF200020",
+    "label": "Cash Receipts from Operating Activities, Direct",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001590"
+    ],
+    "templates": [
+      "Bank_CN"
+    ]
+  },
+  {
+    "dataPointId": "IFCF200080",
+    "label": "Cash Payments from Operating Activities, Direct",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001590"
+    ],
+    "templates": [
+      "Bank_CN"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001480",
+    "label": "Net Premiums Earned",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS001170"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001150",
+    "label": "Net Premiums Written",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001480"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS101201",
+    "label": "Fees and Commission Income",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS001170"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS000520",
+    "label": "Realized Gain/Loss on Investments, Revenue",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001130"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS200130",
+    "label": "Impairment/Reversals of Investments, Revenue",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001130"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS200120",
+    "label": "Gains/Loss on Derivatives, Revenue",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001130"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS000350",
+    "label": "Dividend Income, Revenue",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001130"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS002227",
+    "label": "Other Investment Income, Revenue",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001130"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003149",
+    "label": "Total Expenses",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS101202",
+    "label": "Fees and Commission Expense",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS003149"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001420",
+    "label": "Benefits,Claims and Loss Adjustment Expense, Net",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS003149"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS002222",
+    "label": "Policyholder Future Benefits and Claims, Net",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001420"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001840",
+    "label": "Changes in Insurance Liabilities Provisions/Reserves, Net",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001420"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003150",
+    "label": "Other Insurance Expenses",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001420"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS200230",
+    "label": "Expenses on Investment Contract",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001420"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001380",
+    "label": "Deferred Policy Acquisition Amortization Expense",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS003149"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS101183",
+    "label": "Staff Costs",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001700"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001600",
+    "label": "Rent Expense",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001700"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS000250",
+    "label": "Depreciation and Amortization",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001855"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS000680",
+    "label": "Restructuring and Reorganization Income/Expense",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS101189"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001970",
+    "label": "Tax attributable to policyholders' returns",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS003149"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002738",
+    "label": "Restricted Cash and Cash Equivalents",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002780",
+    "label": "Total Deposits Assets",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002872",
+    "label": "Term Deposits",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002780"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002723",
+    "label": "Prepayments",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS200550",
+    "label": "Reinsurance Assets",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS001500",
+    "label": "Notes Receivable",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002728"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002762",
+    "label": "Taxes Receivable",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002728"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002542",
+    "label": "Accrued Income",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002728"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002700",
+    "label": "Other Insurance Contract Assets",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS000620",
+    "label": "Deferred Policy Acquisition Costs",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS000720",
+    "label": "Pension and Other Employee Benefits, Non-Current",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002599",
+    "label": "Assets Held for Sale/Discontinued Operations",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS003342",
+    "label": "Securities Sold under REPOs and Securities Loaned",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002646"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002430",
+    "label": "Unearned Premiums Liabilities/Reserves",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002646"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS003329",
+    "label": "Reserves for Benefits,Claims and Losses Expense",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002646"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS200610",
+    "label": "Insurance Contract Liabilities & Reserves",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS003329"
+    ],
+    "templates": [
+      "Conglomerate_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS200650",
+    "label": "Investment Contract Liabilities",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS003329"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002000",
+    "label": "Reinsurance Liabilities",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002646"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS100715",
+    "label": "Provisions",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002646"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002672",
+    "label": "Liabilities Held for Sale/Discontinued Operations",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002646"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000027",
+    "label": "Other Contractual Obligations due in Year 2",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000025"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "DMBS000029",
+    "label": "Other Contractual Obligations due in Year 4",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "DMBS000025"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF100464",
+    "label": "Interest Paid, CFO Indirect",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001591"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF100463",
+    "label": "Interest Received, CFO Indirect",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001591"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF200280",
+    "label": "Taxes Refund/Paid, Indirect",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001591"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001652",
+    "label": "Purchase/Sale of Investment Properties, Net",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001510"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF100469",
+    "label": "Issuance of/Repayments for Lease Financing",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001509"
+    ],
+    "templates": [
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001643",
+    "label": "Proceeds from Issuance/Exercising of Stock Options/Warrants",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001509"
+    ],
+    "templates": [
+      "FinancialServices_US",
+      "Insurance_HK"
+    ]
+  },
+  {
+    "dataPointId": "IFIS000340",
+    "label": "Discontinued Operations",
+    "statement": "incomeStatement",
+    "level": 1,
+    "parents": [
+      "IFIS000000"
+    ],
+    "templates": [
+      "FinancialServices_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS003202",
+    "label": "Reported Normalized Operating Profit",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS003147"
+    ],
+    "templates": [
+      "FinancialServices_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002600",
+    "label": "Assets Held for Sale/Discontinued Operations, Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000470"
+    ],
+    "templates": [
+      "FinancialServices_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002673",
+    "label": "Discontinued Operations Liabilities, Current",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS000500"
+    ],
+    "templates": [
+      "FinancialServices_US"
+    ]
+  },
+  {
+    "dataPointId": "IFCF100477",
+    "label": "Issue and Financing Costs",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001509"
+    ],
+    "templates": [
+      "FinancialServices_US"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001794",
+    "label": "Excess Tax Benefit from Share-Based Compensation, Financing Activities",
+    "statement": "cashFlow",
+    "level": 3,
+    "parents": [
+      "IFCF001509"
+    ],
+    "templates": [
+      "FinancialServices_US"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001624",
+    "label": "Other Changes",
+    "statement": "cashFlow",
+    "level": 2,
+    "parents": [
+      "IFCF000170"
+    ],
+    "templates": [
+      "FinancialServices_US"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001697",
+    "label": "Income Tax Refund, Supplemental",
+    "statement": "cashFlow",
+    "level": 2,
+    "parents": [
+      "IFCF001730"
+    ],
+    "templates": [
+      "FinancialServices_US"
+    ]
+  },
+  {
+    "dataPointId": "IFCF001698",
+    "label": "Interest Received, Supplemental",
+    "statement": "cashFlow",
+    "level": 2,
+    "parents": [
+      "IFCF001730"
+    ],
+    "templates": [
+      "FinancialServices_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001873",
+    "label": "Fair Value or Unrealized Gain/Loss on Investments, Revenue",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001130"
+    ],
+    "templates": [
+      "Conglomerate_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS001941",
+    "label": "Other Underwriting Expenses",
+    "statement": "incomeStatement",
+    "level": 2,
+    "parents": [
+      "IFIS003149"
+    ],
+    "templates": [
+      "Conglomerate_US"
+    ]
+  },
+  {
+    "dataPointId": "IFIS000040",
+    "label": "General and Administrative Expenses",
+    "statement": "incomeStatement",
+    "level": 3,
+    "parents": [
+      "IFIS001700"
+    ],
+    "templates": [
+      "Conglomerate_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS002729",
+    "label": "General Allowance for Receivables and Write-Offs ",
+    "statement": "balanceSheet",
+    "level": 3,
+    "parents": [
+      "IFBS002728"
+    ],
+    "templates": [
+      "Conglomerate_US"
+    ]
+  },
+  {
+    "dataPointId": "IFBS000550",
+    "label": "Deferred Costs/Assets",
+    "statement": "balanceSheet",
+    "level": 2,
+    "parents": [
+      "IFBS002270"
+    ],
+    "templates": [
+      "Conglomerate_US"
+    ]
+  }
+]
