@@ -14,7 +14,8 @@ import {
  */
 function buildSmoothSpline(pts: Array<{ x: number; y: number }>): string {
   if (!pts.length) return "";
-  if (pts.length === 1) return `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+  if (pts.length === 1)
+    return `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
   let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
   for (let i = 0; i < pts.length - 1; i++) {
     const p0 = pts[Math.max(0, i - 1)];
@@ -40,7 +41,11 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
     : "";
 
   // Active pricing & fundamentals
-  const latestPrice = data.latestPrice ?? (data.pricePoints.length ? data.pricePoints[data.pricePoints.length - 1].close : null);
+  const latestPrice =
+    data.latestPrice ??
+    (data.pricePoints.length
+      ? data.pricePoints[data.pricePoints.length - 1].close
+      : null);
   const latestAnnual = data.valuationAnnuals.length
     ? data.valuationAnnuals[data.valuationAnnuals.length - 1]
     : null;
@@ -60,12 +65,20 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
     return computeHistoricalPeMetrics(historicalPeSeries, currentPe);
   }, [historicalPeSeries, currentPe]);
   const hasHistoricalBenchmark =
-    historicalPeMetrics.sampleCount >= 2 && historicalPeMetrics.peMedian != null;
+    historicalPeMetrics.sampleCount >= 2 &&
+    historicalPeMetrics.peMedian != null;
   const benchmarkPe = data.benchmarkPe;
+  const isFinancialSector =
+    data.sectorModelType === "banks" || data.sectorModelType === "insurance";
 
   // FCF Yield & Additional Multiples
   const fcfYield = useMemo(() => {
-    if (latestAnnual?.freeCashFlow == null || !data.marketCap || data.marketCap <= 0) return null;
+    if (
+      latestAnnual?.freeCashFlow == null ||
+      !data.marketCap ||
+      data.marketCap <= 0
+    )
+      return null;
     const ratio = (latestAnnual.freeCashFlow / data.marketCap) * 100;
     return Number(ratio.toFixed(1));
   }, [latestAnnual, data.marketCap]);
@@ -84,15 +97,18 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
     if (valuationDiffPct <= -20) {
       marginOfSafetyTag = `显著低于参考 P/E ${Math.abs(valuationDiffPct).toFixed(0)}%`;
       marginOfSafetyClass = "val-tag--deep-green";
-      marginOfSafetyDesc = "当前市盈率显著低于参考倍数；这不代表已确认安全边际。";
+      marginOfSafetyDesc =
+        "当前市盈率显著低于参考倍数；这不代表已确认安全边际。";
     } else if (valuationDiffPct <= -5) {
       marginOfSafetyTag = `低于参考 P/E ${Math.abs(valuationDiffPct).toFixed(0)}%`;
       marginOfSafetyClass = "val-tag--green";
-      marginOfSafetyDesc = "当前市盈率低于参考倍数；参考倍数不等于企业内在价值。";
+      marginOfSafetyDesc =
+        "当前市盈率低于参考倍数；参考倍数不等于企业内在价值。";
     } else if (valuationDiffPct <= 15) {
       marginOfSafetyTag = "接近参考 P/E";
       marginOfSafetyClass = "val-tag--amber";
-      marginOfSafetyDesc = "当前市盈率接近参考倍数，实际回报仍取决于未来经营表现。";
+      marginOfSafetyDesc =
+        "当前市盈率接近参考倍数，实际回报仍取决于未来经营表现。";
     } else if (valuationDiffPct <= 30) {
       marginOfSafetyTag = `高于参考 P/E ${valuationDiffPct.toFixed(0)}%`;
       marginOfSafetyClass = "val-tag--orange";
@@ -141,7 +157,11 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
       rawMax = Math.max(rawMax, b.price, b.b1_6);
     });
 
-    if (!Number.isFinite(rawMin) || !Number.isFinite(rawMax) || rawMin >= rawMax) {
+    if (
+      !Number.isFinite(rawMin) ||
+      !Number.isFinite(rawMax) ||
+      rawMin >= rawMax
+    ) {
       rawMin = 1;
       rawMax = 100;
     }
@@ -152,14 +172,31 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
     const plotW = width - padding.left - padding.right;
     const plotH = height - padding.top - padding.bottom;
 
-    const getX = (idx: number) => padding.left + (idx / (bandPoints.length - 1)) * plotW;
-    const getY = (val: number) => padding.top + plotH - ((val - yMin) / (yMax - yMin)) * plotH;
+    const getX = (idx: number) =>
+      padding.left + (idx / (bandPoints.length - 1)) * plotW;
+    const getY = (val: number) =>
+      padding.top + plotH - ((val - yMin) / (yMax - yMin)) * plotH;
 
-    const priceCoords = bandPoints.map((b, i) => ({ x: getX(i), y: getY(b.price) }));
-    const b0_7Coords = bandPoints.map((b, i) => ({ x: getX(i), y: getY(b.b0_7) }));
-    const b1_0Coords = bandPoints.map((b, i) => ({ x: getX(i), y: getY(b.b1_0) }));
-    const b1_3Coords = bandPoints.map((b, i) => ({ x: getX(i), y: getY(b.b1_3) }));
-    const b1_6Coords = bandPoints.map((b, i) => ({ x: getX(i), y: getY(b.b1_6) }));
+    const priceCoords = bandPoints.map((b, i) => ({
+      x: getX(i),
+      y: getY(b.price),
+    }));
+    const b0_7Coords = bandPoints.map((b, i) => ({
+      x: getX(i),
+      y: getY(b.b0_7),
+    }));
+    const b1_0Coords = bandPoints.map((b, i) => ({
+      x: getX(i),
+      y: getY(b.b1_0),
+    }));
+    const b1_3Coords = bandPoints.map((b, i) => ({
+      x: getX(i),
+      y: getY(b.b1_3),
+    }));
+    const b1_6Coords = bandPoints.map((b, i) => ({
+      x: getX(i),
+      y: getY(b.b1_6),
+    }));
 
     const pricePathD = buildSmoothSpline(priceCoords);
     const b0_7PathD = buildSmoothSpline(b0_7Coords);
@@ -182,18 +219,24 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
 
     const yTicks = [
       { y: getY(yMin), label: `${priceCurrencySymbol}${yMin.toFixed(0)}` },
-      { y: getY(yMin + (yMax - yMin) * 0.5), label: `${priceCurrencySymbol}${(yMin + (yMax - yMin) * 0.5).toFixed(0)}` },
+      {
+        y: getY(yMin + (yMax - yMin) * 0.5),
+        label: `${priceCurrencySymbol}${(yMin + (yMax - yMin) * 0.5).toFixed(0)}`,
+      },
       { y: getY(yMax), label: `${priceCurrencySymbol}${yMax.toFixed(0)}` },
     ];
 
     const yearTicks: Array<{ x: number; label: string }> = [];
-    const seenYears = new Set<string>();
+    const yearSelectionPoints = new Map<
+      string,
+      { label: string; index: number }
+    >();
     bandPoints.forEach((b, idx) => {
       const yr = b.date.slice(0, 4);
-      if (!seenYears.has(yr)) {
-        seenYears.add(yr);
+      if (!yearSelectionPoints.has(yr)) {
         yearTicks.push({ x: getX(idx), label: yr });
       }
+      yearSelectionPoints.set(yr, { label: yr, index: idx });
     });
 
     return {
@@ -211,6 +254,7 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
       corridorFillD,
       yTicks,
       yearTicks,
+      yearSelectionPoints: Array.from(yearSelectionPoints.values()),
       yMin,
       yMax,
     };
@@ -227,11 +271,17 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
   const growthMin = Math.min(-90, Math.floor((defaultGrowth ?? 0) / 10) * 10);
   const growthMax = Math.max(100, Math.ceil((defaultGrowth ?? 0) / 10) * 10);
 
-  const [activeScenario, setActiveScenario] = useState<"conservative" | "base" | "optimistic" | "custom">("base");
+  const [activeScenario, setActiveScenario] = useState<
+    "conservative" | "base" | "optimistic" | "custom"
+  >("base");
   const [growthRate, setGrowthRate] = useState<number>(defaultGrowth ?? 0);
-  const [exitPe, setExitPe] = useState<number>(Number((benchmarkPe ?? 0).toFixed(1)));
+  const [exitPe, setExitPe] = useState<number>(
+    Number((benchmarkPe ?? 0).toFixed(1)),
+  );
 
-  const handleScenarioPreset = (preset: "conservative" | "base" | "optimistic") => {
+  const handleScenarioPreset = (
+    preset: "conservative" | "base" | "optimistic",
+  ) => {
     if (defaultGrowth == null || benchmarkPe == null) return;
     setActiveScenario(preset);
     if (preset === "conservative") {
@@ -266,9 +316,15 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
       latestEps,
       latestPrice,
       horizonYears: 5,
-      scenarios: [{ name: "情景", growthPct: growthRate, exitPe, rationale: "" }],
+      scenarios: [
+        { name: "情景", growthPct: growthRate, exitPe, rationale: "" },
+      ],
     });
-    if (scenario.impliedPrice == null || scenario.impliedAnnualReturnPct == null) return null;
+    if (
+      scenario.impliedPrice == null ||
+      scenario.impliedAnnualReturnPct == null
+    )
+      return null;
     const targetEps = latestEps! * (1 + growthRate / 100) ** 5;
     const targetPrice = scenario.impliedPrice;
     const priceChangePct = ((targetPrice - latestPrice!) / latestPrice!) * 100;
@@ -300,22 +356,26 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
     };
   }, [latestEps, latestPrice, growthRate, exitPe]);
 
-  const activePoint = peBandData && hoverIdx != null ? peBandData.bandPoints[hoverIdx] : peBandData ? peBandData.bandPoints[peBandData.bandPoints.length - 1] : null;
+  const activePointIndex = peBandData
+    ? (hoverIdx ?? peBandData.bandPoints.length - 1)
+    : null;
+  const activePoint =
+    peBandData && activePointIndex != null
+      ? peBandData.bandPoints[activePointIndex]
+      : null;
 
   return (
     <div className="val-deep-dive">
-      {/* ── 1. Header & Margin of Safety Matrix ── */}
+      {/* Valuation summary */}
       <div className="val-section-head">
         <div>
           <div className="val-title-row">
-            <h3 className="val-title">估值分析与历史 P/E 参考</h3>
-            <span className={`val-status-badge ${marginOfSafetyClass}`}>{marginOfSafetyTag}</span>
+            <h3 className="val-title">估值分析</h3>
           </div>
           <p className="val-subtitle">
-            {marginOfSafetyDesc}
             {!data.valuationCurrencyAvailable
-              ? " · 报告币种或汇率数据不足，跨币种估值暂不可用"
-              : ` · 财报 ${data.reportingCurrency} / 估值 ${data.tradingCurrency}${
+              ? "报告币种或汇率数据不足，跨币种估值暂不可用"
+              : `财报 ${data.reportingCurrency} / 估值 ${data.tradingCurrency}${
                   data.reportingCurrency !== data.tradingCurrency
                     ? "，历史按最新汇率折算"
                     : ""
@@ -327,85 +387,116 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
         </span>
       </div>
 
-      {/* 6-Card Multiples Matrix */}
-      <div className="val-multiples-grid">
-        <div className="val-multiple-card">
-            <span className="val-card-label">当前市盈率 P/E（最新年报）</span>
-          <div className="val-card-val-row">
-            <span className="val-card-val">{currentPe ? `${currentPe}x` : "—"}</span>
-            {historicalPeMetrics.currentPercentile != null ? (
-              <span className="val-card-subtag">历史 {historicalPeMetrics.currentPercentile}% 分位</span>
-            ) : null}
+      <div className="val-valuation-summary">
+        <div className="val-valuation-main">
+          <div className="val-valuation-metric">
+            <span className="val-card-label">当前 P/E</span>
+            <strong className="val-valuation-value">
+              {currentPe != null ? `${currentPe}x` : "—"}
+            </strong>
           </div>
-          <span className="val-card-hint">
-            历史 P/E 5%-95%范围: {historicalPeMetrics.peMin != null ? `${historicalPeMetrics.peMin}x` : "—"} ~ {historicalPeMetrics.peMax != null ? `${historicalPeMetrics.peMax}x` : "—"}
-          </span>
-        </div>
-
-        <div className="val-multiple-card">
+          <div className="val-valuation-metric val-valuation-metric--reference">
             <span className="val-card-label">
               {hasHistoricalBenchmark ? "历史 P/E 中位数" : "系统参考 P/E"}
             </span>
-          <div className="val-card-val-row">
-            <span className="val-card-val">{benchmarkPe != null ? `${benchmarkPe}x` : "—"}</span>
-            {valuationDiffPct != null ? (
-              <span className={`val-card-subtag ${valuationDiffPct <= 0 ? "val-tag--sub-green" : "val-tag--sub-red"}`}>
-                {valuationDiffPct <= 0
-                  ? `低于参考 ${Math.abs(valuationDiffPct)}%`
-                  : `高于参考 ${valuationDiffPct}%`}
-              </span>
-            ) : null}
+            <strong className="val-valuation-reference">
+              {benchmarkPe != null ? `${benchmarkPe}x` : "—"}
+            </strong>
           </div>
-          <span className="val-card-hint">
-            {hasHistoricalBenchmark
-              ? `${historicalPeMetrics.sampleCount} 个历史价格样本`
-              : "历史样本不足，采用系统参考值"}
+          <span className={`val-status-badge ${marginOfSafetyClass}`}>
+            {marginOfSafetyTag}
           </span>
         </div>
 
-        <div className="val-multiple-card">
-          <span className="val-card-label">自由现金流收益率 (FCF Yield)</span>
-          <div className="val-card-val-row">
-            <span className="val-card-val">{fcfYield != null ? `${fcfYield}%` : "—"}</span>
-          </div>
-          <span className="val-card-hint">
-            最新年报 FCF / 当前市值{data.reportingCurrency ? ` · ${data.tradingCurrency}` : ""}
-          </span>
-        </div>
+        <p className="val-valuation-summary-note">
+          {marginOfSafetyDesc}
+          {historicalPeMetrics.currentPercentile != null
+            ? ` · 历史 ${historicalPeMetrics.currentPercentile}% 分位`
+            : hasHistoricalBenchmark
+              ? ` · ${historicalPeMetrics.sampleCount} 个历史样本`
+              : " · 历史样本不足，采用系统参考值"}
+          {historicalPeMetrics.peMin != null &&
+          historicalPeMetrics.peMax != null
+            ? ` · 历史区间 ${historicalPeMetrics.peMin}x–${historicalPeMetrics.peMax}x`
+            : ""}
+        </p>
+      </div>
 
+      {isFinancialSector ? (
+        <p className="val-model-note">
+          {data.sectorModelType === "insurance"
+            ? "保险专项偿付能力与内含价值指标尚未接入。"
+            : "银行专项资产质量与资本充足指标尚未接入。"}
+        </p>
+      ) : null}
+
+      <div className="val-multiples-grid val-valuation-metrics-grid">
         <div className="val-multiple-card">
           <span className="val-card-label">市净率 P/B (净资产倍数)</span>
           <div className="val-card-val-row">
-            <span className="val-card-val">{data.pbRatio ? `${data.pbRatio}x` : "—"}</span>
+            <span className="val-card-val">
+              {data.pbRatio ? `${data.pbRatio}x` : "—"}
+            </span>
           </div>
           <span className="val-card-hint">市值 / 最新披露净资产</span>
         </div>
 
-        <div className="val-multiple-card">
-          <span className="val-card-label">现金流转化率 (OCF / 净利润)</span>
-          <div className="val-card-val-row">
-            <span className="val-card-val">{data.cashConversionRatio != null ? `${data.cashConversionRatio.toFixed(2)}x` : "—"}</span>
-            {data.cashConversionRatio != null ? (
-              <span className={`val-card-subtag ${data.cashConversionRatio >= 1.0 ? "val-tag--sub-green" : "val-tag--sub-orange"}`}>
-                {data.cashConversionRatio >= 1.0 ? "盈利含金量高" : "部分应收/资本占用"}
+        {!isFinancialSector ? (
+          <div className="val-multiple-card">
+            <span className="val-card-label">自由现金流收益率 (FCF Yield)</span>
+            <div className="val-card-val-row">
+              <span className="val-card-val">
+                {fcfYield != null ? `${fcfYield}%` : "—"}
               </span>
-            ) : null}
+            </div>
+            <span className="val-card-hint">
+              最新年报 FCF / 当前市值
+              {data.reportingCurrency ? ` · ${data.tradingCurrency}` : ""}
+            </span>
           </div>
-          <span className="val-card-hint">近年经营现金流 / 净利润</span>
-        </div>
+        ) : null}
 
         <div className="val-multiple-card">
           <span className="val-card-label">5年平均 ROE (净资产收益率)</span>
           <div className="val-card-val-row">
-            <span className="val-card-val">{data.roeAvg5Y != null ? `${data.roeAvg5Y.toFixed(1)}%` : "—"}</span>
+            <span className="val-card-val">
+              {data.roeAvg5Y != null ? `${data.roeAvg5Y.toFixed(1)}%` : "—"}
+            </span>
             {data.roeStability ? (
               <span className="val-card-subtag">
-                {data.roeStability === "stellar" ? "极其稳固" : data.roeStability === "solid" ? "稳健优质" : "具备周期性"}
+                {data.roeStability === "stellar"
+                  ? "极其稳固"
+                  : data.roeStability === "solid"
+                    ? "稳健优质"
+                    : "具备周期性"}
               </span>
             ) : null}
           </div>
           <span className="val-card-hint">近 5 年披露 ROE 均值</span>
         </div>
+
+        {!isFinancialSector ? (
+          <div className="val-multiple-card">
+            <span className="val-card-label">现金流转化率 (OCF / 净利润)</span>
+            <div className="val-card-val-row">
+              <span className="val-card-val">
+                {data.cashConversionRatio != null
+                  ? `${data.cashConversionRatio.toFixed(2)}x`
+                  : "—"}
+              </span>
+              {data.cashConversionRatio != null ? (
+                <span
+                  className={`val-card-subtag ${data.cashConversionRatio >= 1.0 ? "val-tag--sub-green" : "val-tag--sub-orange"}`}
+                >
+                  {data.cashConversionRatio >= 1.0
+                    ? "盈利含金量高"
+                    : "部分应收/资本占用"}
+                </span>
+              ) : null}
+            </div>
+            <span className="val-card-hint">近年经营现金流 / 净利润</span>
+          </div>
+        ) : null}
       </div>
 
       {/* ── 2. PE-Band Historical Corridor SVG Chart ── */}
@@ -415,20 +506,38 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
             <div>
               <h4 className="val-block-title">历史 P/E 参考带</h4>
               <span className="val-block-desc">
-                {data.reportingCurrency && data.reportingCurrency !== data.tradingCurrency
+                {data.reportingCurrency &&
+                data.reportingCurrency !== data.tradingCurrency
                   ? "按最新汇率折算；"
                   : ""}
-                按披露日可得 EPS 与{hasHistoricalBenchmark ? "历史中位数" : "系统参考值"}计算；不代表未来目标价。
+                按披露日可得 EPS 与
+                {hasHistoricalBenchmark ? "历史中位数" : "系统参考值"}
+                计算；不代表未来目标价。
               </span>
             </div>
 
             {/* Current Point Legend */}
             <div className="val-band-legend">
-              <span className="legend-item"><span className="legend-dot dot-b0_7" />参考值 0.7x ({peBandData.mults.p0_7}x)</span>
-              <span className="legend-item"><span className="legend-dot dot-b1_0" />参考值 1.0x ({peBandData.mults.p1_0}x)</span>
-              <span className="legend-item"><span className="legend-dot dot-b1_3" />参考值 1.3x ({peBandData.mults.p1_3}x)</span>
-              <span className="legend-item"><span className="legend-dot dot-b1_6" />参考值 1.6x ({peBandData.mults.p1_6}x)</span>
-              <span className="legend-item legend-item--active"><span className="legend-dot dot-price" />实际收盘价</span>
+              <span className="legend-item">
+                <span className="legend-dot dot-b0_7" />
+                参考值 0.7x ({peBandData.mults.p0_7}x)
+              </span>
+              <span className="legend-item">
+                <span className="legend-dot dot-b1_0" />
+                参考值 1.0x ({peBandData.mults.p1_0}x)
+              </span>
+              <span className="legend-item">
+                <span className="legend-dot dot-b1_3" />
+                参考值 1.3x ({peBandData.mults.p1_3}x)
+              </span>
+              <span className="legend-item">
+                <span className="legend-dot dot-b1_6" />
+                参考值 1.6x ({peBandData.mults.p1_6}x)
+              </span>
+              <span className="legend-item legend-item--active">
+                <span className="legend-dot dot-price" />
+                实际收盘价
+              </span>
             </div>
           </div>
 
@@ -440,30 +549,57 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
             </div>
             <div className="val-hud-col">
               <span className="val-hud-label">股价:</span>
-              <span className="val-hud-value val-hud-value--blue">{priceCurrencySymbol}{activePoint?.price.toFixed(2)}</span>
+              <span className="val-hud-value val-hud-value--blue">
+                {priceCurrencySymbol}
+                {activePoint?.price.toFixed(2)}
+              </span>
             </div>
             <div className="val-hud-col">
-                  <span className="val-hud-label">对应年度 EPS P/E:</span>
-              <span className="val-hud-value">{activePoint?.pe ? `${activePoint.pe}x` : "—"}</span>
+              <span className="val-hud-label">对应年度 EPS P/E:</span>
+              <span className="val-hud-value">
+                {activePoint?.pe ? `${activePoint.pe}x` : "—"}
+              </span>
             </div>
             <div className="val-hud-col">
               <span className="val-hud-label">参考 P/E 股价:</span>
-              <span className="val-hud-value val-hud-value--amber">{priceCurrencySymbol}{activePoint?.b1_0.toFixed(2)}</span>
+              <span className="val-hud-value val-hud-value--amber">
+                {priceCurrencySymbol}
+                {activePoint?.b1_0.toFixed(2)}
+              </span>
             </div>
             <div className="val-hud-col">
               <span className="val-hud-label">通道状态:</span>
               <span className="val-hud-tag">
                 {activePoint && activePoint.pe
-                    ? activePoint.pe < peBandData.mults.p0_7
+                  ? activePoint.pe < peBandData.mults.p0_7
                     ? "低于参考区间"
                     : activePoint.pe < peBandData.mults.p1_0
-                    ? "低于参考 P/E"
-                    : activePoint.pe < peBandData.mults.p1_3
-                    ? "高于参考 P/E"
-                    : "高于参考区间"
+                      ? "低于参考 P/E"
+                      : activePoint.pe < peBandData.mults.p1_3
+                        ? "高于参考 P/E"
+                        : "高于参考区间"
                   : "数据不足"}
               </span>
             </div>
+          </div>
+
+          <div
+            className="val-mobile-period-picker"
+            role="group"
+            aria-label="选择估值图表年份"
+          >
+            {peBandData.yearSelectionPoints.map(({ label, index }) => (
+              <button
+                key={label}
+                type="button"
+                aria-label={`查看 FY${label} 数据`}
+                aria-pressed={activePointIndex === index}
+                className={activePointIndex === index ? "is-active" : ""}
+                onClick={() => setHoverIdx(index)}
+              >
+                FY{label}
+              </button>
+            ))}
           </div>
 
           <div className="val-svg-wrap">
@@ -473,7 +609,13 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
               onMouseLeave={() => setHoverIdx(null)}
             >
               <defs>
-                <linearGradient id="val-corridor-grad" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient
+                  id="val-corridor-grad"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
                   <stop offset="0%" stopColor="#ef4444" stopOpacity="0.06" />
                   <stop offset="50%" stopColor="#f59e0b" stopOpacity="0.04" />
                   <stop offset="100%" stopColor="#10b981" stopOpacity="0.06" />
@@ -504,17 +646,54 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
 
               {/* Channel Shaded Area */}
               {peBandData.corridorFillD ? (
-                <path d={peBandData.corridorFillD} fill="url(#val-corridor-grad)" />
+                <path
+                  d={peBandData.corridorFillD}
+                  fill="url(#val-corridor-grad)"
+                />
               ) : null}
 
               {/* Band Lines */}
-              <path d={peBandData.b1_6PathD} fill="none" stroke="#ef4444" strokeWidth="1" strokeDasharray="3 3" opacity="0.65" />
-              <path d={peBandData.b1_3PathD} fill="none" stroke="#3b82f6" strokeWidth="1" strokeDasharray="3 3" opacity="0.65" />
-              <path d={peBandData.b1_0PathD} fill="none" stroke="#f59e0b" strokeWidth="1.2" strokeDasharray="4 2" opacity="0.9" />
-              <path d={peBandData.b0_7PathD} fill="none" stroke="#10b981" strokeWidth="1" strokeDasharray="3 3" opacity="0.75" />
+              <path
+                d={peBandData.b1_6PathD}
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                opacity="0.65"
+              />
+              <path
+                d={peBandData.b1_3PathD}
+                fill="none"
+                stroke="#3b82f6"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                opacity="0.65"
+              />
+              <path
+                d={peBandData.b1_0PathD}
+                fill="none"
+                stroke="#f59e0b"
+                strokeWidth="1.2"
+                strokeDasharray="4 2"
+                opacity="0.9"
+              />
+              <path
+                d={peBandData.b0_7PathD}
+                fill="none"
+                stroke="#10b981"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                opacity="0.75"
+              />
 
               {/* Real Price Curve */}
-              <path d={peBandData.pricePathD} fill="none" stroke="#0071e3" strokeWidth="2.2" strokeLinecap="round" />
+              <path
+                d={peBandData.pricePathD}
+                fill="none"
+                stroke="#0071e3"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+              />
 
               {/* X Axis Year Marks */}
               {peBandData.yearTicks.map((yr) => (
@@ -561,7 +740,11 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
                     x={coord.x - w / 2}
                     y={peBandData.padding.top}
                     width={w}
-                    height={peBandData.height - peBandData.padding.top - peBandData.padding.bottom}
+                    height={
+                      peBandData.height -
+                      peBandData.padding.top -
+                      peBandData.padding.bottom
+                    }
                     fill="transparent"
                     onMouseEnter={() => setHoverIdx(idx)}
                   />
@@ -578,17 +761,24 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
       latestEps != null &&
       defaultGrowth != null &&
       benchmarkPe != null ? (
-        <div className="val-sim-block">
-          <div className="val-sim-head">
+        <details className="val-sim-block">
+          <summary className="val-sim-summary">
             <div>
-              <h4 className="val-block-title">5年估值情景测算</h4>
+              <h4 className="val-block-title">5年情景测算</h4>
               <p className="val-block-desc">
-                按 EPS 增长与退出 P/E 假设测算；仅为情景分析，不构成预测，且不含分红。
+                按 EPS 增长与退出 P/E 假设测算，不含分红
               </p>
             </div>
+            <span className="val-sim-chevron" aria-hidden="true" />
+          </summary>
 
+          <div className="val-sim-content">
             {/* Scenario Preset Buttons */}
-            <div className="val-preset-group">
+            <div
+              className="val-preset-group"
+              role="group"
+              aria-label="情景假设"
+            >
               <button
                 type="button"
                 className={`preset-btn ${activeScenario === "conservative" ? "preset-btn--active" : ""}`}
@@ -611,108 +801,143 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
                 偏高估值
               </button>
             </div>
-          </div>
 
-          <div className="val-sim-grid">
-            {/* Left Column: Sliders */}
-            <div className="val-sliders-pane">
-              {/* Slider 1: EPS Growth */}
-              <div className="val-slider-item">
-                <div className="slider-label-row">
-                  <span className="slider-label">未来 5 年 EPS 年化复合增速 (g)</span>
-                  <span className="slider-value-badge">{growthRate > 0 ? `+${growthRate}%` : `${growthRate}%`}</span>
+            <div className="val-sim-grid">
+              {/* Left Column: Sliders */}
+              <div className="val-sliders-pane">
+                {/* Slider 1: EPS Growth */}
+                <div className="val-slider-item">
+                  <div className="slider-label-row">
+                    <span className="slider-label">
+                      未来 5 年 EPS 年化复合增速 (g)
+                    </span>
+                    <span className="slider-value-badge">
+                      {growthRate > 0 ? `+${growthRate}%` : `${growthRate}%`}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={growthMin}
+                    max={growthMax}
+                    step="0.5"
+                    value={growthRate}
+                    onChange={(e) =>
+                      handleSliderChange("growth", parseFloat(e.target.value))
+                    }
+                    className="val-range-input"
+                  />
+                  <div className="slider-scale-row">
+                    <span>{growthMin}%</span>
+                    <span>0%</span>
+                    <span>{Math.round(growthMax / 2)}%</span>
+                    <span>{growthMax}%</span>
+                  </div>
                 </div>
-                <input
-                  type="range"
-                  min={growthMin}
-                  max={growthMax}
-                  step="0.5"
-                  value={growthRate}
-                  onChange={(e) => handleSliderChange("growth", parseFloat(e.target.value))}
-                  className="val-range-input"
-                />
-                <div className="slider-scale-row">
-                  <span>{growthMin}%</span>
-                  <span>0%</span>
-                  <span>{Math.round(growthMax / 2)}%</span>
-                  <span>{growthMax}%</span>
+
+                {/* Slider 2: Exit PE */}
+                <div className="val-slider-item">
+                  <div className="slider-label-row">
+                    <span className="slider-label">
+                      5 年后退出市盈率 (PE Exit)
+                    </span>
+                    <span className="slider-value-badge">
+                      {exitPe.toFixed(1)}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="4"
+                    max="60"
+                    step="0.5"
+                    value={exitPe}
+                    onChange={(e) =>
+                      handleSliderChange("exitPe", parseFloat(e.target.value))
+                    }
+                    className="val-range-input"
+                  />
+                  <div className="slider-scale-row">
+                    <span>4x</span>
+                    <span>{benchmarkPe.toFixed(1)}x (参考)</span>
+                    <span>30x</span>
+                    <span>60x</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Slider 2: Exit PE */}
-              <div className="val-slider-item">
-                <div className="slider-label-row">
-                  <span className="slider-label">5 年后退出市盈率 (PE Exit)</span>
-                  <span className="slider-value-badge">{exitPe.toFixed(1)}x</span>
-                </div>
-                <input
-                  type="range"
-                  min="4"
-                  max="60"
-                  step="0.5"
-                  value={exitPe}
-                  onChange={(e) => handleSliderChange("exitPe", parseFloat(e.target.value))}
-                  className="val-range-input"
-                />
-                <div className="slider-scale-row">
-                  <span>4x</span>
-                  <span>{benchmarkPe.toFixed(1)}x (参考)</span>
-                  <span>30x</span>
-                  <span>60x</span>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Right Column: Live Result Dashboard */}
-            <div className="val-result-card">
-              <div className="val-result-head">
-                <span className="val-result-title">5年年化价格回报（不含分红）</span>
-                <span className={`val-rating-pill ${tsrCalculations.ratingClass}`}>
-                  {tsrCalculations.ratingTag}
-                </span>
-              </div>
-
-              <div className="val-irr-display">
-                <span className={`val-irr-number ${tsrCalculations.annualizedPriceReturnPct >= 0 ? "val-irr--up" : "val-irr--dn"}`}>
-                  {tsrCalculations.annualizedPriceReturnPct >= 0
-                    ? `+${tsrCalculations.annualizedPriceReturnPct}%`
-                    : `${tsrCalculations.annualizedPriceReturnPct}%`}
-                </span>
-                <span className="val-irr-unit">/ 年</span>
-              </div>
-
-              <div className="val-result-metrics">
-                <div className="val-result-metric-row">
-                  <span className="metric-label">当前基准股价:</span>
-                  <span className="metric-val">{priceCurrencySymbol}{latestPrice.toFixed(2)}</span>
-                </div>
-                <div className="val-result-metric-row">
-                  <span className="metric-label">当前基期 EPS:</span>
-                  <span className="metric-val">{latestEps ? `${priceCurrencySymbol}${latestEps.toFixed(2)}` : "—"}</span>
-                </div>
-                <div className="val-result-metric-row">
-                  <span className="metric-label">5年后情景 EPS:</span>
-                  <span className="metric-val font-semibold">{priceCurrencySymbol}{tsrCalculations.targetEps}</span>
-                </div>
-                <div className="val-result-metric-row">
-                  <span className="metric-label">5年后情景股价:</span>
-                  <span className="metric-val font-semibold text-blue-600">{priceCurrencySymbol}{tsrCalculations.targetPrice}</span>
-                </div>
-                <div className="val-result-metric-row border-t border-slate-100 pt-2">
-                  <span className="metric-label">累计股价空间:</span>
-                  <span className={`metric-val ${tsrCalculations.priceChangePct >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                    {tsrCalculations.priceChangePct >= 0 ? `+${tsrCalculations.priceChangePct}%` : `${tsrCalculations.priceChangePct}%`}
+              {/* Right Column: Live Result Dashboard */}
+              <div className="val-result-card">
+                <div className="val-result-head">
+                  <span className="val-result-title">
+                    情景年化价格回报（不含分红）
+                  </span>
+                  <span
+                    className={`val-rating-pill ${tsrCalculations.ratingClass}`}
+                  >
+                    {tsrCalculations.ratingTag}
                   </span>
                 </div>
-              </div>
 
-              <p className="val-formula-note">
-                P(5y) = 基期 EPS × (1 + g)^5 × 退出 P/E；年化价格回报 = (目标价 / 当前价)^(1/5) − 1。
-              </p>
+                <div className="val-irr-display">
+                  <span
+                    className={`val-irr-number ${tsrCalculations.annualizedPriceReturnPct >= 0 ? "val-irr--up" : "val-irr--dn"}`}
+                  >
+                    {tsrCalculations.annualizedPriceReturnPct >= 0
+                      ? `+${tsrCalculations.annualizedPriceReturnPct}%`
+                      : `${tsrCalculations.annualizedPriceReturnPct}%`}
+                  </span>
+                  <span className="val-irr-unit">/ 年</span>
+                </div>
+
+                <div className="val-result-metrics">
+                  <div className="val-result-metric-row">
+                    <span className="metric-label">当前基准股价:</span>
+                    <span className="metric-val">
+                      {priceCurrencySymbol}
+                      {latestPrice.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="val-result-metric-row">
+                    <span className="metric-label">当前基期 EPS:</span>
+                    <span className="metric-val">
+                      {latestEps
+                        ? `${priceCurrencySymbol}${latestEps.toFixed(2)}`
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="val-result-metric-row">
+                    <span className="metric-label">5年后情景 EPS:</span>
+                    <span className="metric-val font-semibold">
+                      {priceCurrencySymbol}
+                      {tsrCalculations.targetEps}
+                    </span>
+                  </div>
+                  <div className="val-result-metric-row">
+                    <span className="metric-label">5年后情景股价:</span>
+                    <span className="metric-val font-semibold text-blue-600">
+                      {priceCurrencySymbol}
+                      {tsrCalculations.targetPrice}
+                    </span>
+                  </div>
+                  <div className="val-result-metric-row border-t border-slate-100 pt-2">
+                    <span className="metric-label">累计股价空间:</span>
+                    <span
+                      className={`metric-val ${tsrCalculations.priceChangePct >= 0 ? "text-emerald-600" : "text-rose-600"}`}
+                    >
+                      {tsrCalculations.priceChangePct >= 0
+                        ? `+${tsrCalculations.priceChangePct}%`
+                        : `${tsrCalculations.priceChangePct}%`}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="val-formula-note">
+                  P(5y) = 基期 EPS × (1 + g)^5 × 退出 P/E；年化价格回报 =
+                  (目标价 / 当前价)^(1/5) − 1。
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        </details>
       ) : null}
     </div>
   );

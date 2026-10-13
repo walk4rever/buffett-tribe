@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { computeCapitalAllocationStats } from "../src/lib/capital-allocation-metrics";
+import { getCapitalAllocationShareSeries } from "../src/lib/share-count-utils";
 
 describe("computeCapitalAllocationStats", () => {
   it("calculates FCF only for years with both OCF and CapEx", () => {
@@ -174,7 +175,7 @@ describe("computeCapitalAllocationStats", () => {
     expect(stats?.annuals.map((a) => a.year)).toEqual([2021, 2022, 2023, 2024, 2025]);
   });
 
-  it("excludes weighted-average and derived shares from share-count change", () => {
+  it("includes derived shares and excludes weighted-average shares", () => {
     const stats = computeCapitalAllocationStats([
       {
         year: 2024,
@@ -183,7 +184,7 @@ describe("computeCapitalAllocationStats", () => {
         repurchaseAmt: 0,
         dividendsPaid: 0,
         shares: 90,
-        sharesSource: "disclosed_period_end",
+        sharesSource: "derived",
         roe: 15,
       },
       {
@@ -198,8 +199,40 @@ describe("computeCapitalAllocationStats", () => {
       },
     ]);
 
+    expect(
+      getCapitalAllocationShareSeries(stats!.annuals).map((point) => point.shares),
+    ).toEqual([null, 90]);
     expect(stats?.sharesStart).toBeNull();
     expect(stats?.sharesEnd).toBeNull();
     expect(stats?.shareDeltaPct).toBeNull();
+  });
+
+  it("calculates capital allocation share change from derived annual shares", () => {
+    const stats = computeCapitalAllocationStats([
+      {
+        year: 2024,
+        operatingCashFlow: 100,
+        capEx: 20,
+        repurchaseAmt: 0,
+        dividendsPaid: 0,
+        shares: 90,
+        sharesSource: "derived",
+        roe: 15,
+      },
+      {
+        year: 2023,
+        operatingCashFlow: 100,
+        capEx: 20,
+        repurchaseAmt: 0,
+        dividendsPaid: 0,
+        shares: 100,
+        sharesSource: "derived",
+        roe: 10,
+      },
+    ]);
+
+    expect(stats?.sharesStart).toBe(100);
+    expect(stats?.sharesEnd).toBe(90);
+    expect(stats?.shareDeltaPct).toBe(-10);
   });
 });

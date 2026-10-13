@@ -48,6 +48,53 @@ export function getPeriodEndShareSeries(
   });
 }
 
+function isCapitalAllocationShareCount(
+  annual: ShareCountAnnual | undefined,
+): annual is ShareCountAnnual & { shares: number } {
+  return (
+    (annual?.sharesSource === "disclosed_period_end" ||
+      annual?.sharesSource === "derived") &&
+    annual.shares != null &&
+    Number.isFinite(annual.shares) &&
+    annual.shares > 0
+  );
+}
+
+export function getCapitalAllocationShareSeries(
+  annuals: ShareCountAnnual[],
+): ShareCountObservation[] {
+  const years = annuals
+    .map((annual) => annual.year)
+    .filter((year) => Number.isInteger(year));
+  if (!years.length) return [];
+
+  const firstYear = Math.min(...years);
+  const lastYear = Math.max(...years);
+  const byYear = new Map(annuals.map((annual) => [annual.year, annual]));
+
+  return Array.from({ length: lastYear - firstYear + 1 }, (_, index) => {
+    const year = firstYear + index;
+    const annual = byYear.get(year);
+    return {
+      year,
+      shares: isCapitalAllocationShareCount(annual) ? annual.shares : null,
+    };
+  });
+}
+
+export function calculateCapitalAllocationShareChange(
+  annuals: ShareCountAnnual[],
+): number | null {
+  const series = getCapitalAllocationShareSeries(annuals);
+  if (series.length < 2 || series.some((point) => point.shares == null)) {
+    return null;
+  }
+
+  const firstShares = series[0].shares!;
+  const lastShares = series[series.length - 1].shares!;
+  return Number((((lastShares - firstShares) / firstShares) * 100).toFixed(1));
+}
+
 export function calculatePeriodEndShareChange(
   annuals: ShareCountAnnual[],
 ): number | null {
