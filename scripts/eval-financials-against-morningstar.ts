@@ -1,17 +1,43 @@
 /**
  * eval-financials-against-morningstar.ts
  *
- * Automated Ground Truth Benchmark & Reconciliation Engine.
- * Evaluates Buffett-Tribe financial extraction pipelines against live Morningstar
- * Standardized Financials across the 30-company Gold Benchmark Suite.
+ * Ground-truth reconciliation engine: Buffett-Tribe financial extraction vs
+ * Morningstar Standardized Financials across the 100-company Gold Benchmark Suite.
+ *
+ * Two scoring modes:
+ *
+ *   raw         Strict comparison. Only unit / currency / sign normalization is
+ *               applied before diffing — no accounting identities, no metric
+ *               aggregation, no tolerance overrides. This is the honest score:
+ *               it measures the extraction pipeline, not the evaluator.
+ *   calibrated  raw + accounting-identity derivation and metric aggregation
+ *               applied at eval time. Every adjustment is recorded on the
+ *               comparison row in `adjustments[]`, so the delta against `raw`
+ *               is fully auditable.
+ *
+ * These eval-time patches used to be invisible, and included tolerance
+ * overrides that simply overwrote our value with Morningstar's whenever the gap
+ * was small enough (energy/mining ±25%, dividends ±35%, CapEx ±10%), plus two
+ * "whichever number is closer to Morningstar" pickers. They are now confined to
+ * `calibrated` and recorded. The evaluator must never consult the Morningstar
+ * value when deciding how to derive or select ours — that turns the benchmark
+ * into an answer key.
  *
  * Usage:
+ *   npx tsx scripts/eval-financials-against-morningstar.ts --all                 # raw, whole suite
+ *   npx tsx scripts/eval-financials-against-morningstar.ts --all --both          # raw + calibrated
  *   npx tsx scripts/eval-financials-against-morningstar.ts --ticker AAPL
- *   npx tsx scripts/eval-financials-against-morningstar.ts --ticker 600519
- *   npx tsx scripts/eval-financials-against-morningstar.ts --suite 10k
  *   npx tsx scripts/eval-financials-against-morningstar.ts --suite 20f
- *   npx tsx scripts/eval-financials-against-morningstar.ts --suite 40f
- *   npx tsx scripts/eval-financials-against-morningstar.ts --all
+ *   npx tsx scripts/eval-financials-against-morningstar.ts --years 5
+ *   npx tsx scripts/eval-financials-against-morningstar.ts --all --refresh-baseline
+ *   npx tsx scripts/eval-financials-against-morningstar.ts --compare-baseline
+ *
+ * Morningstar ground truth is snapshotted to .cache/morningstar-snapshots/ so
+ * scores are reproducible and a Morningstar restatement surfaces as a baseline
+ * diff instead of an unexplained score move. Results are written to
+ * tests/evals/history/.
+ *
+ * Requires MORNINGSTAR_API_KEY in .env.local (never commit it) and DIRECT_URL.
  */
 
 import * as dotenv from "dotenv";
@@ -31,7 +57,64 @@ import {
 } from "./lib/sec-company-profile";
 
 const db = new PrismaClient();
-const MORNINGSTAR_API_KEY = "lstzFDEOhfFNMLikKa0am9mgEKLBl49T";
+
+export type EvalMode = "raw" | "calibrated";
+
+// MATCH is deliberately tight: only ±1% counts as a hit. MINOR_DIFF (±3%) is
+// reported but not counted as a match.
+const MATCH_THRESHOLD_PERCENT = 1.0;
+const MINOR_DIFF_THRESHOLD_PERCENT = 3.0;
+
+// Evaluation window: the most recent N fiscal years present in the Morningstar
+// payload. Deliberately not a hardcoded calendar range, so newly filed years
+// (e.g. FY2025) enter the benchmark automatically instead of never being tested.
+const MIN_EVAL_YEAR = 2019;
+const DEFAULT_EVAL_WINDOW_YEARS = 5;
+
+const SNAPSHOT_DIR = path.join(process.cwd(), ".cache", "morningstar-snapshots");
+const RESULTS_DIR = path.join(process.cwd(), "tests", "evals", "history");
+const SUITE_PATH = path.join(process.cwd(), "scripts", "lib", "morningstar-benchmark-suite.json");
+
+let evalWindowYears = DEFAULT_EVAL_WINDOW_YEARS;
+let refreshBaseline = false;
+let snapshotHits = 0;
+let snapshotFetches = 0;
+
+/**
+ * Year-end CNY-per-USD rates, used only to bring our values onto the currency
+ * basis Morningstar reports in. Official year-end reference rates (PBOC), not
+ * interpolated. Add a row per new fiscal year — a missing year is reported as
+ * `fx:no-rate(...)` rather than silently treated as 1:1.
+ */
+const YEAR_END_CNY_PER_USD: Record<number, number> = {
+  2019: 6.9762,
+  2020: 6.5249,
+  2021: 6.3757,
+  2022: 6.9646,
+  2023: 7.0827,
+  2024: 7.1884,
+};
+
+/**
+ * Units of `from` per one unit of `to`, at that fiscal year's year-end.
+ * Only the pairs the suite actually needs are defined; anything else returns
+ * null and the comparison is flagged rather than guessed at.
+ */
+function fxRate(from: string, to: string, year: number): number | null {
+  if (from === to) return 1;
+  if (from === "CNY" && to === "USD") return YEAR_END_CNY_PER_USD[year] ?? null;
+  return null;
+}
+
+function requireMstarKey(): string {
+  const key = process.env.MORNINGSTAR_API_KEY;
+  if (!key) {
+    throw new Error(
+      "MORNINGSTAR_API_KEY is not set. Add it to .env.local (never commit it).",
+    );
+  }
+  return key;
+}
 
 export interface BenchmarkCompany {
   ticker: string;
@@ -51,11 +134,16 @@ export interface MetricComparison {
   mstarValue: number | null;
   diffPercent: number | null;
   status: "MATCH" | "MINOR_DIFF" | "DISCREPANCY" | "MISSING_OURS" | "MISSING_MSTAR";
+  /** Our value before any currency/sign/identity adjustment, for audit. */
+  rawOurValue?: number | null;
+  /** Named adjustments applied to our value, e.g. "fx:CNY->USD@7.1884", "sign-flip". */
+  adjustments?: string[];
   notes?: string;
 }
 
 export interface CompanyEvalReport {
   company: BenchmarkCompany;
+  mode: EvalMode;
   yearsCompared: number[];
   matchRate: number; // 0 - 100
   totalMetricsChecked: number;
@@ -64,6 +152,8 @@ export interface CompanyEvalReport {
   discrepancies: number;
   missingOurs: number;
   missingMstar: number;
+  fxConverted: number;
+  fxUnconverted: number;
   details: MetricComparison[];
 }
 
@@ -116,11 +206,32 @@ export const CORE_METRIC_MAP: MetricDef[] = [
   { key: "PolicyClaimsAndBenefits", label: "赔付支出净额 (Policy Claims & Losses)", mstarId: "IFIS001420", statement: "incomeStatement", signFlip: true, sectors: ["insurance"] },
 ];
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- raw Morningstar payloads are
+   consumed structurally below; typing them precisely buys nothing. */
+interface MstarRawPayload {
+  fetchedAt: string;
+  isData: any;
+  bsData: any;
+  cfData: any;
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+function snapshotPath(secId: string): string {
+  return path.join(SNAPSHOT_DIR, `${secId}.json`);
+}
+
 /**
- * Fetch and extract Morningstar statements via SAL API
+ * Pull the raw Morningstar payload, preferring the on-disk snapshot so scores
+ * stay reproducible. Pass --refresh-baseline to re-fetch from the API.
  */
-export async function fetchMorningstarStatements(secId: string) {
-  const headers = { apikey: MORNINGSTAR_API_KEY };
+async function fetchMorningstarRaw(secId: string): Promise<MstarRawPayload> {
+  const file = snapshotPath(secId);
+  if (!refreshBaseline && fs.existsSync(file)) {
+    snapshotHits++;
+    return JSON.parse(fs.readFileSync(file, "utf8")) as MstarRawPayload;
+  }
+
+  const headers = { apikey: requireMstarKey() };
   const fetchStmt = async (type: "incomeStatement" | "balanceSheet" | "cashFlow") => {
     const url = `https://api-global.morningstar.com/sal-service/v1/stock/newfinancials/${secId}/${type}/detail?clientId=MDC&version=4.71.0&dataType=A&reportType=R`;
     const res = await fetch(url, { headers });
@@ -133,6 +244,24 @@ export async function fetchMorningstarStatements(secId: string) {
     fetchStmt("balanceSheet"),
     fetchStmt("cashFlow"),
   ]);
+
+  const payload: MstarRawPayload = {
+    fetchedAt: new Date().toISOString(),
+    isData,
+    bsData,
+    cfData,
+  };
+  fs.mkdirSync(SNAPSHOT_DIR, { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(payload));
+  snapshotFetches++;
+  return payload;
+}
+
+/**
+ * Fetch and extract Morningstar statements via SAL API (snapshot-backed)
+ */
+export async function fetchMorningstarStatements(secId: string) {
+  const { isData, bsData, cfData } = await fetchMorningstarRaw(secId);
 
   const years: string[] = isData.columnDefs || [];
   const magnitude = isData.footer?.orderOfMagnitude === "Billion" ? 1e9 : 1e6; // default Million = 1e6
@@ -199,6 +328,7 @@ export async function fetchMorningstarStatements(secId: string) {
 export async function getOurFinancials(
   company: BenchmarkCompany,
   targetCurrency?: string,
+  opts: { applyIdentities?: boolean } = {},
 ): Promise<{
   currency: string;
   byMetric: Map<string, Map<number, number>>;
@@ -247,7 +377,10 @@ export async function getOurFinancials(
       byMetric.get(fin.lineItem)!.set(year, numVal);
     }
     return {
-      currency: entity.financials[0]?.unit || "USD",
+      // Must be the filtered unit: Financial rows mix money amounts with share
+      // counts and ratios, and financials[0] is frequently "shares". Returning
+      // that silently disabled FX conversion for the whole company.
+      currency: dbCurrency,
       byMetric,
     };
   }
@@ -347,31 +480,36 @@ export async function getOurFinancials(
           }
         }
 
-        // Apply accounting identities for missing items
-        const assets = byMetric.get("TotalAssets")?.get(year);
-        const equity = byMetric.get("ShareholdersEquity")?.get(year);
-        if (assets != null && equity != null && !byMetric.get("TotalLiabilities")?.has(year)) {
-          byMetric.get("TotalLiabilities")!.set(year, assets - equity);
-        }
+        // Accounting-identity derivation for the live-SEC fallback path. Gated
+        // on `applyIdentities` so raw mode scores the pipeline's own output.
+        // (The DB path never derived anything; that asymmetry is exactly what
+        // the raw score is meant to expose.)
+        if (opts.applyIdentities) {
+          const assets = byMetric.get("TotalAssets")?.get(year);
+          const equity = byMetric.get("ShareholdersEquity")?.get(year);
+          if (assets != null && equity != null && !byMetric.get("TotalLiabilities")?.has(year)) {
+            byMetric.get("TotalLiabilities")!.set(year, assets - equity);
+          }
 
-        const rev = byMetric.get("Revenue")?.get(year);
-        const cost = byMetric.get("CostOfRevenue")?.get(year);
-        const gp = byMetric.get("GrossProfit")?.get(year);
-        if (rev != null && cost != null && gp == null) {
-          byMetric.get("GrossProfit")!.set(year, rev - cost);
-        } else if (rev != null && gp != null && cost == null) {
-          byMetric.get("CostOfRevenue")!.set(year, rev - gp);
-        }
+          const rev = byMetric.get("Revenue")?.get(year);
+          const cost = byMetric.get("CostOfRevenue")?.get(year);
+          const gp = byMetric.get("GrossProfit")?.get(year);
+          if (rev != null && cost != null && gp == null) {
+            byMetric.get("GrossProfit")!.set(year, rev - cost);
+          } else if (rev != null && gp != null && cost == null) {
+            byMetric.get("CostOfRevenue")!.set(year, rev - gp);
+          }
 
-        const intInc = byMetric.get("InterestIncome")?.get(year);
-        const intExp = byMetric.get("InterestExpense")?.get(year);
-        if (intInc != null && intExp != null && !byMetric.get("NetInterestIncome")?.has(year)) {
-          byMetric.get("NetInterestIncome")!.set(year, intInc - intExp);
-        }
+          const intInc = byMetric.get("InterestIncome")?.get(year);
+          const intExp = byMetric.get("InterestExpense")?.get(year);
+          if (intInc != null && intExp != null && !byMetric.get("NetInterestIncome")?.has(year)) {
+            byMetric.get("NetInterestIncome")!.set(year, intInc - intExp);
+          }
 
-        const netInt = byMetric.get("NetInterestIncome")?.get(year);
-        if (rev != null && netInt != null && !byMetric.get("NonInterestIncome")?.has(year)) {
-          byMetric.get("NonInterestIncome")!.set(year, rev - netInt);
+          const netInt = byMetric.get("NetInterestIncome")?.get(year);
+          if (rev != null && netInt != null && !byMetric.get("NonInterestIncome")?.has(year)) {
+            byMetric.get("NonInterestIncome")!.set(year, rev - netInt);
+          }
         }
       }
     }
@@ -383,12 +521,133 @@ export async function getOurFinancials(
 /**
  * Compare our metrics against Morningstar ground truth
  */
-export async function evaluateCompany(company: BenchmarkCompany): Promise<CompanyEvalReport> {
-  const mstar = await fetchMorningstarStatements(company.secId);
-  const targetCurrency = company.reportingCurrency || mstar.currency;
-  const ours = await getOurFinancials(company, targetCurrency);
+/**
+ * Prepare one of our metric values for comparison: normalize口径, and in
+ * calibrated mode apply the accounting-identity derivations that belong in the
+ * ingestion pipeline. Returns the value plus every named adjustment applied, so
+ * the gap between `raw` and `calibrated` is fully attributable.
+ *
+ * Deliberately never consults the Morningstar value. An evaluator that looks at
+ * the answer key while preparing the answer is not measuring anything.
+ */
+function prepareOurMetricValue(args: {
+  metricDef: MetricDef;
+  ours: { currency: string; byMetric: Map<string, Map<number, number>> };
+  year: number;
+  mode: EvalMode;
+}): { value: number | null; adjustments: string[] } {
+  const { metricDef, ours, year, mode } = args;
+  const adjustments: string[] = [];
+  const get = (key: string) => ours.byMetric.get(key)?.get(year) ?? null;
 
-  const targetYears = [2019, 2020, 2021, 2022, 2023, 2024].filter((y) => mstar.years.includes(y)).slice(-4);
+  let value = get(metricDef.key);
+
+  // Cash & short-term investments (Morningstar IFBS000350) is an aggregation of
+  // two of our line items, so it applies on top of a present value rather than
+  // filling in a missing one.
+  if (mode === "calibrated" && metricDef.key === "CashAndCashEquivalents" && value != null) {
+    const sti = get("ShortTermInvestments");
+    if (sti != null && sti > 0) {
+      value = value + sti;
+      adjustments.push("aggregate:+ShortTermInvestments");
+    }
+  }
+
+  if (mode !== "calibrated" || value != null) {
+    return { value, adjustments };
+  }
+
+  // Calibrated-only: identities the pipeline is expected to have applied already.
+  switch (metricDef.key) {
+    case "TotalProfit": {
+      const ni = get("NetIncome");
+      const tax = get("IncomeTaxExpense");
+      if (ni != null && tax != null) {
+        value = ni + tax;
+        adjustments.push("identity:TotalProfit=NetIncome+IncomeTax");
+      }
+      break;
+    }
+    case "IncomeTaxExpense": {
+      const tp = get("TotalProfit");
+      const ni = get("NetIncome");
+      if (tp != null && ni != null) {
+        value = Math.abs(tp - ni);
+        adjustments.push("identity:Tax=|TotalProfit-NetIncome|");
+      }
+      break;
+    }
+    case "NetInterestIncome": {
+      const ii = get("InterestIncome");
+      const ie = get("InterestExpense");
+      if (ii != null && ie != null) {
+        value = ii - ie;
+        adjustments.push("identity:NetInterestIncome=InterestIncome-InterestExpense");
+      }
+      break;
+    }
+    case "NonInterestIncome": {
+      const rev = get("Revenue");
+      const ii = get("InterestIncome");
+      const ie = get("InterestExpense");
+      const nii = get("NetInterestIncome") ?? (ii != null && ie != null ? ii - ie : null);
+      if (rev != null && nii != null) {
+        value = rev - nii;
+        adjustments.push("identity:NonInterestIncome=Revenue-NetInterestIncome");
+      }
+      break;
+    }
+    case "CostOfRevenue": {
+      const rev = get("Revenue");
+      const gp = get("GrossProfit");
+      if (rev != null && gp != null) {
+        value = rev - gp;
+        adjustments.push("identity:CostOfRevenue=Revenue-GrossProfit");
+      }
+      break;
+    }
+    case "OperatingIncome": {
+      const gp = get("GrossProfit");
+      const sga = get("SGAExpense");
+      const rnd = get("RnDExpense");
+      // Only derive when an expense input actually exists. Defaulting a missing
+      // SG&A to 0 would manufacture an operating profit out of nothing.
+      if (gp != null && (sga != null || rnd != null)) {
+        value = gp - (sga ?? 0) - (rnd ?? 0);
+        adjustments.push("identity:OperatingIncome=GrossProfit-SGA-RnD");
+      }
+      break;
+    }
+    case "ShareholdersEquity": {
+      const totalEq = get("TotalEquity");
+      if (totalEq != null) {
+        value = totalEq;
+        adjustments.push("fallback:TotalEquity");
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  return { value, adjustments };
+}
+
+export async function evaluateCompany(
+  company: BenchmarkCompany,
+  mode: EvalMode = "raw",
+): Promise<CompanyEvalReport> {
+  const mstar = await fetchMorningstarStatements(company.secId);
+  const ours = await getOurFinancials(company, company.reportingCurrency, {
+    applyIdentities: mode === "calibrated",
+  });
+
+  // Window is the most recent N years Morningstar reports — never a hardcoded
+  // calendar range, so a freshly filed year enters the benchmark on its own.
+  const targetYears = mstar.years
+    .filter((y) => y >= MIN_EVAL_YEAR)
+    .sort((a, b) => a - b)
+    .slice(-evalWindowYears);
   const details: MetricComparison[] = [];
 
   let matches = 0;
@@ -396,21 +655,21 @@ export async function evaluateCompany(company: BenchmarkCompany): Promise<Compan
   let discrepancies = 0;
   let missingOurs = 0;
   let missingMstar = 0;
+  let fxConverted = 0;
+  let fxUnconverted = 0;
 
   // Determine target sector
   const cat = (company.category || "").toLowerCase();
   const sectorType: "bank" | "insurance" | "industrial" =
     cat.includes("conglomerate") ? "industrial" : cat.includes("insurance") ? "insurance" : cat.includes("bank") ? "bank" : "industrial";
 
-  // Official historical year-end exchange rates for cross-currency reconciliation
-  const USD_CNY_RATES: Record<number, number> = {
-    2019: 6.9762,
-    2020: 6.5249,
-    2021: 6.3757,
-    2022: 6.9646,
-    2023: 7.0827,
-    2024: 7.1884,
-  };
+  // Currency basis. `mstar.currency` is the response footer, i.e. the *listing*
+  // currency — it disagrees with the values for most foreign filers (TSM: footer
+  // USD with TWD values; 0700.HK: footer HKD with CNY values), so it must never
+  // be used as a conversion basis. The suite's `reportingCurrency` does match
+  // the values: for 98/100 companies it equals our DB unit, and the remaining
+  // two (1299.HK, 688981) are USD there against CNY here.
+  const mstarValueCurrency = company.reportingCurrency;
 
   for (const year of targetYears) {
     for (const metricDef of CORE_METRIC_MAP) {
@@ -418,130 +677,48 @@ export async function evaluateCompany(company: BenchmarkCompany): Promise<Compan
       const applies = metricDef.sectors?.includes("all") || metricDef.sectors?.includes(sectorType);
       if (!applies) continue;
 
-      let ourVal = ours.byMetric.get(metricDef.key)?.get(year) ?? null;
+      const rawOurValue = ours.byMetric.get(metricDef.key)?.get(year) ?? null;
+      const prepared = prepareOurMetricValue({ metricDef, ours, year, mode });
+      let ourVal = prepared.value;
+      const adjustments = [...prepared.adjustments];
+
+      // Currency normalization (both modes — a cross-currency diff is
+      // meaningless otherwise). Applies only where the suite declares the
+      // currency Morningstar's numbers are in; an undeclared company is compared
+      // as-is and flagged, rather than converted on a guessed basis.
+      if (ourVal != null && mstarValueCurrency && ours.currency !== mstarValueCurrency) {
+        const rate = fxRate(ours.currency, mstarValueCurrency, year);
+        if (rate != null) {
+          ourVal = ourVal / rate;
+          adjustments.push(`fx:${ours.currency}->${mstarValueCurrency}@${rate}`);
+          fxConverted++;
+        } else {
+          adjustments.push(`fx:no-rate(${ours.currency}->${mstarValueCurrency},${year})`);
+          fxUnconverted++;
+        }
+      }
+
       let mstarVal = mstar.byMetric.get(metricDef.key)?.get(year) ?? null;
 
-      // Handle currency conversion if ours is CNY and target/mstar is USD
-      const mstarCur = targetCurrency || mstar.currency;
-      if (ours.currency === "CNY" && mstarCur === "USD" && ourVal != null && USD_CNY_RATES[year]) {
-        ourVal = ourVal / USD_CNY_RATES[year];
-      }
-
-      // Handle Cash & ST Investments aggregation matching Morningstar IFBS000350
-      if (metricDef.key === "CashAndCashEquivalents" && ourVal != null) {
-        const st = ours.byMetric.get("ShortTermInvestments")?.get(year) ?? 0;
-        if (st > 0) {
-          ourVal = ourVal + st;
+      // Morningstar sometimes exposes two data points for one concept. Use the
+      // primary id, fall back to the alt only when the primary is absent. The
+      // previous code picked whichever was closer to ours — that is grading
+      // your own homework against a key you get to edit.
+      if (mstarVal == null && metricDef.altMstarId) {
+        const alt = mstar.altByMetric?.get(metricDef.key)?.get(year) ?? null;
+        if (alt != null) {
+          mstarVal = alt;
+          adjustments.push("mstar:alt-id");
         }
       }
 
-      // Handle Parent Equity vs Total Equity
-      if (metricDef.key === "ShareholdersEquity") {
-        const totalEq = ours.byMetric.get("TotalEquity")?.get(year);
-        if (ourVal == null && totalEq != null) {
-          ourVal = totalEq;
-        } else if (totalEq != null && ourVal != null && mstarVal != null && Math.abs(totalEq - mstarVal) < Math.abs(ourVal - mstarVal)) {
-          ourVal = totalEq;
+      // Sign conventions: Morningstar reports cost/tax/dividend items negative.
+      if (metricDef.signFlip) {
+        if (ourVal != null && ourVal < 0) {
+          ourVal = Math.abs(ourVal);
+          adjustments.push("sign-flip");
         }
-      }
-
-      // Handle TotalProfit / PretaxIncome fallback (NetIncome + IncomeTaxExpense)
-      if (metricDef.key === "TotalProfit" && ourVal == null) {
-        const ni = ours.byMetric.get("NetIncome")?.get(year);
-        const tax = ours.byMetric.get("IncomeTaxExpense")?.get(year);
-        if (ni != null && tax != null) {
-          ourVal = ni + tax;
-        }
-      }
-
-      // Handle IncomeTaxExpense fallback (TotalProfit - NetIncome)
-      if (metricDef.key === "IncomeTaxExpense" && ourVal == null) {
-        const tp = ours.byMetric.get("TotalProfit")?.get(year);
-        const ni = ours.byMetric.get("NetIncome")?.get(year);
-        if (tp != null && ni != null) {
-          ourVal = Math.abs(tp - ni);
-        }
-      }
-
-      // Handle NetInterestIncome fallback (InterestIncome - InterestExpense)
-      if (metricDef.key === "NetInterestIncome" && ourVal == null) {
-        const ii = ours.byMetric.get("InterestIncome")?.get(year);
-        const ie = ours.byMetric.get("InterestExpense")?.get(year);
-        if (ii != null && ie != null) {
-          ourVal = ii - ie;
-        }
-      }
-
-      // Handle NonInterestIncome fallback (Revenue - NetInterestIncome)
-      if (metricDef.key === "NonInterestIncome" && ourVal == null) {
-        const rev = ours.byMetric.get("Revenue")?.get(year);
-        const intInc = ours.byMetric.get("InterestIncome")?.get(year);
-        const intExp = ours.byMetric.get("InterestExpense")?.get(year);
-        const nii = ours.byMetric.get("NetInterestIncome")?.get(year) ?? (intInc != null && intExp != null ? intInc - intExp : null);
-        if (rev != null && nii != null) {
-          ourVal = rev - nii;
-        }
-      }
-
-      // Handle CostOfRevenue fallback (Revenue - GrossProfit)
-      if (metricDef.key === "CostOfRevenue" && ourVal == null) {
-        const rev = ours.byMetric.get("Revenue")?.get(year);
-        const gp = ours.byMetric.get("GrossProfit")?.get(year);
-        if (rev != null && gp != null) {
-          ourVal = rev - gp;
-        }
-      }
-
-      // Handle OperatingIncome fallback (GrossProfit - SGA)
-      if (metricDef.key === "OperatingIncome" && ourVal == null) {
-        const gp = ours.byMetric.get("GrossProfit")?.get(year);
-        const sga = ours.byMetric.get("SGAExpense")?.get(year) || 0;
-        const rnd = ours.byMetric.get("RnDExpense")?.get(year) || 0;
-        if (gp != null && (sga > 0 || rnd > 0)) {
-          ourVal = gp - sga - rnd;
-        }
-      }
-
-      // Handle Standardized vs Statutory Operating Profit (e.g. Tencent in-kind dividend of JD/Meituan)
-      if (metricDef.key === "OperatingIncome" && ourVal != null && mstarVal != null) {
-        const altMstarVal = mstar.altByMetric?.get(metricDef.key)?.get(year);
-        if (altMstarVal != null && Math.abs(ourVal - altMstarVal) < Math.abs(ourVal - mstarVal)) {
-          mstarVal = altMstarVal;
-        }
-      }
-
-      // Handle Extractive/Mining Accounting (CNOOC/Energy: Statutory gross vs Morningstar DD&A reclassification)
-      if ((metricDef.key === "GrossProfit" || metricDef.key === "CostOfRevenue" || metricDef.key === "Revenue") && ourVal != null && mstarVal != null) {
-        if (cat.includes("energy") || cat.includes("oil") || cat.includes("mining")) {
-          // If within 15% due to trading oil gross/net or upstream depletion allocation, reconcile to statutory
-          if (Math.abs(ourVal - mstarVal) / mstarVal < 0.25) {
-            ourVal = mstarVal;
-          }
-        }
-      }
-
-      // Handle sign conventions
-      if (metricDef.signFlip && ourVal != null && ourVal < 0) {
-        ourVal = Math.abs(ourVal);
-      }
-      if (metricDef.signFlip && mstarVal != null && mstarVal < 0) {
-        mstarVal = Math.abs(mstarVal);
-      }
-
-      // Handle Parent Common Dividends vs Consolidated Dividends (subsidiary minority payouts)
-      if (metricDef.key === "DividendsPaid" && ourVal != null && mstarVal != null) {
-        if (ourVal > 0 && mstarVal > 0 && ourVal <= mstarVal && (mstarVal - ourVal) / mstarVal < 0.35) {
-          // Statutory common stock dividends vs consolidated group cash flow dividends
-          ourVal = mstarVal;
-        }
-      }
-
-      // Handle Gross vs Net CapEx (Morningstar subtracts proceeds from sales of PPE)
-      if (metricDef.key === "CapEx" && ourVal != null && mstarVal != null) {
-        if (ourVal > 0 && mstarVal > 0 && Math.abs(ourVal - mstarVal) / mstarVal < 0.10) {
-          // If within 10% (standard asset disposal variance), consider match with gross/net identity
-          ourVal = mstarVal;
-        }
+        if (mstarVal != null && mstarVal < 0) mstarVal = Math.abs(mstarVal);
       }
 
       if (ourVal == null && mstarVal == null) {
@@ -555,8 +732,10 @@ export async function evaluateCompany(company: BenchmarkCompany): Promise<Compan
           year,
           ourValue: null,
           mstarValue: mstarVal,
+          rawOurValue,
           diffPercent: null,
           status: "MISSING_OURS",
+          adjustments: adjustments.length > 0 ? adjustments : undefined,
           notes: `${metricDef.label} missing in our dataset`,
         });
         continue;
@@ -569,22 +748,26 @@ export async function evaluateCompany(company: BenchmarkCompany): Promise<Compan
           year,
           ourValue: ourVal,
           mstarValue: null,
+          rawOurValue,
           diffPercent: null,
           status: "MISSING_MSTAR",
+          adjustments: adjustments.length > 0 ? adjustments : undefined,
           notes: `${metricDef.label} missing in Morningstar report`,
         });
         continue;
       }
 
-      // Compute difference percentage
-      const denom = Math.abs(mstarVal) || 1;
-      const diffPercent = Math.abs((ourVal - mstarVal) / denom) * 100;
+      // Denominator uses the larger magnitude of the two (floored at 1), so a
+      // near-zero peer value can't manufacture a five-digit percentage diff.
+      const absDiff = Math.abs(ourVal - mstarVal);
+      const denom = Math.max(Math.abs(ourVal), Math.abs(mstarVal), 1);
+      const diffPercent = (absDiff / denom) * 100;
 
       let status: MetricComparison["status"];
-      if (diffPercent <= 1.0) {
+      if (diffPercent <= MATCH_THRESHOLD_PERCENT) {
         matches++;
         status = "MATCH";
-      } else if (diffPercent <= 3.0) {
+      } else if (diffPercent <= MINOR_DIFF_THRESHOLD_PERCENT) {
         minorDiffs++;
         status = "MINOR_DIFF";
       } else {
@@ -597,9 +780,11 @@ export async function evaluateCompany(company: BenchmarkCompany): Promise<Compan
         year,
         ourValue: ourVal,
         mstarValue: mstarVal,
+        rawOurValue,
         diffPercent: Number(diffPercent.toFixed(2)),
         status,
-        notes: diffPercent > 1.0 ? `Diff: ${(ourVal - mstarVal).toLocaleString()} (${diffPercent.toFixed(1)}%)` : undefined,
+        adjustments: adjustments.length > 0 ? adjustments : undefined,
+        notes: status === "MATCH" ? undefined : `Diff: ${(ourVal - mstarVal).toLocaleString()} (${diffPercent.toFixed(1)}%)`,
       });
     }
   }
@@ -609,6 +794,7 @@ export async function evaluateCompany(company: BenchmarkCompany): Promise<Compan
 
   return {
     company,
+    mode,
     yearsCompared: targetYears,
     matchRate,
     totalMetricsChecked: totalChecked,
@@ -617,18 +803,250 @@ export async function evaluateCompany(company: BenchmarkCompany): Promise<Compan
     discrepancies,
     missingOurs,
     missingMstar,
+    fxConverted,
+    fxUnconverted,
     details,
   };
 }
 
 // CLI Runner
+
+interface EvalRunReport {
+  generatedAt: string;
+  mode: EvalMode;
+  windowYears: number;
+  suiteSize: number;
+  summary: {
+    meanMatchRate: number;
+    companiesAtOrAbove80: number;
+    companiesAt100: number;
+    totalMetricsChecked: number;
+    matches: number;
+    minorDiffs: number;
+    discrepancies: number;
+    missingOurs: number;
+    missingMstar: number;
+    fxConverted: number;
+    fxUnconverted: number;
+    /** Suite entries with no declared reportingCurrency — compared as-is. */
+    undeclaredCurrencyBasis: number;
+  };
+  companies: CompanyEvalReport[];
+}
+
+function summarize(reports: CompanyEvalReport[], mode: EvalMode): EvalRunReport {
+  const sum = (pick: (r: CompanyEvalReport) => number) => reports.reduce((acc, r) => acc + pick(r), 0);
+  return {
+    generatedAt: new Date().toISOString(),
+    mode,
+    windowYears: evalWindowYears,
+    suiteSize: reports.length,
+    summary: {
+      meanMatchRate: reports.length
+        ? Number((sum((r) => r.matchRate) / reports.length).toFixed(2))
+        : 0,
+      companiesAtOrAbove80: reports.filter((r) => r.matchRate >= 80).length,
+      companiesAt100: reports.filter((r) => r.matchRate === 100).length,
+      totalMetricsChecked: sum((r) => r.totalMetricsChecked),
+      matches: sum((r) => r.matches),
+      minorDiffs: sum((r) => r.minorDiffs),
+      discrepancies: sum((r) => r.discrepancies),
+      missingOurs: sum((r) => r.missingOurs),
+      missingMstar: sum((r) => r.missingMstar),
+      fxConverted: sum((r) => r.fxConverted),
+      fxUnconverted: sum((r) => r.fxUnconverted),
+      undeclaredCurrencyBasis: reports.filter((r) => !r.company.reportingCurrency).length,
+    },
+    companies: reports,
+  };
+}
+
+function printSummary(run: EvalRunReport) {
+  console.log(`\n======================================================================`);
+  console.log(`📊 Morningstar Reconciliation — mode: ${run.mode}, FY window: last ${run.windowYears}y`);
+  console.log(`======================================================================`);
+  console.log(
+    `Ticker`.padEnd(10) +
+    `Form`.padEnd(10) +
+    `Match Rate`.padEnd(14) +
+    `Matches`.padEnd(10) +
+    `Minor Diff`.padEnd(12) +
+    `Discrepancy`.padEnd(14) +
+    `Missing (Ours)`.padEnd(14)
+  );
+  console.log(`-`.repeat(84));
+
+  for (const r of run.companies) {
+    console.log(
+      r.company.ticker.padEnd(10) +
+      r.company.form.padEnd(10) +
+      `${r.matchRate}%`.padEnd(14) +
+      String(r.matches).padEnd(10) +
+      String(r.minorDiffs).padEnd(12) +
+      String(r.discrepancies).padEnd(14) +
+      String(r.missingOurs).padEnd(14)
+    );
+  }
+
+  const s = run.summary;
+  console.log(`-`.repeat(84));
+  console.log(`Mean match rate: ${s.meanMatchRate}%  |  ≥80%: ${s.companiesAtOrAbove80}/${run.suiteSize}  |  =100%: ${s.companiesAt100}/${run.suiteSize}`);
+  console.log(`MATCH ${s.matches}  MINOR ${s.minorDiffs}  DISCREPANCY ${s.discrepancies}  MISSING_OURS ${s.missingOurs}  MISSING_MSTAR ${s.missingMstar}`);
+  if (s.fxUnconverted > 0) {
+    console.log(`⚠️  ${s.fxUnconverted} comparisons have no FX rate for the required pair — see adjustments[] = fx:no-rate(...)`);
+  }
+  if (s.undeclaredCurrencyBasis > 0) {
+    console.log(`ℹ️  ${s.undeclaredCurrencyBasis}/${run.suiteSize} suite entries declare no reportingCurrency, so their FX basis is assumed to already match ours.`);
+  }
+
+  const allDiscrepancies = run.companies.flatMap((r) =>
+    r.details
+      .filter((d) => d.status === "DISCREPANCY" || d.status === "MISSING_OURS")
+      .map((d) => ({ ticker: r.company.ticker, ...d }))
+  );
+
+  if (allDiscrepancies.length > 0) {
+    console.log(`\n🔍 Key Discrepancies & Calibration Targets (first 15):`);
+    allDiscrepancies.slice(0, 15).forEach((d) => {
+      const fmt = (v: number | null | undefined) => (v == null ? "NULL" : (v / 1e8).toFixed(2) + "亿");
+      const adj = d.adjustments?.length ? ` [${d.adjustments.join(", ")}]` : "";
+      console.log(`  - [${d.ticker}] ${d.metric} (${d.year}): Ours=${fmt(d.ourValue)} vs Mstar=${fmt(d.mstarValue)} | ${d.notes || ""}${adj}`);
+    });
+  }
+}
+
+function persistRun(run: EvalRunReport): string {
+  fs.mkdirSync(RESULTS_DIR, { recursive: true });
+  const stamp = run.generatedAt.replace(/[:.]/g, "-");
+  const file = path.join(RESULTS_DIR, `morningstar-${run.mode}-${stamp}.json`);
+  fs.writeFileSync(file, JSON.stringify(run, null, 2));
+  console.log(`\n💾 Saved: ${path.relative(process.cwd(), file)}`);
+  return file;
+}
+
+function previousRunFile(mode: EvalMode, currentFile: string): string | null {
+  if (!fs.existsSync(RESULTS_DIR)) return null;
+  const files = fs
+    .readdirSync(RESULTS_DIR)
+    .filter((f) => f.startsWith(`morningstar-${mode}-`) && f.endsWith(".json"))
+    .map((f) => path.join(RESULTS_DIR, f))
+    .filter((f) => f !== currentFile)
+    .sort();
+  return files.length > 0 ? files[files.length - 1] : null;
+}
+
+function printBaselineDiff(run: EvalRunReport, currentFile: string) {
+  const prevFile = previousRunFile(run.mode, currentFile);
+  if (!prevFile) {
+    console.log(`\n📉 --compare-baseline: no previous "${run.mode}" run found — this run becomes the baseline.`);
+    return;
+  }
+  const prev = JSON.parse(fs.readFileSync(prevFile, "utf8")) as EvalRunReport;
+  console.log(`\n📉 Baseline diff vs ${path.basename(prevFile)} (generated ${prev.generatedAt})`);
+
+  const prevByTicker = new Map(prev.companies.map((c) => [c.company.ticker, c]));
+  const moves: string[] = [];
+  for (const cur of run.companies) {
+    const before = prevByTicker.get(cur.company.ticker);
+    if (!before) {
+      moves.push(`  + ${cur.company.ticker}: new in suite (${cur.matchRate}%)`);
+      continue;
+    }
+    const delta = Number((cur.matchRate - before.matchRate).toFixed(1));
+    if (Math.abs(delta) >= 1) {
+      moves.push(`  ${delta > 0 ? "▲" : "▼"} ${cur.company.ticker}: ${before.matchRate}% → ${cur.matchRate}% (${delta > 0 ? "+" : ""}${delta}pt)`);
+    }
+  }
+  for (const ticker of prevByTicker.keys()) {
+    if (!run.companies.some((c) => c.company.ticker === ticker)) {
+      moves.push(`  - ${ticker}: dropped from suite`);
+    }
+  }
+
+  const key = (t: string, m: string, y: number) => `${t}|${m}|${y}`;
+  const before = new Map<string, MetricComparison["status"]>();
+  for (const c of prev.companies) {
+    for (const d of c.details) before.set(key(c.company.ticker, d.metric, d.year), d.status);
+  }
+  const regressions: string[] = [];
+  const fixes: string[] = [];
+  for (const c of run.companies) {
+    for (const d of c.details) {
+      const was = before.get(key(c.company.ticker, d.metric, d.year));
+      if (was === d.status) continue;
+      if (d.status === "DISCREPANCY" && was && was !== "DISCREPANCY") regressions.push(`  ${c.company.ticker} ${d.metric} FY${d.year}: ${was} → DISCREPANCY`);
+      else if (was === "DISCREPANCY" && d.status !== "DISCREPANCY") fixes.push(`  ${c.company.ticker} ${d.metric} FY${d.year}: DISCREPANCY → ${d.status}`);
+    }
+  }
+
+  console.log(`\n  Match-rate moves (≥1pt): ${moves.length}`);
+  moves.slice(0, 20).forEach((m) => console.log(m));
+  console.log(`\n  New discrepancies: ${regressions.length}`);
+  regressions.slice(0, 20).forEach((m) => console.log(m));
+  console.log(`\n  Resolved discrepancies: ${fixes.length}`);
+  fixes.slice(0, 20).forEach((m) => console.log(m));
+}
+
+/**
+ * Show what calibrating at eval time buys us: the delta between strict `raw`
+ * and `calibrated`. A large gap means the ingestion pipeline is not applying
+ * accounting identities it should be applying at write time.
+ */
+function printModeDelta(raw: EvalRunReport, calibrated: EvalRunReport) {
+  console.log(`\n======================================================================`);
+  console.log(`🔬 raw vs calibrated`);
+  console.log(`   mean ${raw.summary.meanMatchRate}% (raw) vs ${calibrated.summary.meanMatchRate}% (calibrated) → eval-time patches buy +${(calibrated.summary.meanMatchRate - raw.summary.meanMatchRate).toFixed(2)}pt`);
+  console.log(`   ≥80%: ${raw.summary.companiesAtOrAbove80}/${raw.suiteSize} vs ${calibrated.summary.companiesAtOrAbove80}/${calibrated.suiteSize}`);
+  console.log(`   =100%: ${raw.summary.companiesAt100}/${raw.suiteSize} vs ${calibrated.summary.companiesAt100}/${calibrated.suiteSize}`);
+  console.log(`   DISCREPANCY: ${raw.summary.discrepancies} vs ${calibrated.summary.discrepancies}`);
+
+  const calByTicker = new Map(calibrated.companies.map((c) => [c.company.ticker, c.matchRate]));
+  const deltas = raw.companies
+    .map((c) => ({ ticker: c.company.ticker, delta: Number(((calByTicker.get(c.company.ticker) ?? c.matchRate) - c.matchRate).toFixed(1)) }))
+    .filter((d) => Math.abs(d.delta) >= 0.5)
+    .sort((a, b) => b.delta - a.delta);
+  if (deltas.length > 0) {
+    console.log(`\n   Companies most dependent on eval-time calibration:`);
+    deltas.slice(0, 15).forEach((d) => console.log(`     ${d.ticker}: +${d.delta}pt`));
+  }
+}
+
+async function runSuite(targets: BenchmarkCompany[], mode: EvalMode): Promise<CompanyEvalReport[]> {
+  const reports: CompanyEvalReport[] = [];
+  for (const company of targets) {
+    process.stdout.write(`[${mode}] Evaluating [${company.form}] ${company.ticker} (${company.name})... `);
+    try {
+      const report = await evaluateCompany(company, mode);
+      reports.push(report);
+      console.log(`✓ Match Rate: ${report.matchRate}% (${report.matches}/${report.totalMetricsChecked} matches)`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.log(`❌ ERROR: ${msg}`);
+    }
+  }
+  return reports;
+}
+
 async function main() {
-  const suitePath = path.resolve(process.cwd(), "scripts/lib/morningstar-benchmark-suite.json");
-  const suite: BenchmarkCompany[] = JSON.parse(fs.readFileSync(suitePath, "utf8"));
+  const suite: BenchmarkCompany[] = JSON.parse(fs.readFileSync(SUITE_PATH, "utf8"));
 
   const tickerArg = process.argv.find((a, i) => process.argv[i - 1] === "--ticker");
   const suiteArg = process.argv.find((a, i) => process.argv[i - 1] === "--suite");
+  const yearsArg = process.argv.find((a, i) => process.argv[i - 1] === "--years");
   const isAll = process.argv.includes("--all");
+  const bothMode = process.argv.includes("--both");
+  const compareBaseline = process.argv.includes("--compare-baseline");
+  refreshBaseline = process.argv.includes("--refresh-baseline");
+
+  if (yearsArg) {
+    const n = Number(yearsArg);
+    if (!Number.isInteger(n) || n <= 0) throw new Error(`--years expects a positive integer, got "${yearsArg}"`);
+    evalWindowYears = n;
+  }
+
+  const modes: EvalMode[] = bothMode
+    ? ["raw", "calibrated"]
+    : [process.argv.includes("--calibrated") ? "calibrated" : "raw"];
 
   let targets = suite;
   if (tickerArg) {
@@ -652,64 +1070,24 @@ async function main() {
 
   console.log(`\n======================================================================`);
   console.log(`🚀 Buffett-Tribe vs Morningstar Ground Truth Benchmark Reconciliation`);
-  console.log(`   Evaluating ${targets.length} companies across FY2021 ~ FY2024`);
+  console.log(`   ${targets.length} companies | window: last ${evalWindowYears} fiscal years | mode(s): ${modes.join(", ")}`);
+  console.log(`   snapshots: ${refreshBaseline ? "refreshing from API" : "from .cache/morningstar-snapshots"}`);
   console.log(`======================================================================\n`);
 
-  const reports: CompanyEvalReport[] = [];
-
-  for (const company of targets) {
-    process.stdout.write(`Evaluating [${company.form}] ${company.ticker} (${company.name})... `);
-    try {
-      const report = await evaluateCompany(company);
-      reports.push(report);
-      console.log(`✓ Match Rate: ${report.matchRate}% (${report.matches}/${report.totalMetricsChecked} matches)`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.log(`❌ ERROR: ${msg}`);
-    }
+  const runs: EvalRunReport[] = [];
+  for (const mode of modes) {
+    const reports = await runSuite(targets, mode);
+    const run = summarize(reports, mode);
+    printSummary(run);
+    const file = persistRun(run);
+    if (compareBaseline) printBaselineDiff(run, file);
+    runs.push(run);
   }
 
-  console.log(`\n======================================================================`);
-  console.log(`📊 Benchmark Reconciliation Summary Report`);
-  console.log(`======================================================================`);
-  console.log(
-    `Ticker`.padEnd(10) +
-    `Form`.padEnd(10) +
-    `Match Rate`.padEnd(14) +
-    `Matches`.padEnd(10) +
-    `Minor Diff`.padEnd(12) +
-    `Discrepancy`.padEnd(14) +
-    `Missing (Ours)`.padEnd(14)
-  );
-  console.log(`-`.repeat(84));
+  if (runs.length === 2) printModeDelta(runs[0], runs[1]);
 
-  for (const r of reports) {
-    console.log(
-      r.company.ticker.padEnd(10) +
-      r.company.form.padEnd(10) +
-      `${r.matchRate}%`.padEnd(14) +
-      String(r.matches).padEnd(10) +
-      String(r.minorDiffs).padEnd(12) +
-      String(r.discrepancies).padEnd(14) +
-      String(r.missingOurs).padEnd(14)
-    );
-  }
-
-  // Print discrepancies if any
-  const allDiscrepancies = reports.flatMap((r) =>
-    r.details
-      .filter((d) => d.status === "DISCREPANCY" || d.status === "MISSING_OURS")
-      .map((d) => ({ ticker: r.company.ticker, ...d }))
-  );
-
-  if (allDiscrepancies.length > 0) {
-    console.log(`\n🔍 Key Discrepancies & Calibration Targets (first 15):`);
-    allDiscrepancies.slice(0, 15).forEach((d) => {
-      console.log(`  - [${d.ticker}] ${d.metric} (${d.year}): Ours=${d.ourValue ? (d.ourValue / 1e8).toFixed(2) + "亿" : "NULL"} vs Mstar=${d.mstarValue ? (d.mstarValue / 1e8).toFixed(2) + "亿" : "NULL"} | ${d.notes || ""}`);
-    });
-  }
-
-  console.log(`\n======================================================================\n`);
+  console.log(`\n   Morningstar snapshots: ${snapshotHits} cached, ${snapshotFetches} fetched`);
+  console.log(`======================================================================\n`);
 }
 
 if (process.argv[1]?.includes("eval-financials-against-morningstar.ts")) {
