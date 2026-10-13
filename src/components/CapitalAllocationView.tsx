@@ -561,8 +561,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                 <th style={{ textAlign: "right" }}>资本开支 (CapEx)</th>
                 <th style={{ textAlign: "right" }}>自由现金流 (FCF)</th>
                 <th style={{ textAlign: "right" }}>股票回购</th>
-                <th style={{ textAlign: "right" }}>现金分红</th>
-                <th style={{ textAlign: "right" }}>股数（披露值）</th>
+                <th style={{ textAlign: "right" }}>股数</th>
                 <th style={{ textAlign: "right" }}>ROE</th>
               </tr>
             </thead>
@@ -616,7 +615,28 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                       : `${currencySym}${formatUsdInYi(Math.abs(a.dividendsPaid))}`}
                   </td>
                   <td style={{ textAlign: "right" }}>
-                    {a.shares != null ? `${formatUsdInYi(a.shares)}股` : "—"}
+                    {a.shares != null ? (
+                      <>
+                        {formatUsdInYi(a.shares)}股
+                        {a.sharesSource === "derived" && (
+                          <span
+                            title="根据净利润 / EPS 估算"
+                            style={{
+                              marginLeft: 4,
+                              fontSize: "0.75rem",
+                              color: "#6b7280",
+                              background: "#f3f4f6",
+                              padding: "1px 4px",
+                              borderRadius: 3,
+                            }}
+                          >
+                            推算
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td style={{ textAlign: "right" }}>
                     {a.roe != null ? (

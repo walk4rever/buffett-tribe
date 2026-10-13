@@ -5,6 +5,7 @@ export type CapitalAllocationAnnualInput = {
   repurchaseAmt: number | null;
   dividendsPaid: number | null;
   shares: number | null;
+  sharesSource?: "disclosed" | "derived" | null;
   roe: number | null;
 };
 

@@ -1584,11 +1584,7 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "实收资本",
       "实收资本净额"
     ],
-    "hkAliases": [
-      "已发行股本",
-      "股份代号",
-      "股本"
-    ],
+    "hkAliases": [],
     "morningstarId": "IFBS003308"
   },
   {

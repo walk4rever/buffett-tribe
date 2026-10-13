@@ -296,19 +296,22 @@ def fetch_hk_records(code: str, from_year: int = 2020) -> list[dict[str, object]
 
     seen_keys: set[tuple[str, str, str]] = set()
 
-    def add_rec(period_end: str, period_type: str, line_item: str, val: float | None) -> None:
+    def add_rec(period_end: str, period_type: str, line_item: str, val: float | None, unit: str | None = None) -> None:
         if val is None:
             return
         key = (period_end, period_type, line_item)
         if key in seen_keys:
             return
         seen_keys.add(key)
-        records.append({
+        rec: dict[str, object] = {
             "periodEnd": period_end,
             "periodType": period_type,
             "lineItem": line_item,
             "value": val,
-        })
+        }
+        if unit:
+            rec["unit"] = unit
+        records.append(rec)
 
     for year in sorted(by_year_periods.keys()):
         periods = by_year_periods[year]
@@ -416,7 +419,7 @@ def fetch_hk_records(code: str, from_year: int = 2020) -> list[dict[str, object]
                 if fy_years:
                     max_fy_year = max(fy_years)
                     fy_date = by_year_periods[max_fy_year]["001"][0]
-                    add_rec(fy_date, "FY", "CommonStockSharesOutstanding", raw_shs)
+                    add_rec(fy_date, "FY", "CommonStockSharesOutstanding", raw_shs, unit="shares")
     except Exception as e:
         print(f"  warning: failed to fetch HK financial indicator for {code}: {e}", file=sys.stderr)
 

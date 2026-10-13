@@ -16,6 +16,7 @@ type Record_ = {
   periodType?: string;
   lineItem: string;
   value: number | null;
+  unit?: string;
   mappingRule?: string;
   confidence?: number;
 };
@@ -96,7 +97,7 @@ async function main() {
     periodType: record.periodType ?? "FY",
     lineItem: record.lineItem,
     value: record.value,
-    unit: reportingCurrency,
+    unit: record.unit ?? (record.lineItem === "CommonStockSharesOutstanding" ? "shares" : reportingCurrency),
     mappingRule: record.mappingRule,
     confidence: record.confidence,
   }));

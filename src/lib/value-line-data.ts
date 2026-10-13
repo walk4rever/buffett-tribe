@@ -61,6 +61,7 @@ export type ValueLineAnnualData = {
   roe: number | null; // percentage, e.g. 24.5
   eps: number | null;
   shares: number | null;
+  sharesSource?: "disclosed" | "derived" | null;
   repurchaseAmt: number | null;
   dividendsPaid: number | null;
 };
@@ -368,8 +369,10 @@ export async function getValueLineData(
       // Robust shares estimation: if raw shares are unavailable (common in CN/HK),
       // deduce from NetIncome / EPS. Works even if both net and epsRaw are negative (loss).
       let shares: number | null = rawShs;
+      let sharesSource: "disclosed" | "derived" | null = rawShs != null ? "disclosed" : null;
       if (shares == null && net != null && epsRaw != null && Math.abs(epsRaw) > 0.0001 && Math.abs(net) > 0) {
         shares = Math.round(Math.abs(net / epsRaw));
+        sharesSource = "derived";
       }
 
       const eps =
@@ -397,6 +400,7 @@ export async function getValueLineData(
         roe,
         eps,
         shares,
+        sharesSource,
         repurchaseAmt: repAmt,
         dividendsPaid,
       };
