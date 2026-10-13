@@ -435,11 +435,12 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
     periodEnd: Date;
     disclosedAt: Date | null;
     items: Record<string, string>;
+    itemUnits: Record<string, string>;
   }>();
   for (const row of rows) {
     const year = row.periodEnd.getUTCFullYear();
     if (!byYear.has(year)) {
-      byYear.set(year, { periodEnd: row.periodEnd, disclosedAt: row.source.filedAt, items: {} });
+      byYear.set(year, { periodEnd: row.periodEnd, disclosedAt: row.source.filedAt, items: {}, itemUnits: {} });
     }
     const bucket = byYear.get(year)!;
     if (row.periodEnd > bucket.periodEnd) {
@@ -450,6 +451,9 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
     }
     if (!(row.lineItem in bucket.items) && row.value != null) {
       bucket.items[row.lineItem] = row.value.toString();
+      if (row.unit) {
+        bucket.itemUnits[row.lineItem] = row.unit;
+      }
     }
   }
 
@@ -469,6 +473,7 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
       periodEnd: data.periodEnd,
       disclosedAt: data.disclosedAt,
       items: data.items,
+      itemUnits: data.itemUnits,
     }));
 }
 

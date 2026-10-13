@@ -21,6 +21,17 @@ export type CnHkSeed = {
 };
 
 export const CN_HK_SEEDS: Record<string, CnHkSeed> = {
+  "1299.HK": {
+    market: "hk",
+    code: "01299",
+    currency: "USD",
+    canonicalName: "AIA Group Limited",
+    nameZh: "友邦保险",
+    nameEnShort: "AIA Group",
+    sector: "Financials",
+    industry: "保险",
+    exchange: "香港交易所",
+  },
   "9992.HK": {
     market: "hk",
     code: "09992",

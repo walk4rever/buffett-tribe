@@ -226,8 +226,8 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
         </div>
       </div>
 
-      {/* Cash flow totals use only years with both OCF and CapEx reported. */}
-      {stats.flowCoverage > 0 && stats.cumOcf != null && stats.cumCapEx != null && stats.cumFcf != null ? (
+      {/* Cash flow totals use only years with both OCF and CapEx reported. Financial institutions (banks/insurance) do not use industrial CapEx waterfall. */}
+      {data.sectorModelType !== "banks" && data.sectorModelType !== "insurance" && stats.flowCoverage > 0 && stats.cumOcf != null && stats.cumCapEx != null && stats.cumFcf != null ? (
       <div className="val-chart-block">
         <div className="val-chart-header">
           <div>
@@ -561,6 +561,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                 <th style={{ textAlign: "right" }}>资本开支 (CapEx)</th>
                 <th style={{ textAlign: "right" }}>自由现金流 (FCF)</th>
                 <th style={{ textAlign: "right" }}>股票回购</th>
+                <th style={{ textAlign: "right" }}>现金分红</th>
                 <th style={{ textAlign: "right" }}>股数</th>
                 <th style={{ textAlign: "right" }}>ROE</th>
               </tr>

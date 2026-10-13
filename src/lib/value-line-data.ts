@@ -358,10 +358,9 @@ export async function getValueLineData(
       const repAmtRaw =
         parseNum(f.items, "ShareRepurchaseAmt") ??
         parseNum(f.items, "PaymentsForRepurchaseOfCommonStock");
-      // If cash flow is disclosed (ocf != null), an absent repurchase/dividend line item reflects 0 cash outflow for that year
-      const repAmt = repAmtRaw != null ? repAmtRaw : (ocf != null ? 0 : null);
+      const repAmt = repAmtRaw != null ? repAmtRaw : null;
       const divRaw = parseNum(f.items, "DividendsPaid");
-      const dividendsPaid = divRaw != null ? divRaw : (ocf != null ? 0 : null);
+      const dividendsPaid = divRaw != null ? divRaw : null;
       const rawShs =
         parseNum(f.items, "CommonStockSharesOutstanding") ??
         parseNum(f.items, "WeightedAverageNumberOfDilutedSharesOutstanding");
