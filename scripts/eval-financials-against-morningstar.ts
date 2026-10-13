@@ -943,9 +943,14 @@ function printBaselineDiff(run: EvalRunReport, currentFile: string) {
   }
   const prev = JSON.parse(fs.readFileSync(prevFile, "utf8")) as EvalRunReport;
   console.log(`\n📉 Baseline diff vs ${path.basename(prevFile)} (generated ${prev.generatedAt})`);
+  const scoped = run.suiteSize !== prev.suiteSize;
+  if (scoped) {
+    console.log(`   ⚠️  scoped run (${run.suiteSize} companies) vs full baseline (${prev.suiteSize}) — only shared tickers are compared.`);
+  }
 
   const prevByTicker = new Map(prev.companies.map((c) => [c.company.ticker, c]));
   const moves: string[] = [];
+  const absentBaselineTickers = new Set<string>();
   for (const cur of run.companies) {
     const before = prevByTicker.get(cur.company.ticker);
     if (!before) {
@@ -959,8 +964,12 @@ function printBaselineDiff(run: EvalRunReport, currentFile: string) {
   }
   for (const ticker of prevByTicker.keys()) {
     if (!run.companies.some((c) => c.company.ticker === ticker)) {
-      moves.push(`  - ${ticker}: dropped from suite`);
+      if (!scoped) moves.push(`  - ${ticker}: dropped from suite`);
+      else absentBaselineTickers.add(ticker);
     }
+  }
+  if (scoped && absentBaselineTickers.size > 0) {
+    moves.push(`  (${absentBaselineTickers.size} baseline tickers not in this scoped run)`);
   }
 
   const key = (t: string, m: string, y: number) => `${t}|${m}|${y}`;
