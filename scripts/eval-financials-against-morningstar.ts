@@ -946,16 +946,18 @@ function printBaselineDiff(run: EvalRunReport, currentFile: string) {
   console.log(`\n📉 Baseline diff vs ${path.basename(prevFile)} (generated ${prev.generatedAt})`);
   const scoped = run.suiteSize < fullSuiteSize;
   if (scoped) {
-    console.log(`   ⚠️  scoped run (${run.suiteSize} companies) vs full baseline (${prev.suiteSize}) — only shared tickers are compared.`);
+    console.log(`   ⚠️  scoped run (${run.suiteSize} of ${fullSuiteSize} companies) — only tickers present in both runs are compared.`);
   }
 
   const prevByTicker = new Map(prev.companies.map((c) => [c.company.ticker, c]));
   const moves: string[] = [];
-  const absentBaselineTickers = new Set<string>();
+
   for (const cur of run.companies) {
     const before = prevByTicker.get(cur.company.ticker);
+    // "new in suite" is only meaningful when this run covers the whole suite;
+    // otherwise the ticker was simply not in the previous scoped run.
     if (!before) {
-      moves.push(`  + ${cur.company.ticker}: new in suite (${cur.matchRate}%)`);
+      if (!scoped) moves.push(`  + ${cur.company.ticker}: new in suite (${cur.matchRate}%)`);
       continue;
     }
     const delta = Number((cur.matchRate - before.matchRate).toFixed(1));
@@ -963,14 +965,12 @@ function printBaselineDiff(run: EvalRunReport, currentFile: string) {
       moves.push(`  ${delta > 0 ? "▲" : "▼"} ${cur.company.ticker}: ${before.matchRate}% → ${cur.matchRate}% (${delta > 0 ? "+" : ""}${delta}pt)`);
     }
   }
-  for (const ticker of prevByTicker.keys()) {
-    if (!run.companies.some((c) => c.company.ticker === ticker)) {
-      if (!scoped) moves.push(`  - ${ticker}: dropped from suite`);
-      else absentBaselineTickers.add(ticker);
+  if (!scoped) {
+    for (const ticker of prevByTicker.keys()) {
+      if (!run.companies.some((c) => c.company.ticker === ticker)) {
+        moves.push(`  - ${ticker}: dropped from suite`);
+      }
     }
-  }
-  if (scoped && absentBaselineTickers.size > 0) {
-    moves.push(`  (${absentBaselineTickers.size} baseline tickers not in this scoped run)`);
   }
 
   const key = (t: string, m: string, y: number) => `${t}|${m}|${y}`;
