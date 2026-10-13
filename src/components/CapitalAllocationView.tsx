@@ -568,8 +568,10 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
             </thead>
             <tbody>
               {stats.annuals.slice().reverse().map((a) => {
+                const isFinancialSector =
+                  data.sectorModelType === "banks" || data.sectorModelType === "insurance";
                 const annualFcf =
-                  a.operatingCashFlow != null && a.capEx != null
+                  !isFinancialSector && a.operatingCashFlow != null && a.capEx != null
                     ? a.operatingCashFlow - Math.abs(a.capEx)
                     : null;
                 return (
@@ -583,7 +585,11 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                       : "—"}
                   </td>
                   <td style={{ textAlign: "right", color: a.capEx ? "#dc2626" : undefined }}>
-                    {a.capEx != null ? `-${currencySym}${formatUsdInYi(Math.abs(a.capEx))}` : "—"}
+                    {isFinancialSector
+                      ? "—"
+                      : a.capEx != null
+                        ? `-${currencySym}${formatUsdInYi(Math.abs(a.capEx))}`
+                        : "—"}
                   </td>
                   <td
                     style={{
@@ -591,9 +597,11 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                       color: annualFcf != null && annualFcf > 0 ? "#059669" : undefined,
                     }}
                   >
-                    {annualFcf != null
-                      ? `${currencySym}${formatUsdInYi(annualFcf)}`
-                      : "—"}
+                    {isFinancialSector
+                      ? "—"
+                      : annualFcf != null
+                        ? `${currencySym}${formatUsdInYi(annualFcf)}`
+                        : "—"}
                   </td>
                   <td
                     style={{
@@ -632,6 +640,21 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                             }}
                           >
                             推算
+                          </span>
+                        )}
+                        {a.sharesSource === "weighted_average" && (
+                          <span
+                            title="稀释加权平均股数（非期末时点流通股）"
+                            style={{
+                              marginLeft: 4,
+                              fontSize: "0.75rem",
+                              color: "#6b7280",
+                              background: "#f3f4f6",
+                              padding: "1px 4px",
+                              borderRadius: 3,
+                            }}
+                          >
+                            加权
                           </span>
                         )}
                       </>

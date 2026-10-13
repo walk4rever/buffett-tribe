@@ -14,7 +14,7 @@ import {
 import { getTribeMembers } from "@/lib/tribe";
 import { getLatestPortfolioValueUsd } from "@/lib/master-data";
 import { currencySymbol, formatUsdInYi } from "@/lib/currency";
-import { convertCurrency, currenciesNeededForConversion, normalizeCurrencyCode, tradingCurrencyForMarket } from "@/lib/fx-rates-core";
+import { convertCurrency, currenciesNeededForConversion, extractCurrencyCode, normalizeCurrencyCode, tradingCurrencyForMarket } from "@/lib/fx-rates-core";
 import { getLatestFxRates } from "@/lib/fx-rates";
 import {
   selectTopMasterHolders,
@@ -61,7 +61,7 @@ export type ValueLineAnnualData = {
   roe: number | null; // percentage, e.g. 24.5
   eps: number | null;
   shares: number | null;
-  sharesSource?: "disclosed" | "derived" | null;
+  sharesSource?: "disclosed" | "disclosed_period_end" | "weighted_average" | "derived" | null;
   repurchaseAmt: number | null;
   dividendsPaid: number | null;
 };
@@ -320,26 +320,46 @@ export async function getValueLineData(
     normalizeCurrencyCode(await getFinancialsCurrency(entity.id)) ??
     normalizeCurrencyCode(typeof meta.currency === "string" ? meta.currency : null);
   const tradingCurrency = tradingCurrencyForMarket(market);
-  const neededFxCurrencies = currenciesNeededForConversion([{
-    reportingCurrency,
-    tradingCurrency,
-  }]);
-  const fxRates = await getLatestFxRates(neededFxCurrencies);
-  const convertFinancialValue = (value: number | null) =>
-    reportingCurrency && tradingCurrency
-      ? convertCurrency(value, reportingCurrency, tradingCurrency, fxRates)
-      : null;
-  const fxRateToTradingCurrency = convertFinancialValue(1);
-  const valuationCurrencyAvailable =
-    reportingCurrency != null &&
-    tradingCurrency != null &&
-    (reportingCurrency === tradingCurrency || fxRateToTradingCurrency != null);
-  const href = formatCompanyUrl(entity) ?? `/company/${canonicalTicker}`;
-  const dvlHref = formatDvlUrl(entity) ?? `/company/${canonicalTicker}`;
-
   // 1. Fetch Multi-Year Financials first to establish earnings base & benchmark PE
   const financials = await getCompanyFinancials(entity.id, 7);
   const financialsByYear = new Map(financials.map((financial) => [financial.year, financial]));
+
+  // Collect all unique currencies appearing across individual financial items to query FX rates
+  const allItemCurrencies = new Set<string>();
+  if (reportingCurrency) allItemCurrencies.add(reportingCurrency);
+  for (const f of financials) {
+    if (f.itemUnits) {
+      for (const rawUnit of Object.values(f.itemUnits)) {
+        const norm = extractCurrencyCode(rawUnit);
+        if (norm) allItemCurrencies.add(norm);
+      }
+    }
+  }
+
+  const neededFxCurrencies = currenciesNeededForConversion(
+    Array.from(allItemCurrencies).map((fromC) => ({
+      reportingCurrency: fromC,
+      tradingCurrency,
+    }))
+  );
+  const fxRates = await getLatestFxRates(neededFxCurrencies);
+
+  const convertItemValue = (value: number | null, itemUnit?: string | null) => {
+    if (value == null) return null;
+    const fromCur = extractCurrencyCode(itemUnit) ?? reportingCurrency;
+    if (!fromCur || !tradingCurrency) return null;
+    if (fromCur === tradingCurrency) return value;
+    return convertCurrency(value, fromCur, tradingCurrency, fxRates);
+  };
+
+  const valuationCurrencyAvailable =
+    tradingCurrency != null &&
+    (allItemCurrencies.size === 0 ||
+      Array.from(allItemCurrencies).every(
+        (c) => c === tradingCurrency || convertCurrency(1, c, tradingCurrency, fxRates) != null
+      ));
+  const href = formatCompanyUrl(entity) ?? `/company/${canonicalTicker}`;
+  const dvlHref = formatDvlUrl(entity) ?? `/company/${canonicalTicker}`;
 
   const rawAnnuals: ValueLineAnnualData[] = financials
     .map((f) => {
@@ -361,14 +381,21 @@ export async function getValueLineData(
       const repAmt = repAmtRaw != null ? repAmtRaw : null;
       const divRaw = parseNum(f.items, "DividendsPaid");
       const dividendsPaid = divRaw != null ? divRaw : null;
-      const rawShs =
-        parseNum(f.items, "CommonStockSharesOutstanding") ??
-        parseNum(f.items, "WeightedAverageNumberOfDilutedSharesOutstanding");
+
+      const periodEndShs = parseNum(f.items, "CommonStockSharesOutstanding");
+      const weightedAvgShs = parseNum(f.items, "WeightedAverageNumberOfDilutedSharesOutstanding");
+      const rawShs = periodEndShs ?? weightedAvgShs;
 
       // Robust shares estimation: if raw shares are unavailable (common in CN/HK),
       // deduce from NetIncome / EPS. Works even if both net and epsRaw are negative (loss).
       let shares: number | null = rawShs;
-      let sharesSource: "disclosed" | "derived" | null = rawShs != null ? "disclosed" : null;
+      let sharesSource: ValueLineAnnualData["sharesSource"] = null;
+      if (periodEndShs != null) {
+        sharesSource = "disclosed_period_end";
+      } else if (weightedAvgShs != null) {
+        sharesSource = "weighted_average";
+      }
+
       if (shares == null && net != null && epsRaw != null && Math.abs(epsRaw) > 0.0001 && Math.abs(net) > 0) {
         shares = Math.round(Math.abs(net / epsRaw));
         sharesSource = "derived";
@@ -409,23 +436,33 @@ export async function getValueLineData(
 
   // Normalize historical shares & EPS for stock splits so older years are on the latest share basis
   const annuals: ValueLineAnnualData[] = normalizeAnnualsStockSplits(rawAnnuals);
-  const valuationAnnuals: ValueLineAnnualData[] = annuals.map((annual) => ({
-    ...annual,
-    revenue: convertFinancialValue(annual.revenue),
-    netIncome: convertFinancialValue(annual.netIncome),
-    operatingCashFlow: convertFinancialValue(annual.operatingCashFlow),
-    capEx: convertFinancialValue(annual.capEx),
-    freeCashFlow: convertFinancialValue(annual.freeCashFlow),
-    shareholdersEquity: convertFinancialValue(annual.shareholdersEquity),
-    totalAssets: convertFinancialValue(annual.totalAssets),
-    totalLiabilities: convertFinancialValue(annual.totalLiabilities),
-    cashAndCashEquivalents: convertFinancialValue(annual.cashAndCashEquivalents),
-    shortTermDebt: convertFinancialValue(annual.shortTermDebt),
-    longTermDebt: convertFinancialValue(annual.longTermDebt),
-    eps: convertFinancialValue(annual.eps),
-    repurchaseAmt: convertFinancialValue(annual.repurchaseAmt),
-    dividendsPaid: convertFinancialValue(annual.dividendsPaid),
-  }));
+  const valuationAnnuals: ValueLineAnnualData[] = annuals.map((annual) => {
+    const f = financialsByYear.get(annual.year);
+    const u = f?.itemUnits ?? {};
+    return {
+      ...annual,
+      revenue: convertItemValue(annual.revenue, u.Revenue),
+      netIncome: convertItemValue(annual.netIncome, u.NetIncome),
+      operatingCashFlow: convertItemValue(annual.operatingCashFlow, u.OperatingCashFlow),
+      capEx: convertItemValue(annual.capEx, u.CapEx),
+      freeCashFlow: convertItemValue(annual.freeCashFlow, u.OperatingCashFlow ?? u.NetIncome),
+      shareholdersEquity: convertItemValue(annual.shareholdersEquity, u.ShareholdersEquity),
+      totalAssets: convertItemValue(annual.totalAssets, u.TotalAssets),
+      totalLiabilities: convertItemValue(annual.totalLiabilities, u.TotalLiabilities),
+      cashAndCashEquivalents: convertItemValue(
+        annual.cashAndCashEquivalents,
+        u.CashAndCashEquivalents ?? u.CashEndOfPeriod
+      ),
+      shortTermDebt: convertItemValue(annual.shortTermDebt, u.ShortTermDebt),
+      longTermDebt: convertItemValue(annual.longTermDebt, u.LongTermDebt),
+      eps: convertItemValue(annual.eps, u.EPSDiluted ?? u.EPSBasic),
+      repurchaseAmt: convertItemValue(
+        annual.repurchaseAmt,
+        u.ShareRepurchaseAmt ?? u.PaymentsForRepurchaseOfCommonStock
+      ),
+      dividendsPaid: convertItemValue(annual.dividendsPaid, u.DividendsPaid),
+    };
+  });
 
   // Value Triad & Capital Allocation Metrics
   const recentAnnuals = annuals.slice(-5);
@@ -833,10 +870,45 @@ export async function getValueLineData(
       ? Math.min(...pastYearPrices.map((p) => Number(p.low ?? p.close)))
       : null;
 
-    // Detect share class price scale relative to the EPS anchor price (e.g. BRK-B vs BRK-A)
+    // Known ADR ratios (Ordinary shares per 1 ADR/ADS share)
+    // When a US security represents foreign ordinary shares, 1 ADR = N ordinary shares.
+    // e.g. TSM: 1 ADR = 5 ordinary shares; BABA: 1 ADS = 8 ordinary shares; PDD: 1 ADS = 4 ordinary shares.
+    const KNOWN_ADR_RATIOS: Record<string, number> = {
+      TSM: 5,
+      BABA: 8,
+      PDD: 4,
+      JD: 2,
+      BILI: 1,
+      NIO: 1,
+      LI: 2,
+      BEKE: 3,
+      TME: 2,
+      NTES: 5,
+      FUTU: 1,
+      YMM: 20,
+      BZ: 2,
+      ARM: 1,
+      NOK: 1,
+      SONY: 1,
+    };
+
+    let adrRatio = KNOWN_ADR_RATIOS[t.toUpperCase()] ?? null;
+    if (adrRatio == null && secRow?.titleOfClass) {
+      const title = secRow.titleOfClass.toUpperCase();
+      const repMatch = title.match(/REP(?:STG)?\s*([0-9]+)\s*COM/i);
+      if (repMatch) {
+        adrRatio = parseInt(repMatch[1], 10);
+      }
+    }
+
+    // Detect share class price scale relative to the EPS anchor price (e.g. BRK-B vs BRK-A) or ADR ratio
     let secEps = latestEps;
     let secShares = sharesOutstanding;
-    if (epsAnchorPrice != null && epsAnchorPrice > 0 && latestPrice != null && latestPrice > 0) {
+
+    if (adrRatio != null && adrRatio > 1) {
+      secShares = sharesOutstanding != null ? Math.round(sharesOutstanding / adrRatio) : null;
+      secEps = latestEps != null ? Number((latestEps * adrRatio).toFixed(2)) : null;
+    } else if (epsAnchorPrice != null && epsAnchorPrice > 0 && latestPrice != null && latestPrice > 0) {
       const priceScale = latestPrice / epsAnchorPrice;
       if (priceScale > 1.8 || priceScale < 0.55) {
         secEps = latestEps != null ? Number((latestEps * priceScale).toFixed(2)) : null;

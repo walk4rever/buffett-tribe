@@ -24,7 +24,7 @@ export const CN_HK_SEEDS: Record<string, CnHkSeed> = {
   "1299.HK": {
     market: "hk",
     code: "01299",
-    currency: "USD",
+    currency: "CNY",
     canonicalName: "AIA Group Limited",
     nameZh: "友邦保险",
     nameEnShort: "AIA Group",

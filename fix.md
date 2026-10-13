@@ -64,3 +64,21 @@
 2. **远程与生产节点同步**：
    - Commit `2d399510` & `06ce7bae` 已推送到远程 `origin/main`。
    - mini 机器通过 `git pull origin main` 完成 Fast-forward 同步，工作区代码完全对齐。
+
+---
+
+## 四、 第二阶段修复清单（针对 bug.md 四大核心问题）
+
+### 1. 修复成果概要
+
+| 遗留问题 | 修复前表现 | 修复后状态 | 修复策略与文件 |
+| :--- | :--- | :--- | :--- |
+| **P0-1: 科目级币种与换算** | BABA P/E `931.7x`、P/B `90.1x`；TSM 跨年/跨科目 TWD 与 USD 混算 | BABA P/E `17.4x`、P/B `1.7x`；TSM P/E `43.4x`、P/B `13.7x` | `src/lib/value-line-data.ts`：读取每个科目行自带的 `unit`，提取真实币种（`extractCurrencyCode` 兼容 `USD/shares` 等单位）动态折算，若已是目标交易币种则直通不重复折算。 |
+| **P0-2: 友邦（1299.HK）币种数值匹配** | 友邦 P/E `2.2x`、P/B `0.3x`（人民币数值被贴上美元标签导致放大 6.4 倍） | 友邦 P/E `14.7x`、P/B `2.1x`，市值约 `HK$752.8B`（与行情接口 HK$744B 高度吻合） | 还原数据真实口径：东财港股报表数值实际为 CNY，将友邦 `reportingCurrency` 与行级单位回归 `CNY`，由页面根据 HKD/CNY 汇率进行正确折算。`scripts/lib/cn-hk-company-seeds.ts` 同步修正为 `CNY`。 |
+| **P1-3: ADR/ADS 比例与股数口径** | TSM 美股市值高达 `$11.72T`；BABA 美股市值高达 `$2.07T`；加权平均股冒充披露股 | TSM 美股市值降至真实 **`$2.34T`**；BABA 美股市值降至真实 **`$258.7B`**；区分加权平均股并打标「加权」 | `src/lib/value-line-data.ts` 引入 ADR 比例折算映射（TSM 1:5, BABA 1:8, PDD 1:4 等）与正则识别，将有效 ADR 股数与 EPS 进行双向换算；细化 `sharesSource` 为 `disclosed_period_end`、`weighted_average`、`derived`。 |
+| **P1-4: 银行/保险资本配置明细表** | JPM 等金融企业明细表展示工商业 CapEx 与 FCF 列 | CapEx 与 FCF 自动呈现为 `—`（不适用），避免误导 | `src/components/CapitalAllocationView.tsx` 针对 `banks` 与 `insurance` 行业自适应将 CapEx 与 FCF 列置为“—”，表格更加专业。 |
+
+### 2. 闭环质量验证
+- `npx eslint .`：通过（0 errors, 0 warnings）。
+- `npm test`：通过（44 passed, 4 skipped, 309 tests passed, Python 12 tests passed）。
+- `npm run build`：通过，Next.js 打包与静态页面生成全部成功。

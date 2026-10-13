@@ -34,6 +34,12 @@ export function normalizeCurrencyCode(value: string | null | undefined): string 
   return code && /^[A-Z]{3}$/.test(code) ? code : null;
 }
 
+export function extractCurrencyCode(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const clean = value.trim().toUpperCase().replace(/\/(?:SHARES?|ADS|ADR)$/i, "");
+  return normalizeCurrencyCode(clean);
+}
+
 export function currencyRateToUsd(
   currency: string,
   rates: ReadonlyMap<string, number>,

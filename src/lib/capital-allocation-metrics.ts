@@ -5,7 +5,7 @@ export type CapitalAllocationAnnualInput = {
   repurchaseAmt: number | null;
   dividendsPaid: number | null;
   shares: number | null;
-  sharesSource?: "disclosed" | "derived" | null;
+  sharesSource?: "disclosed" | "disclosed_period_end" | "weighted_average" | "derived" | null;
   roe: number | null;
 };
 
