@@ -76,6 +76,7 @@ const RESULTS_DIR = path.join(process.cwd(), "tests", "evals", "history");
 const SUITE_PATH = path.join(process.cwd(), "scripts", "lib", "morningstar-benchmark-suite.json");
 
 let evalWindowYears = DEFAULT_EVAL_WINDOW_YEARS;
+let fullSuiteSize = 0;
 let refreshBaseline = false;
 let snapshotHits = 0;
 let snapshotFetches = 0;
@@ -943,7 +944,7 @@ function printBaselineDiff(run: EvalRunReport, currentFile: string) {
   }
   const prev = JSON.parse(fs.readFileSync(prevFile, "utf8")) as EvalRunReport;
   console.log(`\n📉 Baseline diff vs ${path.basename(prevFile)} (generated ${prev.generatedAt})`);
-  const scoped = run.suiteSize !== prev.suiteSize;
+  const scoped = run.suiteSize < fullSuiteSize;
   if (scoped) {
     console.log(`   ⚠️  scoped run (${run.suiteSize} companies) vs full baseline (${prev.suiteSize}) — only shared tickers are compared.`);
   }
@@ -1038,6 +1039,7 @@ async function runSuite(targets: BenchmarkCompany[], mode: EvalMode): Promise<Co
 
 async function main() {
   const suite: BenchmarkCompany[] = JSON.parse(fs.readFileSync(SUITE_PATH, "utf8"));
+  fullSuiteSize = suite.length;
 
   const tickerArg = process.argv.find((a, i) => process.argv[i - 1] === "--ticker");
   const suiteArg = process.argv.find((a, i) => process.argv[i - 1] === "--suite");
