@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { buildArticleListParams } from "@/lib/admin-insight-company-links";
 
 interface CompanyOption {
   id: string;
@@ -46,6 +47,7 @@ function companySubLabel(company: CompanyOption) {
 
 export function AdminInsightCompanyLinks() {
   const [articles, setArticles] = useState<ArticleOption[]>([]);
+  const [articleQuery, setArticleQuery] = useState("");
   const [articlePage, setArticlePage] = useState(1);
   const [articleTotal, setArticleTotal] = useState(0);
   const [articleTotalPages, setArticleTotalPages] = useState(1);
@@ -64,10 +66,7 @@ export function AdminInsightCompanyLinks() {
     const timer = window.setTimeout(async () => {
       setLoadingArticles(true);
       try {
-        const params = new URLSearchParams({
-          type: "posts",
-          page: String(articlePage),
-        });
+        const params = buildArticleListParams(articlePage, articleQuery);
         const response = await fetch(`/api/admin/insight-company-links?${params}`, {
           signal: controller.signal,
         });
@@ -98,7 +97,7 @@ export function AdminInsightCompanyLinks() {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [articlePage]);
+  }, [articlePage, articleQuery]);
 
   useEffect(() => {
     const query = companyQuery.trim();
@@ -182,10 +181,7 @@ export function AdminInsightCompanyLinks() {
 
       // Refetch the article list to reflect the saved associations
       try {
-        const params = new URLSearchParams({
-          type: "posts",
-          page: String(articlePage),
-        });
+        const params = buildArticleListParams(articlePage, articleQuery);
         const listResponse = await fetch(`/api/admin/insight-company-links?${params}`, {
           cache: "no-store",
         });
@@ -226,6 +222,21 @@ export function AdminInsightCompanyLinks() {
         <div className="admin-insight-links-panel-head">
           <span>{loadingArticles ? "读取中" : `共 ${articleTotal} 篇`}</span>
         </div>
+        <label className="admin-insight-links-label" htmlFor="admin-article-search">
+          搜索文章
+        </label>
+        <input
+          id="admin-article-search"
+          type="search"
+          className="admin-insight-links-input"
+          value={articleQuery}
+          onChange={(event) => {
+            setArticleQuery(event.target.value);
+            setArticlePage(1);
+          }}
+          placeholder="标题、来源或链接"
+          maxLength={100}
+        />
         <div className="admin-insight-links-list" aria-live="polite">
           {loadingArticles ? (
             <p className="admin-insight-links-empty">正在读取文章…</p>
