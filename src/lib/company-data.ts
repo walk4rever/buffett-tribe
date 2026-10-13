@@ -478,12 +478,10 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
 }
 
 /**
- * A company's Financial rows are always one currency across every year and
- * line item (US: always "USD"; a CN/HK entity's currency is a verified fact
- * from scripts/lib/cn-hk-company-seeds.ts, not derived from `market` — see
- * that file's comment on why). Kept separate from getCompanyFinancials
- * rather than folded into its return shape, since that function already has
- * a second caller (api/canvas/route.ts) expecting a bare array.
+ * Returns the verified statement reporting currency. Individual Financial
+ * rows may use a different provider unit and must be normalized by `unit`.
+ * Kept separate from getCompanyFinancials because another caller expects a
+ * bare array.
  */
 export async function getFinancialsCurrency(entityId: string): Promise<string | null> {
   const familyIds = await getEntityFamilyIds(entityId);

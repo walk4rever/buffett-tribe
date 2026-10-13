@@ -32,16 +32,23 @@ async function main() {
   const code = getArg("--code");
   const market = getArg("--market");
   const currency = getArg("--currency");
+  const dataCurrency = getArg("--data-currency");
 
   if (!filePath || !ticker || !code || !market || !currency) {
     console.error(
-      "Usage: tsx import-cn-hk-financials-from-file.ts <json-file> --ticker <T> --code <C> --market cn|hk --currency <ISO-4217>",
+      "Usage: tsx import-cn-hk-financials-from-file.ts <json-file> --ticker <T> --code <C> --market cn|hk --currency <reporting ISO-4217> [--data-currency <financial ISO-4217>]",
     );
     process.exitCode = 1;
     return;
   }
   const reportingCurrency = normalizeCurrencyCode(currency);
   if (!reportingCurrency) throw new Error(`Invalid reporting currency code: ${currency}`);
+  const financialDataCurrency = dataCurrency
+    ? normalizeCurrencyCode(dataCurrency)
+    : reportingCurrency;
+  if (!financialDataCurrency) {
+    throw new Error(`Invalid financial data currency code: ${dataCurrency}`);
+  }
 
   const records = JSON.parse(readFileSync(filePath, "utf-8")) as Record_[];
   if (!records.length) {
@@ -97,7 +104,7 @@ async function main() {
     periodType: record.periodType ?? "FY",
     lineItem: record.lineItem,
     value: record.value,
-    unit: record.unit ?? (record.lineItem === "CommonStockSharesOutstanding" ? "shares" : reportingCurrency),
+    unit: record.unit ?? (record.lineItem === "CommonStockSharesOutstanding" ? "shares" : financialDataCurrency),
     mappingRule: record.mappingRule,
     confidence: record.confidence,
   }));
@@ -110,7 +117,7 @@ async function main() {
   console.timeEnd("  db-write");
 
   console.log(
-    `Wrote ${recordsToInsert.length}/${records.length} Financial rows for entity ${entity.id} (unit=${currency}); skipped ${skippedUnknown} unknown amount(s)`,
+    `Wrote ${recordsToInsert.length}/${records.length} Financial rows for entity ${entity.id} (reporting=${reportingCurrency}, data=${financialDataCurrency}); skipped ${skippedUnknown} unknown amount(s)`,
   );
   await db.$disconnect();
 

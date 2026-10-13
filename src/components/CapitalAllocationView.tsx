@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { ValueLineData } from "@/lib/value-line-data";
 import { currencySymbol, formatUsdInYi } from "@/lib/currency";
 import { computeCapitalAllocationStats } from "@/lib/capital-allocation-metrics";
+import { getPeriodEndShareSeries } from "@/lib/share-count-utils";
 
 type CapitalAllocationViewProps = {
   data: ValueLineData;
@@ -31,8 +32,11 @@ function buildSmoothSpline(pts: Array<{ x: number; y: number }>): string {
 }
 
 export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
-  const currencySym = data.reportingCurrency
-    ? currencySymbol(data.reportingCurrency)
+  const isFinancialSector =
+    data.sectorModelType === "banks" || data.sectorModelType === "insurance";
+  const displayCurrency = data.tradingCurrency;
+  const currencySym = displayCurrency
+    ? currencySymbol(displayCurrency)
     : "";
   const [hoverYearIdx, setHoverYearIdx] = useState<number | null>(null);
 
@@ -52,7 +56,9 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
   }
 
   const periodCountLabel = `${stats.periodCount} 个已披露财年`;
-  const flowCoverageLabel = `${stats.flowCoverage}/${stats.periodCount} 年 OCF 与 CapEx 数据完整`;
+  const flowCoverageLabel = isFinancialSector
+    ? "工商业现金流指标不适用"
+    : `${stats.flowCoverage}/${stats.periodCount} 年 OCF 与 CapEx 数据完整`;
   let shareTag = "股数变化数据不足";
   let shareTagClass = "val-tag--neutral";
 
@@ -96,8 +102,10 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
   const innerW = chartW - padL - padR;
   const innerH = chartH - padT - padB;
 
-  const validAnnuals = stats.annuals.filter((a) => a.shares != null && a.shares > 0);
-  const sharesArr = validAnnuals.map((a) => a.shares!);
+  const periodEndShareSeries = getPeriodEndShareSeries(stats.annuals);
+  const sharesArr = periodEndShareSeries.flatMap((point) =>
+    point.shares == null ? [] : [point.shares],
+  );
   const rawMinShares = sharesArr.length ? Math.min(...sharesArr) : 1;
   const rawMaxShares = sharesArr.length ? Math.max(...sharesArr) : 1;
   const sharesDiff = rawMaxShares - rawMinShares;
@@ -107,27 +115,57 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
   const minShares = Math.max(0, rawMinShares - marginShares);
   const maxShares = rawMaxShares + marginShares;
 
+  const annualByYear = new Map(stats.annuals.map((annual) => [annual.year, annual]));
   const rawMaxBuyback = Math.max(
     0,
-    ...stats.annuals.map((a) => (a.repurchaseAmt == null ? 0 : Math.abs(a.repurchaseAmt))),
+    ...periodEndShareSeries.map((point) => {
+      const amount = annualByYear.get(point.year)?.repurchaseAmt;
+      return amount == null ? 0 : Math.abs(amount);
+    }),
   );
   // Leave 25% head space for buyback bars so they don't overpower the shares line
   const maxBuyback = rawMaxBuyback > 0 ? rawMaxBuyback * 1.35 : 100;
 
-  const chartPoints = validAnnuals.map((a, i) => {
-    const x = padL + (validAnnuals.length > 1 ? (i / (validAnnuals.length - 1)) * innerW : innerW / 2);
-    const sharesRatio = (a.shares! - minShares) / Math.max(1, maxShares - minShares);
-    const y = padT + (1 - sharesRatio) * innerH;
+  const chartPoints = periodEndShareSeries.map((point, i) => {
+    const x =
+      padL +
+      (periodEndShareSeries.length > 1
+        ? (i / (periodEndShareSeries.length - 1)) * innerW
+        : innerW / 2);
+    const sharesRatio =
+      point.shares == null
+        ? null
+        : (point.shares - minShares) / Math.max(1, maxShares - minShares);
+    const y = sharesRatio == null ? null : padT + (1 - sharesRatio) * innerH;
+    const annual = annualByYear.get(point.year);
     return {
       x,
       y,
-      year: a.year,
-      shares: a.shares!,
-      buyback: a.repurchaseAmt == null ? null : Math.abs(a.repurchaseAmt),
+      year: point.year,
+      shares: point.shares,
+      buyback:
+        annual?.repurchaseAmt == null ? null : Math.abs(annual.repurchaseAmt),
     };
   });
 
-  const sharesSpline = buildSmoothSpline(chartPoints);
+  const sharesSplineSegments: Array<Array<{ x: number; y: number }>> = [];
+  let currentSplineSegment: Array<{ x: number; y: number }> = [];
+  for (const point of chartPoints) {
+    if (point.y == null || point.shares == null) {
+      if (currentSplineSegment.length) {
+        sharesSplineSegments.push(currentSplineSegment);
+        currentSplineSegment = [];
+      }
+      continue;
+    }
+    currentSplineSegment.push({ x: point.x, y: point.y });
+  }
+  if (currentSplineSegment.length) {
+    sharesSplineSegments.push(currentSplineSegment);
+  }
+  const sharesSplines = sharesSplineSegments
+    .map(buildSmoothSpline)
+    .filter(Boolean);
 
   const activeHover =
     hoverYearIdx !== null && chartPoints[hoverYearIdx] ? chartPoints[hoverYearIdx] : null;
@@ -149,7 +187,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
           </div>
           <p className="val-subtitle">
             FY{stats.earliestYear}–FY{stats.latestYear} · {periodCountLabel} · {flowCoverageLabel}
-            {data.reportingCurrency ? ` · ${data.reportingCurrency}` : " · 币种待确认"}
+            {displayCurrency ? ` · ${displayCurrency}` : " · 币种待确认"}
           </p>
         </div>
       </div>
@@ -182,9 +220,11 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
               {formatAmount(stats.cumBuybacks)}
             </span>
             <span className="val-card-subtag val-tag--sub-slate">
-              {stats.cumBuybacks && stats.cumBuybacks > 0
-                ? `${stats.annuals.filter((a) => a.repurchaseAmt != null && a.repurchaseAmt > 0).length} 年有实施`
-                : "区间未回购"}
+                {stats.buybackCoverage === 0
+                  ? "数据缺失"
+                  : stats.cumBuybacks === 0
+                    ? "区间未回购"
+                    : `${stats.annuals.filter((a) => a.repurchaseAmt != null && a.repurchaseAmt > 0).length} 年有实施`}
             </span>
           </div>
           <span className="val-card-hint">回购金额不等同于实际注销股数</span>
@@ -200,34 +240,40 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
               {formatAmount(stats.cumDividends)}
             </span>
             <span className="val-card-subtag val-tag--sub-slate">
-              {stats.cumDividends && stats.cumDividends > 0
-                ? `${stats.annuals.filter((a) => a.dividendsPaid != null && a.dividendsPaid > 0).length} 年有实施`
-                : "区间未分红"}
+                {stats.dividendCoverage === 0
+                  ? "数据缺失"
+                  : stats.cumDividends === 0
+                    ? "区间未分红"
+                    : `${stats.annuals.filter((a) => a.dividendsPaid != null && a.dividendsPaid > 0).length} 年有实施`}
             </span>
           </div>
           <span className="val-card-hint">现金流量表披露的现金分红金额</span>
         </div>
 
-        <div className="val-multiple-card">
-          <span className="val-card-label">资本开支 / 经营现金流</span>
-          <div className="val-card-val-row">
-            <span className="val-card-val">
-              {stats.capexPct != null ? `${stats.capexPct}%` : "—"}
-            </span>
-            {stats.capexPct != null ? (
-              <span className="val-card-subtag val-tag--sub-slate">{reinvestIntensity}</span>
-            ) : null}
-          </div>
-          <span className="val-card-hint">
+        {!isFinancialSector && (
+          <div className="val-multiple-card">
+            <span className="val-card-label">资本开支 / 经营现金流</span>
+            <div className="val-card-val-row">
+              <span className="val-card-val">
+                {stats.capexPct != null ? `${stats.capexPct}%` : "—"}
+              </span>
+              {stats.capexPct != null ? (
+                <span className="val-card-subtag val-tag--sub-slate">
+                  {reinvestIntensity}
+                </span>
+              ) : null}
+            </div>
+            <span className="val-card-hint">
               {stats.cumCapEx != null
-              ? `完整期累计 CapEx ${formatAmount(stats.cumCapEx)} · ${flowCoverageLabel}`
-              : "经营现金流或资本开支数据不足"}
-          </span>
-        </div>
+                ? `完整期累计 CapEx ${formatAmount(stats.cumCapEx)} · ${flowCoverageLabel}`
+                : "经营现金流或资本开支数据不足"}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Cash flow totals use only years with both OCF and CapEx reported. Financial institutions (banks/insurance) do not use industrial CapEx waterfall. */}
-      {data.sectorModelType !== "banks" && data.sectorModelType !== "insurance" && stats.flowCoverage > 0 && stats.cumOcf != null && stats.cumCapEx != null && stats.cumFcf != null ? (
+      {!isFinancialSector && stats.flowCoverage > 0 && stats.cumOcf != null && stats.cumCapEx != null && stats.cumFcf != null ? (
       <div className="val-chart-block">
         <div className="val-chart-header">
           <div>
@@ -327,7 +373,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
           </div>
         </div>
       </div>
-      ) : (
+      ) : !isFinancialSector ? (
         <div className="val-chart-block">
           <div className="val-chart-header">
             <div>
@@ -336,7 +382,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* ── 5. Diluted Share Count & Buyback Intensity Dual-Axis Chart ── */}
       <div className="val-chart-block">
@@ -347,7 +393,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
               <span className={`val-status-badge ${shareTagClass}`}>{shareTag}</span>
             </div>
             <span className="val-block-desc">
-              {shareDesc} 折线：披露股数 · 柱状：该年度已披露回购金额
+              {shareDesc} 折线：期末披露股数 · 柱状：该年度已披露回购金额
             </span>
           </div>
 
@@ -366,7 +412,12 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
             {activeHover && (
               <div className="cap-chart-hud">
                 <strong>FY{activeHover.year}</strong>：
-                股本 <strong>{formatUsdInYi(activeHover.shares)}股</strong>
+                股本{" "}
+                <strong>
+                  {activeHover.shares == null
+                    ? "数据缺失"
+                    : `${formatUsdInYi(activeHover.shares)}股`}
+                </strong>
                 <span>
                   {" "}
                   · 回购{" "}
@@ -380,6 +431,9 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
         </div>
 
         <div className="cap-chart-container">
+          {sharesArr.length === 0 ? (
+            <p className="val-block-desc">暂无期末披露股数，无法绘制股本趋势。</p>
+          ) : (
           <svg
             viewBox={`0 0 ${chartW} ${chartH}`}
             className="cap-chart-svg"
@@ -475,8 +529,9 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
             })}
 
             {/* Shares Corridor Spline Line */}
-            {sharesSpline && (
+            {sharesSplines.map((sharesSpline, index) => (
               <path
+                key={`share-spline-${index}`}
                 d={sharesSpline}
                 fill="none"
                 stroke="#0284c7"
@@ -484,7 +539,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
-            )}
+            ))}
 
             {/* Data points & Year Labels */}
             {chartPoints.map((pt, i) => {
@@ -503,17 +558,19 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                     />
                   )}
 
-                  <circle
-                    cx={pt.x}
-                    cy={pt.y}
-                    r={isHovered ? 6.5 : 4.5}
-                    fill="#0284c7"
-                    stroke="#ffffff"
-                    strokeWidth="2.5"
-                    style={{ cursor: "pointer", transition: "r 0.15s ease" }}
-                    onMouseEnter={() => setHoverYearIdx(i)}
-                    onMouseLeave={() => setHoverYearIdx(null)}
-                  />
+                  {pt.y != null && pt.shares != null && (
+                    <circle
+                      cx={pt.x}
+                      cy={pt.y}
+                      r={isHovered ? 6.5 : 4.5}
+                      fill="#0284c7"
+                      stroke="#ffffff"
+                      strokeWidth="2.5"
+                      style={{ cursor: "pointer", transition: "r 0.15s ease" }}
+                      onMouseEnter={() => setHoverYearIdx(i)}
+                      onMouseLeave={() => setHoverYearIdx(null)}
+                    />
+                  )}
 
                   {/* Year Label */}
                   <text
@@ -538,6 +595,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
               股票回购额
             </text>
           </svg>
+          )}
         </div>
       </div>
 
@@ -546,9 +604,11 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
         <div className="val-chart-header">
           <div>
             <h4 className="val-block-title">历年资本配置与股本变化明细</h4>
-            <span className="val-block-desc">
-              年度经营现金流、资本开支、回购、现金分红与股本变化
-            </span>
+              <span className="val-block-desc">
+                {isFinancialSector
+                  ? "年度回购、现金分红、股数（标明口径）与 ROE"
+                  : "年度经营现金流、资本开支、回购、现金分红与股本变化"}
+              </span>
           </div>
         </div>
 
@@ -557,9 +617,13 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
             <thead>
               <tr>
                 <th>财年</th>
-                <th style={{ textAlign: "right" }}>经营现金流 (OCF)</th>
-                <th style={{ textAlign: "right" }}>资本开支 (CapEx)</th>
-                <th style={{ textAlign: "right" }}>自由现金流 (FCF)</th>
+                {!isFinancialSector && (
+                  <>
+                    <th style={{ textAlign: "right" }}>经营现金流 (OCF)</th>
+                    <th style={{ textAlign: "right" }}>资本开支 (CapEx)</th>
+                    <th style={{ textAlign: "right" }}>自由现金流 (FCF)</th>
+                  </>
+                )}
                 <th style={{ textAlign: "right" }}>股票回购</th>
                 <th style={{ textAlign: "right" }}>现金分红</th>
                 <th style={{ textAlign: "right" }}>股数</th>
@@ -568,8 +632,6 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
             </thead>
             <tbody>
               {stats.annuals.slice().reverse().map((a) => {
-                const isFinancialSector =
-                  data.sectorModelType === "banks" || data.sectorModelType === "insurance";
                 const annualFcf =
                   !isFinancialSector && a.operatingCashFlow != null && a.capEx != null
                     ? a.operatingCashFlow - Math.abs(a.capEx)
@@ -579,30 +641,30 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                   <td>
                     <strong>FY{a.year}</strong>
                   </td>
-                  <td style={{ textAlign: "right" }}>
-                    {a.operatingCashFlow != null
-                      ? `${currencySym}${formatUsdInYi(a.operatingCashFlow)}`
-                      : "—"}
-                  </td>
-                  <td style={{ textAlign: "right", color: a.capEx ? "#dc2626" : undefined }}>
-                    {isFinancialSector
-                      ? "—"
-                      : a.capEx != null
-                        ? `-${currencySym}${formatUsdInYi(Math.abs(a.capEx))}`
-                        : "—"}
-                  </td>
-                  <td
-                    style={{
-                      textAlign: "right",
-                      color: annualFcf != null && annualFcf > 0 ? "#059669" : undefined,
-                    }}
-                  >
-                    {isFinancialSector
-                      ? "—"
-                      : annualFcf != null
-                        ? `${currencySym}${formatUsdInYi(annualFcf)}`
-                        : "—"}
-                  </td>
+                    {!isFinancialSector && (
+                      <>
+                        <td style={{ textAlign: "right" }}>
+                          {a.operatingCashFlow != null
+                            ? `${currencySym}${formatUsdInYi(a.operatingCashFlow)}`
+                            : "—"}
+                        </td>
+                        <td style={{ textAlign: "right", color: a.capEx ? "#dc2626" : undefined }}>
+                          {a.capEx != null
+                            ? `-${currencySym}${formatUsdInYi(Math.abs(a.capEx))}`
+                            : "—"}
+                        </td>
+                        <td
+                          style={{
+                            textAlign: "right",
+                            color: annualFcf != null && annualFcf > 0 ? "#059669" : undefined,
+                          }}
+                        >
+                          {annualFcf != null
+                            ? `${currencySym}${formatUsdInYi(annualFcf)}`
+                            : "—"}
+                        </td>
+                      </>
+                    )}
                   <td
                     style={{
                       textAlign: "right",

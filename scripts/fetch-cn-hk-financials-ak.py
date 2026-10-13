@@ -185,6 +185,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--market", required=True, choices=["cn", "hk"], help="cn or hk")
     parser.add_argument("--ticker", default=None, help="Entity.ticker to resolve, e.g. 9992.HK (defaults to derived from --code/--market)")
     parser.add_argument("--currency", required=True, choices=["CNY", "HKD", "USD"], help="Verified reporting currency (not derived — see scripts/lib/cn-hk-company-seeds.ts)")
+    parser.add_argument("--data-currency", choices=["CNY", "HKD", "USD"], help="Currency used by returned AkShare values when it differs from the company's reporting currency")
     parser.add_argument("--from-year", type=int, default=2020, help="Earliest fiscal year to include (default 2020)")
     parser.add_argument("--out-dir", default="/tmp/cn-hk-financials-ak", help="Directory for the generated JSON fixture")
     parser.add_argument("--import-db", action="store_true", help="Import the generated JSON into the database after fetching")
@@ -640,7 +641,14 @@ def write_output(out_dir: Path, code: str, records: list[dict[str, object]]) -> 
     return json_path
 
 
-def import_into_db(json_path: Path, ticker: str, code: str, market: str, currency: str) -> None:
+def import_into_db(
+    json_path: Path,
+    ticker: str,
+    code: str,
+    market: str,
+    currency: str,
+    data_currency: str | None = None,
+) -> None:
     cmd = [
         "node",
         "--env-file=.env.local",
@@ -652,6 +660,8 @@ def import_into_db(json_path: Path, ticker: str, code: str, market: str, currenc
         "--market", market,
         "--currency", currency,
     ]
+    if data_currency:
+        cmd.extend(["--data-currency", data_currency])
     subprocess.run(cmd, check=True)
 
 
@@ -692,7 +702,14 @@ def main() -> int:
 
     if args.import_db:
         print(f"  importing into database...")
-        import_into_db(json_path, ticker, args.code, args.market, args.currency)
+        import_into_db(
+            json_path,
+            ticker,
+            args.code,
+            args.market,
+            args.currency,
+            args.data_currency,
+        )
         if not args.keep_file:
             json_path.unlink(missing_ok=True)
             try:

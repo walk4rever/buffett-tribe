@@ -173,5 +173,33 @@ describe("computeCapitalAllocationStats", () => {
     expect(stats?.latestYear).toBe(2025);
     expect(stats?.annuals.map((a) => a.year)).toEqual([2021, 2022, 2023, 2024, 2025]);
   });
-});
 
+  it("excludes weighted-average and derived shares from share-count change", () => {
+    const stats = computeCapitalAllocationStats([
+      {
+        year: 2024,
+        operatingCashFlow: 100,
+        capEx: 20,
+        repurchaseAmt: 0,
+        dividendsPaid: 0,
+        shares: 90,
+        sharesSource: "disclosed_period_end",
+        roe: 15,
+      },
+      {
+        year: 2023,
+        operatingCashFlow: 100,
+        capEx: 20,
+        repurchaseAmt: 0,
+        dividendsPaid: 0,
+        shares: 110,
+        sharesSource: "weighted_average",
+        roe: 10,
+      },
+    ]);
+
+    expect(stats?.sharesStart).toBeNull();
+    expect(stats?.sharesEnd).toBeNull();
+    expect(stats?.shareDeltaPct).toBeNull();
+  });
+});

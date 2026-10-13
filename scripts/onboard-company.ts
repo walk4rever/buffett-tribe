@@ -390,14 +390,19 @@ function buildImportFinancialsStep(ticker: string, market: "cn" | "hk", code: st
     label: "导入财务数据（akshare 三大报表 → Financial）",
     run: async () => {
       const currency = await resolveCnHkCurrency(ticker, market);
-      return runNpmScript("import:cn-hk-financials", [
+      const seed = CN_HK_SEEDS[ticker];
+      const args = [
         "--code", code,
         "--market", market,
         "--ticker", ticker,
         "--currency", currency,
         "--from-year", fromYear,
-        "--import-db",
-      ]);
+      ];
+      if (seed?.financialDataCurrency) {
+        args.push("--data-currency", seed.financialDataCurrency);
+      }
+      args.push("--import-db");
+      return runNpmScript("import:cn-hk-financials", args);
     },
     verify: async (entityId) => {
       const count = await prisma.financial.count({ where: { entityId } });

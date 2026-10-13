@@ -74,6 +74,7 @@
     "import:company-stock-prices:yf": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-company-stock-prices-yf.ts",
     "update:fx-rates": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/update-fx-rates.ts",
     "backfill:reporting-currencies": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-reporting-currencies.ts",
+    "repair:aia-currency": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/repair-aia-currency.ts",
     "mark:delisted-tickers": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/mark-delisted-tickers.ts",
     "mark:delisted-tickers:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/mark-delisted-tickers.ts --dry-run",
     "backfill:capex": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-capex.ts",

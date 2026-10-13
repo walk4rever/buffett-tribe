@@ -240,6 +240,79 @@ describe("buildCompanyFinancialDashboard", () => {
     expect(rowValue("AssetTurnover")).toBe("0.89x");
   });
 
+  it("normalizes row currencies before calculating long-term financial trends", () => {
+    const dashboard = buildCompanyFinancialDashboard(
+      { sector: "Technology", metadata: {}, sectorModelType: "industrial" },
+      [
+        {
+          ...financialYear(2025, {
+            Revenue: "100000000",
+            NetIncome: "20000000",
+            ShareholdersEquity: "200000000",
+            OperatingCashFlow: "140000000",
+            CapEx: "-32000000",
+          }),
+          itemUnits: {
+            Revenue: "CNY",
+            NetIncome: "CNY",
+            ShareholdersEquity: "CNY",
+            OperatingCashFlow: "CNY",
+            CapEx: "TWD",
+          },
+        },
+        {
+          ...financialYear(2024, {
+            Revenue: "50000000",
+            NetIncome: "10000000",
+            ShareholdersEquity: "100000000",
+          }),
+          itemUnits: {
+            Revenue: "CNY",
+            NetIncome: "CNY",
+            ShareholdersEquity: "CNY",
+          },
+        },
+      ],
+      "HKD",
+      {
+        reportingCurrency: "CNY",
+        tradingCurrency: "HKD",
+        fxRates: new Map([
+          ["CNY", 0.14],
+          ["TWD", 0.07],
+          ["HKD", 0.07],
+        ]),
+      },
+    );
+
+    const valueAt = (key: string, year: number) =>
+      dashboard.rows.find((row) => row.key === key)?.values[year];
+    expect(valueAt("Revenue", 2025)).toMatch(/2\.00亿/);
+    expect(valueAt("RevenueGrowth", 2025)).toBe("100.0%");
+    expect(valueAt("ROE", 2025)).toBe("13.3%");
+    expect(valueAt("FreeCashFlow", 2025)).toMatch(/2\.48亿/);
+  });
+
+  it("keeps mixed-currency metrics missing when a row unit is absent", () => {
+    const dashboard = buildCompanyFinancialDashboard(
+      { sector: "Technology", metadata: {}, sectorModelType: "industrial" },
+      [
+        {
+          ...financialYear(2025, { Revenue: "100", NetIncome: "20" }),
+          itemUnits: { NetIncome: "TWD" },
+        },
+      ],
+      "HKD",
+      {
+        reportingCurrency: "CNY",
+        tradingCurrency: "HKD",
+        fxRates: new Map([["CNY", 0.14], ["TWD", 0.07], ["HKD", 0.07]]),
+      },
+    );
+
+    expect(dashboard.rows.find((row) => row.key === "Revenue")).toBeUndefined();
+  });
+
   it("uses book equity rather than liabilities as the financial-sector balance-sheet ratio", () => {
     const dashboard = buildCompanyFinancialDashboard(
       { sector: "Financials", metadata: {}, sectorModelType: "banks" },

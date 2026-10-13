@@ -1,3 +1,8 @@
+import {
+  calculatePeriodEndShareChange,
+  getPeriodEndShareSeries,
+} from "@/lib/share-count-utils";
+
 export type CapitalAllocationAnnualInput = {
   year: number;
   operatingCashFlow: number | null;
@@ -122,15 +127,16 @@ export function computeCapitalAllocationStats(
       ? Number(((completeFlowDividends / cumFcf) * 100).toFixed(1))
       : null;
 
-  const annualsWithShares = annuals.filter(
-    (annual) => annual.shares != null && Number.isFinite(annual.shares) && annual.shares > 0,
-  );
-  const sharesStart = annualsWithShares[0]?.shares ?? null;
-  const sharesEnd = annualsWithShares.at(-1)?.shares ?? null;
-  const shareDeltaPct =
-    sharesStart != null && sharesEnd != null
-      ? Number((((sharesEnd - sharesStart) / sharesStart) * 100).toFixed(1))
-      : null;
+  const shareSeries = getPeriodEndShareSeries(annuals);
+  const hasCompleteShareSeries =
+    shareSeries.length >= 2 && shareSeries.every((point) => point.shares != null);
+  const sharesStart = hasCompleteShareSeries ? shareSeries[0].shares : null;
+  const sharesEnd = hasCompleteShareSeries
+    ? shareSeries[shareSeries.length - 1].shares
+    : null;
+  const shareDeltaPct = hasCompleteShareSeries
+    ? calculatePeriodEndShareChange(annuals)
+    : null;
 
   const roes = annuals
     .map((annual) => annual.roe)

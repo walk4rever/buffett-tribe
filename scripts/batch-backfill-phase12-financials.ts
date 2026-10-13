@@ -111,14 +111,13 @@ function runCommand(cmd: string, args: string[]) {
 }
 
 async function resolveCompanyCurrency(entity: EntityCandidate): Promise<string> {
+  const seed = CN_HK_SEEDS[entity.ticker];
+  if (seed?.currency) return seed.currency;
+
   const registeredCurrency = normalizeCurrencyCode(entity.reportingCurrency);
   if (registeredCurrency) return registeredCurrency;
   if (entity.market === "us") return "USD";
   if (entity.market === "cn") return "CNY";
-
-  // Check manual seed override
-  const seed = CN_HK_SEEDS[entity.ticker];
-  if (seed?.currency) return seed.currency;
 
   // For HK, inspect existing Financial record unit
   const existingFin = await prisma.financial.findFirst({
@@ -151,14 +150,16 @@ async function backfillCnHkCompany(
 
   await persistReportingCurrency(entity.id, entity.market, currency);
 
+  const dataCurrency = CN_HK_SEEDS[entity.ticker]?.financialDataCurrency;
   const args = [
     "scripts/fetch-cn-hk-financials-ak.py",
     "--code", code,
     "--market", entity.market,
     "--currency", currency,
     "--from-year", String(fromYear),
-    "--import-db",
   ];
+  if (dataCurrency) args.push("--data-currency", dataCurrency);
+  args.push("--import-db");
 
   const { exitCode, output } = await runCommand(pyCmd, args);
   if (exitCode !== 0) {

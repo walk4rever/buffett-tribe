@@ -4,12 +4,23 @@ import {
   calculateReturnOnAverageBalance,
 } from "@/lib/financial-math";
 import { FINANCIAL_DATA_START_YEAR } from "@/lib/financial-period";
+import {
+  extractCurrencyCode,
+} from "@/lib/fx-rates-core";
+import { normalizeFinancialItems } from "@/lib/financial-normalization";
 import { isSectorModelType13, type SectorModelType13 } from "@/lib/sector-classification";
 
 export type FinancialYearItems = {
   year: number;
   periodEnd: Date;
   items: Record<string, string>;
+  itemUnits?: Record<string, string | null | undefined>;
+};
+
+export type FinancialDashboardCurrencyContext = {
+  reportingCurrency: string | null;
+  tradingCurrency: string | null;
+  fxRates: ReadonlyMap<string, number>;
 };
 
 export type CompanyFinancialContext = {
@@ -642,12 +653,64 @@ function uniqueByYear(financials: FinancialYearItems[]) {
   return [...newestByYear.values()].sort((a, b) => b.year - a.year).slice(0, 10);
 }
 
+function normalizeFinancialYears(
+  financials: FinancialYearItems[],
+  currencyContext: FinancialDashboardCurrencyContext | undefined,
+) {
+  if (!currencyContext) return financials;
+
+  const knownItemCurrencies = new Set<string>();
+  for (const financial of financials) {
+    for (const unit of Object.values(financial.itemUnits ?? {})) {
+      const currencyCode = extractCurrencyCode(unit);
+      if (currencyCode) knownItemCurrencies.add(currencyCode);
+    }
+  }
+  if (currencyContext.reportingCurrency) {
+    knownItemCurrencies.add(currencyContext.reportingCurrency);
+  }
+
+  const normalizedLineItems = new Set(
+    metrics
+      .filter((metric) => metric.kind === "money" || metric.key === "EPSDiluted")
+      .map((metric) => metric.key),
+  );
+
+  return financials.map((financial) => {
+    const values = Object.fromEntries(
+      [...normalizedLineItems].map((lineItem) => [
+        lineItem,
+        num(financial.items, lineItem),
+      ]),
+    );
+    const normalizedValues = normalizeFinancialItems(
+      values,
+      financial.itemUnits ?? {},
+      { ...currencyContext, knownItemCurrencies },
+    );
+    const items = { ...financial.items };
+
+    for (const [lineItem, value] of Object.entries(normalizedValues)) {
+      if (value == null) {
+        delete items[lineItem];
+      } else {
+        items[lineItem] = String(value);
+      }
+    }
+
+    return { ...financial, items };
+  });
+}
+
 export function buildCompanyFinancialDashboard(
   company: CompanyFinancialContext,
   financials: FinancialYearItems[],
   currency: string | null = null,
+  currencyContext?: FinancialDashboardCurrencyContext,
 ): CompanyFinancialDashboard {
-  const normalizedFinancials = uniqueByYear(financials);
+  const normalizedFinancials = uniqueByYear(
+    normalizeFinancialYears(financials, currencyContext),
+  );
   const trendYears = normalizedFinancials.map((row) => row.year).sort((a, b) => a - b);
   const displayYears = normalizedFinancials.slice(0, 5).map((row) => row.year);
   const byYear = new Map(normalizedFinancials.map((row) => [row.year, row]));

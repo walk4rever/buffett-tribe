@@ -23,6 +23,12 @@ import {
 import { CapitalAllocationView } from "@/components/CapitalAllocationView";
 import { ValuationAnalysisView } from "@/components/ValuationAnalysisView";
 import { buildCompanyFinancialDashboard } from "@/lib/company-financial-dashboard";
+import { getLatestFxRates } from "@/lib/fx-rates";
+import {
+  currenciesNeededForConversion,
+  extractCurrencyCode,
+  tradingCurrencyForMarket,
+} from "@/lib/fx-rates-core";
 import { formatShares } from "@/lib/master-data";
 import { CompanyFinancialDashboardComponent } from "@/components/CompanyFinancialDashboard";
 import { getValueLineData } from "@/lib/value-line-data";
@@ -467,10 +473,31 @@ export default async function CompanyPage({ params, searchParams }: Props) {
   const radarRings = [0.25, 0.5, 0.75, 1];
   const initialTabId = typeof rawTab === "string" ? rawTab.trim() : "";
 
+  const dashboardTradingCurrency = tradingCurrencyForMarket(company.market);
+  const dashboardItemCurrencies = new Set(
+    financials.flatMap((financial) =>
+      Object.values(financial.itemUnits ?? {})
+        .map(extractCurrencyCode)
+        .filter((currency): currency is string => currency != null),
+    ),
+  );
+  if (financialsCurrency) dashboardItemCurrencies.add(financialsCurrency);
+  const dashboardFxCurrencies = currenciesNeededForConversion(
+    [...dashboardItemCurrencies].map((currency) => ({
+      reportingCurrency: currency,
+      tradingCurrency: dashboardTradingCurrency,
+    })),
+  );
+  const dashboardFxRates = await getLatestFxRates(dashboardFxCurrencies);
   const dashboard = buildCompanyFinancialDashboard(
     { ...company, sectorModelType: valueLineData?.sectorModelType ?? null },
     financials,
-    financialsCurrency,
+    dashboardTradingCurrency,
+    {
+      reportingCurrency: financialsCurrency,
+      tradingCurrency: dashboardTradingCurrency,
+      fxRates: dashboardFxRates,
+    },
   );
 
   // Phase 1 公司：只显示可用 tab + 深度分析按钮，不显示灰色锁住的 tab

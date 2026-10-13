@@ -3,15 +3,13 @@
 // as it's onboarded — no code changes needed elsewhere.
 //
 // `currency` is the company's real reporting currency, verified against its
-// actual annual report — not derived from `market`. A HK-listed company can
-// report in RMB (e.g. Pop Mart, mainland-domiciled): confirmed by
-// cross-checking akshare's stock_financial_hk_report_em() FY2024 revenue
-// figure for 09992 against the real publicly reported RMB figure — they
-// match, and akshare exposes no currency column of its own.
+// annual report. `financialDataCurrency` overrides the unit used by AkShare
+// values when that provider returns figures in a different currency.
 export type CnHkSeed = {
   market: "cn" | "hk";
   code: string;
   currency: "CNY" | "HKD" | "USD";
+  financialDataCurrency?: "CNY" | "HKD" | "USD";
   canonicalName: string;
   nameZh: string;
   nameEnShort: string;
@@ -24,7 +22,8 @@ export const CN_HK_SEEDS: Record<string, CnHkSeed> = {
   "1299.HK": {
     market: "hk",
     code: "01299",
-    currency: "CNY",
+    currency: "USD",
+    financialDataCurrency: "CNY",
     canonicalName: "AIA Group Limited",
     nameZh: "友邦保险",
     nameEnShort: "AIA Group",
