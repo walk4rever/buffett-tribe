@@ -47,6 +47,7 @@ type InlineXbrlContext = {
   instant?: string;
   startDate?: string;
   endDate?: string;
+  hasDimensions: boolean;
 };
 
 type InlineXbrlFact = {
@@ -67,6 +68,7 @@ export type LineItemConfig = {
   key: string;
   tagsUsGaap: string[];
   tagsIfrs: string[];
+  tagsCustom: string[];
   unitCandidates: string[];
   periodType: "instant" | "duration";
 };
@@ -75,6 +77,7 @@ export const LINE_ITEMS: LineItemConfig[] = CANONICAL_FINANCIAL_DICTIONARY.map((
   key: item.key,
   tagsUsGaap: item.tagsUsGaap,
   tagsIfrs: item.tagsIfrs,
+  tagsCustom: item.tagsCustom ?? [],
   unitCandidates: item.unitCandidates,
   periodType: item.periodType,
 }));
@@ -157,6 +160,7 @@ export function findBestFactValue(
   tagsIfrs: string[],
   unitCandidates: string[],
   reportDate: string,
+  periodType?: "instant" | "duration",
 ) {
   const gaap = facts.facts?.["us-gaap"] ?? {};
   const ifrs = facts.facts?.["ifrs-full"] ?? {};
@@ -176,6 +180,11 @@ export function findBestFactValue(
         for (const row of rows) {
           if (!row || row.end !== reportDate || typeof row.val !== "number") continue;
           if (!ANNUAL_FORMS.has(row.form ?? "")) continue;
+          if (
+            periodType === "duration" &&
+            (!row.start || !isFullYearDuration(row.start, row.end))
+          ) continue;
+          if (periodType === "instant" && row.start) continue;
           candidates.push({
             filed: row.filed ?? "0000-00-00",
             value: row.val,
@@ -190,6 +199,12 @@ export function findBestFactValue(
   }
 
   return selectBestFactCandidate(candidates, unitCandidates);
+}
+
+function isFullYearDuration(startDate: string, endDate: string) {
+  const start = Date.parse(`${startDate}T00:00:00Z`);
+  const end = Date.parse(`${endDate}T00:00:00Z`);
+  return Number.isFinite(start) && Number.isFinite(end) && end - start >= 300 * 24 * 60 * 60 * 1000;
 }
 
 export async function upsertFilingSectionsFromHtml(
@@ -544,12 +559,14 @@ export function parseInlineXbrlDocument(html: string): InlineXbrlDocument {
     const instantMatch = body.match(/<xbrli:instant>\s*([^<]+?)\s*<\/xbrli:instant>/i);
     const startMatch = body.match(/<xbrli:startDate>\s*([^<]+?)\s*<\/xbrli:startDate>/i);
     const endMatch = body.match(/<xbrli:endDate>\s*([^<]+?)\s*<\/xbrli:endDate>/i);
+    const hasDimensions = /<xbrli:(?:segment|scenario)\b/i.test(body);
 
     if (instantMatch?.[1]) {
       contexts.set(id, {
         id,
         periodType: "instant",
         instant: instantMatch[1].trim(),
+        hasDimensions,
       });
     } else if (startMatch?.[1] && endMatch?.[1]) {
       contexts.set(id, {
@@ -557,6 +574,7 @@ export function parseInlineXbrlDocument(html: string): InlineXbrlDocument {
         periodType: "duration",
         startDate: startMatch[1].trim(),
         endDate: endMatch[1].trim(),
+        hasDimensions,
       });
     }
   }
@@ -604,28 +622,49 @@ export function pickInlineFactWithUnit(
   reportDate: string,
   periodType: "instant" | "duration",
   unitCandidates: string[],
+  tagsCustom: string[] = [],
 ) {
   const wantedUnits = new Set(unitCandidates.map((unit) => unit.trim().toUpperCase()));
-  const candidates: Array<{ unitRank: number; value: number; unit: string | null }> = [];
+  const candidates: Array<{
+    unitRank: number;
+    annualRank: number;
+    value: number;
+    unit: string | null;
+  }> = [];
 
   for (const fact of doc.facts) {
     const tag = fact.name.includes(":") ? fact.name.split(":").at(-1) ?? fact.name : fact.name;
-    if (!tagsUsGaap.includes(tag) && !tagsIfrs.includes(tag)) continue;
+    if (
+      !tagsUsGaap.includes(tag) &&
+      !tagsIfrs.includes(tag) &&
+      !tagsCustom.includes(tag)
+    ) continue;
     if (fact.value == null) continue;
 
     const context = doc.contexts.get(fact.contextRef);
     if (!context || context.periodType !== periodType) continue;
+    if (context.hasDimensions) continue;
     if (periodType === "instant" && context.instant !== reportDate) continue;
     if (periodType === "duration" && context.endDate !== reportDate) continue;
+    if (
+      periodType === "duration" &&
+      (!context.startDate || !isFullYearDuration(context.startDate, context.endDate ?? ""))
+    ) continue;
 
     const unit = fact.unitRef?.toUpperCase() ?? null;
     const unitRank = unit && wantedUnits.size && wantedUnits.has(unit) ? 0 : 1;
-    candidates.push({ unitRank, value: fact.value, unit: fact.unitRef });
+    const annualRank = periodType === "duration"
+      ? Date.parse(`${context.startDate}T00:00:00Z`)
+      : 0;
+    candidates.push({ unitRank, annualRank, value: fact.value, unit: fact.unitRef });
   }
 
   if (!candidates.length) return null;
-  candidates.sort((a, b) => a.unitRank - b.unitRank);
-  return candidates[0];
+  candidates.sort((a, b) =>
+    a.unitRank - b.unitRank || b.annualRank - a.annualRank,
+  );
+  const { unitRank, value, unit } = candidates[0];
+  return { unitRank, value, unit };
 }
 
 export function decimalFromNumber(value: number) {

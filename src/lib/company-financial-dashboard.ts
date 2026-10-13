@@ -8,7 +8,16 @@ import {
   extractCurrencyCode,
 } from "@/lib/fx-rates-core";
 import { normalizeFinancialItems } from "@/lib/financial-normalization";
-import { isSectorModelType13, type SectorModelType13 } from "@/lib/sector-classification";
+import type { SectorModelType13 } from "@/lib/sector-classification";
+import {
+  getDefaultFinancialModel,
+  resolveFinancialModel,
+  type FinancialModelModifier,
+  type FinancialModelResolution,
+  type FinancialTemplate,
+} from "@/lib/financial-model";
+
+export type { FinancialTemplate } from "@/lib/financial-model";
 
 export type FinancialYearItems = {
   year: number;
@@ -28,14 +37,6 @@ export type CompanyFinancialContext = {
   metadata: unknown;
   sectorModelType?: SectorModelType13 | null;
 };
-
-export type FinancialTemplate =
-  | "operating"
-  | "bank"
-  | "insurance"
-  | "capital_markets"
-  | "real_estate"
-  | "conglomerate";
 
 type MetricKind = "money" | "percent" | "number" | "multiple";
 
@@ -58,6 +59,7 @@ export type FinancialDashboardTrend = {
 
 export type CompanyFinancialDashboard = {
   template: FinancialTemplate;
+  financialModel: FinancialModelResolution;
   templateNote: string;
   latestYear: number | null;
   displayYears: number[];
@@ -143,35 +145,6 @@ function formatMetricValue(value: number | null, kind: MetricKind, currency: str
     return value == null || !Number.isFinite(value) ? "—" : `${formatNumber(value)}x`;
   }
   return formatNumber(value);
-}
-
-function classifyFinancialTemplate(company: CompanyFinancialContext): FinancialTemplate {
-  const sectorModelType = company.sectorModelType;
-  if (isSectorModelType13(sectorModelType)) {
-    if (sectorModelType === "banks") return "bank";
-    if (sectorModelType === "insurance") return "insurance";
-    if (sectorModelType === "capital_markets") return "capital_markets";
-    if (sectorModelType === "real_estate") return "real_estate";
-    if (sectorModelType === "conglomerate") return "conglomerate";
-    return "operating";
-  }
-
-  const meta = normalizeMeta(company.metadata);
-  const sic = typeof meta.sic === "string" ? meta.sic : String(meta.sic ?? "");
-  const sector = (company.sector ?? "").toLowerCase();
-  const industry = typeof meta.industry === "string" ? meta.industry.toLowerCase() : "";
-
-  if (/^60(1|2|3|6|9)/.test(sic) || industry.includes("bank")) return "bank";
-  if (/^63/.test(sic) || industry.includes("insurance")) return "insurance";
-  if (industry.includes("real estate") || industry.includes("房地产")) return "real_estate";
-  if (industry.includes("conglomerate") || industry.includes("multi-sector") || industry.includes("控股")) {
-    return "conglomerate";
-  }
-  if (/^62/.test(sic) || industry.includes("broker") || industry.includes("asset management")) {
-    return "capital_markets";
-  }
-  if (sector.includes("financial")) return "capital_markets";
-  return "operating";
 }
 
 const metrics: MetricDef[] = [
@@ -471,6 +444,38 @@ const metrics: MetricDef[] = [
     compute: (year, ctx) => value(ctx, year, "NonInterestIncome"),
   },
   {
+    key: "NetFeeAndCommissionIncome",
+    zhLabel: "手续费及佣金净收入",
+    enLabel: "Net Fee and Commission Income",
+    hint: "财报披露的手续费及佣金净收入",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "NetFeeAndCommissionIncome"),
+  },
+  {
+    key: "InvestmentManagementFeeIncome",
+    zhLabel: "资产管理费收入",
+    enLabel: "Investment Management Fee Income",
+    hint: "财报披露的资产管理业务费收入，不由 AUM 或总营收估算",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "InvestmentManagementFeeIncome"),
+  },
+  {
+    key: "AssetsUnderManagement",
+    zhLabel: "管理资产规模",
+    enLabel: "Assets Under Management",
+    hint: "期末客户管理资产，不包含仅提供投资建议的资产",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "AssetsUnderManagement"),
+  },
+  {
+    key: "NetClientFlows",
+    zhLabel: "客户资产净流量",
+    enLabel: "Net Client Flows",
+    hint: "报告期客户净申购流量，不由 AUM 变动推算",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "NetClientFlows"),
+  },
+  {
     key: "NetLoans",
     zhLabel: "贷款净额",
     enLabel: "Net Loans",
@@ -485,6 +490,35 @@ const metrics: MetricDef[] = [
     hint: "吸收客户存款总额",
     kind: "money",
     compute: (year, ctx) => value(ctx, year, "TotalDeposits"),
+  },
+  {
+    key: "NetPremiumsEarned",
+    zhLabel: "净已赚保费",
+    enLabel: "Net Premiums Earned",
+    hint: "已赚保费扣除分出保费后的金额",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "NetPremiumsEarned"),
+  },
+  {
+    key: "PolicyClaimsAndBenefits",
+    zhLabel: "赔付及保单利益",
+    enLabel: "Claims and Benefits",
+    hint: "保险赔付、保单利益及相关损失",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "PolicyClaimsAndBenefits"),
+  },
+  {
+    key: "ClaimsRatio",
+    zhLabel: "赔付率",
+    enLabel: "Claims Ratio",
+    hint: "赔付及保单利益绝对值 / 净已赚保费",
+    kind: "percent",
+    compute: (year, ctx) => {
+      const premiums = value(ctx, year, "NetPremiumsEarned");
+      const claims = value(ctx, year, "PolicyClaimsAndBenefits");
+      if (premiums == null || premiums <= 0 || claims == null) return null;
+      return Math.abs(claims) / premiums;
+    },
   },
 ];
 
@@ -513,7 +547,7 @@ const operatingKeys = [
 ];
 
 const profiles: Record<FinancialTemplate, TemplateProfile> = {
-  operating: {
+  industrial: {
     note: "同比仅在上年为正且连续时计算；ROE按平均权益；FCF = OCF − |CapEx|。",
     rowKeys: operatingKeys,
     trendKeys: [
@@ -548,8 +582,11 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
     trendKeys: ["NetIncomeGrowth", "EPSDiluted", "ROE", "ROA", "AssetGrowth", "EquityToAssets"],
   },
   insurance: {
-    note: "ROE/ROA按平均余额；保费增长、综合成本率与偿付能力未接入；权益/资产非偿付能力指标。",
+    note: "ROE/ROA按平均余额；净已赚保费与赔付率按可用数据展示；综合成本率、偿付能力与内含价值尚未接入。",
     rowKeys: [
+      "NetPremiumsEarned",
+      "PolicyClaimsAndBenefits",
+      "ClaimsRatio",
       "NetIncome",
       "NetIncomeGrowth",
       "EPSDiluted",
@@ -561,55 +598,37 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
       "ShareholdersEquity",
       "EquityToAssets",
     ],
-    trendKeys: ["NetIncomeGrowth", "EPSDiluted", "ROE", "ROA", "AssetGrowth", "EquityToAssets"],
+    trendKeys: ["ClaimsRatio", "NetIncomeGrowth", "EPSDiluted", "ROE", "ROA", "AssetGrowth", "EquityToAssets"],
   },
-  capital_markets: {
-    note: "AUM与净流入未接入；FCF = OCF − |CapEx|；现金流受交易结算时点影响。",
+  financial_services: {
+    note: "",
     rowKeys: [
       "Revenue",
       "RevenueGrowth",
+      "AssetsUnderManagement",
+      "NetClientFlows",
+      "InvestmentManagementFeeIncome",
+      "NetFeeAndCommissionIncome",
       "NetIncome",
       "NetIncomeGrowth",
       "NetMargin",
       "EPSDiluted",
       "ROE",
-      "OperatingCashFlow",
-      "CapEx",
-      "FreeCashFlow",
-      "FCFMargin",
-      "CashConversion",
-    ],
-    trendKeys: [
-      "RevenueGrowth",
-      "NetIncomeGrowth",
-      "NetMargin",
-      "ROE",
-      "FCFMargin",
-      "CashConversion",
-    ],
-  },
-  real_estate: {
-    note: "FFO/AFFO 与 NAV 未接入，不以净利润替代；FCF = OCF − |CapEx|。",
-    rowKeys: [
-      "Revenue",
-      "RevenueGrowth",
-      "NetIncome",
-      "OperatingCashFlow",
-      "CapEx",
-      "FreeCashFlow",
-      "FCFMargin",
-      "CapExToRevenue",
       "TotalAssets",
       "TotalLiabilities",
       "ShareholdersEquity",
-      "LiabilitiesToAssets",
+      "EquityToAssets",
     ],
     trendKeys: [
       "RevenueGrowth",
-      "FreeCashFlow",
-      "FCFMargin",
-      "CapExToRevenue",
-      "LiabilitiesToAssets",
+      "AssetsUnderManagement",
+      "NetClientFlows",
+      "InvestmentManagementFeeIncome",
+      "NetFeeAndCommissionIncome",
+      "NetIncomeGrowth",
+      "NetMargin",
+      "ROE",
+      "EquityToAssets",
     ],
   },
   conglomerate: {
@@ -637,6 +656,54 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
       "FCFMargin",
       "ROE",
     ],
+  },
+};
+
+type ModifierProfile = {
+  note: string;
+  rowKeys?: string[];
+  trendKeys?: string[];
+};
+
+const modifierProfiles: Partial<Record<FinancialModelModifier, ModifierProfile>> = {
+  consumer_brand: {
+    note: "行业观察：关注定价权、毛利率与需求韧性。",
+  },
+  healthcare: {
+    note: "行业观察：研发投入、管线与专利周期会影响利润可比性。",
+  },
+  software_platform: {
+    note: "行业观察：成熟盈利与早期增长阶段的估值口径不同。",
+  },
+  semiconductor_hardware: {
+    note: "行业观察：需结合产能利用率与行业周期解读当期盈利。",
+  },
+  real_estate: {
+    note: "FFO/AFFO 与 NAV 尚未接入，不以净利润替代。",
+    rowKeys: [
+      "Revenue",
+      "RevenueGrowth",
+      "NetIncome",
+      "NetIncomeGrowth",
+      "TotalAssets",
+      "TotalLiabilities",
+      "ShareholdersEquity",
+      "LiabilitiesToAssets",
+    ],
+    trendKeys: [
+      "RevenueGrowth",
+      "NetIncomeGrowth",
+      "LiabilitiesToAssets",
+    ],
+  },
+  energy_materials: {
+    note: "行业观察：利润与现金流受商品价格影响，单年表现不代表周期中枢。",
+  },
+  utilities: {
+    note: "行业观察：监管资产基数与核准回报率尚未接入。",
+  },
+  telecommunications: {
+    note: "行业观察：关注 ARPU、用户规模与网络资本开支；ARPU 尚未接入。",
   },
 };
 
@@ -715,11 +782,26 @@ export function buildCompanyFinancialDashboard(
   const displayYears = normalizedFinancials.slice(0, 5).map((row) => row.year);
   const byYear = new Map(normalizedFinancials.map((row) => [row.year, row]));
   const ctx: MetricContext = { byYear };
-  const template = classifyFinancialTemplate(company);
+  const meta = normalizeMeta(company.metadata);
+  const financialModel =
+    resolveFinancialModel(company.sectorModelType, {
+      sector: company.sector,
+      industry: typeof meta.industry === "string" ? meta.industry : null,
+      sic: meta.sic,
+    }) ?? getDefaultFinancialModel();
+  const template = financialModel.template;
   const profile = profiles[template];
+  const modifierProfile = financialModel.modifiers[0]
+    ? modifierProfiles[financialModel.modifiers[0]]
+    : undefined;
+  const rowKeys = modifierProfile?.rowKeys ?? profile.rowKeys;
+  const trendKeys = modifierProfile?.trendKeys ?? profile.trendKeys;
+  const templateNote = [profile.note, modifierProfile?.note]
+    .filter(Boolean)
+    .join(" ");
   const latestYear = normalizedFinancials[0]?.year ?? null;
 
-  const rows = profile.rowKeys.flatMap((key) => {
+  const rows = rowKeys.flatMap((key) => {
     const metric = getMetric(key);
     if (!metric) return [];
 
@@ -741,7 +823,7 @@ export function buildCompanyFinancialDashboard(
     }];
   });
 
-  const trends = profile.trendKeys.flatMap((key) => {
+  const trends = trendKeys.flatMap((key) => {
     const metric = getMetric(key);
     if (!metric) return [];
 
@@ -772,7 +854,8 @@ export function buildCompanyFinancialDashboard(
 
   return {
     template,
-    templateNote: profile.note,
+    financialModel,
+    templateNote,
     latestYear,
     displayYears,
     trendYears,

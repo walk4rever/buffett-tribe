@@ -116,6 +116,7 @@ async function main() {
         BUYBACK.tagsIfrs,
         BUYBACK.unitCandidates,
         reportDate,
+        "duration",
       );
       if (fact == null) {
         missing += 1;

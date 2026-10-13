@@ -134,6 +134,7 @@ async function main() {
         DIVIDENDS.tagsIfrs,
         DIVIDENDS.unitCandidates,
         reportDate,
+        "duration",
       );
       if (fact == null) {
         missingFacts += 1;

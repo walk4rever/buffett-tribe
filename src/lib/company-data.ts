@@ -463,7 +463,11 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
         data.items.Revenue ||
         data.items.NetIncome ||
         data.items.OperatingCashFlow ||
-        data.items.TotalAssets
+        data.items.TotalAssets ||
+        data.items.AssetsUnderManagement ||
+        data.items.NetClientFlows ||
+        data.items.InvestmentManagementFeeIncome ||
+        data.items.NetFeeAndCommissionIncome
       )
     )
     .sort((a, b) => b[0] - a[0])

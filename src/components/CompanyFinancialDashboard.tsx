@@ -132,6 +132,12 @@ export function CompanyFinancialDashboardComponent({
       <section className="company-financial-trends" aria-labelledby="financial-trends-title">
         <div className="company-financial-trend-head">
           <h3 id="financial-trends-title">关键指标趋势</h3>
+          <span className="company-financial-model-label">
+            {dashboard.financialModel.templateLabel}
+            {dashboard.financialModel.modifierLabels.length
+              ? ` · ${dashboard.financialModel.modifierLabels.join(" · ")}`
+              : ""}
+          </span>
           {dashboard.currency ? (
             <span>报告币种：{currencyDisplayName(dashboard.currency)}</span>
           ) : null}

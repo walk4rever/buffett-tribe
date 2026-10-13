@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { CapitalAllocationView } from "@/components/CapitalAllocationView";
 import type { ValueLineData } from "@/lib/value-line-data";
+import { resolveFinancialModel } from "@/lib/financial-model";
 
 function renderCapitalAllocation(
   sectorModelType: string,
@@ -9,6 +10,7 @@ function renderCapitalAllocation(
 ) {
   const data = {
     sectorModelType,
+    financialModel: resolveFinancialModel(sectorModelType),
     tradingCurrency: "USD",
     annuals: [
       {
@@ -84,5 +86,32 @@ describe("CapitalAllocationView", () => {
     expect(markup).toContain('aria-label="选择图表财年"');
     expect(markup).toContain('aria-label="查看 FY2022 数据"');
     expect(markup).toContain('aria-label="查看 FY2024 数据"');
+  });
+
+  it("uses the property allocation model without showing industrial cash flows", () => {
+    const markup = renderCapitalAllocation("real_estate");
+
+    expect(markup).toContain("资本配置与股东回报");
+    expect(markup).toContain("FFO/AFFO 与 NAV 尚未接入");
+    expect(markup).not.toContain("资本开支 / 经营现金流");
+    expect(markup).not.toContain("经营现金流 (OCF)");
+    expect(markup).not.toContain("偿付能力充足率");
+  });
+
+  it("does not show an unrelated operating-metric warning in capital allocation", () => {
+    const markup = renderCapitalAllocation("capital_markets");
+
+    expect(markup).toContain("资本配置与股东回报");
+    expect(markup).not.toContain("AUM");
+    expect(markup).not.toContain("金融服务专项指标未接入");
+    expect(markup).not.toContain("经营现金流 (OCF)");
+  });
+
+  it("keeps group cash flows while disclosing missing segment allocation data", () => {
+    const markup = renderCapitalAllocation("conglomerate");
+
+    expect(markup).toContain("资本配置与现金流");
+    expect(markup).toContain("业务分部");
+    expect(markup).toContain("经营现金流 (OCF)");
   });
 });

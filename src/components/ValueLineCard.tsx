@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { ValueLineData, ValueLineSecurityOption } from "@/lib/value-line-data";
+import {
+  getDefaultFinancialModel,
+  isPePrimaryValuationAnchor,
+  resolveFinancialModel,
+} from "@/lib/financial-model";
 
 /**
  * 根据市场返回货币符号和代码
@@ -363,6 +368,13 @@ export function ValueLineHeader({
   onSelectTicker,
   actions,
 }: ValueLineHeaderProps) {
+  const financialModel =
+    data.financialModel ??
+    resolveFinancialModel(data.sectorModelType) ??
+    getDefaultFinancialModel();
+  const usesPeValuation = isPePrimaryValuationAnchor(
+    financialModel.valuationAnchor,
+  );
   const curPrice = activeSecurity ? activeSecurity.latestPrice : data.latestPrice;
   const curPe = activeSecurity ? activeSecurity.peRatio : data.peRatio;
   const curPb = activeSecurity ? activeSecurity.pbRatio : data.pbRatio;
@@ -370,8 +382,12 @@ export function ValueLineHeader({
   const curValuationStatus = activeSecurity ? activeSecurity.valuationStatus : data.valuationStatus;
   const curValuationDiffPct = activeSecurity ? activeSecurity.valuationDiffPct : data.valuationDiffPct;
 
-  const valuationStatusBadge =
-    curValuationStatus === "undervalued" ? (
+  const valuationStatusBadge = !usesPeValuation ? (
+    <span className="vl-status-chip vl-status-chip--fair">
+      <span className="vl-pulse-dot vl-pulse-dot--amber" />
+      专项估值模型尚未接入
+    </span>
+  ) : curValuationStatus === "undervalued" ? (
       <span className="vl-status-chip vl-status-chip--undervalued">
         <span className="vl-pulse-dot vl-pulse-dot--green" />
         价值击球区 (折价 ~{Math.abs(curValuationDiffPct ?? 0)}%)
@@ -381,10 +397,15 @@ export function ValueLineHeader({
         <span className="vl-pulse-dot vl-pulse-dot--red" />
         溢价高估区 (溢价 ~{curValuationDiffPct ?? 0}%)
       </span>
-    ) : (
+    ) : curValuationStatus === "fair" ? (
       <span className="vl-status-chip vl-status-chip--fair">
         <span className="vl-pulse-dot vl-pulse-dot--amber" />
         合理估值中枢
+      </span>
+    ) : (
+      <span className="vl-status-chip vl-status-chip--fair">
+        <span className="vl-pulse-dot vl-pulse-dot--amber" />
+        估值数据不足
       </span>
     );
 
@@ -456,11 +477,15 @@ export function ValueLineHeader({
             <span className="vl-metric-k">市值</span>
             <span className="vl-metric-v">{formatCompactNumber(curMarketCap, getCurrencySymbol(data.market).symbol)}</span>
           </span>
-          <span className="vl-dot-divider">·</span>
-          <span className="vl-price-metric-item">
-            <span className="vl-metric-k">PE</span>
-            <span className="vl-metric-v">{curPe ? `${curPe}x` : "—"}</span>
-          </span>
+          {usesPeValuation ? (
+            <>
+              <span className="vl-dot-divider">·</span>
+              <span className="vl-price-metric-item">
+                <span className="vl-metric-k">PE</span>
+                <span className="vl-metric-v">{curPe ? `${curPe}x` : "—"}</span>
+              </span>
+            </>
+          ) : null}
           <span className="vl-dot-divider">·</span>
           <span className="vl-price-metric-item">
             <span className="vl-metric-k">PB</span>
@@ -478,9 +503,68 @@ export interface ValueLineBodyProps {
 }
 
 export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
+  const financialModel =
+    data.financialModel ??
+    resolveFinancialModel(data.sectorModelType) ??
+    getDefaultFinancialModel();
+  const isBalanceSheetFinancialModel =
+    financialModel.template === "bank" || financialModel.template === "insurance";
+  const usesPeValuation = isPePrimaryValuationAnchor(
+    financialModel.valuationAnchor,
+  );
+  const valuationModelNote =
+    financialModel.template === "bank"
+      ? "银行专项资产质量与资本充足率尚未接入。"
+      : financialModel.template === "insurance"
+        ? "保险专项偿付能力与内含价值尚未接入。"
+        : financialModel.modifiers.includes("real_estate")
+          ? "FFO/AFFO 与 NAV 尚未接入。"
+          : `${financialModel.valuationAnchorLabel}专项数据尚未接入。`;
+  const curPricePoints = activeSecurity
+    ? activeSecurity.pricePoints
+    : data.pricePoints;
+  const curValueLinePoints = usesPeValuation
+    ? activeSecurity
+      ? activeSecurity.valueLinePoints
+      : data.valueLinePoints
+    : [];
+  const cashFlowMetricTitle = financialModel.showIndustrialCashFlow
+    ? data.metric2Title ?? "真金白银造血力"
+    : financialModel.template === "bank"
+      ? "资产负债经营"
+      : financialModel.template === "insurance"
+        ? "保费与赔付"
+        : financialModel.modifiers.includes("real_estate")
+          ? "物业经营回报"
+          : data.metric2Title ?? "管理资产规模";
+  const cashFlowMetricBadge = financialModel.showIndustrialCashFlow
+    ? data.metric2Badge ??
+      (data.cashConversionRatio && data.cashConversionRatio >= 1
+        ? "纯正造血"
+        : "稳健现金")
+    : financialModel.template === "financial_services"
+      ? data.metric2Badge ?? ""
+      : "专项指标未接入";
+  const cashFlowMetricValue = financialModel.showIndustrialCashFlow
+    ? data.metric2MainNum ??
+      (data.cashConversionRatio != null
+        ? `${data.cashConversionRatio}x`
+        : "—")
+    : financialModel.template === "financial_services"
+      ? data.metric2MainNum ?? ""
+      : "—";
+  const cashFlowMetricSubText = financialModel.showIndustrialCashFlow
+    ? data.metric2SubText ?? "经营现金流 / 净利润"
+    : financialModel.template === "financial_services"
+      ? data.metric2SubText ?? ""
+      : financialModel.template === "bank"
+      ? "净息差、信用成本与资本充足率尚未接入"
+      : financialModel.template === "insurance"
+        ? "综合成本率、偿付能力与内含价值尚未接入"
+        : financialModel.modifiers.includes("real_estate")
+          ? "FFO/AFFO 与 NAV 尚未接入"
+          : "";
   const currencySymbol = getCurrencySymbol(data.market).symbol;
-  const curPricePoints = activeSecurity ? activeSecurity.pricePoints : data.pricePoints;
-  const curValueLinePoints = activeSecurity ? activeSecurity.valueLinePoints : data.valueLinePoints;
 
   const roeBadgeClass =
     data.roeStability === "stellar"
@@ -514,6 +598,11 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
           valuePoints={curValueLinePoints}
           currencySymbol={currencySymbol}
         />
+        {!usesPeValuation ? (
+          <p className="val-model-note">
+            {valuationModelNote}估值锚：{financialModel.valuationAnchorLabel}；暂不绘制通用 P/E 参考线。
+          </p>
+        ) : null}
         {data.cyclicalWarning ? (
           <aside className="vl-cyclical-alert-banner" role="alert" aria-label="强周期景气高位预警">
             <div className="vl-cyclical-alert-icon">⚠️</div>
@@ -546,20 +635,23 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
         </div>
 
         {/* Metric 2: Cash Conversion */}
-        <div className="vl-triad-box">
-          <div className="vl-triad-head">
-            <span className="vl-triad-title">{data.metric2Title ?? "真金白银造血力"}</span>
-            <span className={`vl-triad-badge ${data.metric2BadgeClass ?? "vl-badge--cash"}`}>
-              {data.metric2Badge ?? (data.cashConversionRatio && data.cashConversionRatio >= 1 ? "纯正造血" : "稳健现金")}
-            </span>
+        {financialModel.template !== "financial_services" ||
+        data.metric2Applicable !== false ? (
+          <div className="vl-triad-box">
+            <div className="vl-triad-head">
+              <span className="vl-triad-title">{cashFlowMetricTitle}</span>
+              <span className={`vl-triad-badge ${financialModel.showIndustrialCashFlow ? data.metric2BadgeClass ?? "vl-badge--cash" : "vl-badge--neutral"}`}>
+                {cashFlowMetricBadge}
+              </span>
+            </div>
+            <div className="vl-triad-body">
+              <span className="vl-triad-main-num">
+                {cashFlowMetricValue}
+              </span>
+              <span className="vl-triad-sub-text">{cashFlowMetricSubText}</span>
+            </div>
           </div>
-          <div className="vl-triad-body">
-            <span className="vl-triad-main-num">
-              {data.metric2MainNum ?? (data.cashConversionRatio != null ? `${data.cashConversionRatio}x` : "—")}
-            </span>
-            <span className="vl-triad-sub-text">{data.metric2SubText ?? "经营现金流 / 净利润"}</span>
-          </div>
-        </div>
+        ) : null}
 
         {/* Metric 3: Capital Allocation (Share count / Buyback) */}
         <div className="vl-triad-box">
@@ -619,7 +711,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
       {/* ── 4. Long-Term Growth Metrics: 4-Way CAGR Dashboard ── */}
       <section className="vl-card-triad vl-card-quadrant">
           {/* Metric 1: Revenue CAGR (non-financial) or Net Income CAGR (financial) */}
-          {data.sectorModelType === "banks" || data.sectorModelType === "insurance" ? (
+          {isBalanceSheetFinancialModel ? (
             <div className="vl-triad-box">
               <div className="vl-triad-head">
                 <span className="vl-triad-title">净利润增长</span>
@@ -634,7 +726,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
                 <span className="vl-triad-sub-text">5年复合增速 (CAGR)</span>
               </div>
             </div>
-          ) : (
+            ) : (
             <div className="vl-triad-box">
               <div className="vl-triad-head">
                 <span className="vl-triad-title">营收增长</span>
@@ -652,7 +744,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
           )}
 
           {/* Metric 2: EPS CAGR (financial) or Net Income CAGR (non-financial) */}
-          {data.sectorModelType === "banks" || data.sectorModelType === "insurance" ? (
+          {isBalanceSheetFinancialModel ? (
             <div className="vl-triad-box">
               <div className="vl-triad-head">
                 <span className="vl-triad-title">每股收益增长</span>
@@ -667,7 +759,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
                 <span className="vl-triad-sub-text">5年复合增速 (CAGR)</span>
               </div>
             </div>
-          ) : (
+            ) : (
             <div className="vl-triad-box">
               <div className="vl-triad-head">
                 <span className="vl-triad-title">净利润增长</span>
@@ -685,7 +777,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
           )}
 
           {/* Metric 3: Total Assets CAGR (financial) or Free Cash Flow CAGR (non-financial) */}
-          {data.sectorModelType === "banks" || data.sectorModelType === "insurance" ? (
+          {isBalanceSheetFinancialModel ? (
             <div className="vl-triad-box">
               <div className="vl-triad-head">
                 <span className="vl-triad-title">总资产增长</span>
@@ -700,7 +792,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
                 <span className="vl-triad-sub-text">5年复合增速 (CAGR) · 业务规模扩张</span>
               </div>
             </div>
-          ) : (
+          ) : financialModel.showIndustrialCashFlow ? (
             <div className="vl-triad-box">
               <div className="vl-triad-head">
                 <span className="vl-triad-title">自由现金流增长</span>
@@ -715,7 +807,20 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
                 <span className="vl-triad-sub-text">5年复合增速 (CAGR) · 真金白银增长</span>
               </div>
             </div>
-          )}
+            ) : financialModel.template !== "financial_services" ? (
+            <div className="vl-triad-box">
+              <div className="vl-triad-head">
+                <span className="vl-triad-title">专项经营指标</span>
+                <span className="vl-triad-badge vl-badge--neutral">数据未接入</span>
+              </div>
+              <div className="vl-triad-body">
+                <span className="vl-triad-main-num">—</span>
+                <span className="vl-triad-sub-text">
+                  {financialModel.valuationAnchorLabel}相关经营指标
+                </span>
+              </div>
+            </div>
+          ) : null}
 
           {/* Metric 4: Shareholders Equity CAGR (all companies) */}
           <div className="vl-triad-box">

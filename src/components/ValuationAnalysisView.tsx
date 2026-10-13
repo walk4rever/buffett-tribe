@@ -8,6 +8,11 @@ import {
   computeAnnualEpsGrowthPct,
   computeHistoricalPeMetrics,
 } from "@/lib/valuation-analysis-metrics";
+import {
+  getDefaultFinancialModel,
+  isPePrimaryValuationAnchor,
+  resolveFinancialModel,
+} from "@/lib/financial-model";
 
 /**
  * Catmull-Rom to Cubic Bezier Spline for smooth financial curves
@@ -36,6 +41,13 @@ type ValuationAnalysisViewProps = {
 };
 
 export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
+  const financialModel =
+    data.financialModel ??
+    resolveFinancialModel(data.sectorModelType) ??
+    getDefaultFinancialModel();
+  const usesPeValuation = isPePrimaryValuationAnchor(
+    financialModel.valuationAnchor,
+  );
   const priceCurrencySymbol = data.tradingCurrency
     ? getCurrencySymbol(data.tradingCurrency)
     : "";
@@ -67,10 +79,14 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
   const hasHistoricalBenchmark =
     historicalPeMetrics.sampleCount >= 2 &&
     historicalPeMetrics.peMedian != null;
-  const benchmarkPe = data.benchmarkPe;
-  const isFinancialSector =
-    data.sectorModelType === "banks" || data.sectorModelType === "insurance";
-
+  const benchmarkPe = usesPeValuation ? data.benchmarkPe : null;
+  const hasIndustrialCashFlow = financialModel.showIndustrialCashFlow;
+  const modelAvailabilityNote =
+    financialModel.template === "bank"
+      ? "银行专项资产质量与资本充足指标尚未接入。"
+      : financialModel.template === "insurance"
+        ? "保险专项偿付能力与内含价值指标尚未接入。"
+        : `${financialModel.valuationAnchorLabel}专项数据尚未接入，暂不以通用 P/E 作为替代。`;
   // FCF Yield & Additional Multiples
   const fcfYield = useMemo(() => {
     if (
@@ -85,7 +101,7 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
 
   // Margin of safety status
   const valuationDiffPct =
-    currentPe != null && benchmarkPe != null && benchmarkPe > 0
+    usesPeValuation && currentPe != null && benchmarkPe != null && benchmarkPe > 0
       ? Number((((currentPe - benchmarkPe) / benchmarkPe) * 100).toFixed(1))
       : null;
 
@@ -388,48 +404,58 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
       </div>
 
       <div className="val-valuation-summary">
-        <div className="val-valuation-main">
-          <div className="val-valuation-metric">
-            <span className="val-card-label">当前 P/E</span>
-            <strong className="val-valuation-value">
-              {currentPe != null ? `${currentPe}x` : "—"}
-            </strong>
-          </div>
-          <div className="val-valuation-metric val-valuation-metric--reference">
-            <span className="val-card-label">
-              {hasHistoricalBenchmark ? "历史 P/E 中位数" : "系统参考 P/E"}
-            </span>
-            <strong className="val-valuation-reference">
-              {benchmarkPe != null ? `${benchmarkPe}x` : "—"}
-            </strong>
-          </div>
-          <span className={`val-status-badge ${marginOfSafetyClass}`}>
-            {marginOfSafetyTag}
-          </span>
-        </div>
+        {usesPeValuation ? (
+          <>
+            <div className="val-valuation-main">
+              <div className="val-valuation-metric">
+                <span className="val-card-label">当前 P/E</span>
+                <strong className="val-valuation-value">
+                  {currentPe != null ? `${currentPe}x` : "—"}
+                </strong>
+              </div>
+              <div className="val-valuation-metric val-valuation-metric--reference">
+                <span className="val-card-label">
+                  {hasHistoricalBenchmark ? "历史 P/E 中位数" : "系统参考 P/E"}
+                </span>
+                <strong className="val-valuation-reference">
+                  {benchmarkPe != null ? `${benchmarkPe}x` : "—"}
+                </strong>
+              </div>
+              <span className={`val-status-badge ${marginOfSafetyClass}`}>
+                {marginOfSafetyTag}
+              </span>
+            </div>
 
-        <p className="val-valuation-summary-note">
-          {marginOfSafetyDesc}
-          {historicalPeMetrics.currentPercentile != null
-            ? ` · 历史 ${historicalPeMetrics.currentPercentile}% 分位`
-            : hasHistoricalBenchmark
-              ? ` · ${historicalPeMetrics.sampleCount} 个历史样本`
-              : " · 历史样本不足，采用系统参考值"}
-          {historicalPeMetrics.peMin != null &&
-          historicalPeMetrics.peMax != null
-            ? ` · 历史区间 ${historicalPeMetrics.peMin}x–${historicalPeMetrics.peMax}x`
-            : ""}
-        </p>
+            <p className="val-valuation-summary-note">
+              {marginOfSafetyDesc}
+              {historicalPeMetrics.currentPercentile != null
+                ? ` · 历史 ${historicalPeMetrics.currentPercentile}% 分位`
+                : hasHistoricalBenchmark
+                  ? ` · ${historicalPeMetrics.sampleCount} 个历史样本`
+                  : " · 历史样本不足，采用系统参考值"}
+              {historicalPeMetrics.peMin != null &&
+              historicalPeMetrics.peMax != null
+                ? ` · 历史区间 ${historicalPeMetrics.peMin}x–${historicalPeMetrics.peMax}x`
+                : ""}
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="val-valuation-main">
+              <div className="val-valuation-metric">
+                <span className="val-card-label">主要估值锚</span>
+                <strong className="val-valuation-value">
+                  {financialModel.valuationAnchorLabel}
+                </strong>
+              </div>
+              <span className="val-status-badge val-tag--neutral">
+                专项模型尚未接入
+              </span>
+            </div>
+            <p className="val-valuation-summary-note">{modelAvailabilityNote}</p>
+          </>
+        )}
       </div>
-
-      {isFinancialSector ? (
-        <p className="val-model-note">
-          {data.sectorModelType === "insurance"
-            ? "保险专项偿付能力与内含价值指标尚未接入。"
-            : "银行专项资产质量与资本充足指标尚未接入。"}
-        </p>
-      ) : null}
-
       <div className="val-multiples-grid val-valuation-metrics-grid">
         <div className="val-multiple-card">
           <span className="val-card-label">市净率 P/B (净资产倍数)</span>
@@ -441,7 +467,7 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
           <span className="val-card-hint">市值 / 最新披露净资产</span>
         </div>
 
-        {!isFinancialSector ? (
+        {hasIndustrialCashFlow ? (
           <div className="val-multiple-card">
             <span className="val-card-label">自由现金流收益率 (FCF Yield)</span>
             <div className="val-card-val-row">
@@ -475,7 +501,7 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
           <span className="val-card-hint">近 5 年披露 ROE 均值</span>
         </div>
 
-        {!isFinancialSector ? (
+        {hasIndustrialCashFlow ? (
           <div className="val-multiple-card">
             <span className="val-card-label">现金流转化率 (OCF / 净利润)</span>
             <div className="val-card-val-row">

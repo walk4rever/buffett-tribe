@@ -20,9 +20,11 @@ export interface CanonicalLineItemConfig {
   statement: StatementType;
   periodType: PeriodType;
   morningstarId?: string;
+  modelSource?: "buffett_tribe_extension";
   unitCandidates: string[];
   tagsUsGaap: string[];
   tagsIfrs: string[];
+  tagsCustom?: string[];
   cnAliases: string[];
   hkAliases: string[];
   description?: string;
@@ -355,7 +357,7 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
   },
   {
     "key": "NonInterestIncome",
-    "nameZh": "非利息收入 / 手续费佣金净收入",
+    "nameZh": "非利息收入",
     "nameEn": "Non-Interest Income",
     "statement": "income_statement",
     "periodType": "duration",
@@ -371,7 +373,6 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "FeeAndCommissionIncome"
     ],
     "cnAliases": [
-      "手续费及佣金净收入",
       "非利息净收入"
     ],
     "hkAliases": [
@@ -2627,8 +2628,7 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "HKD"
     ],
     "tagsUsGaap": [
-      "FeesAndCommissionsNet",
-      "CommissionAndFees"
+      "FeesAndCommissionsNet"
     ],
     "tagsIfrs": [
       "FeeAndCommissionIncomeNet"
@@ -2638,10 +2638,114 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "手续费净收入"
     ],
     "hkAliases": [
-      "Fee and commission income",
+      "Net fee and commission income",
       "手续费及佣金净收入"
     ],
-    "description": "中间业务收入：投行、托管、信用卡、理财中介佣金"
+    "description": "手续费及佣金净额；Morningstar 科目归属银行模板，其他金融服务公司仅在披露净额时映射"
+  },
+  {
+    "key": "AssetsUnderManagement",
+    "nameZh": "管理资产规模",
+    "nameEn": "Assets Under Management",
+    "statement": "supplementary",
+    "periodType": "instant",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+    ],
+    "tagsCustom": [
+      "AssetsUnderManagement",
+      "TotalAssetsUnderManagement",
+      "ClientAssetsUnderManagement",
+    ],
+    "tagsIfrs": [
+    ],
+    "cnAliases": [
+      "管理资产规模",
+      "资产管理规模",
+      "管理资产总额",
+      "受托管理资产"
+    ],
+    "hkAliases": [
+      "Assets under management",
+      "Assets under management (AUM)",
+      "管理资产规模",
+      "资产管理规模",
+      "受托管理资产"
+    ],
+    "description": "期末客户资产管理规模，不包含仅提供投资建议的资产；非 Morningstar 标准财务报表科目。"
+  },
+  {
+    "key": "NetClientFlows",
+    "nameZh": "客户资产净流入",
+    "nameEn": "Net Client Flows",
+    "statement": "supplementary",
+    "periodType": "duration",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+    ],
+    "tagsCustom": [
+      "NetClientFlows",
+      "TotalNetClientFlows",
+      "NetClientInflowsOutflows",
+      "NetAssetFlows"
+    ],
+    "tagsIfrs": [
+    ],
+    "cnAliases": [
+      "客户资产净流入",
+      "客户净流入",
+      "管理资产净流入"
+    ],
+    "hkAliases": [
+      "Net client flows",
+      "Total net client flows",
+      "客户资产净流入",
+      "客户净流入",
+      "管理资产净流入"
+    ],
+    "description": "报告期客户净申购流量；不得由 AUM 变动推算，也不包含市场涨跌与汇率影响。非 Morningstar 标准财务报表科目。"
+  },
+  {
+    "key": "InvestmentManagementFeeIncome",
+    "nameZh": "资产管理费收入",
+    "nameEn": "Investment Management Fee Income",
+    "statement": "supplementary",
+    "periodType": "duration",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+    ],
+    "tagsCustom": [
+      "InvestmentManagementFeeRevenue",
+      "AssetManagementFeeRevenue"
+    ],
+    "tagsIfrs": [
+    ],
+    "cnAliases": [
+      "资产管理费收入",
+      "基金管理费收入"
+    ],
+    "hkAliases": [
+      "Investment management fee income",
+      "Asset management fee income",
+      "资产管理费收入",
+      "基金管理费收入"
+    ],
+    "description": "报告期资产管理业务费收入；不从总营收或 AUM 估算。非 Morningstar 标准财务报表科目。"
   },
   {
     "key": "NonInterestExpense",

@@ -5,6 +5,10 @@ import type { ValueLineData } from "@/lib/value-line-data";
 import { currencySymbol, formatUsdInYi } from "@/lib/currency";
 import { computeCapitalAllocationStats } from "@/lib/capital-allocation-metrics";
 import { getCapitalAllocationShareSeries } from "@/lib/share-count-utils";
+import {
+  getDefaultFinancialModel,
+  resolveFinancialModel,
+} from "@/lib/financial-model";
 
 type CapitalAllocationViewProps = {
   data: ValueLineData;
@@ -33,9 +37,16 @@ function buildSmoothSpline(pts: Array<{ x: number; y: number }>): string {
 }
 
 export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
-  const isInsurance = data.sectorModelType === "insurance";
-  const isFinancialSector =
-    data.sectorModelType === "banks" || data.sectorModelType === "insurance";
+  const financialModel =
+    data.financialModel ??
+    resolveFinancialModel(data.sectorModelType) ??
+    getDefaultFinancialModel();
+  const allocationModel = financialModel.capitalAllocationModel;
+  const showIndustrialCashFlow = financialModel.showIndustrialCashFlow;
+  const isInsurance = financialModel.template === "insurance";
+  const isShareholderReturnModel =
+    allocationModel !== "operating_cashflow" &&
+    allocationModel !== "group_returns";
   const displayCurrency = data.tradingCurrency;
   const currencySym = displayCurrency ? currencySymbol(displayCurrency) : "";
   const [hoverYearIdx, setHoverYearIdx] = useState<number | null>(null);
@@ -58,7 +69,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
   }
 
   const periodCountLabel = `${stats.periodCount} 个已披露财年`;
-  const flowCoverageLabel = isFinancialSector
+  const flowCoverageLabel = !showIndustrialCashFlow
     ? "工商业现金流指标不适用"
     : `${stats.flowCoverage}/${stats.periodCount} 年 OCF 与 CapEx 数据完整`;
   const roeCoverage = stats.annuals.filter(
@@ -200,7 +211,11 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
         <div>
           <div className="val-title-row">
             <h3 className="val-title">
-              {isFinancialSector ? "资本配置与股东回报" : "资本配置与现金流"}
+              {isShareholderReturnModel
+                ? "资本配置与股东回报"
+                : allocationModel === "group_returns"
+                  ? "集团资本配置与现金流"
+                  : "资本配置与现金流"}
             </h3>
           </div>
           <p className="val-subtitle">
@@ -289,22 +304,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
           </span>
         </div>
 
-        {isInsurance ? (
-          <div className="val-multiple-card">
-            <span className="val-card-label">区间平均 ROE</span>
-            <div className="val-card-val-row">
-              <span className="val-card-val">
-                {stats.avgRoe == null ? "—" : `${stats.avgRoe}%`}
-              </span>
-            </div>
-            <span className="val-card-hint">
-              有数据 {roeCoverage}/{stats.periodCount} 年
-              {latestRoeAnnual
-                ? ` · FY${latestRoeAnnual.year} ${latestRoeAnnual.roe}%`
-                : ""}
-            </span>
-          </div>
-        ) : !isFinancialSector ? (
+        {showIndustrialCashFlow ? (
           <div className="val-multiple-card">
             <span className="val-card-label">资本开支 / 经营现金流</span>
             <div className="val-card-val-row">
@@ -323,7 +323,22 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                 : "经营现金流或资本开支数据不足"}
             </span>
           </div>
-        ) : null}
+        ) : (
+          <div className="val-multiple-card">
+            <span className="val-card-label">区间平均 ROE</span>
+            <div className="val-card-val-row">
+              <span className="val-card-val">
+                {stats.avgRoe == null ? "—" : `${stats.avgRoe}%`}
+              </span>
+            </div>
+            <span className="val-card-hint">
+              有数据 {roeCoverage}/{stats.periodCount} 年
+              {latestRoeAnnual
+                ? ` · FY${latestRoeAnnual.year} ${latestRoeAnnual.roe}%`
+                : ""}
+            </span>
+          </div>
+        )}
       </div>
 
       {isInsurance ? (
@@ -340,8 +355,32 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
         </aside>
       ) : null}
 
+      {!isInsurance &&
+      isShareholderReturnModel &&
+      allocationModel !== "financial_services_returns" ? (
+        <aside className="cap-insurance-context" aria-label="专项资本配置指标覆盖范围">
+          <span className="cap-insurance-context-label">
+            {allocationModel === "property_returns"
+              ? "地产专项指标未接入"
+              : "银行专项指标未接入"}
+          </span>
+          <p>
+            {allocationModel === "property_returns"
+              ? "FFO/AFFO 与 NAV 尚未接入，不以工业现金流或净利润替代。"
+              : "资产质量、资本充足率与风险加权资产尚未接入，暂以回购、分红、股数和 ROE 展示股东回报。"}
+          </p>
+        </aside>
+      ) : null}
+
+      {allocationModel === "group_returns" ? (
+        <aside className="cap-insurance-context" aria-label="集团资本配置口径">
+          <span className="cap-insurance-context-label">合并报表口径</span>
+          <p>业务分部尚未拆分，现金流与股东回报按集团合并数据呈现。</p>
+        </aside>
+      ) : null}
+
       {/* Cash flow totals use only years with both OCF and CapEx reported. Financial institutions (banks/insurance) do not use industrial CapEx waterfall. */}
-      {!isFinancialSector &&
+      {showIndustrialCashFlow &&
       stats.flowCoverage > 0 &&
       stats.cumOcf != null &&
       stats.cumCapEx != null &&
@@ -470,7 +509,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
             </div>
           </div>
         </div>
-      ) : !isFinancialSector ? (
+      ) : showIndustrialCashFlow ? (
         <div className="val-chart-block">
           <div className="val-chart-header">
             <div>
@@ -720,16 +759,18 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
         <div className="val-chart-header">
           <div>
             <h4 className="val-block-title">
-              {isInsurance
+              {isShareholderReturnModel
                 ? "年度股东回报与资本指标"
                 : "历年资本配置与股本变化明细"}
             </h4>
             <span className="val-block-desc">
               {isInsurance
                 ? "年度回购、已实施现金分红、股数与 ROE"
-                : isFinancialSector
+                : isShareholderReturnModel
                   ? "年度回购、现金分红、股数（标明口径）与 ROE"
-                  : "年度经营现金流、资本开支、回购、现金分红与股本变化"}
+                  : allocationModel === "group_returns"
+                    ? "合并经营现金流、资本开支、回购、现金分红与股本变化"
+                    : "年度经营现金流、资本开支、回购、现金分红与股本变化"}
             </span>
           </div>
         </div>
@@ -739,7 +780,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
             <thead>
               <tr>
                 <th>财年</th>
-                {!isFinancialSector && (
+                {showIndustrialCashFlow && (
                   <>
                     <th style={{ textAlign: "right" }}>经营现金流 (OCF)</th>
                     <th style={{ textAlign: "right" }}>资本开支 (CapEx)</th>
@@ -758,7 +799,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                 .reverse()
                 .map((a) => {
                   const annualFcf =
-                    !isFinancialSector &&
+                    showIndustrialCashFlow &&
                     a.operatingCashFlow != null &&
                     a.capEx != null
                       ? a.operatingCashFlow - Math.abs(a.capEx)
@@ -768,7 +809,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                       <td>
                         <strong>FY{a.year}</strong>
                       </td>
-                      {!isFinancialSector && (
+                      {showIndustrialCashFlow && (
                         <>
                           <td style={{ textAlign: "right" }}>
                             {a.operatingCashFlow != null

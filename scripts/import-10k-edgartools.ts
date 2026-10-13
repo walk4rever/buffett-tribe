@@ -270,6 +270,7 @@ async function importEdgarToolsAnnualReports(params: {
       LINE_ITEMS.find((item) => item.key === "Revenue")?.tagsIfrs ?? [],
       LINE_ITEMS.find((item) => item.key === "Revenue")?.unitCandidates ?? [],
       filing.reportDate,
+      "duration",
     );
     const currency = normalizeCurrencyCode(revenue?.unit);
     if (currency) {
@@ -306,6 +307,7 @@ async function importEdgarToolsAnnualReports(params: {
             item.tagsIfrs,
             item.unitCandidates,
             filing.reportDate,
+            item.periodType,
           );
           if (companyFactsFact == null) return { upserted: 0, missing: 1 };
           await db.financial.upsert({
@@ -434,6 +436,7 @@ async function importEdgarToolsAnnualReports(params: {
           item.tagsIfrs,
           item.unitCandidates,
           filing.reportDate,
+          item.periodType,
         );
 
         let value = companyFactsFact?.value ?? null;
@@ -447,6 +450,7 @@ async function importEdgarToolsAnnualReports(params: {
             filing.reportDate,
             item.periodType,
             item.unitCandidates,
+            item.tagsCustom,
           );
           if (inlineFact) {
             value = inlineFact.value;

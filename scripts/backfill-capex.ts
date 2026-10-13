@@ -104,7 +104,14 @@ async function main() {
     let missing = 0;
     for (const row of ocfRows) {
       const reportDate = row.periodEnd.toISOString().slice(0, 10);
-      const fact = findBestFactValue(facts, CAPEX.tagsUsGaap, CAPEX.tagsIfrs, CAPEX.unitCandidates, reportDate);
+      const fact = findBestFactValue(
+        facts,
+        CAPEX.tagsUsGaap,
+        CAPEX.tagsIfrs,
+        CAPEX.unitCandidates,
+        reportDate,
+        "duration",
+      );
       if (fact == null) {
         missing += 1;
         continue;

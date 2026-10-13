@@ -85,7 +85,7 @@ describe("buildCompanyFinancialDashboard", () => {
       ],
     );
 
-    expect(dashboard.template).toBe("operating");
+    expect(dashboard.template).toBe("industrial");
     expect(dashboard.displayYears).toEqual([2025, 2024, 2023, 2022, 2021]);
     expect(dashboard.trendYears).toEqual([2020, 2021, 2022, 2023, 2024, 2025]);
     expect(dashboard.trends.map((trend) => trend.key)).toContain("FCFMargin");
@@ -126,8 +126,8 @@ describe("buildCompanyFinancialDashboard", () => {
   it("maps all dedicated industry models to their financial-analysis templates", () => {
     const cases = [
       ["insurance", "insurance"],
-      ["capital_markets", "capital_markets"],
-      ["real_estate", "real_estate"],
+      ["capital_markets", "financial_services"],
+      ["real_estate", "industrial"],
       ["conglomerate", "conglomerate"],
     ] as const;
 
@@ -139,8 +139,9 @@ describe("buildCompanyFinancialDashboard", () => {
 
       expect(dashboard.template).toBe(template);
       if (sectorModelType === "real_estate") {
+        expect(dashboard.financialModel.modifiers).toEqual(["real_estate"]);
         expect(dashboard.rows.map((row) => row.key)).not.toContain("ROE");
-        expect(dashboard.rows.map((row) => row.key)).toContain("FCFMargin");
+        expect(dashboard.rows.map((row) => row.key)).not.toContain("FCFMargin");
         expect(dashboard.rows.map((row) => row.key)).not.toContain("CashConversion");
         expect(dashboard.templateNote).toContain("FFO/AFFO");
       }
@@ -149,15 +150,104 @@ describe("buildCompanyFinancialDashboard", () => {
       }
       if (sectorModelType === "capital_markets") {
         expect(dashboard.rows.map((row) => row.key)).toContain("RevenueGrowth");
-        expect(dashboard.templateNote).toContain("AUM");
+        expect(dashboard.rows.map((row) => row.key)).not.toContain("CashConversion");
+        expect(dashboard.rows.map((row) => row.key)).not.toContain("FCFMargin");
+        expect(dashboard.templateNote).not.toContain("未接入");
       }
       if (sectorModelType === "conglomerate") {
         expect(dashboard.templateNote).toContain("业务分部");
-      }
-      if (sectorModelType === "capital_markets" || sectorModelType === "conglomerate") {
         expect(dashboard.rows.map((row) => row.key)).toContain("CashConversion");
       }
     }
+  });
+
+  it("shows financial-services operating metrics when annual reports provide them", () => {
+    const dashboard = buildCompanyFinancialDashboard(
+      { sector: "Financials", metadata: {}, sectorModelType: "capital_markets" },
+      [
+        financialYear(2025, {
+          Revenue: "50000000000",
+          NetIncome: "8000000000",
+          TotalAssets: "100000000000",
+          TotalLiabilities: "70000000000",
+          ShareholdersEquity: "30000000000",
+          AssetsUnderManagement: "12000000000000",
+          NetClientFlows: "750000000000",
+          InvestmentManagementFeeIncome: "18000000000",
+          NetFeeAndCommissionIncome: "4500000000",
+        }),
+        financialYear(2024, {
+          Revenue: "45000000000",
+          NetIncome: "7000000000",
+          TotalAssets: "90000000000",
+          TotalLiabilities: "62000000000",
+          ShareholdersEquity: "28000000000",
+          AssetsUnderManagement: "10000000000000",
+          NetClientFlows: "500000000000",
+          InvestmentManagementFeeIncome: "16000000000",
+          NetFeeAndCommissionIncome: "4000000000",
+        }),
+      ],
+    );
+
+    const rowKeys = dashboard.rows.map((row) => row.key);
+    const trendKeys = dashboard.trends.map((trend) => trend.key);
+
+    expect(rowKeys).toEqual(
+      expect.arrayContaining([
+        "AssetsUnderManagement",
+        "NetClientFlows",
+        "InvestmentManagementFeeIncome",
+        "NetFeeAndCommissionIncome",
+      ]),
+    );
+    expect(trendKeys).toEqual(
+      expect.arrayContaining([
+        "AssetsUnderManagement",
+        "NetClientFlows",
+        "InvestmentManagementFeeIncome",
+        "NetFeeAndCommissionIncome",
+      ]),
+    );
+    expect(dashboard.templateNote).not.toMatch(/AUM|净流入|手续费|未接入/);
+  });
+
+  it("normalizes financial-services metrics using each row's reporting currency", () => {
+    const dashboard = buildCompanyFinancialDashboard(
+      { sector: "Financials", metadata: {}, sectorModelType: "capital_markets" },
+      [
+        {
+          ...financialYear(2025, {
+            Revenue: "1000000000",
+            AssetsUnderManagement: "1000000000000",
+            NetClientFlows: "20000000000",
+            InvestmentManagementFeeIncome: "5000000000",
+            NetFeeAndCommissionIncome: "3000000000",
+          }),
+          itemUnits: {
+            Revenue: "EUR",
+            AssetsUnderManagement: "EUR",
+            NetClientFlows: "EUR",
+            InvestmentManagementFeeIncome: "EUR",
+            NetFeeAndCommissionIncome: "EUR",
+          },
+        },
+      ],
+      "USD",
+      {
+        reportingCurrency: "EUR",
+        tradingCurrency: "USD",
+        fxRates: new Map([["EUR", 1.1], ["USD", 1]]),
+      },
+    );
+
+    const latestValue = (key: string) =>
+      dashboard.trends.find((trend) => trend.key === key)?.latestPoint?.value;
+
+    expect(latestValue("AssetsUnderManagement")).toBeCloseTo(1_100_000_000_000);
+    expect(latestValue("NetClientFlows")).toBeCloseTo(22_000_000_000);
+    expect(latestValue("InvestmentManagementFeeIncome")).toBeCloseTo(5_500_000_000);
+    expect(latestValue("NetFeeAndCommissionIncome")).toBeCloseTo(3_300_000_000);
   });
 
   it("uses the legacy classifier when the explicit sector model is unavailable", () => {
@@ -166,7 +256,8 @@ describe("buildCompanyFinancialDashboard", () => {
       generalFinancials,
     );
 
-    expect(dashboard.template).toBe("real_estate");
+    expect(dashboard.template).toBe("industrial");
+    expect(dashboard.financialModel.modifiers).toEqual(["real_estate"]);
   });
 
   it("treats persisted legacy types as missing and uses industry metadata", () => {
@@ -188,7 +279,66 @@ describe("buildCompanyFinancialDashboard", () => {
     );
 
     expect(bankDashboard.template).toBe("bank");
-    expect(realEstateDashboard.template).toBe("real_estate");
+    expect(realEstateDashboard.template).toBe("industrial");
+    expect(realEstateDashboard.financialModel.modifiers).toEqual(["real_estate"]);
+  });
+
+  it("maps all 13 persisted industries into exactly five analysis templates", () => {
+    const expectedTemplates = {
+      consumer_brand: "industrial",
+      healthcare: "industrial",
+      software_platform: "industrial",
+      semiconductor_hardware: "industrial",
+      industrial: "industrial",
+      banks: "bank",
+      insurance: "insurance",
+      capital_markets: "financial_services",
+      real_estate: "industrial",
+      energy_materials: "industrial",
+      utilities: "industrial",
+      telecommunications: "industrial",
+      conglomerate: "conglomerate",
+    } as const;
+
+    for (const [sectorModelType, template] of Object.entries(expectedTemplates)) {
+      const dashboard = buildCompanyFinancialDashboard(
+        {
+          sector: "Financials",
+          metadata: {},
+          sectorModelType: sectorModelType as keyof typeof expectedTemplates,
+        },
+        professionalFinancials,
+      );
+      expect(dashboard.template).toBe(template);
+    }
+  });
+
+  it("shows insurance premiums, claims and claims ratio when those inputs exist", () => {
+    const dashboard = buildCompanyFinancialDashboard(
+      { sector: "Financials", metadata: {}, sectorModelType: "insurance" },
+      [
+        financialYear(2025, {
+          NetPremiumsEarned: "1000000000",
+          PolicyClaimsAndBenefits: "-650000000",
+          NetIncome: "120",
+          TotalAssets: "2000",
+          ShareholdersEquity: "300",
+        }),
+        financialYear(2024, {
+          NetPremiumsEarned: "800000000",
+          PolicyClaimsAndBenefits: "-600000000",
+          NetIncome: "100",
+          TotalAssets: "1800",
+          ShareholdersEquity: "280",
+        }),
+      ],
+    );
+
+    expect(dashboard.template).toBe("insurance");
+    expect(dashboard.rows.find((row) => row.key === "NetPremiumsEarned")?.values[2025]).toMatch(/10\.0亿/);
+    expect(dashboard.rows.find((row) => row.key === "ClaimsRatio")?.values[2025]).toBe("65.0%");
+    expect(dashboard.trends.map((trend) => trend.key)).toContain("ClaimsRatio");
+    expect(dashboard.templateNote).toContain("赔付率");
   });
 
   it("uses up to ten actual years for trends and five for the detail table", () => {

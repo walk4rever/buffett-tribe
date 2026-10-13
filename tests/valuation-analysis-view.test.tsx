@@ -2,10 +2,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ValuationAnalysisView } from "@/components/ValuationAnalysisView";
 import type { ValueLineData } from "@/lib/value-line-data";
+import { resolveFinancialModel } from "@/lib/financial-model";
 
 function renderValuationAnalysis(sectorModelType?: string) {
   const data = {
     sectorModelType,
+    financialModel: resolveFinancialModel(sectorModelType ?? "industrial"),
     tradingCurrency: "USD",
     reportingCurrency: "USD",
     latestPrice: 100,
@@ -57,5 +59,36 @@ describe("ValuationAnalysisView", () => {
     expect(markup).toContain('<details class="val-sim-block">');
     expect(markup).toContain("5年情景测算");
     expect(markup).not.toContain('<details class="val-sim-block" open="">');
+  });
+
+  it("uses the bank valuation anchor instead of presenting P/E as the primary model", () => {
+    const markup = renderValuationAnalysis("banks");
+
+    expect(markup).toContain("市净率与 ROE");
+    expect(markup).toContain("银行专项资产质量与资本充足指标尚未接入");
+    expect(markup).toContain("市净率 P/B");
+    expect(markup).not.toContain("当前 P/E");
+    expect(markup).not.toContain("历史 P/E 参考带");
+    expect(markup).not.toContain("5年情景测算");
+    expect(markup).not.toContain("FCF Yield");
+  });
+
+  it("does not substitute P/E for unavailable insurance or property valuation models", () => {
+    const insuranceMarkup = renderValuationAnalysis("insurance");
+    const propertyMarkup = renderValuationAnalysis("real_estate");
+
+    expect(insuranceMarkup).toContain("内含价值与市净率");
+    expect(insuranceMarkup).not.toContain("当前 P/E");
+    expect(propertyMarkup).toContain("资产净值与 FFO");
+    expect(propertyMarkup).not.toContain("当前 P/E");
+    expect(propertyMarkup).not.toContain("历史 P/E 参考带");
+  });
+
+  it("does not append a missing-input warning to the financial-services P/E model", () => {
+    const markup = renderValuationAnalysis("capital_markets");
+
+    expect(markup).toContain("当前 P/E");
+    expect(markup).not.toMatch(/手续费收入、AUM 与净流入尚未接入|仅作参考/);
+    expect(markup).not.toContain("FCF Yield");
   });
 });

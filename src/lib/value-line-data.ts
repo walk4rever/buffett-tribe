@@ -45,9 +45,16 @@ import {
 } from "@/lib/valuation-analysis-metrics";
 import {
   type SectorModelType13,
-  getExplicitSectorModel13Info,
+  getSectorModel13Info,
 } from "@/lib/sector-classification";
+import {
+  getDefaultFinancialModel,
+  isPePrimaryValuationAnchor,
+  resolveFinancialModel,
+  type FinancialModelResolution,
+} from "@/lib/financial-model";
 import { getCikLookupVariants } from "@/lib/cik";
+import { buildFinancialServicesMetricCard } from "@/lib/financial-services-metrics";
 
 function parseNum(items: Record<string, string | number> | undefined, key: string): number | null {
   if (!items) return null;
@@ -77,6 +84,10 @@ export type ValueLineAnnualData = {
   sharesSource?: "disclosed" | "disclosed_period_end" | "weighted_average" | "derived" | null;
   repurchaseAmt: number | null;
   dividendsPaid: number | null;
+  assetsUnderManagement?: number | null;
+  netClientFlows?: number | null;
+  investmentManagementFeeIncome?: number | null;
+  netFeeAndCommissionIncome?: number | null;
 };
 
 export type ValueLineHolderBreakdownItem = {
@@ -154,6 +165,7 @@ export type ValueLineData = {
   // Sector Adaptive Model
   sectorModelType: SectorModelType13 | null;
   sectorModelLabel: string | null;
+  financialModel: FinancialModelResolution;
   cyclicalWarning: { title: string; message: string } | null;
 
   // Market & Pricing (Active Security)
@@ -206,6 +218,7 @@ export type ValueLineData = {
   metric2BadgeClass: string;
   metric2MainNum: string;
   metric2SubText: string;
+  metric2Applicable?: boolean;
 
   metric4Title: string;
   metric4Badge: string;
@@ -327,6 +340,12 @@ export async function getValueLineData(
   const nameZh = typeof meta.nameZh === "string" ? meta.nameZh.trim() : null;
   const industry = typeof meta.industry === "string" ? meta.industry : null;
   const exchange = typeof meta.exchange === "string" ? meta.exchange : null;
+  const financialModel =
+    resolveFinancialModel(entity.sectorModelType, {
+      sector: entity.sector,
+      industry,
+      sic: meta.sic,
+    }) ?? getDefaultFinancialModel();
   const market = (entity.market as "hk" | "cn" | null) ?? "us";
   const reportingCurrency =
     normalizeCurrencyCode(entity.reportingCurrency) ??
@@ -385,6 +404,16 @@ export async function getValueLineData(
       const repAmt = repAmtRaw != null ? repAmtRaw : null;
       const divRaw = parseNum(f.items, "DividendsPaid");
       const dividendsPaid = divRaw != null ? divRaw : null;
+      const assetsUnderManagement = parseNum(f.items, "AssetsUnderManagement");
+      const netClientFlows = parseNum(f.items, "NetClientFlows");
+      const investmentManagementFeeIncome = parseNum(
+        f.items,
+        "InvestmentManagementFeeIncome",
+      );
+      const netFeeAndCommissionIncome = parseNum(
+        f.items,
+        "NetFeeAndCommissionIncome",
+      );
 
       const periodEndShs = parseNum(f.items, "CommonStockSharesOutstanding");
       const weightedAvgShs = parseNum(f.items, "WeightedAverageNumberOfDilutedSharesOutstanding");
@@ -433,9 +462,21 @@ export async function getValueLineData(
         sharesSource,
         repurchaseAmt: repAmt,
         dividendsPaid,
+        assetsUnderManagement,
+        netClientFlows,
+        investmentManagementFeeIncome,
+        netFeeAndCommissionIncome,
       };
     })
-    .filter((a) => a.revenue != null || a.netIncome != null || a.operatingCashFlow != null)
+    .filter((a) =>
+      a.revenue != null ||
+      a.netIncome != null ||
+      a.operatingCashFlow != null ||
+      a.assetsUnderManagement != null ||
+      a.netClientFlows != null ||
+      a.investmentManagementFeeIncome != null ||
+      a.netFeeAndCommissionIncome != null
+    )
     .sort((a, b) => a.year - b.year);
 
   const normalizedAnnuals = rawAnnuals.map((annual) => {
@@ -464,6 +505,11 @@ export async function getValueLineData(
         [epsLine]: annual.eps,
         [repurchaseLine]: annual.repurchaseAmt,
         DividendsPaid: annual.dividendsPaid,
+        AssetsUnderManagement: annual.assetsUnderManagement ?? null,
+        NetClientFlows: annual.netClientFlows ?? null,
+        InvestmentManagementFeeIncome:
+          annual.investmentManagementFeeIncome ?? null,
+        NetFeeAndCommissionIncome: annual.netFeeAndCommissionIncome ?? null,
       },
       f.itemUnits ?? {},
       {
@@ -522,6 +568,12 @@ export async function getValueLineData(
       eps,
       repurchaseAmt: values[repurchaseLine] ?? null,
       dividendsPaid: values.DividendsPaid ?? null,
+      assetsUnderManagement: values.AssetsUnderManagement ?? null,
+      netClientFlows: values.NetClientFlows ?? null,
+      investmentManagementFeeIncome:
+        values.InvestmentManagementFeeIncome ?? null,
+      netFeeAndCommissionIncome:
+        values.NetFeeAndCommissionIncome ?? null,
     };
   });
   // Normalize historical shares & EPS for stock splits so older years are on the latest share basis.
@@ -547,9 +599,16 @@ export async function getValueLineData(
   const totalOcf = recentAnnuals.reduce((acc, a) => acc + (a.operatingCashFlow ?? 0), 0);
   const totalNet = recentAnnuals.reduce((acc, a) => acc + (a.netIncome ?? 0), 0);
   const cashConversionRatio =
-    totalNet > 0 && totalOcf > 0 ? Number((totalOcf / totalNet).toFixed(2)) : null;
+    financialModel.showIndustrialCashFlow && totalNet > 0 && totalOcf > 0
+      ? Number((totalOcf / totalNet).toFixed(2))
+      : null;
 
   const latestAnnual = annuals[annuals.length - 1] ?? null;
+  const sym = tradingCurrency ? currencySymbol(tradingCurrency) : "";
+  const financialServicesCard = buildFinancialServicesMetricCard(
+    annuals,
+    sym,
+  );
   const debtToAssetsRatio =
     latestAnnual?.totalLiabilities != null && latestAnnual?.totalAssets != null && latestAnnual.totalAssets > 0
       ? Number(((latestAnnual.totalLiabilities / latestAnnual.totalAssets) * 100).toFixed(1))
@@ -564,9 +623,8 @@ export async function getValueLineData(
       latestAnnual.shortTermDebt! + latestAnnual.longTermDebt!
     : false;
 
-  // Only an explicitly persisted 13-way classification selects adaptive valuation logic.
-  const sectorModel = getExplicitSectorModel13Info(entity.sectorModelType);
-  const sectorModelType = sectorModel?.type ?? null;
+  const sectorModelType = financialModel.sectorModelType;
+  const sectorModel = sectorModelType ? getSectorModel13Info(sectorModelType) : null;
   const sectorModelLabel = sectorModel?.label ?? null;
 
   // ── Metric 1: 5-Year ROE ──
@@ -622,16 +680,36 @@ export async function getValueLineData(
   let metric2MainNum =
     cashConversionRatio != null ? `${cashConversionRatio}x` : "—";
   let metric2SubText = "经营现金流 / 净利润";
+  const metric2Applicable =
+    financialModel.template !== "financial_services" ||
+    financialServicesCard.applicable;
 
-  if (sectorModelType === "banks" || sectorModelType === "insurance") {
-    metric2Title = "资金营运与息差";
-    metric2Badge = "特许资金运作";
+  if (financialModel.template === "financial_services") {
+    metric2Title = financialServicesCard.title;
+    metric2Badge = financialServicesCard.badge;
     metric2BadgeClass = "vl-badge--neutral";
-    metric2MainNum =
-      cashConversionRatio != null && cashConversionRatio > 0 && cashConversionRatio <= 3.5
-        ? `${cashConversionRatio}x`
-        : "息差驱动";
-    metric2SubText = "存贷投放与保单准备金驱动 (不适用工业OCF模型)";
+    metric2MainNum = financialServicesCard.mainNum;
+    metric2SubText = financialServicesCard.subText;
+  } else if (!financialModel.showIndustrialCashFlow) {
+    metric2Title =
+      financialModel.template === "bank"
+        ? "资产负债经营"
+        : financialModel.template === "insurance"
+          ? "保费与赔付"
+          : financialModel.modifiers.includes("real_estate")
+            ? "物业经营回报"
+            : "";
+    metric2Badge = "专项指标未接入";
+    metric2BadgeClass = "vl-badge--neutral";
+    metric2MainNum = "—";
+    metric2SubText =
+      financialModel.template === "bank"
+        ? "净息差、信用成本与资本充足率尚未接入"
+        : financialModel.template === "insurance"
+          ? "综合成本率、偿付能力与内含价值尚未接入"
+          : financialModel.modifiers.includes("real_estate")
+            ? "FFO/AFFO 与 NAV 尚未接入"
+            : "";
   } else if (sectorModelType === "utilities") {
     metric2Title = "特许现金造血";
     metric2Badge = "特许现金奶牛";
@@ -729,7 +807,6 @@ export async function getValueLineData(
 
   const totalBuyback5Y =
     recentAnnuals.reduce((acc, a) => acc + (a.repurchaseAmt ?? 0), 0) || null;
-  const sym = tradingCurrency ? currencySymbol(tradingCurrency) : "";
   const buybackAmountLabel =
     tradingCurrency && totalBuyback5Y != null && totalBuyback5Y > 0
       ? `5年累计回购 ${sym}${formatUsdInYi(totalBuyback5Y)}`
@@ -748,7 +825,8 @@ export async function getValueLineData(
   let assetsCagr5Y: number | null = null;
   const assetsCagrLabel: string | null = null;
 
-  const isFinancial = sectorModelType === "banks" || sectorModelType === "insurance";
+  const isFinancial =
+    financialModel.template === "bank" || financialModel.template === "insurance";
 
   if (recentAnnuals.length >= 2) {
     const firstA = recentAnnuals[0];
@@ -784,7 +862,7 @@ export async function getValueLineData(
     }
 
     // Free Cash Flow CAGR (only for non-financial)
-    if (!isFinancial && firstA.freeCashFlow != null && lastA.freeCashFlow != null) {
+    if (financialModel.showIndustrialCashFlow && firstA.freeCashFlow != null && lastA.freeCashFlow != null) {
       if (firstA.freeCashFlow > 0 && lastA.freeCashFlow > 0) {
         freeCashFlowCagr5Y = Number((((lastA.freeCashFlow / firstA.freeCashFlow) ** (1 / span) - 1) * 100).toFixed(1));
       } else if (firstA.freeCashFlow <= 0 && lastA.freeCashFlow > 0) {
@@ -860,41 +938,24 @@ export async function getValueLineData(
     }
   }
 
-  let sectorBenchmarkPe = sectorModel?.benchmarkPE ?? null;
-  if (sectorModelType) {
-    // Use a category-specific PE anchor only when a 13-way classification exists.
+  let sectorBenchmarkPe: number | null = null;
+  if (isPePrimaryValuationAnchor(financialModel.valuationAnchor)) {
     switch (sectorModelType) {
-      case "banks":
-      case "insurance":
-        sectorBenchmarkPe = roeAvg5Y && roeAvg5Y >= 12 ? 8.0 : 6.5;
-        break;
-      case "utilities":
-        sectorBenchmarkPe = 14.0;
-        break;
-      case "energy_materials":
-        sectorBenchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 10.0 : 8.0;
-        break;
       case "consumer_brand":
-        sectorBenchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 24.0 : roeAvg5Y && roeAvg5Y >= 12 ? 20.0 : 16.0;
+        sectorBenchmarkPe =
+          roeAvg5Y && roeAvg5Y >= 18 ? 24.0 : roeAvg5Y && roeAvg5Y >= 12 ? 20.0 : 16.0;
         break;
       case "healthcare":
-        sectorBenchmarkPe = roeAvg5Y && roeAvg5Y >= 18 ? 22.0 : roeAvg5Y && roeAvg5Y >= 12 ? 18.0 : 15.0;
+        sectorBenchmarkPe =
+          roeAvg5Y && roeAvg5Y >= 18 ? 22.0 : roeAvg5Y && roeAvg5Y >= 12 ? 18.0 : 15.0;
         break;
       case "software_platform":
-      case "semiconductor_hardware":
-        sectorBenchmarkPe = roeAvg5Y && roeAvg5Y >= 20 ? 28.0 : roeAvg5Y && roeAvg5Y >= 12 ? 22.0 : 18.0;
+        sectorBenchmarkPe =
+          roeAvg5Y && roeAvg5Y >= 20 ? 28.0 : roeAvg5Y && roeAvg5Y >= 12 ? 22.0 : 18.0;
         break;
       case "capital_markets":
-        sectorBenchmarkPe = roeAvg5Y && roeAvg5Y >= 20 ? 24.0 : roeAvg5Y && roeAvg5Y >= 15 ? 20.0 : 16.0;
-        break;
-      case "real_estate":
-        sectorBenchmarkPe = 12.0; // PE less relevant for REITs; NAV/PB more appropriate
-        break;
-      case "telecommunications":
-        sectorBenchmarkPe = 14.0; // Utility-like, stable dividend payers
-        break;
-      case "conglomerate":
-        sectorBenchmarkPe = 18.0;
+        sectorBenchmarkPe =
+          roeAvg5Y && roeAvg5Y >= 20 ? 24.0 : roeAvg5Y && roeAvg5Y >= 15 ? 20.0 : 16.0;
         break;
       case "industrial":
         sectorBenchmarkPe = roeAvg5Y && roeAvg5Y > 15 ? 18.0 : 15.0;
@@ -968,7 +1029,9 @@ export async function getValueLineData(
       : [];
     const historicalMedianPe =
       computeHistoricalPeMetrics(historicalPePoints, null).peMedian;
-    const valuationBenchmarkPe = valuationCurrencyAvailable
+    const valuationBenchmarkPe =
+      valuationCurrencyAvailable &&
+      isPePrimaryValuationAnchor(financialModel.valuationAnchor)
       ? historicalMedianPe ?? sectorBenchmarkPe
       : null;
     const valueLinePoints =
@@ -1345,6 +1408,7 @@ export async function getValueLineData(
 
     sectorModelType,
     sectorModelLabel,
+    financialModel,
     cyclicalWarning,
 
     latestPrice,
@@ -1387,6 +1451,7 @@ export async function getValueLineData(
     metric2BadgeClass,
     metric2MainNum,
     metric2SubText,
+    metric2Applicable,
 
     metric4Title,
     metric4Badge,
