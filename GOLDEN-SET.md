@@ -13,6 +13,7 @@
 | 比对引擎 | `scripts/eval-financials-against-morningstar.ts` | raw / calibrated 双模式，逐公司逐年逐项对差 |
 | 晨星真值快照 | `.cache/morningstar-snapshots/<secId>.json` | 100 个 secId，已随 worktree 复制，默认不再打 API |
 | 跑分历史 | `tests/evals/history/` | 每次运行一份时间戳 JSON，已 gitignore，不入库 |
+| 缺陷台账 | `tests/evals/ledger/` | 归因层产出：把每个差异归因到具体成因，按工单组织 |
 
 比对口径：29 个指标 = 11 个全行业基石（营收/税前利润/所得税/归母净利/总资产/总负债/股东权益/OCF/ICF/FCF/分红）
 + 工业 7（营业成本/毛利/营业利润/流动资产/流动负债/现金及等价物/CapEx）
@@ -25,12 +26,36 @@
 npm run eval:golden                 # 100 家全量，raw 模式（诚实分）
 npm run eval:golden:both            # raw + calibrated 两轮
 npm run eval:golden:compare         # 全量并与上一次 raw 跑分基线对差
+npm run eval:golden:ledger          # 对最新一次 raw 跑分做归因，产出缺陷台账
 
 npx tsx scripts/eval-financials-against-morningstar.ts --ticker AAPL
 npx tsx scripts/eval-financials-against-morningstar.ts --suite cn --years 5
 ```
 
 不带 `--all` 时只跑 5 家代表公司（AAPL/BABA/…），别把它当成全量。全量单模式约 10 分钟，`--both` 约 20 分钟。
+归因层约 13 分钟（它要为每家公司读一遍库内科目做交叉验证）。
+
+## 归因层：从「哪儿对不上」到「为什么对不上」
+
+`scripts/attribute-morningstar-diffs.ts` 是纯派生工具，读 eval 的 artifact + 字典 + 比对契约，
+不写任何业务表。它把每个非 MATCH 单元格归到十个成因之一，按成因 × 科目（或成因 × 公司）组成工单，
+产出 `tests/evals/ledger/ledger-<ts>.md`（人读，工单来源）和同名 `.json`（全量证据）。
+
+十个成因分三层，含义完全不同，修复顺序也不同：
+
+1. **改契约就能解决的（不动数据）**：`CONCEPT_AGGREGATION`（晨星是合并值、我们是拆分项）、
+   `DECLARED_AMBIGUOUS`（已知口径歧义未裁决）、`SIGN_INVERSION`、`DERIVABLE_MISSING`（模型缺派生公式）。
+2. **参考系或评测器的问题（不是我们的数据错）**：`MSTAR_COVERAGE_GAP`（晨星没这一项）、`EVAL_FX_GAP`。
+3. **真数据问题（改 backfill 后重灌）**：`EXTRACTION_MISSING`、`CURRENCY_BASIS`、`UNIT_SCALE`、
+   `PERSISTENT_BIAS`（跨年同向的系统性口径范围差）。
+
+另有两类不是「没查清」而是「没有唯一正确答案」，解法是人工裁决口径写进契约：
+`RESIDUAL_SMALL`（同向微差 ≤10%）和 `UNCLASSIFIED`（规则解释不了，需逐条看）。
+
+判据全部写在脚本头部的常量里，每个成因的检测机制都要求能复现，不做无法解释的兜底分类。
+
+人工核实过、已定位到机制的问题写在 `comparability-overrides.json` 的 `verifiedFindings` 里，
+由脚本渲染进台账，与自动检出的工单分开呈现。
 
 ## 必须先守的两条口径
 

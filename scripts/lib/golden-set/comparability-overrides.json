@@ -1,0 +1,94 @@
+{
+  "$comment": "比对契约。canonical-financial-dictionary.json 是我们的模型本身；这里只记录『我们的一项 ≠ 晨星的一项』的例外。默认可比模式是 direct（我们的值直接对晨星同 id 的值）。任何一项改动都会改变 eval 的结论，所以每次改动都要重跑 golden set 并在 ledger 里留痕。",
+  "items": {
+    "CashAndCashEquivalents": {
+      "mode": "sum_of",
+      "sumWith": ["ShortTermInvestments"],
+      "note": "晨星 IFBS000350 的语义是『现金及等价物 + 短期投资』的合并值。已验证：AAPL FY2021-2025 五年，我们的纯现金值 + 当期有价证券 == 晨星值（FY2024: 299.43亿 + 352.28亿 = 651.71亿）。我们把两者拆开存，所以必须相加后再比。"
+    },
+    "ShortTermInvestments": {
+      "mode": "absorbed",
+      "absorbedBy": "CashAndCashEquivalents",
+      "note": "被 CashAndCashEquivalents 的 sum_of 吸收。单独拿去比 IFBS000350 必然系统性偏低。"
+    },
+    "GrossProfit": {
+      "mode": "derived",
+      "formula": ["Revenue", "-", "CostOfRevenue"],
+      "note": "us-gaap:GrossProfit 是可选披露标签，很多申报方不打。全样本 155/442 个单元格空着。我们有 Revenue 与 CostOfRevenue 就已具备推导条件。"
+    },
+    "OperatingIncome": {
+      "mode": "either_of",
+      "altMstarIds": ["IFIS003138"],
+      "note": "晨星既有 IFIS001230 也有 IFIS003138（EBIT 口径），两者不等价。eval 里的 altMstarId 是隐式兜底，必须显式化。"
+    },
+    "TotalDebt": {
+      "mode": "derived",
+      "formula": ["ShortTermDebt", "+", "LongTermDebt"],
+      "note": "有息负债合计，字典无对应 tag，属于必须自行聚合的科目。"
+    },
+    "SellingExpense": {
+      "mode": "absorbed",
+      "absorbedBy": "SGAExpense",
+      "note": "晨星 IFIS001700 是销售+管理费用的合并条目，我们拆成 Selling/Administrative/SGA 三项。"
+    },
+    "AdministrativeExpense": {
+      "mode": "absorbed",
+      "absorbedBy": "SGAExpense",
+      "note": "同上，被 IFIS001700 合并条目吸收。"
+    },
+    "SGAExpense": {
+      "mode": "sum_of",
+      "sumWith": ["SellingExpense", "AdministrativeExpense"],
+      "note": "对晨星 IFIS001700 时按合并口径比。注意：当申报方直接披露合并数时，三项会同时存在，此处需人工确认取哪一路，见 ledger WO。"
+    },
+    "PurchaseSaleOfPPE": {
+      "mode": "overlaps",
+      "overlapsWith": ["CapEx"],
+      "note": "与 CapEx 共享 IFCF001330，属重复认领，至少有一项是错的。注意晨星 CapEx 是净额口径（含处置回款），我们存的是购建支出的毛额。"
+    }
+  },
+  "dictionaryDefects": {
+    "$comment": "脚本会自动检出，这里只是把已确认的人工结论留档。",
+    "IFIS000150": "EPSBasic 与 WeightedAverageShares 同时认领这一个晨星 id —— 每股收益和股数不可能共用同一个晨星条目，其中至少一项映射是错的。",
+    "IFBS000350": "CashAndCashEquivalents 与 ShortTermInvestments 重复认领，见上方 sum_of/absorbed。",
+    "IFIS001700": "SellingExpense / AdministrativeExpense / SGAExpense 三方重复认领。",
+    "IFCF001330": "CapEx 与 PurchaseSaleOfPPE 重复认领。已核实：对 MCD / PEP / 1810.HK 这些公司，该条目返回的晨星值比我方购建支出小两到三个数量级（MCD FY2021 我方 20.4 亿 vs 晨星 1.06 亿），量级上不可能是 CapEx —— 需要打开晨星快照原文确认这个 id 到底是什么口径。"
+  },
+  "verifiedFindings": {
+    "$comment": "人工核实过的具体缺陷。自动归因只负责把差异分类，这里放已经定位到机制的问题。每条都要能复现。",
+    "items": [
+      {
+        "id": "VF-01",
+        "severity": "高",
+        "title": "Financial 表的溯源字段全表为空",
+        "evidence": "Financial 表共 2,134,334 行：rawXbrlTag 非空 0 行，mappingRule 非空 2,597 行（0.12%），confidence 恒为 1。模型里备了 rawXbrlTag / mappingRule / confidence 三件套用来回答「这个数是从哪来的」，实际上等于全部空置。",
+        "repro": "npx tsx -e \"import {PrismaClient} from '@prisma/client';const db=new PrismaClient();(async()=>{console.log(await db.financial.count(), await db.financial.count({where:{rawXbrlTag:{not:null}}}));await db.\\$disconnect()})()\"",
+        "action": "这是「数据真实可靠」的地基：没有 tag 就无法回答「这个数是从哪来的」。先修注入管线把 tag 写进去，再加一条「FY 金额行必须有 tag」的完整性校验。"
+      },
+      {
+        "id": "VF-02",
+        "severity": "高",
+        "title": "CAT 营业成本 FY2022 起抓错行，量级掉到千分之一",
+        "evidence": "库内 CAT CostOfRevenue：FY2021 = 35,513,000,000（与年报一致），FY2022 = 413,000,000、FY2023 = 160,000,000、FY2024 = 33,000,000、FY2025 = 49,000,000。卡特的营业成本每年都在 300 亿美元量级，后四年全错。",
+        "repro": "npx tsx scripts/eval-financials-against-morningstar.ts --ticker CAT",
+        "action": "典型的 tag 选择退化：某一年之后就匹配到了注释表里同名但不同口径的小数字。抽取侧要有量级合理性校验（同比突变超过阈值就拒绝并留痕），而不是无声写入。"
+      },
+      {
+        "id": "VF-03",
+        "severity": "中",
+        "title": "晨星侧 IFCF001330 对部分公司不是 CapEx",
+        "evidence": "MCD CapEx 我方 20.4/19.0/23.6/27.8/33.7 亿（与年报一致），晨星 1.06/0.39/0.95/1.22/1.30 亿；PEP 同理（我方 44-55 亿，晨星 1.7-5.3 亿）；1810.HK 小米 2025 年我方 127.7 亿、晨星 0.128 亿，差 999 倍。",
+        "repro": "npx tsx scripts/eval-financials-against-morningstar.ts --ticker MCD",
+        "action": "先确认晨星的 CapEx 应该用哪个 id。在确认之前，CapEx 这一列 24% 的差异率不能算作我方数据质量问题。"
+      },
+      {
+        "id": "VF-04",
+        "severity": "中",
+        "title": "688981 中芯国际、1299.HK 友邦的币种基准与本币不一致",
+        "evidence": "两家在样本清单里声明 reportingCurrency = USD，但库内存的是本币量级：AIA FY2025 营收我方 2,750.5 亿 vs 晨星 396.0 亿，比值 6.95；SMIC 同年在 6.84-7.98 之间。这两家是全样本最差的两名（28.2% 和 55.0%），33 个无法换算的按位数全部来自它们。",
+        "repro": "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 1299.HK",
+        "action": "查 backfill 里的 reportingCurrency 解析：声明为 USD 但写入的是本币，说明币种是从申报文本解析而未与实际数值单位核对。"
+      }
+    ]
+  }
+}
