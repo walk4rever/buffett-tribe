@@ -27,6 +27,7 @@ npm run eval:golden                 # 100 家全量，raw 模式（诚实分）
 npm run eval:golden:both            # raw + calibrated 两轮
 npm run eval:golden:compare         # 全量并与上一次 raw 跑分基线对差
 npm run eval:golden:ledger          # 对最新一次 raw 跑分做归因，产出缺陷台账
+npm run backfill:derived-metrics    # 派生科目回填（默认 dry-run，加 --execute 落库）
 
 npx tsx scripts/eval-financials-against-morningstar.ts --ticker AAPL
 npx tsx scripts/eval-financials-against-morningstar.ts --suite cn --years 5
@@ -62,6 +63,16 @@ npx tsx scripts/eval-financials-against-morningstar.ts --suite cn --years 5
 1. **`raw` 是唯一诚实的分数。** 只做单位/币种/符号归一，不套会计恒等式、不做指标聚合、不覆盖容差。
    `calibrated` 允许在评测时做恒等式推导与指标聚合，但每一项调整都会写进 compare row 的 `adjustments[]`，
    与 raw 的差距必须可审计。
+
+   这条有个刻意的例外，叫**契约投影**：我们的模型在个别地方比晨星更细（现金和短期投资我们存两项，
+   晨星只有一条 "Cash, Cash Equivalents and Short Term Investments"）。拿拆分项去比合并条目在任何模式下
+   都是范畴错误，所以契约里声明的 `sum_of` 投影在 raw 和 calibrated 都生效。它固定、不看晨星的值、
+   逐条记成 `rollup:<a>+<b>`。区分标准是：**投影是在定义「比哪两个数」，calibrated 里的恒等式推导和容差覆盖
+   是在「调数值」** —— 只有后者必须锁在 calibrated 里。
+
+   由此推论一条纪律：**派生属于数据层，不属于评测层。** 派生值入库时由
+   `scripts/lib/derived-metrics.ts` 计算，带 `mappingRule = "derived:<公式>"` 与 `confidence < 1`。
+   评测器如果自己补数，基准立刻退化成答案本。
 2. **评测器不许偷看晨星的值。** 决定"我们的数怎么推导/取哪个口径"时，晨星值不能进入决策，
    否则 benchmark 就退化成答案本。历史上那些"差得不多就用晨星的数覆盖"的容差 override
    （能源/矿业 ±25%、分红 ±35%、CapEx ±10%，外加两个"谁离晨星近选谁"）已被关进 calibrated 并留痕。

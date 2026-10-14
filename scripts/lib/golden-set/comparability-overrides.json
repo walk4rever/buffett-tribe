@@ -1,5 +1,13 @@
 {
   "$comment": "比对契约。canonical-financial-dictionary.json 是我们的模型本身；这里只记录『我们的一项 ≠ 晨星的一项』的例外。默认可比模式是 direct（我们的值直接对晨星同 id 的值）。任何一项改动都会改变 eval 的结论，所以每次改动都要重跑 golden set 并在 ledger 里留痕。",
+  "modes": {
+    "direct": "我方一项直接对晨星同 id 的一项。默认。",
+    "sum_of": "我方这一项只是晨星那条合并条目的组成部分，必须先与 sumWith 相加再比。这是『定义要比哪两个数』，不是调整数值，因此在 raw 和 calibrated 都生效，并记成 rollup: 调整。",
+    "absorbed": "被别的科目的 sum_of 吸收，不单独参与比较。",
+    "derived": "我方没有、但可由其他科目按公式算出。formula 是给数据层（scripts/lib/derived-metrics.ts）用的；eval 侧对应的恒等式在 scripts/eval-financials-against-morningstar.ts 的 getOurFinancials() 里，只对 calibrated 生效。两处必须一致。",
+    "either_of": "晨星可能返回多个候选条目，需要人工裁决取哪个。",
+    "overlaps": "与另一项共享同一个晨星条目，至少一项映射是错的，待裁决。"
+  },
   "items": {
     "CashAndCashEquivalents": {
       "mode": "sum_of",
@@ -14,17 +22,17 @@
     "GrossProfit": {
       "mode": "derived",
       "formula": ["Revenue", "-", "CostOfRevenue"],
-      "note": "us-gaap:GrossProfit 是可选披露标签，很多申报方不打。全样本 155/442 个单元格空着。我们有 Revenue 与 CostOfRevenue 就已具备推导条件。"
+      "note": "us-gaap:GrossProfit 是可选披露标签，很多申报方不打。全样本 155/442 个单元格空着。公式已落地在数据层 scripts/lib/derived-metrics.ts，由 scripts/backfill-derived-metrics.ts 回填；2026-10-14 首批为 golden 100 家补入 125 行，入库时带 mappingRule='derived:Revenue - CostOfRevenue' 与 confidence=0.9。"
     },
     "OperatingIncome": {
-      "mode": "either_of",
+      "mode": "direct",
       "altMstarIds": ["IFIS003138"],
-      "note": "晨星既有 IFIS001230 也有 IFIS003138（EBIT 口径），两者不等价。eval 里的 altMstarId 是隐式兜底，必须显式化。"
+      "note": "已钉死 IFIS001230，并从 eval 移除 altMstarId。2026-10-14 扫全部 100 份快照：IFIS003138 在 78 家有值，IFIS001230 在 89 家有值，且没有任何一家是 3138 有值而 1230 缺席 —— 所以那个『主 id 为空才用备用』的兜底路径永远触发不了，是死代码。而且它即使触发也不安全：同时有值的 78 家里，两个 id 数值不同的有 64 家。"
     },
     "TotalDebt": {
       "mode": "derived",
       "formula": ["ShortTermDebt", "+", "LongTermDebt"],
-      "note": "有息负债合计，字典无对应 tag，属于必须自行聚合的科目。"
+      "note": "有息负债合计，字典无对应 tag，属于必须自行聚合的科目。已声明但尚未落地到 derived-metrics.ts —— 它不在 eval 的 29 项里，先不扩大写库面，等确认口径后一并加。"
     },
     "SellingExpense": {
       "mode": "absorbed",
@@ -61,7 +69,7 @@
         "id": "VF-01",
         "severity": "高",
         "title": "Financial 表的溯源字段全表为空",
-        "evidence": "Financial 表共 2,134,334 行：rawXbrlTag 非空 0 行，mappingRule 非空 2,597 行（0.12%），confidence 恒为 1。模型里备了 rawXbrlTag / mappingRule / confidence 三件套用来回答「这个数是从哪来的」，实际上等于全部空置。",
+        "evidence": "Financial 表共 2,134,334 行：rawXbrlTag 非空 0 行；mappingRule 非空 2,722 行（0.13%），其中 125 行是 2026-10-14 新增的派生毛利（mappingRule='derived:Revenue - CostOfRevenue'），其余是历史遗留。confidence 除派生行外恒为 1。模型里备了 rawXbrlTag / mappingRule / confidence 三件套用来回答「这个数是从哪来的」，实际上等于全部空置。",
         "repro": "npx tsx -e \"import {PrismaClient} from '@prisma/client';const db=new PrismaClient();(async()=>{console.log(await db.financial.count(), await db.financial.count({where:{rawXbrlTag:{not:null}}}));await db.\\$disconnect()})()\"",
         "action": "这是「数据真实可靠」的地基：没有 tag 就无法回答「这个数是从哪来的」。先修注入管线把 tag 写进去，再加一条「FY 金额行必须有 tag」的完整性校验。"
       },

@@ -15,6 +15,17 @@
  *               comparison row in `adjustments[]`, so the delta against `raw`
  *               is fully auditable.
  *
+ * One deliberate exception to "no metric aggregation" in raw: the *declared
+ * comparability projection*. Our model is finer-grained than Morningstar's in a
+ * few places — we store cash and short-term investments as two line items, they
+ * publish one row ("Cash, Cash Equivalents and Short Term Investments"). Diffing
+ * a component against a whole is a category error in any mode, so the projection
+ * declared in scripts/lib/golden-set/comparability-overrides.json is part of
+ * defining the comparison rather than a patch applied to a value. It is fixed,
+ * never consults the Morningstar number, and is recorded on the row as
+ * `rollup:<a>+<b>`. Identity derivation and tolerance overrides stay confined to
+ * `calibrated`.
+ *
  * These eval-time patches used to be invisible, and included tolerance
  * overrides that simply overwrote our value with Morningstar's whenever the gap
  * was small enough (energy/mining ±25%, dividends ±35%, CapEx ±10%), plus two
@@ -74,12 +85,38 @@ const DEFAULT_EVAL_WINDOW_YEARS = 5;
 const SNAPSHOT_DIR = path.join(process.cwd(), ".cache", "morningstar-snapshots");
 const RESULTS_DIR = path.join(process.cwd(), "tests", "evals", "history");
 const SUITE_PATH = path.join(process.cwd(), "scripts", "lib", "morningstar-benchmark-suite.json");
+const COMPARABILITY_PATH = path.join(process.cwd(), "scripts", "lib", "golden-set", "comparability-overrides.json");
+
+interface ComparabilityOverride {
+  mode: "sum_of" | "absorbed" | "derived" | "either_of" | "overlaps";
+  sumWith?: string[];
+  absorbedBy?: string;
+  formula?: string[];
+  altMstarIds?: string[];
+  overlapsWith?: string[];
+  note: string;
+}
+
+/**
+ * Declared comparability: how our line items project onto Morningstar's concepts.
+ * See the module docstring — `sum_of` is applied in both modes because it defines
+ * the comparison; formula-based `derived` stays a calibrated-only identity.
+ */
+let comparabilityOverrides: Record<string, ComparabilityOverride> = {};
+try {
+  const raw = JSON.parse(fs.readFileSync(COMPARABILITY_PATH, "utf8")) as { items?: Record<string, ComparabilityOverride> };
+  comparabilityOverrides = raw.items ?? {};
+} catch {
+  console.warn(`⚠️  未读到比对契约 ${path.relative(process.cwd(), COMPARABILITY_PATH)}，按全部 direct 处理。`);
+}
 
 let evalWindowYears = DEFAULT_EVAL_WINDOW_YEARS;
 let fullSuiteSize = 0;
 let refreshBaseline = false;
 let snapshotHits = 0;
 let snapshotFetches = 0;
+/** How many comparisons used a declared roll-up projection (`rollup:` adjustments). */
+let rolledUp = 0;
 
 /**
  * Year-end CNY-per-USD rates, used only to bring our values onto the currency
@@ -186,7 +223,13 @@ export const CORE_METRIC_MAP: MetricDef[] = [
   // 2. 传统工商业专属科目 (制造业、科技、消费、能源)
   { key: "CostOfRevenue", label: "营业成本 (Cost of Revenue)", mstarId: "IFIS000200", statement: "incomeStatement", signFlip: true, sectors: ["industrial"] },
   { key: "GrossProfit", label: "毛利润 (Gross Profit)", mstarId: "IFIS000590", statement: "incomeStatement", sectors: ["industrial"] },
-  { key: "OperatingIncome", label: "营业利润 (Operating Income)", mstarId: "IFIS001230", altMstarId: "IFIS003138", statement: "incomeStatement", sectors: ["industrial"] },
+  // IFIS001230 only. The alt-id fallback could never fire: across the 100
+  // snapshots IFIS003138 is present for 78 companies and IFIS001230 is present
+  // for 89, with no company where 3138 exists and 1230 does not — so the
+  // `mstarVal == null && altMstarId` branch was dead code. Nor would it have been
+  // safe if it had fired: the two differ for 64 of the 78 companies that carry
+  // both. Pin the standardized id.
+  { key: "OperatingIncome", label: "营业利润 (Operating Income)", mstarId: "IFIS001230", statement: "incomeStatement", sectors: ["industrial"] },
   { key: "TotalCurrentAssets", label: "流动资产 (Current Assets)", mstarId: "IFBS000470", statement: "balanceSheet", sectors: ["industrial"] },
   { key: "TotalCurrentLiabilities", label: "流动负债 (Current Liabilities)", mstarId: "IFBS000500", statement: "balanceSheet", sectors: ["industrial"] },
   { key: "CashAndCashEquivalents", label: "现金及现金等价物 (Cash & Equiv)", mstarId: "IFBS000350", statement: "balanceSheet", sectors: ["industrial"] },
@@ -543,14 +586,18 @@ function prepareOurMetricValue(args: {
 
   let value = get(metricDef.key);
 
-  // Cash & short-term investments (Morningstar IFBS000350) is an aggregation of
-  // two of our line items, so it applies on top of a present value rather than
-  // filling in a missing one.
-  if (mode === "calibrated" && metricDef.key === "CashAndCashEquivalents" && value != null) {
-    const sti = get("ShortTermInvestments");
-    if (sti != null && sti > 0) {
-      value = value + sti;
-      adjustments.push("aggregate:+ShortTermInvestments");
+  // Declared comparability projection (see module docstring). Our line item is a
+  // *component* of the Morningstar concept it maps to, so it applies on top of a
+  // present value rather than filling in a missing one. Applies in both modes:
+  // this defines which two numbers are being compared, it does not adjust one.
+  const override = comparabilityOverrides[metricDef.key];
+  if (value != null && override?.mode === "sum_of" && override.sumWith?.length) {
+    const keys = [metricDef.key, ...override.sumWith];
+    const parts = keys.map((k) => get(k));
+    if (parts.every((v) => v != null)) {
+      value = parts.reduce<number>((acc, v) => acc + (v as number), 0);
+      adjustments.push(`rollup:${keys.join("+")}`);
+      rolledUp++;
     }
   }
 
@@ -1098,6 +1145,11 @@ async function main() {
   if (runs.length === 2) printModeDelta(runs[0], runs[1]);
 
   console.log(`\n   Morningstar snapshots: ${snapshotHits} cached, ${snapshotFetches} fetched`);
+  if (rolledUp > 0) {
+    console.log(
+      `   比对契约投影: ${rolledUp} 次 roll-up（我方拆分项相加后与晨星的合并条目比较，已逐条记在 adjustments[]）`,
+    );
+  }
   console.log(`======================================================================\n`);
 }
 

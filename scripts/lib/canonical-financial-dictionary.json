@@ -631,7 +631,7 @@
     "hkAliases": [
       "每股基本盈利"
     ],
-    "morningstarId": "IFIS000150"
+    "description": "不设晨星映射。晨星标准化报表没有基本每股收益这个数据点——快照 EpsAndWaso 区块里只有 IFIS101199 Reported Normalized Diluted EPS。此前误指向 IFIS000150，那是 Basic Weighted Average Shares Outstanding（股数），与每股收益不是一个概念。"
   },
   {
     "key": "EPSDiluted",

@@ -576,6 +576,10 @@ async function main() {
     byMstar.get(item.morningstarId)!.push(item.key);
   }
   const conflicts = [...byMstar.entries()].filter(([, keys]) => keys.length > 1);
+  // 一个冲突算「已裁决」，当且仅当每个认领它的科目在契约里都有交代
+  // （sum_of / absorbed / overlaps 都算：前者定义了真实关系，后者明确标为待裁决）。
+  const conflictResolvers = new Set(["sum_of", "absorbed", "overlaps"]);
+  const isResolved = (keys: string[]) => keys.every((k) => conflictResolvers.has(overrides.items[k]?.mode ?? ""));
   const untagged = dictionary.filter((i) => !i.tagsUsGaap?.length && !i.tagsIfrs?.length);
 
   // 「已知不如一比」的科目：与别的科目共享晨星 id，或契约已经声明口径不唯一。
@@ -723,7 +727,12 @@ async function main() {
       cells: cells.length,
       share: pct(cells.length),
     })),
-    dictionaryConflicts: conflicts.map(([mstarId, keys]) => ({ mstarId, keys, note: overrides.dictionaryDefects[mstarId] })),
+    dictionaryConflicts: conflicts.map(([mstarId, keys]) => ({
+      mstarId,
+      keys,
+      note: overrides.dictionaryDefects[mstarId],
+      resolvedByContract: isResolved(keys),
+    })),
     untaggedItems: untagged.map((i) => ({ key: i.key, nameZh: i.nameZh, morningstarId: i.morningstarId ?? null })),
     ambiguousMetrics: [...ambiguousMetrics].sort(),
     verifiedFindings,
@@ -772,10 +781,11 @@ async function main() {
   }
   lines.push("## 模型层矛盾（脚本自动检出）", "");
   lines.push("字典里同一个晨星条目被我方多个科目认领——这是模型定义冲突，与数据质量无关，但会让对应科目永远比不平。", "");
-  lines.push("| 晨星条目 | 认领我方科目 | 结论 |");
-  lines.push("| --- | --- | --- |");
+  lines.push("| 晨星条目 | 认领我方科目 | 状态 | 结论 |");
+  lines.push("| --- | --- | --- | --- |");
   for (const c of summary.dictionaryConflicts) {
-    lines.push(`| \`${c.mstarId}\` | ${c.keys.join(" / ")} | ${c.note ?? "待确认"} |`);
+    const status = c.resolvedByContract ? "已由契约裁决" : "**待裁决**";
+    lines.push(`| \`${c.mstarId}\` | ${c.keys.join(" / ")} | ${status} | ${c.note ?? "待确认"} |`);
   }
   lines.push("");
   if (untagged.length) {
