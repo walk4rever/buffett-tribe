@@ -1793,7 +1793,7 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "购建固定资产",
       "购买物业、厂房及设备"
     ],
-    "morningstarId": "IFCF001330"
+    "morningstarId": "IFCF000061"
   },
   {
     "key": "CashReceivedFromDisposalOfAssets",

@@ -12,12 +12,20 @@
     "CashAndCashEquivalents": {
       "mode": "sum_of",
       "sumWith": ["ShortTermInvestments"],
-      "note": "晨星 IFBS000350 的语义是『现金及等价物 + 短期投资』的合并值。已验证：AAPL FY2021-2025 五年，我们的纯现金值 + 当期有价证券 == 晨星值（FY2024: 299.43亿 + 352.28亿 = 651.71亿）。我们把两者拆开存，所以必须相加后再比。"
+      "note": "晨星 IFBS000350 的语义是『现金及等价物 + 短期投资』的合并值。反查（scripts/verify-morningstar-mappings.ts）：我方纯现金值在 36 家公司上精确等于晨星的纯现金行 IFCF000170，说明我方科目本身就是纯现金，比的却是合并行 —— 这正是这条投影存在的原因。投影已实测：43 家里 28 家的『现金+短期投资』确实等于 IFBS000350（苹果 83%、微软 71%、英伟达 67% 的年份命中）。其余 15 家两样都对不上，差额来自晨星合并行里我们还不知道的第三类资产。"
     },
     "ShortTermInvestments": {
       "mode": "absorbed",
       "absorbedBy": "CashAndCashEquivalents",
-      "note": "被 CashAndCashEquivalents 的 sum_of 吸收。单独拿去比 IFBS000350 必然系统性偏低。"
+      "note": "被 CashAndCashEquivalents 的 sum_of 吸收。单独拿去比 IFBS000350 必然系统性偏低 —— 反查显示本项在 43 家公司上对不上晨星任何一行，即『交易性金融资产』与晨星的『短期投资』不是同一概念，这是上面那条投影只在 28/43 家成立的根因。"
+    },
+    "CapEx": {
+      "mode": "direct",
+      "note": "映射已于 2026-10-14 修正：字典原指 IFCF001330，而那是『Purchase/Sale and Disposal of Property, Plant and Equipment, Net』，不是毛额资本开支。正确条目是 IFCF000061『Capital Expenditure, Reported』。修正后 55 个单元格转 MATCH（MCD 五年精确相等），但万事达 4 个年度反向变差：我们的值精确等于净额行，而 61 是它的 1.5 倍。这 4 例需逐例对年报确认，不能因为大多数公司变好就放过。"
+    },
+    "CashEndOfPeriod": {
+      "mode": "direct",
+      "note": "2026-10-14 查证：IFCF000170『Cash and Cash Equivalents, End of Period』是晨星侧的纯现金行。留痕用。"
     },
     "GrossProfit": {
       "mode": "derived",
@@ -96,6 +104,22 @@
         "evidence": "两家在样本清单里声明 reportingCurrency = USD，但库内存的是本币量级：AIA FY2025 营收我方 2,750.5 亿 vs 晨星 396.0 亿，比值 6.95；SMIC 同年在 6.84-7.98 之间。这两家是全样本最差的两名（28.2% 和 55.0%），33 个无法换算的按位数全部来自它们。",
         "repro": "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 1299.HK",
         "action": "查 backfill 里的 reportingCurrency 解析：声明为 USD 但写入的是本币，说明币种是从申报文本解析而未与实际数值单位核对。"
+      },
+      {
+        "id": "VF-05",
+        "severity": "中",
+        "title": "CapEx 映射到了错误的晨星条目（已修）",
+        "evidence": "字典把 CapEx 指到 IFCF001330，而快照里那条的 label 是『Purchase/Sale and Disposal of Property, Plant and Equipment, Net』；真正的毛额资本开支是 IFCF000061『Capital Expenditure, Reported』。改用 61 后 55 个单元格转 MATCH，MCD 五年精确相等（20.4 亿对 20.4 亿），PEP、小米同。反例：万事达 4 个年度的值精确等于净额行，而 61 是它的 1.5 倍，需逐例确认。",
+        "repro": "npx tsx scripts/verify-morningstar-mappings.ts --items CapEx --top 3",
+        "action": "已完成主 id 修正。万事达那 4 例单独对年报确认：若发行人的资本开支确实按净额口径申报，则应在模型里把毛额与净额拆成两个科目，而不是靠评测器二选一。"
+      },
+      {
+        "id": "VF-06",
+        "severity": "高",
+        "title": "OperatingIncome 比的是晨星标准化口径，不是发行方申报口径",
+        "evidence": "在 56 家可比公司里，我们的营业利润只有 14 家对得上 IFIS001230『Total Operating Profit/Loss』（晨星标准化后的口径），却有 33 家对得上 IFIS003138『Total Operating Profit/Loss as Reported, Supplemental』。我们的抽取取的是年报上写的营业利润，所以它天然对应『as reported』那一行。",
+        "repro": "npx tsx scripts/verify-morningstar-mappings.ts --items OperatingIncome --top 3",
+        "action": "需要决策：这个基准要衡量『我们抄对了发行方的数』还是『我们的口径和晨星标准化后一致』。若是前者（当前目的是校验抽取管线），应改比 IFIS003138；这会同时影响成本口径、SG&A 等一串依赖它的科目。另外这推翻了 2026-10-14 早先那个『钉死 1230』的改动——那个改动的理由是『备用 id 是死代码』（成立），但结论选错了口径。"
       }
     ]
   }

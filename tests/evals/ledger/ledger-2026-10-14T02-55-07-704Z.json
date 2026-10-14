@@ -1,70 +1,63 @@
 {
   "summary": {
-    "artifact": "tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json",
-    "artifactGeneratedAt": "2026-10-14T02:25:04.046Z",
+    "artifact": "tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json",
+    "artifactGeneratedAt": "2026-10-14T02:52:52.572Z",
     "mode": "raw",
     "companies": 100,
     "companiesWithoutEntity": 0,
     "entitiesMissing": [],
-    "cells": 8753,
-    "matched": 7306,
-    "nonMatch": 1447,
+    "cells": 8758,
+    "matched": 7357,
+    "nonMatch": 1401,
     "causes": [
       {
         "cause": "RESIDUAL_SMALL",
         "label": "同向微差（≤10%，无结构性解释）",
         "owner": "triage",
-        "cells": 400,
-        "share": "27.6%"
+        "cells": 492,
+        "share": "35.1%"
       },
       {
         "cause": "EXTRACTION_MISSING",
         "label": "根本没抽到（输入也不齐）",
         "owner": "backfill",
-        "cells": 310,
-        "share": "21.4%"
+        "cells": 315,
+        "share": "22.5%"
       },
       {
         "cause": "PERSISTENT_BIAS",
         "label": "跨年持续同向偏差（系统性口径范围差）",
         "owner": "triage",
-        "cells": 271,
-        "share": "18.7%"
-      },
-      {
-        "cause": "DECLARED_AMBIGUOUS",
-        "label": "已知口径歧义未裁决",
-        "owner": "model",
-        "cells": 170,
-        "share": "11.7%"
+        "cells": 266,
+        "share": "19.0%"
       },
       {
         "cause": "UNCLASSIFIED",
         "label": "未归因（需人工看）",
         "owner": "triage",
-        "cells": 164,
-        "share": "11.3%"
+        "cells": 186,
+        "share": "13.3%"
       },
       {
-        "cause": "MSTAR_COVERAGE_GAP",
-        "label": "参考系缺该科目（晨星没有这一项）",
-        "owner": "eval",
-        "cells": 47,
-        "share": "3.2%"
+        "cause": "DECLARED_AMBIGUOUS",
+        "label": "已知口径歧义未裁决",
+        "owner": "model",
+        "cells": 51,
+        "share": "3.6%"
       },
       {
         "cause": "CONCEPT_AGGREGATION",
         "label": "概念边界分歧（晨星是合并值，我们是拆分项）",
         "owner": "model",
         "cells": 34,
-        "share": "2.3%"
+        "share": "2.4%"
       },
       {
         "cause": "CURRENCY_BASIS",
         "label": "币种基准错位（整片同因子偏移）",
         "owner": "backfill",
         "cells": 33,
-        "share": "2.3%"
+        "share": "2.4%"
       },
       {
         "cause": "DERIVABLE_MISSING",
@@ -74,11 +67,11 @@
         "share": "1.2%"
       },
       {
-        "cause": "UNIT_SCALE",
-        "label": "量纲差 10^k",
-        "owner": "backfill",
-        "cells": 1,
-        "share": "0.1%"
+        "cause": "MSTAR_COVERAGE_GAP",
+        "label": "参考系缺该科目（晨星没有这一项）",
+        "owner": "eval",
+        "cells": 7,
+        "share": "0.5%"
       }
     ],
     "dictionaryConflicts": [
@@ -100,15 +93,6 @@
         ],
         "note": "CashAndCashEquivalents 与 ShortTermInvestments 重复认领，见上方 sum_of/absorbed。",
         "resolvedByContract": true
-      },
-      {
-        "mstarId": "IFCF001330",
-        "keys": [
-          "CapEx",
-          "PurchaseSaleOfPPE"
-        ],
-        "note": "CapEx 与 PurchaseSaleOfPPE 重复认领。已核实：对 MCD / PEP / 1810.HK 这些公司，该条目返回的晨星值比我方购建支出小两到三个数量级（MCD FY2021 我方 20.4 亿 vs 晨星 1.06 亿），量级上不可能是 CapEx —— 需要打开晨星快照原文确认这个 id 到底是什么口径。",
-        "resolvedByContract": false
       }
     ],
     "untaggedItems": [
@@ -150,7 +134,6 @@
     ],
     "ambiguousMetrics": [
       "AdministrativeExpense",
-      "CapEx",
       "CashAndCashEquivalents",
       "PurchaseSaleOfPPE",
       "SGAExpense",
@@ -189,45 +172,25 @@
         "evidence": "两家在样本清单里声明 reportingCurrency = USD，但库内存的是本币量级：AIA FY2025 营收我方 2,750.5 亿 vs 晨星 396.0 亿，比值 6.95；SMIC 同年在 6.84-7.98 之间。这两家是全样本最差的两名（28.2% 和 55.0%），33 个无法换算的按位数全部来自它们。",
         "repro": "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 1299.HK",
         "action": "查 backfill 里的 reportingCurrency 解析：声明为 USD 但写入的是本币，说明币种是从申报文本解析而未与实际数值单位核对。"
+      },
+      {
+        "id": "VF-05",
+        "severity": "中",
+        "title": "CapEx 映射到了错误的晨星条目（已修）",
+        "evidence": "字典把 CapEx 指到 IFCF001330，而快照里那条的 label 是『Purchase/Sale and Disposal of Property, Plant and Equipment, Net』；真正的毛额资本开支是 IFCF000061『Capital Expenditure, Reported』。改用 61 后 55 个单元格转 MATCH，MCD 五年精确相等（20.4 亿对 20.4 亿），PEP、小米同。反例：万事达 4 个年度的值精确等于净额行，而 61 是它的 1.5 倍，需逐例确认。",
+        "repro": "npx tsx scripts/verify-morningstar-mappings.ts --items CapEx --top 3",
+        "action": "已完成主 id 修正。万事达那 4 例单独对年报确认：若发行人的资本开支确实按净额口径申报，则应在模型里把毛额与净额拆成两个科目，而不是靠评测器二选一。"
+      },
+      {
+        "id": "VF-06",
+        "severity": "高",
+        "title": "OperatingIncome 比的是晨星标准化口径，不是发行方申报口径",
+        "evidence": "在 56 家可比公司里，我们的营业利润只有 14 家对得上 IFIS001230『Total Operating Profit/Loss』（晨星标准化后的口径），却有 33 家对得上 IFIS003138『Total Operating Profit/Loss as Reported, Supplemental』。我们的抽取取的是年报上写的营业利润，所以它天然对应『as reported』那一行。",
+        "repro": "npx tsx scripts/verify-morningstar-mappings.ts --items OperatingIncome --top 3",
+        "action": "需要决策：这个基准要衡量『我们抄对了发行方的数』还是『我们的口径和晨星标准化后一致』。若是前者（当前目的是校验抽取管线），应改比 IFIS003138；这会同时影响成本口径、SG&A 等一串依赖它的科目。另外这推翻了 2026-10-14 早先那个『钉死 1230』的改动——那个改动的理由是『备用 id 是死代码』（成立），但结论选错了口径。"
       }
     ],
     "persistentBiases": [
-      {
-        "ticker": "1810.HK",
-        "metric": "CapEx",
-        "factor": 202.6947413061917,
-        "years": [
-          2021,
-          2022,
-          2023,
-          2024,
-          2025
-        ]
-      },
-      {
-        "ticker": "MCD",
-        "metric": "CapEx",
-        "factor": 24.810526315789474,
-        "years": [
-          2021,
-          2022,
-          2023,
-          2024,
-          2025
-        ]
-      },
-      {
-        "ticker": "PEP",
-        "metric": "CapEx",
-        "factor": 20.745019920318725,
-        "years": [
-          2021,
-          2022,
-          2023,
-          2024,
-          2025
-        ]
-      },
       {
         "ticker": "UNH",
         "metric": "GrossProfit",
@@ -465,6 +428,18 @@
         ]
       },
       {
+        "ticker": "CAT",
+        "metric": "CapEx",
+        "factor": 0.5164941785252264,
+        "years": [
+          2021,
+          2022,
+          2023,
+          2024,
+          2025
+        ]
+      },
+      {
         "ticker": "000725",
         "metric": "OperatingIncome",
         "factor": 0.5253549012710566,
@@ -601,6 +576,17 @@
         "factor": 0.6637238324679405,
         "years": [
           2021,
+          2022,
+          2023,
+          2024,
+          2025
+        ]
+      },
+      {
+        "ticker": "MA",
+        "metric": "CapEx",
+        "factor": 0.6659435261707989,
+        "years": [
           2022,
           2023,
           2024,
@@ -873,7 +859,7 @@
       "owner": "triage",
       "scope": "科目 OperatingIncome",
       "cells": 150,
-      "share": "10.4%",
+      "share": "10.7%",
       "companies": [
         "KO",
         "BABA",
@@ -943,18 +929,82 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker BABA",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker ASML",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker ENB",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
       "id": "WO-02",
       "cause": "RESIDUAL_SMALL",
+      "title": "CapEx（资本开支 (购建固定资产现金支付)）：同向微差（≤10%，无结构性解释）",
+      "owner": "triage",
+      "scope": "科目 CapEx",
+      "cells": 92,
+      "share": "6.6%",
+      "companies": [
+        "KO",
+        "000333",
+        "601088",
+        "601668",
+        "300760",
+        "600887",
+        "000568",
+        "002415",
+        "0700.HK",
+        "3690.HK",
+        "9633.HK",
+        "1211.HK",
+        "9992.HK",
+        "AMZN",
+        "WMT",
+        "GE",
+        "INTC",
+        "NTES",
+        "SE",
+        "AZN",
+        "000651",
+        "000895",
+        "000009",
+        "000338",
+        "000157",
+        "002352",
+        "000060",
+        "601857",
+        "600276",
+        "000858",
+        "603288",
+        "002594",
+        "0168.HK",
+        "0268.HK",
+        "0177.HK"
+      ],
+      "bands": {
+        "3-10%": 46,
+        "1-3%": 46
+      },
+      "evidence": [
+        "[KO FY2021] 同向微差 8.58%：我们 1367000000 vs 晨星 1259000000（3-10%）",
+        "[KO FY2022] 同向微差 5.32%：我们 1484000000 vs 晨星 1409000000（3-10%）",
+        "[KO FY2023] 同向微差 4.16%：我们 1852000000 vs 晨星 1778000000（3-10%）",
+        "[KO FY2024] 同向微差 1.98%：我们 2064000000 vs 晨星 2024000000（1-3%）"
+      ],
+      "repro": [
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker KO",
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000333",
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601088",
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601668",
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
+      ],
+      "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
+    },
+    {
+      "id": "WO-03",
+      "cause": "RESIDUAL_SMALL",
       "title": "DividendsPaid（现金分红总额 (分配股利/利润现金支出)）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
       "scope": "科目 DividendsPaid",
       "cells": 74,
-      "share": "5.1%",
+      "share": "5.3%",
       "companies": [
         "TSM",
         "ENB",
@@ -993,18 +1043,18 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker ENB",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000333",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601088",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-03",
+      "id": "WO-04",
       "cause": "RESIDUAL_SMALL",
       "title": "Revenue（营业收入）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
       "scope": "科目 Revenue",
       "cells": 56,
-      "share": "3.9%",
+      "share": "4.0%",
       "companies": [
         "BRK-B",
         "JPM",
@@ -1037,12 +1087,12 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker JPM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 600519",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 600036",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-04",
+      "id": "WO-05",
       "cause": "RESIDUAL_SMALL",
       "title": "TotalLiabilities（负债合计）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1075,12 +1125,12 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker BRK-B",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 600519",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 300760",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-05",
+      "id": "WO-06",
       "cause": "RESIDUAL_SMALL",
       "title": "NetIncome（净利润 (归母)）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1109,12 +1159,12 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker BP",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker RY",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TD",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-06",
+      "id": "WO-07",
       "cause": "RESIDUAL_SMALL",
       "title": "CostOfRevenue（营业成本）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1140,12 +1190,12 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 0700.HK",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 688981",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 0386.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-07",
+      "id": "WO-08",
       "cause": "RESIDUAL_SMALL",
       "title": "GrossProfit（毛利）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1173,12 +1223,12 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000651",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000060",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 688981",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-08",
+      "id": "WO-09",
       "cause": "RESIDUAL_SMALL",
       "title": "NonInterestIncome（非利息收入）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1202,12 +1252,12 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker JPM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker MS",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-09",
+      "id": "WO-10",
       "cause": "RESIDUAL_SMALL",
       "title": "NetLoans（客户贷款及垫款净额）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1233,12 +1283,12 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker BAC",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker WFC",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker GS",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-10",
+      "id": "WO-11",
       "cause": "RESIDUAL_SMALL",
       "title": "ShareholdersEquity（归属于母公司股东权益 (净资产)）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1262,12 +1312,12 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker UNH",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601857",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-11",
+      "id": "WO-12",
       "cause": "RESIDUAL_SMALL",
       "title": "ProvisionForCreditLosses（信用减值损失 / 贷款减值准备计提）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1291,12 +1341,12 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker BAC",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker MS",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-12",
+      "id": "WO-13",
       "cause": "RESIDUAL_SMALL",
       "title": "TotalDeposits（客户存款 (银行专属)）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1317,12 +1367,12 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 600036",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-13",
+      "id": "WO-14",
       "cause": "RESIDUAL_SMALL",
       "title": "TotalProfit（利润总额）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1346,12 +1396,12 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker PDD",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 688981",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-14",
+      "id": "WO-15",
       "cause": "RESIDUAL_SMALL",
       "title": "IncomeTaxExpense（所得税费用）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1375,12 +1425,12 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 688981",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 0317.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-15",
+      "id": "WO-16",
       "cause": "RESIDUAL_SMALL",
       "title": "InvestingCashFlow（投资活动产生的现金流量净额）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1402,12 +1452,12 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 688981",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-16",
+      "id": "WO-17",
       "cause": "RESIDUAL_SMALL",
       "title": "TotalCurrentLiabilities（流动负债合计）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1429,12 +1479,12 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 688981",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-17",
+      "id": "WO-18",
       "cause": "RESIDUAL_SMALL",
       "title": "InsuranceContractLiabilities（保险合同负债及准备金）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1454,12 +1504,12 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 1299.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-18",
+      "id": "WO-19",
       "cause": "RESIDUAL_SMALL",
       "title": "OperatingCashFlow（经营活动产生的现金流量净额 (OCF)）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1480,12 +1530,12 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 688981",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-19",
+      "id": "WO-20",
       "cause": "RESIDUAL_SMALL",
       "title": "FinancingCashFlow（筹资活动产生的现金流量净额）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1505,12 +1555,12 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 688981",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-20",
+      "id": "WO-21",
       "cause": "RESIDUAL_SMALL",
       "title": "TotalAssets（资产总计）：同向微差（≤10%，无结构性解释）",
       "owner": "triage",
@@ -1528,18 +1578,18 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601857",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "差异同向且不大，既不是币种也不是量纲也不是符号。典型来源是口径微差、财年期间切分、或舍入。要么把口径钉死让它归零，要么把容差显式写进评测契约——不能默认忽略。"
     },
     {
-      "id": "WO-21",
+      "id": "WO-22",
       "cause": "EXTRACTION_MISSING",
       "title": "GrossProfit（毛利）：根本没抽到（输入也不齐）",
       "owner": "backfill",
       "scope": "科目 GrossProfit",
       "cells": 55,
-      "share": "3.8%",
+      "share": "3.9%",
       "companies": [
         "BABA",
         "TSM",
@@ -1570,18 +1620,18 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TSM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker ENB",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker XOM",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-22",
+      "id": "WO-23",
       "cause": "EXTRACTION_MISSING",
       "title": "CostOfRevenue（营业成本）：根本没抽到（输入也不齐）",
       "owner": "backfill",
       "scope": "科目 CostOfRevenue",
       "cells": 54,
-      "share": "3.7%",
+      "share": "3.9%",
       "companies": [
         "TSM",
         "ENB",
@@ -1611,18 +1661,18 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker ENB",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker XOM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker GE",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-23",
+      "id": "WO-24",
       "cause": "EXTRACTION_MISSING",
       "title": "OperatingIncome（营业利润）：根本没抽到（输入也不齐）",
       "owner": "backfill",
       "scope": "科目 OperatingIncome",
       "cells": 50,
-      "share": "3.5%",
+      "share": "3.6%",
       "companies": [
         "TSM",
         "JNJ",
@@ -1651,18 +1701,18 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker JNJ",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker LLY",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker MRK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-24",
+      "id": "WO-25",
       "cause": "EXTRACTION_MISSING",
       "title": "CapEx（资本开支 (购建固定资产现金支付)）：根本没抽到（输入也不齐）",
       "owner": "backfill",
       "scope": "科目 CapEx",
-      "cells": 37,
-      "share": "2.6%",
+      "cells": 42,
+      "share": "3.0%",
       "companies": [
         "BABA",
         "TSM",
@@ -1671,11 +1721,12 @@
         "PDD",
         "BP",
         "SHEL",
+        "CNQ",
         "000009",
         "0386.HK"
       ],
       "bands": {
-        "n/a": 37
+        "n/a": 42
       },
       "evidence": [
         "[BABA FY2022] 我方该年度该科目无数据",
@@ -1688,12 +1739,12 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TSM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 0883.HK",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker LLY",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-25",
+      "id": "WO-26",
       "cause": "EXTRACTION_MISSING",
       "title": "TotalProfit（利润总额）：根本没抽到（输入也不齐）",
       "owner": "backfill",
@@ -1723,18 +1774,18 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker SHOP",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker MCD",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker ORCL",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-26",
+      "id": "WO-27",
       "cause": "EXTRACTION_MISSING",
       "title": "NetLoans（客户贷款及垫款净额）：根本没抽到（输入也不齐）",
       "owner": "backfill",
       "scope": "科目 NetLoans",
       "cells": 18,
-      "share": "1.2%",
+      "share": "1.3%",
       "companies": [
         "WFC",
         "GS",
@@ -1755,12 +1806,12 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker GS",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker RY",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TD",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-27",
+      "id": "WO-28",
       "cause": "EXTRACTION_MISSING",
       "title": "TotalDeposits（客户存款 (银行专属)）：根本没抽到（输入也不齐）",
       "owner": "backfill",
@@ -1783,12 +1834,12 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker RY",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TD",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-28",
+      "id": "WO-29",
       "cause": "EXTRACTION_MISSING",
       "title": "DividendsPaid（现金分红总额 (分配股利/利润现金支出)）：根本没抽到（输入也不齐）",
       "owner": "backfill",
@@ -1816,12 +1867,12 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 3690.HK",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker RY",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000009",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-29",
+      "id": "WO-30",
       "cause": "EXTRACTION_MISSING",
       "title": "Revenue（营业收入）：根本没抽到（输入也不齐）",
       "owner": "backfill",
@@ -1846,12 +1897,12 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TSM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TTE",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000009",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-30",
+      "id": "WO-31",
       "cause": "EXTRACTION_MISSING",
       "title": "IncomeTaxExpense（所得税费用）：根本没抽到（输入也不齐）",
       "owner": "backfill",
@@ -1876,44 +1927,18 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TSM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000009",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601318",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
-      ],
-      "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
-    },
-    {
-      "id": "WO-31",
-      "cause": "EXTRACTION_MISSING",
-      "title": "NetInvestmentIncome（净投资收益 (金融/保险)）：根本没抽到（输入也不齐）",
-      "owner": "backfill",
-      "scope": "科目 NetInvestmentIncome",
-      "cells": 5,
-      "share": "0.3%",
-      "companies": [
-        "601318"
-      ],
-      "bands": {
-        "n/a": 5
-      },
-      "evidence": [
-        "[601318 FY2021] 我方该年度该科目无数据",
-        "[601318 FY2022] 我方该年度该科目无数据",
-        "[601318 FY2023] 我方该年度该科目无数据",
-        "[601318 FY2024] 我方该年度该科目无数据"
-      ],
-      "repro": [
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601318",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
       "id": "WO-32",
       "cause": "EXTRACTION_MISSING",
-      "title": "TotalInvestments（投资资产总计 (金融/保险)）：根本没抽到（输入也不齐）",
+      "title": "NetInvestmentIncome（净投资收益 (金融/保险)）：根本没抽到（输入也不齐）",
       "owner": "backfill",
-      "scope": "科目 TotalInvestments",
+      "scope": "科目 NetInvestmentIncome",
       "cells": 5,
-      "share": "0.3%",
+      "share": "0.4%",
       "companies": [
         "601318"
       ],
@@ -1928,18 +1953,18 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601318",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
       "id": "WO-33",
       "cause": "EXTRACTION_MISSING",
-      "title": "InsuranceContractLiabilities（保险合同负债及准备金）：根本没抽到（输入也不齐）",
+      "title": "TotalInvestments（投资资产总计 (金融/保险)）：根本没抽到（输入也不齐）",
       "owner": "backfill",
-      "scope": "科目 InsuranceContractLiabilities",
+      "scope": "科目 TotalInvestments",
       "cells": 5,
-      "share": "0.3%",
+      "share": "0.4%",
       "companies": [
         "601318"
       ],
@@ -1954,12 +1979,38 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601318",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
       "id": "WO-34",
+      "cause": "EXTRACTION_MISSING",
+      "title": "InsuranceContractLiabilities（保险合同负债及准备金）：根本没抽到（输入也不齐）",
+      "owner": "backfill",
+      "scope": "科目 InsuranceContractLiabilities",
+      "cells": 5,
+      "share": "0.4%",
+      "companies": [
+        "601318"
+      ],
+      "bands": {
+        "n/a": 5
+      },
+      "evidence": [
+        "[601318 FY2021] 我方该年度该科目无数据",
+        "[601318 FY2022] 我方该年度该科目无数据",
+        "[601318 FY2023] 我方该年度该科目无数据",
+        "[601318 FY2024] 我方该年度该科目无数据"
+      ],
+      "repro": [
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601318",
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
+      ],
+      "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
+    },
+    {
+      "id": "WO-35",
       "cause": "EXTRACTION_MISSING",
       "title": "OperatingCashFlow（经营活动产生的现金流量净额 (OCF)）：根本没抽到（输入也不齐）",
       "owner": "backfill",
@@ -1983,12 +2034,12 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TSM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker MRK",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000009",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-35",
+      "id": "WO-36",
       "cause": "EXTRACTION_MISSING",
       "title": "NetPremiumsEarned（已赚保费净额）：根本没抽到（输入也不齐）",
       "owner": "backfill",
@@ -2008,12 +2059,12 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601318",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-36",
+      "id": "WO-37",
       "cause": "EXTRACTION_MISSING",
       "title": "NetIncome（净利润 (归母)）：根本没抽到（输入也不齐）",
       "owner": "backfill",
@@ -2034,12 +2085,12 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TSM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000009",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-37",
+      "id": "WO-38",
       "cause": "EXTRACTION_MISSING",
       "title": "TotalAssets（资产总计）：根本没抽到（输入也不齐）",
       "owner": "backfill",
@@ -2060,12 +2111,12 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TSM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000009",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-38",
+      "id": "WO-39",
       "cause": "EXTRACTION_MISSING",
       "title": "TotalLiabilities（负债合计）：根本没抽到（输入也不齐）",
       "owner": "backfill",
@@ -2086,12 +2137,12 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TSM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000009",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-39",
+      "id": "WO-40",
       "cause": "EXTRACTION_MISSING",
       "title": "ShareholdersEquity（归属于母公司股东权益 (净资产)）：根本没抽到（输入也不齐）",
       "owner": "backfill",
@@ -2112,12 +2163,12 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TSM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000009",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-40",
+      "id": "WO-41",
       "cause": "EXTRACTION_MISSING",
       "title": "InvestingCashFlow（投资活动产生的现金流量净额）：根本没抽到（输入也不齐）",
       "owner": "backfill",
@@ -2138,12 +2189,12 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TSM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000009",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-41",
+      "id": "WO-42",
       "cause": "EXTRACTION_MISSING",
       "title": "FinancingCashFlow（筹资活动产生的现金流量净额）：根本没抽到（输入也不齐）",
       "owner": "backfill",
@@ -2164,12 +2215,12 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TSM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000009",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-42",
+      "id": "WO-43",
       "cause": "EXTRACTION_MISSING",
       "title": "TotalCurrentAssets（流动资产合计）：根本没抽到（输入也不齐）",
       "owner": "backfill",
@@ -2190,12 +2241,12 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TSM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000009",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-43",
+      "id": "WO-44",
       "cause": "EXTRACTION_MISSING",
       "title": "TotalCurrentLiabilities（流动负债合计）：根本没抽到（输入也不齐）",
       "owner": "backfill",
@@ -2216,12 +2267,12 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TSM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000009",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-44",
+      "id": "WO-45",
       "cause": "EXTRACTION_MISSING",
       "title": "CashAndCashEquivalents（现金及现金等价物 / 货币资金）：根本没抽到（输入也不齐）",
       "owner": "backfill",
@@ -2242,18 +2293,18 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TSM",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000009",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "该科目在该来源下的 tag / 别名覆盖不足，属抽取管线覆盖问题，需补 tag 或解析规则。"
     },
     {
-      "id": "WO-45",
+      "id": "WO-46",
       "cause": "PERSISTENT_BIAS",
       "title": "CashAndCashEquivalents（现金及现金等价物 / 货币资金）：跨年持续同向偏差（系统性口径范围差）",
       "owner": "triage",
       "scope": "科目 CashAndCashEquivalents",
       "cells": 80,
-      "share": "5.5%",
+      "share": "5.7%",
       "companies": [
         "BABA",
         "NVO",
@@ -2290,18 +2341,18 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker NVO",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 0883.HK",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 2020.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "同一公司同一科目逐年都以固定比例偏离同向，说明是系统的口径范围差（含不含少数股东、含不含利息、毛额还是净额），不是随机误差。先钉死该科目的口径边界，再决定是修抽取还是修契约。"
     },
     {
-      "id": "WO-46",
+      "id": "WO-47",
       "cause": "PERSISTENT_BIAS",
       "title": "DividendsPaid（现金分红总额 (分配股利/利润现金支出)）：跨年持续同向偏差（系统性口径范围差）",
       "owner": "triage",
       "scope": "科目 DividendsPaid",
       "cells": 74,
-      "share": "5.1%",
+      "share": "5.3%",
       "companies": [
         "300750",
         "601668",
@@ -2335,43 +2386,7 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601668",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 600887",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 0700.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
-      ],
-      "action": "同一公司同一科目逐年都以固定比例偏离同向，说明是系统的口径范围差（含不含少数股东、含不含利息、毛额还是净额），不是随机误差。先钉死该科目的口径边界，再决定是修抽取还是修契约。"
-    },
-    {
-      "id": "WO-47",
-      "cause": "PERSISTENT_BIAS",
-      "title": "CapEx（资本开支 (购建固定资产现金支付)）：跨年持续同向偏差（系统性口径范围差）",
-      "owner": "triage",
-      "scope": "科目 CapEx",
-      "cells": 28,
-      "share": "1.9%",
-      "companies": [
-        "2020.HK",
-        "PEP",
-        "MCD",
-        "JD",
-        "0317.HK",
-        "1810.HK"
-      ],
-      "bands": {
-        "10-50%": 9,
-        ">50%": 18,
-        "1-3%": 1
-      },
-      "evidence": [
-        "[2020.HK FY2021] 2020.HK 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 0.6009；本条 0.5568",
-        "[2020.HK FY2022] 2020.HK 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 0.6009；本条 0.6009",
-        "[2020.HK FY2023] 2020.HK 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 0.6009；本条 0.6408",
-        "[2020.HK FY2024] 2020.HK 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 0.6009；本条 0.6253"
-      ],
-      "repro": [
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 2020.HK",
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker PEP",
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker MCD",
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker JD",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "同一公司同一科目逐年都以固定比例偏离同向，说明是系统的口径范围差（含不含少数股东、含不含利息、毛额还是净额），不是随机误差。先钉死该科目的口径边界，再决定是修抽取还是修契约。"
     },
@@ -2382,7 +2397,7 @@
       "owner": "triage",
       "scope": "科目 GrossProfit",
       "cells": 25,
-      "share": "1.7%",
+      "share": "1.8%",
       "companies": [
         "0883.HK",
         "UNH",
@@ -2406,7 +2421,7 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker UNH",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker CVX",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker CAT",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "同一公司同一科目逐年都以固定比例偏离同向，说明是系统的口径范围差（含不含少数股东、含不含利息、毛额还是净额），不是随机误差。先钉死该科目的口径边界，再决定是修抽取还是修契约。"
     },
@@ -2441,12 +2456,47 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000725",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 688981",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 0177.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "同一公司同一科目逐年都以固定比例偏离同向，说明是系统的口径范围差（含不含少数股东、含不含利息、毛额还是净额），不是随机误差。先钉死该科目的口径边界，再决定是修抽取还是修契约。"
     },
     {
       "id": "WO-50",
+      "cause": "PERSISTENT_BIAS",
+      "title": "CapEx（资本开支 (购建固定资产现金支付)）：跨年持续同向偏差（系统性口径范围差）",
+      "owner": "triage",
+      "scope": "科目 CapEx",
+      "cells": 23,
+      "share": "1.6%",
+      "companies": [
+        "2020.HK",
+        "CAT",
+        "MA",
+        "JD",
+        "0317.HK"
+      ],
+      "bands": {
+        "10-50%": 16,
+        ">50%": 6,
+        "1-3%": 1
+      },
+      "evidence": [
+        "[2020.HK FY2021] 2020.HK 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 0.6009；本条 0.5568",
+        "[2020.HK FY2022] 2020.HK 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 0.6009；本条 0.6009",
+        "[2020.HK FY2023] 2020.HK 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 0.6009；本条 0.6408",
+        "[2020.HK FY2024] 2020.HK 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 0.6009；本条 0.6253"
+      ],
+      "repro": [
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 2020.HK",
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker CAT",
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker MA",
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker JD",
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
+      ],
+      "action": "同一公司同一科目逐年都以固定比例偏离同向，说明是系统的口径范围差（含不含少数股东、含不含利息、毛额还是净额），不是随机误差。先钉死该科目的口径边界，再决定是修抽取还是修契约。"
+    },
+    {
+      "id": "WO-51",
       "cause": "PERSISTENT_BIAS",
       "title": "CostOfRevenue（营业成本）：跨年持续同向偏差（系统性口径范围差）",
       "owner": "triage",
@@ -2475,12 +2525,12 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker UNH",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker CAT",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 0941.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "同一公司同一科目逐年都以固定比例偏离同向，说明是系统的口径范围差（含不含少数股东、含不含利息、毛额还是净额），不是随机误差。先钉死该科目的口径边界，再决定是修抽取还是修契约。"
     },
     {
-      "id": "WO-51",
+      "id": "WO-52",
       "cause": "PERSISTENT_BIAS",
       "title": "NonInterestIncome（非利息收入）：跨年持续同向偏差（系统性口径范围差）",
       "owner": "triage",
@@ -2504,18 +2554,18 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 600036",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TD",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "同一公司同一科目逐年都以固定比例偏离同向，说明是系统的口径范围差（含不含少数股东、含不含利息、毛额还是净额），不是随机误差。先钉死该科目的口径边界，再决定是修抽取还是修契约。"
     },
     {
-      "id": "WO-52",
+      "id": "WO-53",
       "cause": "PERSISTENT_BIAS",
       "title": "NetInterestIncome（利息净收入）：跨年持续同向偏差（系统性口径范围差）",
       "owner": "triage",
       "scope": "科目 NetInterestIncome",
       "cells": 5,
-      "share": "0.3%",
+      "share": "0.4%",
       "companies": [
         "TD"
       ],
@@ -2530,18 +2580,18 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TD",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "同一公司同一科目逐年都以固定比例偏离同向，说明是系统的口径范围差（含不含少数股东、含不含利息、毛额还是净额），不是随机误差。先钉死该科目的口径边界，再决定是修抽取还是修契约。"
     },
     {
-      "id": "WO-53",
+      "id": "WO-54",
       "cause": "PERSISTENT_BIAS",
       "title": "PolicyClaimsAndBenefits（赔付支出与保单利益净额）：跨年持续同向偏差（系统性口径范围差）",
       "owner": "triage",
       "scope": "科目 PolicyClaimsAndBenefits",
       "cells": 5,
-      "share": "0.3%",
+      "share": "0.4%",
       "companies": [
         "601318"
       ],
@@ -2557,137 +2607,18 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601318",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "同一公司同一科目逐年都以固定比例偏离同向，说明是系统的口径范围差（含不含少数股东、含不含利息、毛额还是净额），不是随机误差。先钉死该科目的口径边界，再决定是修抽取还是修契约。"
     },
     {
-      "id": "WO-54",
-      "cause": "DECLARED_AMBIGUOUS",
-      "title": "CapEx（资本开支 (购建固定资产现金支付)）：已知口径歧义未裁决",
-      "owner": "model",
-      "scope": "科目 CapEx",
-      "cells": 119,
-      "share": "8.2%",
-      "companies": [
-        "KO",
-        "000333",
-        "601088",
-        "601668",
-        "300760",
-        "600887",
-        "000568",
-        "002415",
-        "0700.HK",
-        "3690.HK",
-        "9633.HK",
-        "1211.HK",
-        "9992.HK",
-        "AMZN",
-        "WMT",
-        "CAT",
-        "GE",
-        "INTC",
-        "NTES",
-        "SE",
-        "AZN",
-        "000651",
-        "000895",
-        "000009",
-        "000338",
-        "000157",
-        "002352",
-        "000060",
-        "000786",
-        "601857",
-        "600276",
-        "000858",
-        "603288",
-        "688981",
-        "002594",
-        "0168.HK",
-        "0268.HK",
-        "0177.HK"
-      ],
-      "bands": {
-        "3-10%": 46,
-        "1-3%": 46,
-        "10-50%": 19,
-        ">50%": 8
-      },
-      "evidence": [
-        "[KO FY2021] 与其它科目共享晨星条目：我们 1367000000 vs 晨星 1259000000，比值 1.0858（3-10%）",
-        "[KO FY2022] 与其它科目共享晨星条目：我们 1484000000 vs 晨星 1409000000，比值 1.0532（3-10%）",
-        "[KO FY2023] 与其它科目共享晨星条目：我们 1852000000 vs 晨星 1778000000，比值 1.0416（3-10%）",
-        "[KO FY2024] 与其它科目共享晨星条目：我们 2064000000 vs 晨星 2024000000，比值 1.0198（1-3%）"
-      ],
-      "repro": [
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker KO",
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000333",
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601088",
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601668",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
-      ],
-      "action": "该科目在字典或比对契约里已被标记为不如一比（多科目共享同一晨星条目，或契约声明 either_of / overlaps）。残差大小说明歧义已经造成实际损失：需要人工裁决一个口径并写进契约，代码再照做。"
-    },
-    {
       "id": "WO-55",
-      "cause": "DECLARED_AMBIGUOUS",
-      "title": "CashAndCashEquivalents（现金及现金等价物 / 货币资金）：已知口径歧义未裁决",
-      "owner": "model",
-      "scope": "科目 CashAndCashEquivalents",
-      "cells": 51,
-      "share": "3.5%",
-      "companies": [
-        "KO",
-        "NVDA",
-        "TSM",
-        "ASML",
-        "601088",
-        "0700.HK",
-        "9633.HK",
-        "LLY",
-        "CVX",
-        "MA",
-        "ORCL",
-        "AZN",
-        "SHEL",
-        "TTE",
-        "CNQ",
-        "688981",
-        "0168.HK",
-        "0386.HK",
-        "0317.HK"
-      ],
-      "bands": {
-        "3-10%": 16,
-        "10-50%": 25,
-        ">50%": 1,
-        "1-3%": 9
-      },
-      "evidence": [
-        "[KO FY2021] 契约声明 sum_of：我们 11383000000 vs 晨星 12625000000，比值 0.9016（3-10%）",
-        "[KO FY2022] 契约声明 sum_of：我们 10588000000 vs 晨星 11631000000，比值 0.9103（3-10%）",
-        "[KO FY2023] 契约声明 sum_of：我们 10666000000 vs 晨星 13663000000，比值 0.7806（10-50%）",
-        "[KO FY2024] 契约声明 sum_of：我们 12551000000 vs 晨星 14571000000，比值 0.8614（10-50%）"
-      ],
-      "repro": [
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker KO",
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker NVDA",
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TSM",
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker ASML",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
-      ],
-      "action": "该科目在字典或比对契约里已被标记为不如一比（多科目共享同一晨星条目，或契约声明 either_of / overlaps）。残差大小说明歧义已经造成实际损失：需要人工裁决一个口径并写进契约，代码再照做。"
-    },
-    {
-      "id": "WO-56",
       "cause": "UNCLASSIFIED",
       "title": "OperatingIncome（营业利润）：未归因（需人工看）",
       "owner": "triage",
       "scope": "科目 OperatingIncome",
       "cells": 87,
-      "share": "6.0%",
+      "share": "6.2%",
       "companies": [
         "KO",
         "NVDA",
@@ -2745,12 +2676,12 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker NVDA",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker BABA",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker SHOP",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
     {
-      "id": "WO-57",
+      "id": "WO-56",
       "cause": "UNCLASSIFIED",
       "title": "DividendsPaid（现金分红总额 (分配股利/利润现金支出)）：未归因（需人工看）",
       "owner": "triage",
@@ -2785,7 +2716,49 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 3690.HK",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 0883.HK",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 1299.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
+      ],
+      "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
+    },
+    {
+      "id": "WO-57",
+      "cause": "UNCLASSIFIED",
+      "title": "CapEx（资本开支 (购建固定资产现金支付)）：未归因（需人工看）",
+      "owner": "triage",
+      "scope": "科目 CapEx",
+      "cells": 22,
+      "share": "1.6%",
+      "companies": [
+        "000333",
+        "601668",
+        "600887",
+        "AMZN",
+        "GE",
+        "SE",
+        "AZN",
+        "000651",
+        "000338",
+        "000060",
+        "000786",
+        "688981",
+        "0168.HK"
+      ],
+      "bands": {
+        "10-50%": 18,
+        ">50%": 4
+      },
+      "evidence": [
+        "[000333 FY2024] 我们 7839636000 vs 晨星 6879230000，比值 1.1396（10-50%），规则未解释；该科目契约声明为 direct",
+        "[601668 FY2022] 我们 25948593000 vs 晨星 23465680000，比值 1.1058（10-50%），规则未解释；该科目契约声明为 direct",
+        "[601668 FY2024] 我们 19825295000 vs 晨星 11409150000，比值 1.7377（>50%），规则未解释；该科目契约声明为 direct",
+        "[600887 FY2022] 我们 6646107588.62 vs 晨星 5949680000，比值 1.1171（10-50%），规则未解释；该科目契约声明为 direct"
+      ],
+      "repro": [
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000333",
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601668",
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 600887",
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker AMZN",
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -2796,7 +2769,7 @@
       "owner": "triage",
       "scope": "科目 Revenue",
       "cells": 12,
-      "share": "0.8%",
+      "share": "0.9%",
       "companies": [
         "BRK-B",
         "TD",
@@ -2817,7 +2790,7 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TD",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601318",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 0941.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -2845,7 +2818,7 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker ENB",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker CVX",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -2873,7 +2846,7 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker ENB",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 688981",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -2900,7 +2873,7 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 1299.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -2927,7 +2900,7 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker MS",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -2953,7 +2926,7 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 1299.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -2980,7 +2953,7 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601088",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker INTC",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -3006,7 +2979,7 @@
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker MRK",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 688981",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -3029,7 +3002,7 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker JPM",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -3052,7 +3025,7 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 600036",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -3075,7 +3048,7 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601088",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -3098,7 +3071,7 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601088",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -3121,7 +3094,7 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601088",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -3144,7 +3117,7 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601088",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -3167,7 +3140,7 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 1299.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -3190,7 +3163,7 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 1299.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -3213,7 +3186,7 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 601318",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -3236,7 +3209,7 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 688981",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
@@ -3259,104 +3232,68 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 688981",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "规则未能解释，逐条人工判定后把结论沉淀成新规则或新契约条目。"
     },
     {
       "id": "WO-77",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "title": "CapEx（资本开支 (购建固定资产现金支付)）：参考系缺该科目（晨星没有这一项）",
-      "owner": "eval",
-      "scope": "科目 CapEx",
-      "cells": 40,
-      "share": "2.8%",
+      "cause": "DECLARED_AMBIGUOUS",
+      "title": "CashAndCashEquivalents（现金及现金等价物 / 货币资金）：已知口径歧义未裁决",
+      "owner": "model",
+      "scope": "科目 CashAndCashEquivalents",
+      "cells": 51,
+      "share": "3.6%",
       "companies": [
-        "ENB",
-        "PG",
-        "HD",
-        "MRK",
+        "KO",
+        "NVDA",
+        "TSM",
+        "ASML",
+        "601088",
+        "0700.HK",
+        "9633.HK",
+        "LLY",
         "CVX",
+        "MA",
         "ORCL",
-        "CRM",
-        "LIN"
+        "AZN",
+        "SHEL",
+        "TTE",
+        "CNQ",
+        "688981",
+        "0168.HK",
+        "0386.HK",
+        "0317.HK"
       ],
       "bands": {
-        "n/a": 40
+        "3-10%": 16,
+        "10-50%": 25,
+        ">50%": 1,
+        "1-3%": 9
       },
       "evidence": [
-        "[ENB FY2021] 我方有值 7818000000，晨星该年度无对应科目（status MISSING_MSTAR）",
-        "[ENB FY2022] 我方有值 4647000000，晨星该年度无对应科目（status MISSING_MSTAR）",
-        "[ENB FY2023] 我方有值 4654000000，晨星该年度无对应科目（status MISSING_MSTAR）",
-        "[ENB FY2024] 我方有值 6711000000，晨星该年度无对应科目（status MISSING_MSTAR）"
+        "[KO FY2021] 契约声明 sum_of：我们 11383000000 vs 晨星 12625000000，比值 0.9016（3-10%）",
+        "[KO FY2022] 契约声明 sum_of：我们 10588000000 vs 晨星 11631000000，比值 0.9103（3-10%）",
+        "[KO FY2023] 契约声明 sum_of：我们 10666000000 vs 晨星 13663000000，比值 0.7806（10-50%）",
+        "[KO FY2024] 契约声明 sum_of：我们 12551000000 vs 晨星 14571000000，比值 0.8614（10-50%）"
       ],
       "repro": [
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker ENB",
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker PG",
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker HD",
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker MRK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker KO",
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker NVDA",
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TSM",
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker ASML",
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
-      "action": "我方有值、晨星没有。这不是我们的数据问题，而是参考系覆盖不到。需要给这类「晨星不覆盖」的科目指定另一个真值来源（申报文件原始事实），或在契约里显式声明不可比，否则它们会长期混在失分里。"
+      "action": "该科目在字典或比对契约里已被标记为不如一比（多科目共享同一晨星条目，或契约声明 either_of / overlaps）。残差大小说明歧义已经造成实际损失：需要人工裁决一个口径并写进契约，代码再照做。"
     },
     {
       "id": "WO-78",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "title": "CashAndCashEquivalents（现金及现金等价物 / 货币资金）：参考系缺该科目（晨星没有这一项）",
-      "owner": "eval",
-      "scope": "科目 CashAndCashEquivalents",
-      "cells": 5,
-      "share": "0.3%",
-      "companies": [
-        "BRK-B"
-      ],
-      "bands": {
-        "n/a": 5
-      },
-      "evidence": [
-        "[BRK-B FY2021] 我方有值 88706000000，晨星该年度无对应科目（status MISSING_MSTAR）",
-        "[BRK-B FY2022] 我方有值 36399000000，晨星该年度无对应科目（status MISSING_MSTAR）",
-        "[BRK-B FY2023] 我方有值 38643000000，晨星该年度无对应科目（status MISSING_MSTAR）",
-        "[BRK-B FY2024] 我方有值 48376000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-      ],
-      "repro": [
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker BRK-B",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
-      ],
-      "action": "我方有值、晨星没有。这不是我们的数据问题，而是参考系覆盖不到。需要给这类「晨星不覆盖」的科目指定另一个真值来源（申报文件原始事实），或在契约里显式声明不可比，否则它们会长期混在失分里。"
-    },
-    {
-      "id": "WO-79",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "title": "OperatingCashFlow（经营活动产生的现金流量净额 (OCF)）：参考系缺该科目（晨星没有这一项）",
-      "owner": "eval",
-      "scope": "科目 OperatingCashFlow",
-      "cells": 2,
-      "share": "0.1%",
-      "companies": [
-        "0386.HK"
-      ],
-      "bands": {
-        "n/a": 2
-      },
-      "evidence": [
-        "[0386.HK FY2022] 我方有值 116269000000，晨星该年度无对应科目（status MISSING_MSTAR）",
-        "[0386.HK FY2023] 我方有值 161475000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-      ],
-      "repro": [
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 0386.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
-      ],
-      "action": "我方有值、晨星没有。这不是我们的数据问题，而是参考系覆盖不到。需要给这类「晨星不覆盖」的科目指定另一个真值来源（申报文件原始事实），或在契约里显式声明不可比，否则它们会长期混在失分里。"
-    },
-    {
-      "id": "WO-80",
       "cause": "CONCEPT_AGGREGATION",
       "title": "GrossProfit（毛利）：概念边界分歧（晨星是合并值，我们是拆分项）",
       "owner": "model",
       "scope": "科目 GrossProfit",
       "cells": 25,
-      "share": "1.7%",
+      "share": "1.8%",
       "companies": [
         "600519",
         "000333",
@@ -3380,12 +3317,12 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000333",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 600887",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 000651",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "按比对契约把拆分项相加后再对，或显式声明不可直比（not_comparable）。这是模型定义问题，不是数据错误，改契约即可，不要动已入库的数据。"
     },
     {
-      "id": "WO-81",
+      "id": "WO-79",
       "cause": "CONCEPT_AGGREGATION",
       "title": "CashAndCashEquivalents（现金及现金等价物 / 货币资金）：概念边界分歧（晨星是合并值，我们是拆分项）",
       "owner": "model",
@@ -3412,12 +3349,12 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker TTE",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 0386.HK",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 0268.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "按比对契约把拆分项相加后再对，或显式声明不可直比（not_comparable）。这是模型定义问题，不是数据错误，改契约即可，不要动已入库的数据。"
     },
     {
-      "id": "WO-82",
+      "id": "WO-80",
       "cause": "CURRENCY_BASIS",
       "title": "688981：币种基准错位（整片同因子偏移）",
       "owner": "backfill",
@@ -3438,12 +3375,12 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 688981",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "同一公司同一年度多条科目出现同一个系统性因子，说明注入时的币种基准与本币不一致。查该公司的 reportingCurrency 声明与实际写入 unit，修 backfill 的币种解析后重灌。"
     },
     {
-      "id": "WO-83",
+      "id": "WO-81",
       "cause": "CURRENCY_BASIS",
       "title": "1299.HK：币种基准错位（整片同因子偏移）",
       "owner": "backfill",
@@ -3464,12 +3401,12 @@
       ],
       "repro": [
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 1299.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "同一公司同一年度多条科目出现同一个系统性因子，说明注入时的币种基准与本币不一致。查该公司的 reportingCurrency 声明与实际写入 unit，修 backfill 的币种解析后重灌。"
     },
     {
-      "id": "WO-84",
+      "id": "WO-82",
       "cause": "DERIVABLE_MISSING",
       "title": "GrossProfit（毛利）：可推导但未推导（我们没抽到，但输入齐全）",
       "owner": "model",
@@ -3496,32 +3433,59 @@
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker PDD",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker JD",
         "npx tsx scripts/eval-financials-against-morningstar.ts --ticker BIDU",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
       "action": "模型缺 derivedFrom 概念：字典里没有任何一项声明派生来源，导致这类科目只能等申报方自己披露。应在字典加入公式并让抽取管线回填。"
     },
     {
-      "id": "WO-85",
-      "cause": "UNIT_SCALE",
-      "title": "CapEx（资本开支 (购建固定资产现金支付)）：量纲差 10^k",
-      "owner": "backfill",
-      "scope": "科目 CapEx",
-      "cells": 1,
-      "share": "0.1%",
+      "id": "WO-83",
+      "cause": "MSTAR_COVERAGE_GAP",
+      "title": "CashAndCashEquivalents（现金及现金等价物 / 货币资金）：参考系缺该科目（晨星没有这一项）",
+      "owner": "eval",
+      "scope": "科目 CashAndCashEquivalents",
+      "cells": 5,
+      "share": "0.4%",
       "companies": [
-        "1810.HK"
+        "BRK-B"
       ],
       "bands": {
-        ">50%": 1
+        "n/a": 5
       },
       "evidence": [
-        "[1810.HK FY2025] 比值 999.151408 ≈ 1000 倍量纲差"
+        "[BRK-B FY2021] 我方有值 88706000000，晨星该年度无对应科目（status MISSING_MSTAR）",
+        "[BRK-B FY2022] 我方有值 36399000000，晨星该年度无对应科目（status MISSING_MSTAR）",
+        "[BRK-B FY2023] 我方有值 38643000000，晨星该年度无对应科目（status MISSING_MSTAR）",
+        "[BRK-B FY2024] 我方有值 48376000000，晨星该年度无对应科目（status MISSING_MSTAR）"
       ],
       "repro": [
-        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 1810.HK",
-        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-25-04-046Z.json"
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker BRK-B",
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
       ],
-      "action": "注入时单位缩放错误，查该来源的 unit / scale 解析（常见于『千元』『百万元』混入）。"
+      "action": "我方有值、晨星没有。这不是我们的数据问题，而是参考系覆盖不到。需要给这类「晨星不覆盖」的科目指定另一个真值来源（申报文件原始事实），或在契约里显式声明不可比，否则它们会长期混在失分里。"
+    },
+    {
+      "id": "WO-84",
+      "cause": "MSTAR_COVERAGE_GAP",
+      "title": "OperatingCashFlow（经营活动产生的现金流量净额 (OCF)）：参考系缺该科目（晨星没有这一项）",
+      "owner": "eval",
+      "scope": "科目 OperatingCashFlow",
+      "cells": 2,
+      "share": "0.1%",
+      "companies": [
+        "0386.HK"
+      ],
+      "bands": {
+        "n/a": 2
+      },
+      "evidence": [
+        "[0386.HK FY2022] 我方有值 116269000000，晨星该年度无对应科目（status MISSING_MSTAR）",
+        "[0386.HK FY2023] 我方有值 161475000000，晨星该年度无对应科目（status MISSING_MSTAR）"
+      ],
+      "repro": [
+        "npx tsx scripts/eval-financials-against-morningstar.ts --ticker 0386.HK",
+        "npx tsx scripts/attribute-morningstar-diffs.ts --file tests/evals/history/morningstar-raw-2026-10-14T02-52-52-572Z.json"
+      ],
+      "action": "我方有值、晨星没有。这不是我们的数据问题，而是参考系覆盖不到。需要给这类「晨星不覆盖」的科目指定另一个真值来源（申报文件原始事实），或在契约里显式声明不可比，否则它们会长期混在失分里。"
     }
   ],
   "findings": [
@@ -3574,8 +3538,8 @@
       "mstarValue": 1259000000,
       "ratio": 1.0857823669579032,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1367000000 vs 晨星 1259000000，比值 1.0858（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 8.58%：我们 1367000000 vs 晨星 1259000000（3-10%）"
     },
     {
       "ticker": "KO",
@@ -3626,8 +3590,8 @@
       "mstarValue": 1409000000,
       "ratio": 1.0532292405961674,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1484000000 vs 晨星 1409000000，比值 1.0532（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 5.32%：我们 1484000000 vs 晨星 1409000000（3-10%）"
     },
     {
       "ticker": "KO",
@@ -3678,8 +3642,8 @@
       "mstarValue": 1778000000,
       "ratio": 1.0416197975253094,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1852000000 vs 晨星 1778000000，比值 1.0416（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 4.16%：我们 1852000000 vs 晨星 1778000000（3-10%）"
     },
     {
       "ticker": "KO",
@@ -3730,8 +3694,8 @@
       "mstarValue": 2024000000,
       "ratio": 1.0197628458498025,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 2064000000 vs 晨星 2024000000，比值 1.0198（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.98%：我们 2064000000 vs 晨星 2024000000（1-3%）"
     },
     {
       "ticker": "KO",
@@ -4855,19 +4819,6 @@
       "ticker": "ENB",
       "market": "us",
       "form": "40-F",
-      "metric": "CapEx",
-      "year": 2021,
-      "ourValue": 7818000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 7818000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "ENB",
-      "market": "us",
-      "form": "40-F",
       "metric": "DividendsPaid",
       "year": 2022,
       "ourValue": 6968000000,
@@ -4915,19 +4866,6 @@
       "band": "10-50%",
       "cause": "UNCLASSIFIED",
       "evidence": "我们 5178000000 vs 晨星 8184000000，比值 0.6327（10-50%），规则未解释；该科目契约声明为 direct"
-    },
-    {
-      "ticker": "ENB",
-      "market": "us",
-      "form": "40-F",
-      "metric": "CapEx",
-      "year": 2022,
-      "ourValue": 4647000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 4647000000，晨星该年度无对应科目（status MISSING_MSTAR）"
     },
     {
       "ticker": "ENB",
@@ -4985,19 +4923,6 @@
       "ticker": "ENB",
       "market": "us",
       "form": "40-F",
-      "metric": "CapEx",
-      "year": 2023,
-      "ourValue": 4654000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 4654000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "ENB",
-      "market": "us",
-      "form": "40-F",
       "metric": "DividendsPaid",
       "year": 2024,
       "ourValue": 7875000000,
@@ -5050,19 +4975,6 @@
       "ticker": "ENB",
       "market": "us",
       "form": "40-F",
-      "metric": "CapEx",
-      "year": 2024,
-      "ourValue": 6711000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 6711000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "ENB",
-      "market": "us",
-      "form": "40-F",
       "metric": "DividendsPaid",
       "year": 2025,
       "ourValue": 8220000000,
@@ -5110,19 +5022,6 @@
       "band": "3-10%",
       "cause": "RESIDUAL_SMALL",
       "evidence": "同向微差 -4.94%：我们 10958000000 vs 晨星 11528000000（3-10%）"
-    },
-    {
-      "ticker": "ENB",
-      "market": "us",
-      "form": "40-F",
-      "metric": "CapEx",
-      "year": 2025,
-      "ourValue": 8973000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 8973000000，晨星该年度无对应科目（status MISSING_MSTAR）"
     },
     {
       "ticker": "600519",
@@ -5524,8 +5423,8 @@
       "mstarValue": 6489170000,
       "ratio": 1.0518073960152068,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 6825357000 vs 晨星 6489170000，比值 1.0518（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 5.18%：我们 6825357000 vs 晨星 6489170000（3-10%）"
     },
     {
       "ticker": "000333",
@@ -5576,8 +5475,8 @@
       "mstarValue": 7112890000,
       "ratio": 1.0336326022193512,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 7352115000 vs 晨星 7112890000，比值 1.0336（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 3.36%：我们 7352115000 vs 晨星 7112890000（3-10%）"
     },
     {
       "ticker": "000333",
@@ -5628,8 +5527,8 @@
       "mstarValue": 5922690000,
       "ratio": 1.0660782516052671,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 6314051000 vs 晨星 5922690000，比值 1.0661（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 6.61%：我们 6314051000 vs 晨星 5922690000（3-10%）"
     },
     {
       "ticker": "000333",
@@ -5680,8 +5579,8 @@
       "mstarValue": 6879230000,
       "ratio": 1.1396095202515397,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 7839636000 vs 晨星 6879230000，比值 1.1396（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 7839636000 vs 晨星 6879230000，比值 1.1396（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "000333",
@@ -5732,8 +5631,8 @@
       "mstarValue": 10666370000,
       "ratio": 1.0445811461631276,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 11141889000 vs 晨星 10666370000，比值 1.0446（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 4.46%：我们 11141889000 vs 晨星 10666370000（3-10%）"
     },
     {
       "ticker": "300750",
@@ -5875,8 +5774,8 @@
       "mstarValue": 22730000000,
       "ratio": 1.0399472063352397,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 23638000000 vs 晨星 22730000000，比值 1.0399（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 3.99%：我们 23638000000 vs 晨星 22730000000（3-10%）"
     },
     {
       "ticker": "601088",
@@ -5914,8 +5813,8 @@
       "mstarValue": 27154000000,
       "ratio": 1.0563452898283863,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 28684000000 vs 晨星 27154000000，比值 1.0563（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 5.63%：我们 28684000000 vs 晨星 27154000000（3-10%）"
     },
     {
       "ticker": "601088",
@@ -5940,8 +5839,8 @@
       "mstarValue": 35583000000,
       "ratio": 1.0421830649467443,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 37084000000 vs 晨星 35583000000，比值 1.0422（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 4.22%：我们 37084000000 vs 晨星 35583000000（3-10%）"
     },
     {
       "ticker": "601088",
@@ -5979,8 +5878,8 @@
       "mstarValue": 36466000000,
       "ratio": 1.0340591235671583,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 37708000000 vs 晨星 36466000000，比值 1.0341（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 3.41%：我们 37708000000 vs 晨星 36466000000（3-10%）"
     },
     {
       "ticker": "601088",
@@ -6096,8 +5995,8 @@
       "mstarValue": 46000000000,
       "ratio": 1.0521304347826086,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 48398000000 vs 晨星 46000000000，比值 1.0521（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 5.21%：我们 48398000000 vs 晨星 46000000000（3-10%）"
     },
     {
       "ticker": "601668",
@@ -6135,8 +6034,8 @@
       "mstarValue": 46222080000,
       "ratio": 1.0709026724889923,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 49499349000 vs 晨星 46222080000，比值 1.0709（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 7.09%：我们 49499349000 vs 晨星 46222080000（3-10%）"
     },
     {
       "ticker": "601668",
@@ -6174,8 +6073,8 @@
       "mstarValue": 28573260000,
       "ratio": 1.0978857155256347,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 31370174000 vs 晨星 28573260000，比值 1.0979（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 9.79%：我们 31370174000 vs 晨星 28573260000（3-10%）"
     },
     {
       "ticker": "601668",
@@ -6213,8 +6112,8 @@
       "mstarValue": 23465680000,
       "ratio": 1.1058104005509322,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 25948593000 vs 晨星 23465680000，比值 1.1058（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 25948593000 vs 晨星 23465680000，比值 1.1058（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "601668",
@@ -6252,8 +6151,8 @@
       "mstarValue": 31503450000,
       "ratio": 1.0810103020462838,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 34055554000 vs 晨星 31503450000，比值 1.0810（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 8.10%：我们 34055554000 vs 晨星 31503450000（3-10%）"
     },
     {
       "ticker": "601668",
@@ -6291,8 +6190,8 @@
       "mstarValue": 11409150000,
       "ratio": 1.7376662590990564,
       "band": ">50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 19825295000 vs 晨星 11409150000，比值 1.7377（>50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 19825295000 vs 晨星 11409150000，比值 1.7377（>50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "300760",
@@ -6330,8 +6229,8 @@
       "mstarValue": 1380760000,
       "ratio": 1.015740539268229,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1402493907 vs 晨星 1380760000，比值 1.0157（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.57%：我们 1402493907 vs 晨星 1380760000（1-3%）"
     },
     {
       "ticker": "300760",
@@ -6356,8 +6255,8 @@
       "mstarValue": 1842200000,
       "ratio": 1.0398047747258712,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1915528356 vs 晨星 1842200000，比值 1.0398（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 3.98%：我们 1915528356 vs 晨星 1842200000（3-10%）"
     },
     {
       "ticker": "300760",
@@ -6382,8 +6281,8 @@
       "mstarValue": 1928710000,
       "ratio": 1.0159372088079597,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1959448254 vs 晨星 1928710000，比值 1.0159（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.59%：我们 1959448254 vs 晨星 1928710000（1-3%）"
     },
     {
       "ticker": "600887",
@@ -6499,8 +6398,8 @@
       "mstarValue": 5949680000,
       "ratio": 1.117052948834223,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 6646107588.62 vs 晨星 5949680000，比值 1.1171（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 6646107588.62 vs 晨星 5949680000，比值 1.1171（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "600887",
@@ -6577,8 +6476,8 @@
       "mstarValue": 3841800000,
       "ratio": 1.0355349890572128,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 3978318320.96 vs 晨星 3841800000，比值 1.0355（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 3.55%：我们 3978318320.96 vs 晨星 3841800000（3-10%）"
     },
     {
       "ticker": "000568",
@@ -6668,8 +6567,8 @@
       "mstarValue": 968930000,
       "ratio": 1.0683592737452654,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1035165351.11 vs 晨星 968930000，比值 1.0684（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 6.84%：我们 1035165351.11 vs 晨星 968930000（3-10%）"
     },
     {
       "ticker": "000568",
@@ -6707,8 +6606,8 @@
       "mstarValue": 1431940000,
       "ratio": 1.048664843114935,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1501625135.45 vs 晨星 1431940000，比值 1.0487（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 4.87%：我们 1501625135.45 vs 晨星 1431940000（3-10%）"
     },
     {
       "ticker": "000568",
@@ -6772,8 +6671,8 @@
       "mstarValue": 1841940000,
       "ratio": 1.0463309982192688,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1927278918.86 vs 晨星 1841940000，比值 1.0463（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 4.63%：我们 1927278918.86 vs 晨星 1841940000（3-10%）"
     },
     {
       "ticker": "002415",
@@ -6876,8 +6775,8 @@
       "mstarValue": 30815000000,
       "ratio": 0.9509005354535129,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 29302000000 vs 晨星 30815000000，比值 0.9509（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 -4.91%：我们 29302000000 vs 晨星 30815000000（3-10%）"
     },
     {
       "ticker": "0700.HK",
@@ -7006,8 +6905,8 @@
       "mstarValue": 20751000000,
       "ratio": 1.0123849453038407,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 21008000000 vs 晨星 20751000000，比值 1.0124（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.24%：我们 21008000000 vs 晨星 20751000000（1-3%）"
     },
     {
       "ticker": "0700.HK",
@@ -7162,8 +7061,8 @@
       "mstarValue": 8904240000,
       "ratio": 1.0119285868305437,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 9010455000 vs 晨星 8904240000，比值 1.0119（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.19%：我们 9010455000 vs 晨星 8904240000（1-3%）"
     },
     {
       "ticker": "3690.HK",
@@ -7201,8 +7100,8 @@
       "mstarValue": 5323700000,
       "ratio": 1.0765640438041213,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 5731304000 vs 晨星 5323700000，比值 1.0766（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 7.66%：我们 5731304000 vs 晨星 5323700000（3-10%）"
     },
     {
       "ticker": "3690.HK",
@@ -7240,8 +7139,8 @@
       "mstarValue": 6578480000,
       "ratio": 1.0457660432197102,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 6879551000 vs 晨星 6578480000，比值 1.0458（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 4.58%：我们 6879551000 vs 晨星 6578480000（3-10%）"
     },
     {
       "ticker": "3690.HK",
@@ -7279,8 +7178,8 @@
       "mstarValue": 10102280000,
       "ratio": 1.0888126244768508,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 10999490000 vs 晨星 10102280000，比值 1.0888（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 8.88%：我们 10999490000 vs 晨星 10102280000（3-10%）"
     },
     {
       "ticker": "3690.HK",
@@ -7318,8 +7217,8 @@
       "mstarValue": 12830780000,
       "ratio": 1.0342869256584557,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 13270708000 vs 晨星 12830780000，比值 1.0343（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 3.43%：我们 13270708000 vs 晨星 12830780000（3-10%）"
     },
     {
       "ticker": "0883.HK",
@@ -7406,7 +7305,7 @@
       "metric": "CapEx",
       "year": 2021,
       "ourValue": null,
-      "mstarValue": 9310000000,
+      "mstarValue": 73088000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -7484,7 +7383,7 @@
       "metric": "CapEx",
       "year": 2022,
       "ourValue": null,
-      "mstarValue": 13288000000,
+      "mstarValue": 81373000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -7575,7 +7474,7 @@
       "metric": "CapEx",
       "year": 2023,
       "ourValue": null,
-      "mstarValue": 24000000,
+      "mstarValue": 120875000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -7666,7 +7565,7 @@
       "metric": "CapEx",
       "year": 2024,
       "ourValue": null,
-      "mstarValue": 50000000,
+      "mstarValue": 123359000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -7757,7 +7656,7 @@
       "metric": "CapEx",
       "year": 2025,
       "ourValue": null,
-      "mstarValue": 12000000,
+      "mstarValue": 111555000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -8280,8 +8179,8 @@
       "mstarValue": 4270380000,
       "ratio": 0.9819610901137603,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 4193347000 vs 晨星 4270380000，比值 0.9820（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 -1.80%：我们 4193347000 vs 晨星 4270380000（1-3%）"
     },
     {
       "ticker": "9633.HK",
@@ -8306,8 +8205,8 @@
       "mstarValue": 4808450000,
       "ratio": 0.9803809959550375,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 4714113000 vs 晨星 4808450000，比值 0.9804（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 -1.96%：我们 4714113000 vs 晨星 4808450000（1-3%）"
     },
     {
       "ticker": "9633.HK",
@@ -8371,8 +8270,8 @@
       "mstarValue": 6740480000,
       "ratio": 0.9615493258640334,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 6481304000 vs 晨星 6740480000，比值 0.9615（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 -3.85%：我们 6481304000 vs 晨星 6740480000（3-10%）"
     },
     {
       "ticker": "2020.HK",
@@ -8670,8 +8569,8 @@
       "mstarValue": 36517220000,
       "ratio": 1.0226301180648472,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 37343609000 vs 晨星 36517220000，比值 1.0226（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 2.26%：我们 37343609000 vs 晨星 36517220000（1-3%）"
     },
     {
       "ticker": "1211.HK",
@@ -8800,8 +8699,8 @@
       "mstarValue": 96291750000,
       "ratio": 1.0110914797996713,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 97359768000 vs 晨星 96291750000，比值 1.0111（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.11%：我们 97359768000 vs 晨星 96291750000（1-3%）"
     },
     {
       "ticker": "1211.HK",
@@ -8852,8 +8751,8 @@
       "mstarValue": 154710200000,
       "ratio": 1.0135585953608748,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 156807853000 vs 晨星 154710200000，比值 1.0136（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.36%：我们 156807853000 vs 晨星 154710200000（1-3%）"
     },
     {
       "ticker": "9992.HK",
@@ -8878,8 +8777,8 @@
       "mstarValue": 367240000,
       "ratio": 1.014780524997277,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 372668000 vs 晨星 367240000，比值 1.0148（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.48%：我们 372668000 vs 晨星 367240000（1-3%）"
     },
     {
       "ticker": "9992.HK",
@@ -8917,8 +8816,8 @@
       "mstarValue": 970740000,
       "ratio": 1.0149473597461731,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 985250000 vs 晨星 970740000，比值 1.0149（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.49%：我们 985250000 vs 晨星 970740000（1-3%）"
     },
     {
       "ticker": "AMZN",
@@ -8930,8 +8829,8 @@
       "mstarValue": 55396000000,
       "ratio": 1.1021192865910896,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 61053000000 vs 晨星 55396000000，比值 1.1021（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 61053000000 vs 晨星 55396000000，比值 1.1021（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "AMZN",
@@ -8943,8 +8842,8 @@
       "mstarValue": 58321000000,
       "ratio": 1.091287872292999,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 63645000000 vs 晨星 58321000000，比值 1.0913（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 9.13%：我们 63645000000 vs 晨星 58321000000（3-10%）"
     },
     {
       "ticker": "AMZN",
@@ -8956,8 +8855,8 @@
       "mstarValue": 48133000000,
       "ratio": 1.0954854257993476,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 52729000000 vs 晨星 48133000000，比值 1.0955（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 9.55%：我们 52729000000 vs 晨星 48133000000（3-10%）"
     },
     {
       "ticker": "AMZN",
@@ -8969,8 +8868,8 @@
       "mstarValue": 77658000000,
       "ratio": 1.0687759149089597,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 82999000000 vs 晨星 77658000000，比值 1.0688（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 6.88%：我们 82999000000 vs 晨星 77658000000（3-10%）"
     },
     {
       "ticker": "AMZN",
@@ -8982,8 +8881,8 @@
       "mstarValue": 128320000000,
       "ratio": 1.0272677680798006,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 131819000000 vs 晨星 128320000000，比值 1.0273（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 2.73%：我们 131819000000 vs 晨星 128320000000（1-3%）"
     },
     {
       "ticker": "TSLA",
@@ -9093,32 +8992,6 @@
       "ticker": "PG",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2022,
-      "ourValue": 3156000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 3156000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "PG",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2023,
-      "ourValue": 3062000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 3062000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "PG",
-      "market": "us",
-      "form": "10-K",
       "metric": "OperatingIncome",
       "year": 2024,
       "ourValue": 18545000000,
@@ -9127,45 +9000,6 @@
       "band": "3-10%",
       "cause": "RESIDUAL_SMALL",
       "evidence": "同向微差 -6.74%：我们 18545000000 vs 晨星 19886000000（3-10%）"
-    },
-    {
-      "ticker": "PG",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2024,
-      "ourValue": 3322000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 3322000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "PG",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2025,
-      "ourValue": 3773000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 3773000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "PG",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2026,
-      "ourValue": 4409000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 4409000000，晨星该年度无对应科目（status MISSING_MSTAR）"
     },
     {
       "ticker": "UNH",
@@ -9361,71 +9195,6 @@
       "band": ">50%",
       "cause": "PERSISTENT_BIAS",
       "evidence": "UNH 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 3.6835；本条 4.7869"
-    },
-    {
-      "ticker": "HD",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2022,
-      "ourValue": 2566000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 2566000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "HD",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2023,
-      "ourValue": 3119000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 3119000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "HD",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2024,
-      "ourValue": 3226000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 3226000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "HD",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2025,
-      "ourValue": 3485000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 3485000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "HD",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2026,
-      "ourValue": 3679000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 3679000000，晨星该年度无对应科目（status MISSING_MSTAR）"
     },
     {
       "ticker": "LLY",
@@ -9665,19 +9434,6 @@
       "ticker": "MRK",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2021,
-      "ourValue": 4448000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 4448000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "MRK",
-      "market": "us",
-      "form": "10-K",
       "metric": "OperatingIncome",
       "year": 2022,
       "ourValue": null,
@@ -9686,19 +9442,6 @@
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
       "evidence": "我方该年度该科目无数据"
-    },
-    {
-      "ticker": "MRK",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2022,
-      "ourValue": 4388000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 4388000000，晨星该年度无对应科目（status MISSING_MSTAR）"
     },
     {
       "ticker": "MRK",
@@ -9717,19 +9460,6 @@
       "ticker": "MRK",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2023,
-      "ourValue": 3863000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 3863000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "MRK",
-      "market": "us",
-      "form": "10-K",
       "metric": "OperatingIncome",
       "year": 2024,
       "ourValue": null,
@@ -9743,19 +9473,6 @@
       "ticker": "MRK",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2024,
-      "ourValue": 3372000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 3372000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "MRK",
-      "market": "us",
-      "form": "10-K",
       "metric": "OperatingIncome",
       "year": 2025,
       "ourValue": null,
@@ -9764,32 +9481,6 @@
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
       "evidence": "我方该年度该科目无数据"
-    },
-    {
-      "ticker": "MRK",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2025,
-      "ourValue": 4112000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 4112000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "PEP",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2021,
-      "ourValue": 4625000000,
-      "mstarValue": 166000000,
-      "ratio": 27.86144578313253,
-      "band": ">50%",
-      "cause": "PERSISTENT_BIAS",
-      "evidence": "PEP 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 20.7450；本条 27.8614"
     },
     {
       "ticker": "PEP",
@@ -9808,19 +9499,6 @@
       "ticker": "PEP",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2022,
-      "ourValue": 5207000000,
-      "mstarValue": 251000000,
-      "ratio": 20.745019920318725,
-      "band": ">50%",
-      "cause": "PERSISTENT_BIAS",
-      "evidence": "PEP 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 20.7450；本条 20.7450"
-    },
-    {
-      "ticker": "PEP",
-      "market": "us",
-      "form": "10-K",
       "metric": "OperatingIncome",
       "year": 2023,
       "ourValue": 11986000000,
@@ -9834,32 +9512,6 @@
       "ticker": "PEP",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2023,
-      "ourValue": 5518000000,
-      "mstarValue": 198000000,
-      "ratio": 27.86868686868687,
-      "band": ">50%",
-      "cause": "PERSISTENT_BIAS",
-      "evidence": "PEP 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 20.7450；本条 27.8687"
-    },
-    {
-      "ticker": "PEP",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2024,
-      "ourValue": 5318000000,
-      "mstarValue": 342000000,
-      "ratio": 15.549707602339181,
-      "band": ">50%",
-      "cause": "PERSISTENT_BIAS",
-      "evidence": "PEP 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 20.7450；本条 15.5497"
-    },
-    {
-      "ticker": "PEP",
-      "market": "us",
-      "form": "10-K",
       "metric": "OperatingIncome",
       "year": 2025,
       "ourValue": 11498000000,
@@ -9868,19 +9520,6 @@
       "band": "10-50%",
       "cause": "UNCLASSIFIED",
       "evidence": "我们 11498000000 vs 晨星 13491000000，比值 0.8523（10-50%），规则未解释；该科目契约声明为 direct"
-    },
-    {
-      "ticker": "PEP",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2025,
-      "ourValue": 4415000000,
-      "mstarValue": 528000000,
-      "ratio": 8.361742424242424,
-      "band": ">50%",
-      "cause": "PERSISTENT_BIAS",
-      "evidence": "PEP 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 20.7450；本条 8.3617"
     },
     {
       "ticker": "CVX",
@@ -9938,19 +9577,6 @@
       "ticker": "CVX",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2021,
-      "ourValue": 8056000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 8056000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "CVX",
-      "market": "us",
-      "form": "10-K",
       "metric": "Revenue",
       "year": 2022,
       "ourValue": 246252000000,
@@ -10003,19 +9629,6 @@
       "ticker": "CVX",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2022,
-      "ourValue": 11974000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 11974000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "CVX",
-      "market": "us",
-      "form": "10-K",
       "metric": "Revenue",
       "year": 2023,
       "ourValue": 200949000000,
@@ -10063,19 +9676,6 @@
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
       "evidence": "我方该年度该科目无数据"
-    },
-    {
-      "ticker": "CVX",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2023,
-      "ourValue": 15829000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 15829000000，晨星该年度无对应科目（status MISSING_MSTAR）"
     },
     {
       "ticker": "CVX",
@@ -10146,19 +9746,6 @@
       "ticker": "CVX",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2024,
-      "ourValue": 16448000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 16448000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "CVX",
-      "market": "us",
-      "form": "10-K",
       "metric": "Revenue",
       "year": 2025,
       "ourValue": 189031000000,
@@ -10219,19 +9806,6 @@
       "band": "10-50%",
       "cause": "DECLARED_AMBIGUOUS",
       "evidence": "契约声明 sum_of：我们 7285000000 vs 晨星 6297000000，比值 1.1569（10-50%）"
-    },
-    {
-      "ticker": "CVX",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2025,
-      "ourValue": 17347000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 17347000000，晨星该年度无对应科目（status MISSING_MSTAR）"
     },
     {
       "ticker": "XOM",
@@ -10516,8 +10090,8 @@
       "mstarValue": 12712000000,
       "ratio": 1.0309943360604155,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 13106000000 vs 晨星 12712000000，比值 1.0310（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 3.10%：我们 13106000000 vs 晨星 12712000000（3-10%）"
     },
     {
       "ticker": "WMT",
@@ -10542,8 +10116,8 @@
       "mstarValue": 16687000000,
       "ratio": 1.010187571163181,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 16857000000 vs 晨星 16687000000，比值 1.0102（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.02%：我们 16857000000 vs 晨星 16687000000（1-3%）"
     },
     {
       "ticker": "WMT",
@@ -10568,8 +10142,8 @@
       "mstarValue": 20356000000,
       "ratio": 1.0122813912359991,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 20606000000 vs 晨星 20356000000，比值 1.0123（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.23%：我们 20606000000 vs 晨星 20356000000（1-3%）"
     },
     {
       "ticker": "WMT",
@@ -10594,8 +10168,8 @@
       "mstarValue": 23351000000,
       "ratio": 1.0185002783606698,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 23783000000 vs 晨星 23351000000，比值 1.0185（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.85%：我们 23783000000 vs 晨星 23351000000（1-3%）"
     },
     {
       "ticker": "WMT",
@@ -11163,11 +10737,11 @@
       "metric": "CapEx",
       "year": 2021,
       "ourValue": 1093000000,
-      "mstarValue": 1265000000,
-      "ratio": 0.8640316205533597,
-      "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1093000000 vs 晨星 1265000000，比值 0.8640（10-50%）"
+      "mstarValue": 2472000000,
+      "ratio": 0.44215210355987056,
+      "band": ">50%",
+      "cause": "PERSISTENT_BIAS",
+      "evidence": "CAT 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 0.5165；本条 0.4422"
     },
     {
       "ticker": "CAT",
@@ -11215,11 +10789,11 @@
       "metric": "CapEx",
       "year": 2022,
       "ourValue": 1296000000,
-      "mstarValue": 830000000,
-      "ratio": 1.5614457831325301,
+      "mstarValue": 2599000000,
+      "ratio": 0.49865332820315506,
       "band": ">50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1296000000 vs 晨星 830000000，比值 1.5614（>50%）"
+      "cause": "PERSISTENT_BIAS",
+      "evidence": "CAT 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 0.5165；本条 0.4987"
     },
     {
       "ticker": "CAT",
@@ -11254,11 +10828,11 @@
       "metric": "CapEx",
       "year": 2023,
       "ourValue": 1597000000,
-      "mstarValue": 781000000,
-      "ratio": 2.0448143405889883,
-      "band": ">50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1597000000 vs 晨星 781000000，比值 2.0448（>50%）"
+      "mstarValue": 3092000000,
+      "ratio": 0.5164941785252264,
+      "band": "10-50%",
+      "cause": "PERSISTENT_BIAS",
+      "evidence": "CAT 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 0.5165；本条 0.5165"
     },
     {
       "ticker": "CAT",
@@ -11293,11 +10867,11 @@
       "metric": "CapEx",
       "year": 2024,
       "ourValue": 1988000000,
-      "mstarValue": 722000000,
-      "ratio": 2.7534626038781163,
-      "band": ">50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1988000000 vs 晨星 722000000，比值 2.7535（>50%）"
+      "mstarValue": 3215000000,
+      "ratio": 0.6183514774494556,
+      "band": "10-50%",
+      "cause": "PERSISTENT_BIAS",
+      "evidence": "CAT 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 0.5165；本条 0.6184"
     },
     {
       "ticker": "CAT",
@@ -11332,11 +10906,11 @@
       "metric": "CapEx",
       "year": 2025,
       "ourValue": 2821000000,
-      "mstarValue": 708000000,
-      "ratio": 3.9844632768361583,
-      "band": ">50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 2821000000 vs 晨星 708000000，比值 3.9845（>50%）"
+      "mstarValue": 4286000000,
+      "ratio": 0.6581894540363976,
+      "band": "10-50%",
+      "cause": "PERSISTENT_BIAS",
+      "evidence": "CAT 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 0.5165；本条 0.6582"
     },
     {
       "ticker": "GE",
@@ -11400,8 +10974,8 @@
       "mstarValue": 962000000,
       "ratio": 1.2993762993762994,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1250000000 vs 晨星 962000000，比值 1.2994（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 1250000000 vs 晨星 962000000，比值 1.2994（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "GE",
@@ -11465,8 +11039,8 @@
       "mstarValue": 509000000,
       "ratio": 2.6935166994106092,
       "band": ">50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1371000000 vs 晨星 509000000，比值 2.6935（>50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 1371000000 vs 晨星 509000000，比值 2.6935（>50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "GE",
@@ -11530,8 +11104,8 @@
       "mstarValue": 802000000,
       "ratio": 1.0748129675810474,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 862000000 vs 晨星 802000000，比值 1.0748（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 7.48%：我们 862000000 vs 晨星 802000000（3-10%）"
     },
     {
       "ticker": "GE",
@@ -11595,8 +11169,8 @@
       "mstarValue": 918000000,
       "ratio": 1.1241830065359477,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1032000000 vs 晨星 918000000，比值 1.1242（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 1032000000 vs 晨星 918000000，比值 1.1242（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "GE",
@@ -11647,8 +11221,8 @@
       "mstarValue": 1150000000,
       "ratio": 1.1069565217391304,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1273000000 vs 晨星 1150000000，比值 1.1070（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 1273000000 vs 晨星 1150000000，比值 1.1070（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "V",
@@ -12057,6 +11631,19 @@
       "ticker": "MA",
       "market": "us",
       "form": "10-K",
+      "metric": "CapEx",
+      "year": 2022,
+      "ourValue": 442000000,
+      "mstarValue": 655000000,
+      "ratio": 0.6748091603053435,
+      "band": "10-50%",
+      "cause": "PERSISTENT_BIAS",
+      "evidence": "MA 该科目 FY2022/2023/2024/2025 共 4 年全部同向偏离，中位比值 0.6659；本条 0.6748"
+    },
+    {
+      "ticker": "MA",
+      "market": "us",
+      "form": "10-K",
       "metric": "CostOfRevenue",
       "year": 2023,
       "ourValue": null,
@@ -12091,6 +11678,19 @@
       "band": "3-10%",
       "cause": "RESIDUAL_SMALL",
       "evidence": "同向微差 -4.25%：我们 14008000000 vs 晨星 14630000000（3-10%）"
+    },
+    {
+      "ticker": "MA",
+      "market": "us",
+      "form": "10-K",
+      "metric": "CapEx",
+      "year": 2023,
+      "ourValue": 371000000,
+      "mstarValue": 717000000,
+      "ratio": 0.5174337517433751,
+      "band": "10-50%",
+      "cause": "PERSISTENT_BIAS",
+      "evidence": "MA 该科目 FY2022/2023/2024/2025 共 4 年全部同向偏离，中位比值 0.6659；本条 0.5174"
     },
     {
       "ticker": "MA",
@@ -12148,6 +11748,19 @@
       "ticker": "MA",
       "market": "us",
       "form": "10-K",
+      "metric": "CapEx",
+      "year": 2024,
+      "ourValue": 474000000,
+      "mstarValue": 720000000,
+      "ratio": 0.6583333333333333,
+      "band": "10-50%",
+      "cause": "PERSISTENT_BIAS",
+      "evidence": "MA 该科目 FY2022/2023/2024/2025 共 4 年全部同向偏离，中位比值 0.6659；本条 0.6583"
+    },
+    {
+      "ticker": "MA",
+      "market": "us",
+      "form": "10-K",
       "metric": "CostOfRevenue",
       "year": 2025,
       "ourValue": null,
@@ -12195,6 +11808,19 @@
       "band": "3-10%",
       "cause": "DECLARED_AMBIGUOUS",
       "evidence": "契约声明 sum_of：我们 10566000000 vs 晨星 10898000000，比值 0.9695（3-10%）"
+    },
+    {
+      "ticker": "MA",
+      "market": "us",
+      "form": "10-K",
+      "metric": "CapEx",
+      "year": 2025,
+      "ourValue": 489000000,
+      "mstarValue": 726000000,
+      "ratio": 0.6735537190082644,
+      "band": "10-50%",
+      "cause": "PERSISTENT_BIAS",
+      "evidence": "MA 该科目 FY2022/2023/2024/2025 共 4 年全部同向偏离，中位比值 0.6659；本条 0.6736"
     },
     {
       "ticker": "MCD",
@@ -12252,19 +11878,6 @@
       "ticker": "MCD",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2021,
-      "ourValue": 2040000000,
-      "mstarValue": 106200000,
-      "ratio": 19.2090395480226,
-      "band": ">50%",
-      "cause": "PERSISTENT_BIAS",
-      "evidence": "MCD 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 24.8105；本条 19.2090"
-    },
-    {
-      "ticker": "MCD",
-      "market": "us",
-      "form": "10-K",
       "metric": "TotalProfit",
       "year": 2022,
       "ourValue": null,
@@ -12317,19 +11930,6 @@
       "ticker": "MCD",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2022,
-      "ourValue": 1899000000,
-      "mstarValue": 39000000,
-      "ratio": 48.69230769230769,
-      "band": ">50%",
-      "cause": "PERSISTENT_BIAS",
-      "evidence": "MCD 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 24.8105；本条 48.6923"
-    },
-    {
-      "ticker": "MCD",
-      "market": "us",
-      "form": "10-K",
       "metric": "TotalProfit",
       "year": 2023,
       "ourValue": null,
@@ -12364,19 +11964,6 @@
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
       "evidence": "我方该年度该科目无数据"
-    },
-    {
-      "ticker": "MCD",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2023,
-      "ourValue": 2357000000,
-      "mstarValue": 95000000,
-      "ratio": 24.810526315789474,
-      "band": ">50%",
-      "cause": "PERSISTENT_BIAS",
-      "evidence": "MCD 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 24.8105；本条 24.8105"
     },
     {
       "ticker": "MCD",
@@ -12434,19 +12021,6 @@
       "ticker": "MCD",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2024,
-      "ourValue": 2775000000,
-      "mstarValue": 122000000,
-      "ratio": 22.74590163934426,
-      "band": ">50%",
-      "cause": "PERSISTENT_BIAS",
-      "evidence": "MCD 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 24.8105；本条 22.7459"
-    },
-    {
-      "ticker": "MCD",
-      "market": "us",
-      "form": "10-K",
       "metric": "TotalProfit",
       "year": 2025,
       "ourValue": null,
@@ -12481,19 +12055,6 @@
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
       "evidence": "我方该年度该科目无数据"
-    },
-    {
-      "ticker": "MCD",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2025,
-      "ourValue": 3365000000,
-      "mstarValue": 130000000,
-      "ratio": 25.884615384615383,
-      "band": ">50%",
-      "cause": "PERSISTENT_BIAS",
-      "evidence": "MCD 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 24.8105；本条 25.8846"
     },
     {
       "ticker": "INTC",
@@ -12531,8 +12092,8 @@
       "mstarValue": 20329000000,
       "ratio": 0.9214914653942643,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 18733000000 vs 晨星 20329000000，比值 0.9215（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 -7.85%：我们 18733000000 vs 晨星 20329000000（3-10%）"
     },
     {
       "ticker": "INTC",
@@ -12811,19 +12372,6 @@
       "ticker": "ORCL",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2022,
-      "ourValue": 4511000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 4511000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "ORCL",
-      "market": "us",
-      "form": "10-K",
       "metric": "TotalProfit",
       "year": 2023,
       "ourValue": null,
@@ -12884,19 +12432,6 @@
       "band": "3-10%",
       "cause": "DECLARED_AMBIGUOUS",
       "evidence": "契约声明 sum_of：我们 9765000000 vs 晨星 10187000000，比值 0.9586（3-10%）"
-    },
-    {
-      "ticker": "ORCL",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2023,
-      "ourValue": 8695000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 8695000000，晨星该年度无对应科目（status MISSING_MSTAR）"
     },
     {
       "ticker": "ORCL",
@@ -12967,19 +12502,6 @@
       "ticker": "ORCL",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2024,
-      "ourValue": 6866000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 6866000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "ORCL",
-      "market": "us",
-      "form": "10-K",
       "metric": "TotalProfit",
       "year": 2025,
       "ourValue": null,
@@ -13040,19 +12562,6 @@
       "band": "3-10%",
       "cause": "DECLARED_AMBIGUOUS",
       "evidence": "契约声明 sum_of：我们 10786000000 vs 晨星 11203000000，比值 0.9628（3-10%）"
-    },
-    {
-      "ticker": "ORCL",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2025,
-      "ourValue": 21215000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 21215000000，晨星该年度无对应科目（status MISSING_MSTAR）"
     },
     {
       "ticker": "ORCL",
@@ -13120,19 +12629,6 @@
       "evidence": "契约声明 sum_of：我们 31289000000 vs 晨星 31894000000，比值 0.9810（1-3%）"
     },
     {
-      "ticker": "ORCL",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2026,
-      "ourValue": 55663000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 55663000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
       "ticker": "CRM",
       "market": "us",
       "form": "10-K",
@@ -13144,19 +12640,6 @@
       "band": "10-50%",
       "cause": "PERSISTENT_BIAS",
       "evidence": "CRM 该科目 FY2022/2023/2024/2025/2026 共 5 年全部同向偏离，中位比值 0.5969；本条 0.5186"
-    },
-    {
-      "ticker": "CRM",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2022,
-      "ourValue": 717000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 717000000，晨星该年度无对应科目（status MISSING_MSTAR）"
     },
     {
       "ticker": "CRM",
@@ -13188,19 +12671,6 @@
       "ticker": "CRM",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2023,
-      "ourValue": 798000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 798000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "CRM",
-      "market": "us",
-      "form": "10-K",
       "metric": "OperatingIncome",
       "year": 2024,
       "ourValue": 5011000000,
@@ -13222,19 +12692,6 @@
       "band": "10-50%",
       "cause": "PERSISTENT_BIAS",
       "evidence": "CRM 该科目 FY2022/2023/2024/2025/2026 共 5 年全部同向偏离，中位比值 0.5969；本条 0.5969"
-    },
-    {
-      "ticker": "CRM",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2024,
-      "ourValue": 736000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 736000000，晨星该年度无对应科目（status MISSING_MSTAR）"
     },
     {
       "ticker": "CRM",
@@ -13266,19 +12723,6 @@
       "ticker": "CRM",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2025,
-      "ourValue": 658000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 658000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "CRM",
-      "market": "us",
-      "form": "10-K",
       "metric": "OperatingIncome",
       "year": 2026,
       "ourValue": 8331000000,
@@ -13300,19 +12744,6 @@
       "band": "10-50%",
       "cause": "PERSISTENT_BIAS",
       "evidence": "CRM 该科目 FY2022/2023/2024/2025/2026 共 5 年全部同向偏离，中位比值 0.5969；本条 0.7660"
-    },
-    {
-      "ticker": "CRM",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2026,
-      "ourValue": 594000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 594000000，晨星该年度无对应科目（status MISSING_MSTAR）"
     },
     {
       "ticker": "PFE",
@@ -13766,8 +13197,8 @@
       "mstarValue": 1530310000,
       "ratio": 1.0467356287288196,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1601830000 vs 晨星 1530310000，比值 1.0467（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 4.67%：我们 1601830000 vs 晨星 1530310000（3-10%）"
     },
     {
       "ticker": "NTES",
@@ -13792,8 +13223,8 @@
       "mstarValue": 2058800000.0000002,
       "ratio": 1.0201398873129977,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 2100264000 vs 晨星 2058800000.0000002，比值 1.0201（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 2.01%：我们 2100264000 vs 晨星 2058800000.0000002（1-3%）"
     },
     {
       "ticker": "NTES",
@@ -13831,8 +13262,8 @@
       "mstarValue": 1260870000,
       "ratio": 1.011523789129728,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1275400000 vs 晨星 1260870000，比值 1.0115（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.15%：我们 1275400000 vs 晨星 1260870000（1-3%）"
     },
     {
       "ticker": "NTES",
@@ -13857,8 +13288,8 @@
       "mstarValue": 1019490000,
       "ratio": 1.0450087788992535,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1065376000 vs 晨星 1019490000，比值 1.0450（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 4.50%：我们 1065376000 vs 晨星 1019490000（3-10%）"
     },
     {
       "ticker": "BIDU",
@@ -13987,8 +13418,8 @@
       "mstarValue": 804180000,
       "ratio": 1.149217836802706,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 924178000 vs 晨星 804180000，比值 1.1492（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 924178000 vs 晨星 804180000，比值 1.1492（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "SE",
@@ -14026,8 +13457,8 @@
       "mstarValue": 179730000,
       "ratio": 1.344266399599399,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 241605000 vs 晨星 179730000，比值 1.3443（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 241605000 vs 晨星 179730000，比值 1.3443（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "SE",
@@ -14052,8 +13483,8 @@
       "mstarValue": 311920000,
       "ratio": 1.0199826878686842,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 318153000 vs 晨星 311920000，比值 1.0200（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 2.00%：我们 318153000 vs 晨星 311920000（1-3%）"
     },
     {
       "ticker": "SE",
@@ -14104,8 +13535,8 @@
       "mstarValue": 1078000000,
       "ratio": 1.0120593692022264,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1091000000 vs 晨星 1078000000，比值 1.0121（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.21%：我们 1091000000 vs 晨星 1078000000（1-3%）"
     },
     {
       "ticker": "AZN",
@@ -14143,8 +13574,8 @@
       "mstarValue": 809000000,
       "ratio": 1.3485784919653894,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1091000000 vs 晨星 809000000，比值 1.3486（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 1091000000 vs 晨星 809000000，比值 1.3486（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "AZN",
@@ -14169,8 +13600,8 @@
       "mstarValue": 1229000000,
       "ratio": 1.1074043938161107,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1361000000 vs 晨星 1229000000，比值 1.1074（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 1361000000 vs 晨星 1229000000，比值 1.1074（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "AZN",
@@ -14195,8 +13626,8 @@
       "mstarValue": 1869000000,
       "ratio": 1.0294275013376137,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1924000000 vs 晨星 1869000000，比值 1.0294（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 2.94%：我们 1924000000 vs 晨星 1869000000（1-3%）"
     },
     {
       "ticker": "AZN",
@@ -14345,19 +13776,6 @@
       "ticker": "LIN",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2021,
-      "ourValue": 3086000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 3086000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "LIN",
-      "market": "us",
-      "form": "10-K",
       "metric": "OperatingIncome",
       "year": 2022,
       "ourValue": 5369000000,
@@ -14371,45 +13789,6 @@
       "ticker": "LIN",
       "market": "us",
       "form": "10-K",
-      "metric": "CapEx",
-      "year": 2022,
-      "ourValue": 3173000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 3173000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "LIN",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2023,
-      "ourValue": 3787000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 3787000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "LIN",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2024,
-      "ourValue": 4497000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 4497000000，晨星该年度无对应科目（status MISSING_MSTAR）"
-    },
-    {
-      "ticker": "LIN",
-      "market": "us",
-      "form": "10-K",
       "metric": "OperatingIncome",
       "year": 2025,
       "ourValue": 8923000000,
@@ -14418,19 +13797,6 @@
       "band": "3-10%",
       "cause": "RESIDUAL_SMALL",
       "evidence": "同向微差 -3.58%：我们 8923000000 vs 晨星 9254000000（3-10%）"
-    },
-    {
-      "ticker": "LIN",
-      "market": "us",
-      "form": "10-K",
-      "metric": "CapEx",
-      "year": 2025,
-      "ourValue": 5261000000,
-      "mstarValue": null,
-      "ratio": null,
-      "band": "n/a",
-      "cause": "MSTAR_COVERAGE_GAP",
-      "evidence": "我方有值 5261000000，晨星该年度无对应科目（status MISSING_MSTAR）"
     },
     {
       "ticker": "BP",
@@ -14517,7 +13883,7 @@
       "metric": "CapEx",
       "year": 2021,
       "ourValue": null,
-      "mstarValue": 1145000000,
+      "mstarValue": 10887000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -14608,7 +13974,7 @@
       "metric": "CapEx",
       "year": 2022,
       "ourValue": null,
-      "mstarValue": 709000000,
+      "mstarValue": 12069000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -14699,7 +14065,7 @@
       "metric": "CapEx",
       "year": 2023,
       "ourValue": null,
-      "mstarValue": 133000000,
+      "mstarValue": 14285000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -14803,7 +14169,7 @@
       "metric": "CapEx",
       "year": 2024,
       "ourValue": null,
-      "mstarValue": 328000000,
+      "mstarValue": 15297000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -14894,7 +14260,7 @@
       "metric": "CapEx",
       "year": 2025,
       "ourValue": null,
-      "mstarValue": 1142000000,
+      "mstarValue": 13221000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -14959,7 +14325,7 @@
       "metric": "CapEx",
       "year": 2021,
       "ourValue": null,
-      "mstarValue": 14233000000,
+      "mstarValue": 19000000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -15024,7 +14390,7 @@
       "metric": "CapEx",
       "year": 2022,
       "ourValue": null,
-      "mstarValue": 1431000000,
+      "mstarValue": 22600000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -15102,7 +14468,7 @@
       "metric": "CapEx",
       "year": 2023,
       "ourValue": null,
-      "mstarValue": 2565000000,
+      "mstarValue": 22993000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -15180,7 +14546,7 @@
       "metric": "CapEx",
       "year": 2024,
       "ourValue": null,
-      "mstarValue": 1621000000,
+      "mstarValue": 19601000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -15258,7 +14624,7 @@
       "metric": "CapEx",
       "year": 2025,
       "ourValue": null,
-      "mstarValue": 1148000000,
+      "mstarValue": 18947000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -15814,6 +15180,19 @@
       "ticker": "CNQ",
       "market": "us",
       "form": "40-F",
+      "metric": "CapEx",
+      "year": 2021,
+      "ourValue": null,
+      "mstarValue": 4493000000,
+      "ratio": null,
+      "band": "n/a",
+      "cause": "EXTRACTION_MISSING",
+      "evidence": "我方该年度该科目无数据"
+    },
+    {
+      "ticker": "CNQ",
+      "market": "us",
+      "form": "40-F",
       "metric": "CostOfRevenue",
       "year": 2022,
       "ourValue": null,
@@ -15861,6 +15240,19 @@
       "band": "10-50%",
       "cause": "DECLARED_AMBIGUOUS",
       "evidence": "契约声明 sum_of：我们 920000000 vs 晨星 1411000000，比值 0.6520（10-50%）"
+    },
+    {
+      "ticker": "CNQ",
+      "market": "us",
+      "form": "40-F",
+      "metric": "CapEx",
+      "year": 2022,
+      "ourValue": null,
+      "mstarValue": 5136000000,
+      "ratio": null,
+      "band": "n/a",
+      "cause": "EXTRACTION_MISSING",
+      "evidence": "我方该年度该科目无数据"
     },
     {
       "ticker": "CNQ",
@@ -15918,6 +15310,19 @@
       "ticker": "CNQ",
       "market": "us",
       "form": "40-F",
+      "metric": "CapEx",
+      "year": 2023,
+      "ourValue": null,
+      "mstarValue": 4909000000,
+      "ratio": null,
+      "band": "n/a",
+      "cause": "EXTRACTION_MISSING",
+      "evidence": "我方该年度该科目无数据"
+    },
+    {
+      "ticker": "CNQ",
+      "market": "us",
+      "form": "40-F",
       "metric": "CostOfRevenue",
       "year": 2024,
       "ourValue": null,
@@ -15957,6 +15362,19 @@
       "ticker": "CNQ",
       "market": "us",
       "form": "40-F",
+      "metric": "CapEx",
+      "year": 2024,
+      "ourValue": null,
+      "mstarValue": 5383000000,
+      "ratio": null,
+      "band": "n/a",
+      "cause": "EXTRACTION_MISSING",
+      "evidence": "我方该年度该科目无数据"
+    },
+    {
+      "ticker": "CNQ",
+      "market": "us",
+      "form": "40-F",
       "metric": "CostOfRevenue",
       "year": 2025,
       "ourValue": null,
@@ -15987,6 +15405,19 @@
       "year": 2025,
       "ourValue": null,
       "mstarValue": 8226000000,
+      "ratio": null,
+      "band": "n/a",
+      "cause": "EXTRACTION_MISSING",
+      "evidence": "我方该年度该科目无数据"
+    },
+    {
+      "ticker": "CNQ",
+      "market": "us",
+      "form": "40-F",
+      "metric": "CapEx",
+      "year": 2025,
+      "ourValue": null,
+      "mstarValue": 6791000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -16860,8 +16291,8 @@
       "mstarValue": 3494440000,
       "ratio": 1.5526763381028148,
       "band": ">50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 5425734302.92 vs 晨星 3494440000，比值 1.5527（>50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 5425734302.92 vs 晨星 3494440000，比值 1.5527（>50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "000651",
@@ -16912,8 +16343,8 @@
       "mstarValue": 3116620000,
       "ratio": 1.0587711499059878,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 3299787341.22 vs 晨星 3116620000，比值 1.0588（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 5.88%：我们 3299787341.22 vs 晨星 3116620000（3-10%）"
     },
     {
       "ticker": "000895",
@@ -16964,8 +16395,8 @@
       "mstarValue": 1137410000,
       "ratio": 1.0172023370376557,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1156976110.17 vs 晨星 1137410000，比值 1.0172（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.72%：我们 1156976110.17 vs 晨星 1137410000（1-3%）"
     },
     {
       "ticker": "000895",
@@ -17042,8 +16473,8 @@
       "mstarValue": 3383970000,
       "ratio": 1.0487797149472364,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 3549039091.99 vs 晨星 3383970000，比值 1.0488（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 4.88%：我们 3549039091.99 vs 晨星 3383970000（3-10%）"
     },
     {
       "ticker": "000895",
@@ -17133,8 +16564,8 @@
       "mstarValue": 1340110000,
       "ratio": 1.0353985824596488,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1387547994.34 vs 晨星 1340110000，比值 1.0354（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 3.54%：我们 1387547994.34 vs 晨星 1340110000（3-10%）"
     },
     {
       "ticker": "000725",
@@ -17549,8 +16980,8 @@
       "mstarValue": 1009330000,
       "ratio": 1.023050238336322,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1032595297.06 vs 晨星 1009330000，比值 1.0231（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 2.31%：我们 1032595297.06 vs 晨星 1009330000（1-3%）"
     },
     {
       "ticker": "000009",
@@ -17601,8 +17032,8 @@
       "mstarValue": 1967160000,
       "ratio": 1.022359554530389,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 2011144821.29 vs 晨星 1967160000，比值 1.0224（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 2.24%：我们 2011144821.29 vs 晨星 1967160000（1-3%）"
     },
     {
       "ticker": "000009",
@@ -17666,8 +17097,8 @@
       "mstarValue": 2822270000,
       "ratio": 1.0237865849830101,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 2889402165.2 vs 晨星 2822270000，比值 1.0238（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 2.38%：我们 2889402165.2 vs 晨星 2822270000（1-3%）"
     },
     {
       "ticker": "000338",
@@ -17705,8 +17136,8 @@
       "mstarValue": 5894740000,
       "ratio": 1.0606427197722037,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 6252213065.95 vs 晨星 5894740000，比值 1.0606（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 6.06%：我们 6252213065.95 vs 晨星 5894740000（3-10%）"
     },
     {
       "ticker": "000338",
@@ -17744,8 +17175,8 @@
       "mstarValue": 6562620000,
       "ratio": 1.0110537167198466,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 6635161342.42 vs 晨星 6562620000，比值 1.0111（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.11%：我们 6635161342.42 vs 晨星 6562620000（1-3%）"
     },
     {
       "ticker": "000338",
@@ -17783,8 +17214,8 @@
       "mstarValue": 6910080000,
       "ratio": 1.041925241240333,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 7199786770.99 vs 晨星 6910080000，比值 1.0419（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 4.19%：我们 7199786770.99 vs 晨星 6910080000（3-10%）"
     },
     {
       "ticker": "000338",
@@ -17822,8 +17253,8 @@
       "mstarValue": 6599900000,
       "ratio": 1.1151395511159259,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 7359809523.41 vs 晨星 6599900000，比值 1.1151（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 7359809523.41 vs 晨星 6599900000，比值 1.1151（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "000338",
@@ -17861,8 +17292,8 @@
       "mstarValue": 6670000000,
       "ratio": 1.018998551983508,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 6796720341.73 vs 晨星 6670000000，比值 1.0190（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.90%：我们 6796720341.73 vs 晨星 6670000000（1-3%）"
     },
     {
       "ticker": "000157",
@@ -17900,8 +17331,8 @@
       "mstarValue": 2751550000,
       "ratio": 1.0588971539532264,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 2913608463.96 vs 晨星 2751550000，比值 1.0589（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 5.89%：我们 2913608463.96 vs 晨星 2751550000（3-10%）"
     },
     {
       "ticker": "000157",
@@ -17939,8 +17370,8 @@
       "mstarValue": 1440710000,
       "ratio": 1.0618348150287011,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1529796036.36 vs 晨星 1440710000，比值 1.0618（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 6.18%：我们 1529796036.36 vs 晨星 1440710000（3-10%）"
     },
     {
       "ticker": "000157",
@@ -17978,8 +17409,8 @@
       "mstarValue": 1802880000,
       "ratio": 1.0538852937022984,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1900028718.31 vs 晨星 1802880000，比值 1.0539（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 5.39%：我们 1900028718.31 vs 晨星 1802880000（3-10%）"
     },
     {
       "ticker": "000157",
@@ -18004,8 +17435,8 @@
       "mstarValue": 3933340000,
       "ratio": 1.0259262741258066,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 4035316851.07 vs 晨星 3933340000，比值 1.0259（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 2.59%：我们 4035316851.07 vs 晨星 3933340000（1-3%）"
     },
     {
       "ticker": "000157",
@@ -18030,8 +17461,8 @@
       "mstarValue": 4551810000,
       "ratio": 1.0226466758981592,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 4654893365.82 vs 晨星 4551810000，比值 1.0226（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 2.26%：我们 4654893365.82 vs 晨星 4551810000（1-3%）"
     },
     {
       "ticker": "002352",
@@ -18095,8 +17526,8 @@
       "mstarValue": 14007450000,
       "ratio": 1.012588087053675,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 14183777000 vs 晨星 14007450000，比值 1.0126（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.26%：我们 14183777000 vs 晨星 14007450000（1-3%）"
     },
     {
       "ticker": "002352",
@@ -18134,8 +17565,8 @@
       "mstarValue": 12136070000,
       "ratio": 1.027671972887434,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 12471899000 vs 晨星 12136070000，比值 1.0277（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 2.77%：我们 12471899000 vs 晨星 12136070000（1-3%）"
     },
     {
       "ticker": "002352",
@@ -18173,8 +17604,8 @@
       "mstarValue": 9034990000,
       "ratio": 1.0342867009260663,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 9344770000 vs 晨星 9034990000，比值 1.0343（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 3.43%：我们 9344770000 vs 晨星 9034990000（3-10%）"
     },
     {
       "ticker": "002352",
@@ -18212,8 +17643,8 @@
       "mstarValue": 9312850000,
       "ratio": 1.0206886184143416,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 9505520000 vs 晨星 9312850000，比值 1.0207（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 2.07%：我们 9505520000 vs 晨星 9312850000（1-3%）"
     },
     {
       "ticker": "000060",
@@ -18264,8 +17695,8 @@
       "mstarValue": 3774430000,
       "ratio": 1.2317830534146879,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 4649278910.3 vs 晨星 3774430000，比值 1.2318（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 4649278910.3 vs 晨星 3774430000，比值 1.2318（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "000060",
@@ -18355,8 +17786,8 @@
       "mstarValue": 2259200000,
       "ratio": 1.0664952402443344,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 2409426046.76 vs 晨星 2259200000，比值 1.0665（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 6.65%：我们 2409426046.76 vs 晨星 2259200000（3-10%）"
     },
     {
       "ticker": "000060",
@@ -18524,8 +17955,8 @@
       "mstarValue": 1066010000,
       "ratio": 1.3629891828594478,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1452960098.82 vs 晨星 1066010000，比值 1.3630（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 1452960098.82 vs 晨星 1066010000，比值 1.3630（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "000786",
@@ -18563,8 +17994,8 @@
       "mstarValue": 1015970000,
       "ratio": 1.1440381112532851,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1162308399.89 vs 晨星 1015970000，比值 1.1440（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 1162308399.89 vs 晨星 1015970000，比值 1.1440（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "000786",
@@ -18602,8 +18033,8 @@
       "mstarValue": 903450000,
       "ratio": 1.3216435563561901,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1194038870.99 vs 晨星 903450000，比值 1.3216（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 1194038870.99 vs 晨星 903450000，比值 1.3216（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "601857",
@@ -18641,8 +18072,8 @@
       "mstarValue": 261783000000,
       "ratio": 1.0144394402997903,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 265563000000 vs 晨星 261783000000，比值 1.0144（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.44%：我们 265563000000 vs 晨星 261783000000（1-3%）"
     },
     {
       "ticker": "601857",
@@ -18940,8 +18371,8 @@
       "mstarValue": 1971960000,
       "ratio": 1.010252596989797,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1992177711.16 vs 晨星 1971960000，比值 1.0103（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.03%：我们 1992177711.16 vs 晨星 1971960000（1-3%）"
     },
     {
       "ticker": "600276",
@@ -18966,8 +18397,8 @@
       "mstarValue": 1463610000,
       "ratio": 1.0137890184475373,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1483791745.29 vs 晨星 1463610000，比值 1.0138（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.38%：我们 1483791745.29 vs 晨星 1463610000（1-3%）"
     },
     {
       "ticker": "600276",
@@ -18992,8 +18423,8 @@
       "mstarValue": 1947300000,
       "ratio": 1.0112450510244955,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1969197487.86 vs 晨星 1947300000，比值 1.0112（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.12%：我们 1969197487.86 vs 晨星 1947300000（1-3%）"
     },
     {
       "ticker": "600276",
@@ -19564,8 +18995,8 @@
       "mstarValue": 1733870000,
       "ratio": 1.0269137210517514,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1780534893.52 vs 晨星 1733870000，比值 1.0269（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 2.69%：我们 1780534893.52 vs 晨星 1733870000（1-3%）"
     },
     {
       "ticker": "000858",
@@ -19616,8 +19047,8 @@
       "mstarValue": 1013800000,
       "ratio": 1.016705582235155,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1030736119.27 vs 晨星 1013800000，比值 1.0167（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.67%：我们 1030736119.27 vs 晨星 1013800000（1-3%）"
     },
     {
       "ticker": "603288",
@@ -19668,8 +19099,8 @@
       "mstarValue": 1555250000,
       "ratio": 1.013489505989391,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1576229554.19 vs 晨星 1555250000，比值 1.0135（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.35%：我们 1576229554.19 vs 晨星 1555250000（1-3%）"
     },
     {
       "ticker": "603288",
@@ -19837,8 +19268,8 @@
       "mstarValue": 3888620000,
       "ratio": 1.1439629057004423,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 4448437034.364854 vs 晨星 3888620000，比值 1.1440（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 4448437034.364854 vs 晨星 3888620000，比值 1.1440（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "688981",
@@ -20513,8 +19944,8 @@
       "mstarValue": 36517220000,
       "ratio": 1.0226301180648472,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 37343609000 vs 晨星 36517220000，比值 1.0226（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 2.26%：我们 37343609000 vs 晨星 36517220000（1-3%）"
     },
     {
       "ticker": "002594",
@@ -20591,8 +20022,8 @@
       "mstarValue": 96291750000,
       "ratio": 1.0110914797996713,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 97359768000 vs 晨星 96291750000，比值 1.0111（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.11%：我们 97359768000 vs 晨星 96291750000（1-3%）"
     },
     {
       "ticker": "002594",
@@ -20630,8 +20061,8 @@
       "mstarValue": 154710200000,
       "ratio": 1.0135585953608748,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 156807853000 vs 晨星 154710200000，比值 1.0136（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.36%：我们 156807853000 vs 晨星 154710200000（1-3%）"
     },
     {
       "ticker": "0168.HK",
@@ -20682,8 +20113,8 @@
       "mstarValue": 1601940000,
       "ratio": 1.0206173957826137,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1634967831 vs 晨星 1601940000，比值 1.0206（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 2.06%：我们 1634967831 vs 晨星 1601940000（1-3%）"
     },
     {
       "ticker": "0168.HK",
@@ -20734,8 +20165,8 @@
       "mstarValue": 1738000000,
       "ratio": 1.0242460621403913,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1780139656 vs 晨星 1738000000，比值 1.0242（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 2.42%：我们 1780139656 vs 晨星 1738000000（1-3%）"
     },
     {
       "ticker": "0168.HK",
@@ -20786,8 +20217,8 @@
       "mstarValue": 895370000,
       "ratio": 1.8067869752169494,
       "band": ">50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 1617742854 vs 晨星 895370000，比值 1.8068（>50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 1617742854 vs 晨星 895370000，比值 1.8068（>50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "0168.HK",
@@ -20838,8 +20269,8 @@
       "mstarValue": 1941300000,
       "ratio": 1.1028947457889045,
       "band": "10-50%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 2141049570 vs 晨星 1941300000，比值 1.1029（10-50%）"
+      "cause": "UNCLASSIFIED",
+      "evidence": "我们 2141049570 vs 晨星 1941300000，比值 1.1029（10-50%），规则未解释；该科目契约声明为 direct"
     },
     {
       "ticker": "0168.HK",
@@ -20890,8 +20321,8 @@
       "mstarValue": 2105489999.9999998,
       "ratio": 1.0701663137796904,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 2253224472 vs 晨星 2105489999.9999998，比值 1.0702（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 7.02%：我们 2253224472 vs 晨星 2105489999.9999998（3-10%）"
     },
     {
       "ticker": "0386.HK",
@@ -20978,7 +20409,7 @@
       "metric": "CapEx",
       "year": 2021,
       "ourValue": null,
-      "mstarValue": 1478000000,
+      "mstarValue": 127965000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -21082,7 +20513,7 @@
       "metric": "CapEx",
       "year": 2022,
       "ourValue": null,
-      "mstarValue": 212000000,
+      "mstarValue": 153744000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -21160,7 +20591,7 @@
       "metric": "CapEx",
       "year": 2023,
       "ourValue": null,
-      "mstarValue": 5363000000,
+      "mstarValue": 152325000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -21251,7 +20682,7 @@
       "metric": "CapEx",
       "year": 2024,
       "ourValue": null,
-      "mstarValue": 1864000000,
+      "mstarValue": 119144000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -21342,7 +20773,7 @@
       "metric": "CapEx",
       "year": 2025,
       "ourValue": null,
-      "mstarValue": 1241000000,
+      "mstarValue": 115497000000,
       "ratio": null,
       "band": "n/a",
       "cause": "EXTRACTION_MISSING",
@@ -21410,8 +20841,8 @@
       "mstarValue": 370340000,
       "ratio": 1.0785224388399848,
       "band": "3-10%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 399420000 vs 晨星 370340000，比值 1.0785（3-10%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 7.85%：我们 399420000 vs 晨星 370340000（3-10%）"
     },
     {
       "ticker": "0268.HK",
@@ -21475,8 +20906,8 @@
       "mstarValue": 189150000,
       "ratio": 1.0107850911974623,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 191190000 vs 晨星 189150000，比值 1.0108（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.08%：我们 191190000 vs 晨星 189150000（1-3%）"
     },
     {
       "ticker": "0268.HK",
@@ -21566,8 +20997,8 @@
       "mstarValue": 3987350000,
       "ratio": 1.0129799555745045,
       "band": "1-3%",
-      "cause": "DECLARED_AMBIGUOUS",
-      "evidence": "与其它科目共享晨星条目：我们 4039105625.86 vs 晨星 3987350000，比值 1.0130（1-3%）"
+      "cause": "RESIDUAL_SMALL",
+      "evidence": "同向微差 1.30%：我们 4039105625.86 vs 晨星 3987350000（1-3%）"
     },
     {
       "ticker": "0177.HK",
@@ -21898,19 +21329,6 @@
       "ticker": "1810.HK",
       "market": "hk",
       "form": "HK IFRS",
-      "metric": "CapEx",
-      "year": 2021,
-      "ourValue": 7169313000,
-      "mstarValue": 35370000,
-      "ratio": 202.6947413061917,
-      "band": ">50%",
-      "cause": "PERSISTENT_BIAS",
-      "evidence": "1810.HK 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 202.6947；本条 202.6947"
-    },
-    {
-      "ticker": "1810.HK",
-      "market": "hk",
-      "form": "HK IFRS",
       "metric": "DividendsPaid",
       "year": 2022,
       "ourValue": 255576000,
@@ -21945,19 +21363,6 @@
       "band": "10-50%",
       "cause": "PERSISTENT_BIAS",
       "evidence": "1810.HK 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 0.3165；本条 0.8476"
-    },
-    {
-      "ticker": "1810.HK",
-      "market": "hk",
-      "form": "HK IFRS",
-      "metric": "CapEx",
-      "year": 2022,
-      "ourValue": 5799570000,
-      "mstarValue": 17330000,
-      "ratio": 334.6549336410848,
-      "band": ">50%",
-      "cause": "PERSISTENT_BIAS",
-      "evidence": "1810.HK 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 202.6947；本条 334.6549"
     },
     {
       "ticker": "1810.HK",
@@ -22002,19 +21407,6 @@
       "ticker": "1810.HK",
       "market": "hk",
       "form": "HK IFRS",
-      "metric": "CapEx",
-      "year": 2023,
-      "ourValue": 6268900000,
-      "mstarValue": 72830000,
-      "ratio": 86.07579294246877,
-      "band": ">50%",
-      "cause": "PERSISTENT_BIAS",
-      "evidence": "1810.HK 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 202.6947；本条 86.0758"
-    },
-    {
-      "ticker": "1810.HK",
-      "market": "hk",
-      "form": "HK IFRS",
       "metric": "DividendsPaid",
       "year": 2024,
       "ourValue": 1790035000,
@@ -22054,19 +21446,6 @@
       "ticker": "1810.HK",
       "market": "hk",
       "form": "HK IFRS",
-      "metric": "CapEx",
-      "year": 2024,
-      "ourValue": 7297307000,
-      "mstarValue": 358490000,
-      "ratio": 20.355677982649446,
-      "band": ">50%",
-      "cause": "PERSISTENT_BIAS",
-      "evidence": "1810.HK 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 202.6947；本条 20.3557"
-    },
-    {
-      "ticker": "1810.HK",
-      "market": "hk",
-      "form": "HK IFRS",
       "metric": "DividendsPaid",
       "year": 2025,
       "ourValue": 3838507000,
@@ -22101,19 +21480,6 @@
       "band": ">50%",
       "cause": "PERSISTENT_BIAS",
       "evidence": "1810.HK 该科目 FY2021/2022/2023/2024/2025 共 5 年全部同向偏离，中位比值 0.3165；本条 0.2518"
-    },
-    {
-      "ticker": "1810.HK",
-      "market": "hk",
-      "form": "HK IFRS",
-      "metric": "CapEx",
-      "year": 2025,
-      "ourValue": 12769155000,
-      "mstarValue": 12780000,
-      "ratio": 999.1514084507043,
-      "band": ">50%",
-      "cause": "UNIT_SCALE",
-      "evidence": "比值 999.151408 ≈ 1000 倍量纲差"
     },
     {
       "ticker": "0941.HK",

@@ -27,6 +27,7 @@ npm run eval:golden                 # 100 家全量，raw 模式（诚实分）
 npm run eval:golden:both            # raw + calibrated 两轮
 npm run eval:golden:compare         # 全量并与上一次 raw 跑分基线对差
 npm run eval:golden:ledger          # 对最新一次 raw 跑分做归因，产出缺陷台账
+npm run eval:golden:mappings        # 反查每个科目实际对应晨星哪一行
 npm run backfill:derived-metrics    # 派生科目回填（默认 dry-run，加 --execute 落库）
 
 npx tsx scripts/eval-financials-against-morningstar.ts --ticker AAPL
@@ -57,6 +58,22 @@ npx tsx scripts/eval-financials-against-morningstar.ts --suite cn --years 5
 
 人工核实过、已定位到机制的问题写在 `comparability-overrides.json` 的 `verifiedFindings` 里，
 由脚本渲染进台账，与自动检出的工单分开呈现。
+
+## 映射反查：字典里的晨星 id 到底对不对
+
+`scripts/verify-morningstar-mappings.ts`（`npm run eval:golden:mappings`）回答一个此前从没人验证过的问题：
+字典给每个科目填的那个 `morningstarId`，实际数据真的对得上吗？
+
+它不推理，只做比对：拿我们的值去和快照里**每一行**比，按 Revenue/TotalAssets/NetIncome 标定单位量级后
+找实际命中率最高的行，再把结果和字典声明的 id 并排放出来。输出把每家公司分成四种情形：
+只有声明对得上、两者并列、只有别的行对得上、都对不上。**只有当「只有别的行对得上」占多数时才判定映射错**——
+并列说明这个样本分辨不出差别，不能算证据。
+
+它已经直接抓出两个错误映射：CapEx 原本指向的不是毛额资本开支（见台账 VF-05），以及 OperatingIncome
+比的是晨星标准化口径而非发行方申报口径（VF-06）。
+
+顺带一提，它支持 `--items "A+B"` 求和表达式，用来实测契约里的 `sum_of` 投影是否真的成立。
+那条现金合并规则就是这样被反向验住的：43 家里 28 家成立。
 
 ## 必须先守的两条口径
 

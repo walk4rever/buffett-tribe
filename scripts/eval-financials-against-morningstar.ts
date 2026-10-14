@@ -233,7 +233,11 @@ export const CORE_METRIC_MAP: MetricDef[] = [
   { key: "TotalCurrentAssets", label: "流动资产 (Current Assets)", mstarId: "IFBS000470", statement: "balanceSheet", sectors: ["industrial"] },
   { key: "TotalCurrentLiabilities", label: "流动负债 (Current Liabilities)", mstarId: "IFBS000500", statement: "balanceSheet", sectors: ["industrial"] },
   { key: "CashAndCashEquivalents", label: "现金及现金等价物 (Cash & Equiv)", mstarId: "IFBS000350", statement: "balanceSheet", sectors: ["industrial"] },
-  { key: "CapEx", label: "资本开支 (CapEx Net)", mstarId: "IFCF001330", statement: "cashFlow", signFlip: true, sectors: ["industrial"] },
+  // IFCF000061 is literally "Capital Expenditure, Reported". IFCF001330 is
+  // "Purchase/Sale and Disposal of Property, Plant and Equipment, Net" — a
+  // different figure that happens to coincide when there are no disposals, which
+  // is why it looked plausible for 25 companies while being 20x off for others.
+  { key: "CapEx", label: "资本开支 (CapEx)", mstarId: "IFCF000061", altMstarId: "IFCF001330", statement: "cashFlow", signFlip: true, sectors: ["industrial"] },
 
   // 3. 商业银行业专属科目
   { key: "NetInterestIncome", label: "利息净收入 (Net Interest Income)", mstarId: "IFIS001120", statement: "incomeStatement", sectors: ["bank"] },
