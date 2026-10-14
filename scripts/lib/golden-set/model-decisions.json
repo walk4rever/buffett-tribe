@@ -1,0 +1,71 @@
+{
+  "$comment": "模型扩展裁决。取值：需要-保留扩展 / 不需要-删除 / 待定。本文件由 scripts/audit-model-coverage.ts 补键，不覆盖已填的值。",
+  "items": {
+    "AssetsUnderManagement": {
+      "need": ""
+    },
+    "CashPaidForInvestments": {
+      "need": ""
+    },
+    "CashReceivedFromBorrowings": {
+      "need": ""
+    },
+    "CashReceivedFromSales": {
+      "need": ""
+    },
+    "CashRepaymentsOfBorrowings": {
+      "need": ""
+    },
+    "ConstructionInProgress": {
+      "need": ""
+    },
+    "ContractAssets": {
+      "need": ""
+    },
+    "EmployeeBenefitsPayable": {
+      "need": ""
+    },
+    "FairValueChangeIncome": {
+      "need": ""
+    },
+    "Goodwill": {
+      "need": ""
+    },
+    "InvestmentManagementFeeIncome": {
+      "need": ""
+    },
+    "LeaseLiabilities": {
+      "need": ""
+    },
+    "MinorityInterestIncome": {
+      "need": ""
+    },
+    "NetClientFlows": {
+      "need": ""
+    },
+    "NonCurrentLiabilitiesDueWithinOneYear": {
+      "need": ""
+    },
+    "NotesReceivable": {
+      "need": ""
+    },
+    "Prepayments": {
+      "need": ""
+    },
+    "RightOfUseAssets": {
+      "need": ""
+    },
+    "TaxesAndSurcharges": {
+      "need": ""
+    },
+    "TaxesPayable": {
+      "need": ""
+    },
+    "TotalDebt": {
+      "need": ""
+    },
+    "TotalLoans": {
+      "need": ""
+    }
+  }
+}

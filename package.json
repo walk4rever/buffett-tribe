@@ -19,6 +19,7 @@
     "eval:golden:compare": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/eval-financials-against-morningstar.ts --all --compare-baseline",
     "eval:golden:ledger": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/attribute-morningstar-diffs.ts",
     "eval:golden:mappings": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/verify-morningstar-mappings.ts",
+    "eval:golden:model-audit": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/audit-model-coverage.ts",
     "backfill:derived-metrics": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-derived-metrics.ts",
     "send:announcement": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/send-announcement.ts",
     "import:insight": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-insight.ts",

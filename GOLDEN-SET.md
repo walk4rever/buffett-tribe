@@ -28,6 +28,7 @@ npm run eval:golden:both            # raw + calibrated 两轮
 npm run eval:golden:compare         # 全量并与上一次 raw 跑分基线对差
 npm run eval:golden:ledger          # 对最新一次 raw 跑分做归因，产出缺陷台账
 npm run eval:golden:mappings        # 反查每个科目实际对应晨星哪一行
+npm run eval:golden:model-audit     # 模型覆盖审计：我们离「全量拷贝晨星」还差多远
 npm run backfill:derived-metrics    # 派生科目回填（默认 dry-run，加 --execute 落库）
 
 npx tsx scripts/eval-financials-against-morningstar.ts --ticker AAPL
@@ -74,6 +75,30 @@ npx tsx scripts/eval-financials-against-morningstar.ts --suite cn --years 5
 
 顺带一提，它支持 `--items "A+B"` 求和表达式，用来实测契约里的 `sum_of` 投影是否真的成立。
 那条现金合并规则就是这样被反向验住的：43 家里 28 家成立。
+
+## 模型审计：我们离「全量拷贝晨星」还差多远
+
+前提：**晨星的标准化报表模型就是我们的模型**。只有三条同时成立才允许扩展——晨星没定义这个科目、
+我们确实需要、并且能从源头拿到。缺任何一条，这个科目就不该留在模型里。
+
+`scripts/audit-model-coverage.ts`（`npm run eval:golden:model-audit`）把这条规则变成一张表。
+它读 100 份快照，取**行并集**当作晨星 schema（414 行），逐项判定：
+
+1. **晨星是否定义** —— 命中就给出 id 和 label；找不到则按名称相似度给候选并标注风险
+   （跨表匹配、净额/毛额口径不同）
+2. **源头能否拿到** —— 分 US / CN / HK 三列
+3. **我们是否需要** —— 机器判不了，留给人工填进 `model-decisions.json`
+
+两条容易把缺口算虚的纪律：
+
+- **按行性质分开**。414 行里混着容器行（报表/区块名）、晨星自己的 as-reported 平行轨、
+  和到期日阶梯表（DMBS* 合同义务/租赁负债分年）。只有 data 行才是真缺口。
+- **名称匹配要做词形还原**。否则「少数股东权益」会匹到现金流量表的
+  "Net Movement in Non-Controlling/Minority Interest"，而漏掉真正对得上的
+  "Non-Controlling/Minority Interests"。
+
+它同时抓四类问题：同一晨星行被我们多项认领（1:N 冲突）、晨星有而我们的 id 是空的（拷贝没做完）、
+晨星 schema 里我们完全没有的行、以及三个市场都取不到数的科目（建议删除）。
 
 ## 必须先守的两条口径
 
