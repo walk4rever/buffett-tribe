@@ -344,6 +344,18 @@ export async function backfillCompanyFinancialsFast(params: {
       }
     }
 
+    // 2.5 GrossProfit = Revenue - CostOfRevenue
+    if (!extractedValues.has("GrossProfit")) {
+      const rev = extractedValues.get("Revenue");
+      const cor = extractedValues.get("CostOfRevenue");
+      if (rev != null && cor != null) {
+        extractedValues.set("GrossProfit", {
+          value: rev.value - cor.value,
+          unit: rev.unit,
+        });
+      }
+    }
+
     // 3. NetInterestIncome = InterestIncome - InterestExpense (for banks / lenders)
     if (!extractedValues.has("NetInterestIncome")) {
       const ii = extractedValues.get("InterestIncome");
