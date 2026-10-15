@@ -99,6 +99,62 @@ describe("financial calculations", () => {
           cashAndEquivalents: 100,
         }),
       ).toBe(700);
+
+      // Using shortTermDebt + longTermDebt when totalDebt is not reported
+      expect(
+        calculateInvestedCapital({
+          totalEquity: 500,
+          shortTermDebt: 100,
+          longTermDebt: 200,
+          cashAndEquivalents: 100,
+        }),
+      ).toBe(700);
+    });
+
+    it("returns null when equity, cash, or debt information is missing rather than manufacturing zero", () => {
+      // Missing equity
+      expect(
+        calculateInvestedCapital({
+          totalEquity: null,
+          totalDebt: 300,
+          cashAndEquivalents: 100,
+        }),
+      ).toBeNull();
+
+      // Missing cash
+      expect(
+        calculateInvestedCapital({
+          totalEquity: 500,
+          totalDebt: 300,
+          cashAndEquivalents: null,
+        }),
+      ).toBeNull();
+
+      // No debt info at all
+      expect(
+        calculateInvestedCapital({
+          totalEquity: 500,
+          cashAndEquivalents: 100,
+        }),
+      ).toBeNull();
+
+      // Incomplete debt info (only short-term debt, long-term debt missing without totalDebt)
+      expect(
+        calculateInvestedCapital({
+          totalEquity: 500,
+          shortTermDebt: 100,
+          cashAndEquivalents: 100,
+        }),
+      ).toBeNull();
+
+      // Incomplete debt info (only long-term debt, short-term debt missing without totalDebt)
+      expect(
+        calculateInvestedCapital({
+          totalEquity: 500,
+          longTermDebt: 200,
+          cashAndEquivalents: 100,
+        }),
+      ).toBeNull();
     });
 
     it("calculates ROIC with standard tax rate and positive invested capital", () => {

@@ -341,36 +341,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
         )}
       </div>
 
-      {isInsurance ? (
-        <aside
-          className="cap-insurance-context"
-          aria-label="保险专项指标覆盖范围"
-        >
-          <span className="cap-insurance-context-label">
-            保险专项指标未接入
-          </span>
-          <p>
-            偿付能力充足率、内含价值与新业务价值率，暂不据此评价保险资本充足性。
-          </p>
-        </aside>
-      ) : null}
 
-      {!isInsurance &&
-      isShareholderReturnModel &&
-      allocationModel !== "financial_services_returns" ? (
-        <aside className="cap-insurance-context" aria-label="专项资本配置指标覆盖范围">
-          <span className="cap-insurance-context-label">
-            {allocationModel === "property_returns"
-              ? "地产专项指标未接入"
-              : "银行专项指标未接入"}
-          </span>
-          <p>
-            {allocationModel === "property_returns"
-              ? "FFO/AFFO 与 NAV 尚未接入，不以工业现金流或净利润替代。"
-              : "资产质量、资本充足率与风险加权资产尚未接入，暂以回购、分红、股数和 ROE 展示股东回报。"}
-          </p>
-        </aside>
-      ) : null}
 
       {allocationModel === "group_returns" ? (
         <aside className="cap-insurance-context" aria-label="集团资本配置口径">

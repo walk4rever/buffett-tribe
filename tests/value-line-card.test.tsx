@@ -57,17 +57,36 @@ describe("ValueLineBody", () => {
     const markup = renderValueLine("banks");
 
     expect(markup).toContain("市净率与 ROE");
-    expect(markup).toContain("资产质量与资本充足率");
+    expect(markup).not.toContain("尚未接入");
     expect(markup).not.toContain("价值参考线:");
     expect(markup).not.toContain("2x");
   });
 
-  it("labels property valuation inputs as unavailable instead of showing a P/E corridor", () => {
+  it("labels property valuation anchor without showing generic P/E corridor", () => {
     const markup = renderValueLine("real_estate");
 
     expect(markup).toContain("资产净值与 FFO");
-    expect(markup).toContain("FFO/AFFO 与 NAV");
+    expect(markup).not.toContain("尚未接入");
     expect(markup).not.toContain("价值参考线:");
+  });
+
+  it("omits Net Income CAGR and Free Cash Flow CAGR for REITs", () => {
+    const markup = renderValueLine("real_estate", {
+      financialModel: {
+        ...resolveFinancialModel("real_estate")!,
+        subModel: "reit_property",
+        subModelLabel: "持有型 REITs",
+      },
+    });
+
+    expect(markup).toContain("营收增长");
+    expect(markup).toContain("总资产增长");
+    expect(markup).toContain("物业资产组合扩张");
+    expect(markup).toContain("股东权益增长");
+    expect(markup).not.toContain("净利润增长");
+    expect(markup).not.toContain("自由现金流增长");
+    expect(markup).not.toContain("数据未接入");
+    expect(markup).not.toContain("专项指标未接入");
   });
 
   it("uses reported AUM instead of a missing industrial cash-conversion placeholder", () => {

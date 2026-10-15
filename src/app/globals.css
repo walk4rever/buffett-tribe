@@ -24558,7 +24558,7 @@ a.insight-entity-chip:hover {
 /* 4. The Buffett Quadrant: Precision Grid */
 .vl-card-quadrant {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 0.85rem;
   width: 100%;
   min-width: 0;

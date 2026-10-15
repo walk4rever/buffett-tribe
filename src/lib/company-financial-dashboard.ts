@@ -853,11 +853,23 @@ export function buildCompanyFinancialDashboard(
   const byYear = new Map(normalizedFinancials.map((row) => [row.year, row]));
   const ctx: MetricContext = { byYear };
   const meta = normalizeMeta(company.metadata);
+  const sectorModelReason =
+    meta.sectorModel && typeof meta.sectorModel === "object" && "reason" in meta.sectorModel
+      ? String((meta.sectorModel as { reason?: unknown }).reason ?? "")
+      : null;
+  const companyName =
+    typeof meta.nameZh === "string"
+      ? meta.nameZh
+      : typeof meta.nameEnShort === "string"
+        ? meta.nameEnShort
+        : null;
   const financialModel =
     resolveFinancialModel(company.sectorModelType, {
       sector: company.sector,
       industry: typeof meta.industry === "string" ? meta.industry : null,
       sic: meta.sic,
+      name: companyName,
+      reason: sectorModelReason,
     }) ?? getDefaultFinancialModel();
   const template = financialModel.template;
   const profile = profiles[template];

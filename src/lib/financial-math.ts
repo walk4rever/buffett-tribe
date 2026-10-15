@@ -103,14 +103,19 @@ export function calculateInvestedCapital(params: {
   longTermDebt?: number | null;
   cashAndEquivalents?: number | null;
 }): number | null {
-  if (params.totalEquity == null) return null;
-  const debt =
-    params.totalDebt ??
-    ((params.shortTermDebt != null || params.longTermDebt != null)
-      ? (params.shortTermDebt ?? 0) + (params.longTermDebt ?? 0)
-      : 0);
-  const cash = params.cashAndEquivalents ?? 0;
-  const ic = params.totalEquity + debt - cash;
+  if (params.totalEquity == null || params.cashAndEquivalents == null) return null;
+
+  let debt: number;
+  if (params.totalDebt != null) {
+    debt = params.totalDebt;
+  } else if (params.shortTermDebt != null && params.longTermDebt != null) {
+    debt = params.shortTermDebt + params.longTermDebt;
+  } else {
+    // Missing debt information: return null rather than assuming zero debt
+    return null;
+  }
+
+  const ic = params.totalEquity + debt - params.cashAndEquivalents;
   return ic;
 }
 

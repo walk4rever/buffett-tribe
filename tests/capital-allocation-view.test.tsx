@@ -56,7 +56,7 @@ describe("CapitalAllocationView", () => {
     expect(markup).toContain("资本配置与股东回报");
     expect(markup.match(/披露 2\/3 年/g)).toHaveLength(2);
     expect(markup).toContain("区间平均 ROE");
-    expect(markup).toContain("偿付能力充足率");
+    expect(markup).not.toContain("尚未接入");
     expect(markup).not.toContain("资本开支 / 经营现金流");
     expect(markup).not.toContain("经营现金流 (OCF)");
   });
@@ -92,7 +92,8 @@ describe("CapitalAllocationView", () => {
     const markup = renderCapitalAllocation("real_estate");
 
     expect(markup).toContain("资本配置与股东回报");
-    expect(markup).toContain("FFO/AFFO 与 NAV 尚未接入");
+    expect(markup).not.toContain("尚未接入");
+    expect(markup).not.toContain("FFO/AFFO 与 NAV 尚未接入");
     expect(markup).not.toContain("资本开支 / 经营现金流");
     expect(markup).not.toContain("经营现金流 (OCF)");
     expect(markup).not.toContain("偿付能力充足率");

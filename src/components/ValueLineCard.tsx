@@ -509,17 +509,12 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
     getDefaultFinancialModel();
   const isBalanceSheetFinancialModel =
     financialModel.template === "bank" || financialModel.template === "insurance";
+  const isRealEstate = financialModel.template === "real_estate";
+  const isReit =
+    isRealEstate && financialModel.subModel === "reit_property";
   const usesPeValuation = isPePrimaryValuationAnchor(
     financialModel.valuationAnchor,
   );
-  const valuationModelNote =
-    financialModel.template === "bank"
-      ? "银行专项资产质量与资本充足率尚未接入。"
-      : financialModel.template === "insurance"
-        ? "保险专项偿付能力与内含价值尚未接入。"
-        : financialModel.template === "real_estate"
-          ? "FFO/AFFO 与 NAV 尚未接入。"
-          : `${financialModel.valuationAnchorLabel}专项数据尚未接入。`;
   const curPricePoints = activeSecurity
     ? activeSecurity.pricePoints
     : data.pricePoints;
@@ -530,40 +525,22 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
     : [];
   const cashFlowMetricTitle = financialModel.showIndustrialCashFlow
     ? data.metric2Title ?? "真金白银造血力"
-    : financialModel.template === "bank"
-      ? "资产负债经营"
-      : financialModel.template === "insurance"
-        ? "保费与赔付"
-        : financialModel.template === "real_estate"
-          ? "物业经营回报"
-          : data.metric2Title ?? "管理资产规模";
+    : data.metric2Title ?? "";
   const cashFlowMetricBadge = financialModel.showIndustrialCashFlow
     ? data.metric2Badge ??
       (data.cashConversionRatio && data.cashConversionRatio >= 1
         ? "纯正造血"
         : "稳健现金")
-    : financialModel.template === "financial_services"
-      ? data.metric2Badge ?? ""
-      : "专项指标未接入";
+    : data.metric2Badge ?? "";
   const cashFlowMetricValue = financialModel.showIndustrialCashFlow
     ? data.metric2MainNum ??
       (data.cashConversionRatio != null
         ? `${data.cashConversionRatio}x`
         : "—")
-    : financialModel.template === "financial_services"
-      ? data.metric2MainNum ?? ""
-      : "—";
+    : data.metric2MainNum ?? "";
   const cashFlowMetricSubText = financialModel.showIndustrialCashFlow
     ? data.metric2SubText ?? "经营现金流 / 净利润"
-    : financialModel.template === "financial_services"
-      ? data.metric2SubText ?? ""
-      : financialModel.template === "bank"
-      ? "净息差、信用成本与资本充足率尚未接入"
-      : financialModel.template === "insurance"
-        ? "综合成本率、偿付能力与内含价值尚未接入"
-        : financialModel.template === "real_estate"
-          ? "FFO/AFFO 与 NAV 尚未接入"
-          : "";
+    : data.metric2SubText ?? "";
   const currencySymbol = getCurrencySymbol(data.market).symbol;
 
   const roeBadgeClass =
@@ -600,7 +577,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
         />
         {!usesPeValuation ? (
           <p className="val-model-note">
-            {valuationModelNote}估值锚：{financialModel.valuationAnchorLabel}；暂不绘制通用 P/E 参考线。
+            估值锚：{financialModel.valuationAnchorLabel}。本行业采用专属估值框架，暂不绘制通用 P/E 参考线。
           </p>
         ) : null}
         {data.cyclicalWarning ? (
@@ -634,9 +611,8 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
           </div>
         </div>
 
-        {/* Metric 2: Cash Conversion */}
-        {financialModel.template !== "financial_services" ||
-        data.metric2Applicable !== false ? (
+        {/* Metric 2: Cash Conversion or Specialized Operational Metric */}
+        {data.metric2Applicable && cashFlowMetricValue && cashFlowMetricValue !== "—" ? (
           <div className="vl-triad-box">
             <div className="vl-triad-head">
               <span className="vl-triad-title">{cashFlowMetricTitle}</span>
@@ -743,7 +719,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
             </div>
           )}
 
-          {/* Metric 2: EPS CAGR (financial) or Net Income CAGR (non-financial) */}
+          {/* Metric 2: EPS CAGR (financial), Net Income CAGR (non-financial non-REIT), or omitted for REIT */}
           {isBalanceSheetFinancialModel ? (
             <div className="vl-triad-box">
               <div className="vl-triad-head">
@@ -759,7 +735,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
                 <span className="vl-triad-sub-text">5年复合增速 (CAGR)</span>
               </div>
             </div>
-            ) : (
+            ) : !isReit ? (
             <div className="vl-triad-box">
               <div className="vl-triad-head">
                 <span className="vl-triad-title">净利润增长</span>
@@ -774,10 +750,10 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
                 <span className="vl-triad-sub-text">5年复合增速 (CAGR)</span>
               </div>
             </div>
-          )}
+          ) : null}
 
-          {/* Metric 3: Total Assets CAGR (financial) or Free Cash Flow CAGR (non-financial) */}
-          {isBalanceSheetFinancialModel ? (
+          {/* Metric 3: Total Assets CAGR (financial / real estate) or Free Cash Flow CAGR (industrial) */}
+          {isBalanceSheetFinancialModel || isRealEstate ? (
             <div className="vl-triad-box">
               <div className="vl-triad-head">
                 <span className="vl-triad-title">总资产增长</span>
@@ -789,7 +765,11 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
                 <span className="vl-triad-main-num">
                   {data.assetsCagrLabel ?? (data.assetsCagr5Y != null ? `${data.assetsCagr5Y > 0 ? "+" : ""}${data.assetsCagr5Y}%` : "—")}
                 </span>
-                <span className="vl-triad-sub-text">5年复合增速 (CAGR) · 业务规模扩张</span>
+                <span className="vl-triad-sub-text">
+                  {isRealEstate
+                    ? "5年复合增速 (CAGR) · 物业资产组合扩张"
+                    : "5年复合增速 (CAGR) · 业务规模扩张"}
+                </span>
               </div>
             </div>
           ) : financialModel.showIndustrialCashFlow ? (
@@ -805,19 +785,6 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
                   {data.freeCashFlowCagrLabel ?? (data.freeCashFlowCagr5Y != null ? `${data.freeCashFlowCagr5Y > 0 ? "+" : ""}${data.freeCashFlowCagr5Y}%` : "—")}
                 </span>
                 <span className="vl-triad-sub-text">5年复合增速 (CAGR) · 真金白银增长</span>
-              </div>
-            </div>
-            ) : financialModel.template !== "financial_services" ? (
-            <div className="vl-triad-box">
-              <div className="vl-triad-head">
-                <span className="vl-triad-title">专项经营指标</span>
-                <span className="vl-triad-badge vl-badge--neutral">数据未接入</span>
-              </div>
-              <div className="vl-triad-body">
-                <span className="vl-triad-main-num">—</span>
-                <span className="vl-triad-sub-text">
-                  {financialModel.valuationAnchorLabel}相关经营指标
-                </span>
               </div>
             </div>
           ) : null}

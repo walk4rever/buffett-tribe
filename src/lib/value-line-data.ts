@@ -681,8 +681,9 @@ export async function getValueLineData(
     cashConversionRatio != null ? `${cashConversionRatio}x` : "—";
   let metric2SubText = "经营现金流 / 净利润";
   const metric2Applicable =
-    financialModel.template !== "financial_services" ||
-    financialServicesCard.applicable;
+    financialModel.template === "financial_services"
+      ? financialServicesCard.applicable
+      : Boolean(financialModel.showIndustrialCashFlow);
 
   if (financialModel.template === "financial_services") {
     metric2Title = financialServicesCard.title;
@@ -691,25 +692,11 @@ export async function getValueLineData(
     metric2MainNum = financialServicesCard.mainNum;
     metric2SubText = financialServicesCard.subText;
   } else if (!financialModel.showIndustrialCashFlow) {
-    metric2Title =
-      financialModel.template === "bank"
-        ? "资产负债经营"
-        : financialModel.template === "insurance"
-          ? "保费与赔付"
-          : financialModel.template === "real_estate"
-            ? "物业经营回报"
-            : "";
-    metric2Badge = "专项指标未接入";
+    metric2Title = "";
+    metric2Badge = "";
     metric2BadgeClass = "vl-badge--neutral";
-    metric2MainNum = "—";
-    metric2SubText =
-      financialModel.template === "bank"
-        ? "净息差、信用成本与资本充足率尚未接入"
-        : financialModel.template === "insurance"
-          ? "综合成本率、偿付能力与内含价值尚未接入"
-          : financialModel.template === "real_estate"
-            ? "FFO/AFFO 与 NAV 尚未接入"
-            : "";
+    metric2MainNum = "";
+    metric2SubText = "";
   } else if (sectorModelType === "utilities") {
     metric2Title = "特许现金造血";
     metric2Badge = "特许现金奶牛";
@@ -838,8 +825,12 @@ export async function getValueLineData(
       revenueCagr5Y = Number((((lastA.revenue / firstA.revenue) ** (1 / span) - 1) * 100).toFixed(1));
     }
 
-    // Net Income CAGR (all companies)
-    if (firstA.netIncome != null && lastA.netIncome != null) {
+    // Net Income CAGR (all companies except REITs where GAAP depreciation distorts net income)
+    const isReit =
+      financialModel.template === "real_estate" &&
+      financialModel.subModel === "reit_property";
+
+    if (!isReit && firstA.netIncome != null && lastA.netIncome != null) {
       if (firstA.netIncome > 0 && lastA.netIncome > 0) {
         netIncomeCagr5Y = Number((((lastA.netIncome / firstA.netIncome) ** (1 / span) - 1) * 100).toFixed(1));
       } else if (firstA.netIncome <= 0 && lastA.netIncome > 0) {
@@ -856,8 +847,10 @@ export async function getValueLineData(
       epsCagr5Y = Number((((lastA.eps / firstA.eps) ** (1 / span) - 1) * 100).toFixed(1));
     }
 
-    // Total Assets CAGR (only for financial)
-    if (isFinancial && firstA.totalAssets != null && lastA.totalAssets != null && firstA.totalAssets > 0 && lastA.totalAssets > 0) {
+    // Total Assets CAGR (for financial and real estate)
+    const showsAssetsCagr =
+      isFinancial || financialModel.template === "real_estate";
+    if (showsAssetsCagr && firstA.totalAssets != null && lastA.totalAssets != null && firstA.totalAssets > 0 && lastA.totalAssets > 0) {
       assetsCagr5Y = Number((((lastA.totalAssets / firstA.totalAssets) ** (1 / span) - 1) * 100).toFixed(1));
     }
 

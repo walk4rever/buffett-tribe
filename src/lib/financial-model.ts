@@ -66,6 +66,8 @@ export type FinancialModelFallbackContext = {
   sector?: string | null;
   industry?: string | null;
   sic?: unknown;
+  name?: string | null;
+  reason?: string | null;
 };
 
 export type FinancialModelResolution = {
@@ -223,21 +225,22 @@ export function inferSubModel(
   context: FinancialModelFallbackContext,
 ): { subModel: FinancialSubModel | null; subModelLabel: string | null } {
   const industry = (context.industry ?? "").toLowerCase();
+  const text = `${industry} ${context.sector ?? ""} ${context.name ?? ""} ${context.reason ?? ""}`.toLowerCase();
 
   if (template === "real_estate") {
     if (
-      industry.includes("reit") ||
-      industry.includes("real estate investment trust") ||
-      industry.includes("property trust") ||
-      industry.includes("收租") ||
-      industry.includes("商业不动产")
+      text.includes("reit") ||
+      text.includes("real estate investment trust") ||
+      text.includes("property trust") ||
+      text.includes("收租") ||
+      text.includes("商业不动产")
     ) {
       return { subModel: "reit_property", subModelLabel: "持有型 REITs" };
     }
     if (
-      industry.includes("develop") ||
-      industry.includes("builder") ||
-      industry.includes("开发")
+      text.includes("develop") ||
+      text.includes("builder") ||
+      text.includes("开发")
     ) {
       return { subModel: "developer", subModelLabel: "地产开发商" };
     }
@@ -246,20 +249,21 @@ export function inferSubModel(
 
   if (template === "financial_services") {
     if (
-      industry.includes("asset management") ||
-      industry.includes("wealth management") ||
-      industry.includes("资管") ||
-      industry.includes("资产管理") ||
-      industry.includes("基金")
+      text.includes("asset management") ||
+      text.includes("wealth management") ||
+      text.includes("资管") ||
+      text.includes("资产管理") ||
+      text.includes("基金")
     ) {
       return { subModel: "asset_mgmt", subModelLabel: "资产管理与财富" };
     }
     if (
-      industry.includes("broker") ||
-      industry.includes("exchange") ||
-      industry.includes("securit") ||
-      industry.includes("证券") ||
-      industry.includes("交易所")
+      text.includes("broker") ||
+      text.includes("exchange") ||
+      text.includes("trading") ||
+      text.includes("securit") ||
+      text.includes("证券") ||
+      text.includes("交易所")
     ) {
       return { subModel: "broker_exchange", subModelLabel: "券商与交易所" };
     }
@@ -270,23 +274,24 @@ export function inferSubModel(
     const sic = String(context.sic ?? "");
     if (
       sic === "6331" ||
-      industry.includes("property") ||
-      industry.includes("casualty") ||
-      industry.includes("fire") ||
-      industry.includes("marine") ||
-      industry.includes("p&c") ||
-      industry.includes("财产险") ||
-      industry.includes("财险")
+      text.includes("property") ||
+      text.includes("casualty") ||
+      text.includes("fire") ||
+      text.includes("marine") ||
+      text.includes("p&c") ||
+      text.includes("财产险") ||
+      text.includes("财险")
     ) {
       return { subModel: "property_casualty", subModelLabel: "财产险与再保险" };
     }
     if (
       sic === "6311" ||
-      industry.includes("life") ||
-      industry.includes("health") ||
-      industry.includes("人寿") ||
-      industry.includes("寿险") ||
-      industry.includes("人身险")
+      text.includes("life") ||
+      text.includes("health") ||
+      text.includes("人寿") ||
+      text.includes("寿险") ||
+      text.includes("人身险") ||
+      text.includes("友邦")
     ) {
       return { subModel: "life_health", subModelLabel: "人身险与综合险" };
     }

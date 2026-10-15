@@ -1,0 +1,828 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": "2026-10-15",
+  "name": "Buffett-Tribe 30-Company Cross-Market & Multi-Template Golden Benchmark",
+  "description": "独立的产品全链路与官方年报真值验收集：覆盖 6 大财务模板、三大市场、冷热极端场景。双维验证：①年报数据核验；②产品链路与 6 大 Tab 验收。",
+  "meta": {
+    "totalCompanies": 30,
+    "templateBreakdown": {
+      "industrial": 8,
+      "bank": 5,
+      "insurance": 4,
+      "financial_services": 5,
+      "real_estate": 5,
+      "conglomerate": 3
+    },
+    "marketBreakdown": {
+      "us": 13,
+      "cn": 10,
+      "hk": 7
+    },
+    "coverageStatement": "覆盖三大市场中所有适用的模板组合（A 股无典型巴菲特式多元控股实业，多元控股聚焦美股与港股标杆）。"
+  },
+  "companies": [
+    {
+      "ticker": "AAPL",
+      "altTickers": ["AAPL"],
+      "name": "Apple Inc.",
+      "market": "us",
+      "template": "industrial",
+      "subModel": null,
+      "rationale": "巨额持续回购、多次拆股历史、净资产为负（资本配置极限用例）。",
+      "groundTruth": {
+        "fiscalYear": 2024,
+        "currency": "USD",
+        "sourceReport": "Apple 2024 Form 10-K Consolidated Statements of Operations & Balance Sheets",
+        "metrics": {
+          "Revenue": { "value": 391035000000, "toleranceRatio": 0.002 },
+          "NetIncome": { "value": 93736000000, "toleranceRatio": 0.002 },
+          "OperatingCashFlow": { "value": 118254000000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 364980000000, "toleranceRatio": 0.005 },
+          "TotalStockholdersEquity": { "value": 66879000000, "toleranceRatio": 0.005 },
+          "CommonStockSharesOutstanding": { "value": 15115802000, "toleranceRatio": 0.01 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "OperatingIncome", "NetIncome", "OperatingCashFlow"],
+        "forbiddenDashboardRows": ["LoansAndAdvances", "NetInterestMargin", "AUM", "ContractLiabilities"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "MSFT",
+      "altTickers": ["MSFT"],
+      "name": "MICROSOFT CORP",
+      "market": "us",
+      "template": "industrial",
+      "subModel": null,
+      "rationale": "高毛利软件平台、极充沛净现金。",
+      "groundTruth": {
+        "fiscalYear": 2024,
+        "currency": "USD",
+        "sourceReport": "Microsoft 2024 Form 10-K Income Statement & Balance Sheet",
+        "metrics": {
+          "Revenue": { "value": 245122000000, "toleranceRatio": 0.002 },
+          "NetIncome": { "value": 88136000000, "toleranceRatio": 0.002 },
+          "OperatingCashFlow": { "value": 118548000000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 512163000000, "toleranceRatio": 0.005 },
+          "TotalStockholdersEquity": { "value": 268460000000, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "GrossProfit", "OperatingIncome", "NetIncome"],
+        "forbiddenDashboardRows": ["LoansAndAdvances", "ClaimsRatio", "AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "CAT",
+      "altTickers": ["CAT"],
+      "name": "CATERPILLAR INC",
+      "market": "us",
+      "template": "industrial",
+      "subModel": null,
+      "rationale": "强周期制造重工，曾发生营业成本抓取错位千分之一（冷门硬核防线）。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "USD",
+        "sourceReport": "Caterpillar 2023 Form 10-K Consolidated Financial Statements",
+        "metrics": {
+          "Revenue": { "value": 67060000000, "toleranceRatio": 0.002 },
+          "CostOfRevenue": { "value": 46522000000, "toleranceRatio": 0.005 },
+          "OperatingIncome": { "value": 13038000000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 10335000000, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "CostOfRevenue", "OperatingIncome"],
+        "forbiddenDashboardRows": ["LoansAndAdvances", "NetInterestMargin"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "NEE",
+      "altTickers": ["NEE"],
+      "name": "NEXTERA ENERGY INC",
+      "market": "us",
+      "template": "industrial",
+      "subModel": null,
+      "rationale": "公用事业重资产、高负债运营典型。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "USD",
+        "sourceReport": "NextEra Energy 2023 Form 10-K",
+        "metrics": {
+          "Revenue": { "value": 28114000000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 7310000000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 177699000000, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "OperatingIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["LoansAndAdvances", "AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "600519",
+      "altTickers": ["600519.SS"],
+      "name": "贵州茅台酒股份有限公司",
+      "market": "cn",
+      "template": "industrial",
+      "subModel": null,
+      "rationale": "超高毛利（90%+）、无有息债、高分红、零回购（A股消费标杆）。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "贵州茅台 2023 年年度报告合并财务报表",
+        "metrics": {
+          "Revenue": { "value": 147693604994, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 74734076000, "toleranceRatio": 0.002 },
+          "OperatingCashFlow": { "value": 66592288000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 272710173000, "toleranceRatio": 0.005 },
+          "ShareholdersEquity": { "value": 215668571607, "toleranceRatio": 0.005 },
+          "CommonStockSharesOutstanding": { "value": 1256197800, "toleranceRatio": 0.001 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "CostOfRevenue", "GrossProfit", "OperatingIncome"],
+        "forbiddenDashboardRows": ["LoansAndAdvances", "AUM", "ContractLiabilities"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "300750",
+      "altTickers": ["300750.SZ"],
+      "name": "宁德时代新能源科技股份有限公司",
+      "market": "cn",
+      "template": "industrial",
+      "subModel": null,
+      "rationale": "高端制造、高 CapEx、产业链上下游占款模式。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "宁德时代 2023 年年度报告",
+        "metrics": {
+          "Revenue": { "value": 400917049000, "toleranceRatio": 0.002 },
+          "NetIncome": { "value": 44121245000, "toleranceRatio": 0.002 },
+          "OperatingCashFlow": { "value": 92826086000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 617173775000, "toleranceRatio": 0.005 },
+          "CommonStockSharesOutstanding": { "value": 4398591895, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "GrossProfit", "OperatingCashFlow"],
+        "forbiddenDashboardRows": ["LoansAndAdvances", "NetInterestMargin"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "600019",
+      "altTickers": ["600019.SS"],
+      "name": "宝钢股份",
+      "market": "cn",
+      "template": "industrial",
+      "subModel": null,
+      "rationale": "强周期钢铁材料，低估值、周期性亏损与恢复。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "宝钢股份 2023 年年度报告",
+        "metrics": {
+          "Revenue": { "value": 344500588000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 11944111000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 372778000000, "toleranceRatio": 0.005 },
+          "CommonStockSharesOutstanding": { "value": 22262000000, "toleranceRatio": 0.01 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "OperatingIncome"],
+        "forbiddenDashboardRows": ["LoansAndAdvances", "AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "0700.HK",
+      "altTickers": ["00700", "0700"],
+      "name": "TENCENT HOLDINGS LIMITED",
+      "market": "hk",
+      "template": "industrial",
+      "subModel": null,
+      "rationale": "腾讯：大额联营投资、回购+分红双轮、跨币种（CNY/HKD）报告对齐。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "腾讯控股 2023 年报 Consolidated Income Statement",
+        "metrics": {
+          "Revenue": { "value": 609015000000, "toleranceRatio": 0.002 },
+          "NetIncome": { "value": 115216000000, "toleranceRatio": 0.002 },
+          "OperatingCashFlow": { "value": 221962000000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 1546252000000, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "OperatingIncome", "NetIncome"],
+        "forbiddenDashboardRows": ["LoansAndAdvances", "NetInterestMargin"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "JPM",
+      "altTickers": ["JPM"],
+      "name": "JPMORGAN CHASE & CO",
+      "market": "us",
+      "template": "bank",
+      "subModel": null,
+      "rationale": "全能大行标杆，存贷款与非利息综合收益。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "USD",
+        "sourceReport": "JPMorgan Chase 2023 Form 10-K",
+        "metrics": {
+          "Revenue": { "value": 158104000000, "toleranceRatio": 0.002 },
+          "NetIncome": { "value": 49552000000, "toleranceRatio": 0.002 },
+          "TotalAssets": { "value": 3875393000000, "toleranceRatio": 0.005 },
+          "TotalStockholdersEquity": { "value": 327878000000, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets", "TotalStockholdersEquity"],
+        "forbiddenDashboardRows": ["GrossProfit", "CostOfRevenue", "OperatingCashFlow", "AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": false,
+        "capitalAllocationMode": "dividend_only"
+      }
+    },
+    {
+      "ticker": "USB",
+      "altTickers": ["USB"],
+      "name": "US BANCORP \\DE\\",
+      "market": "us",
+      "template": "bank",
+      "subModel": null,
+      "rationale": "美股纯区域零售信贷银行（冷门纯存贷业务，无毛利）。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "USD",
+        "sourceReport": "U.S. Bancorp 2023 Form 10-K",
+        "metrics": {
+          "Revenue": { "value": 28135000000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 5440000000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 663493000000, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["GrossProfit", "CostOfRevenue", "AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": false,
+        "capitalAllocationMode": "dividend_only"
+      }
+    },
+    {
+      "ticker": "600036",
+      "altTickers": ["600036.SS"],
+      "name": "招商银行股份有限公司",
+      "market": "cn",
+      "template": "bank",
+      "subModel": null,
+      "rationale": "零售之王，高净息差，资产质量与拨备指标验证。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "招商银行 2023 年年度报告",
+        "metrics": {
+          "Revenue": { "value": 339123000000, "toleranceRatio": 0.002 },
+          "NetIncome": { "value": 146602000000, "toleranceRatio": 0.002 },
+          "TotalAssets": { "value": 11028483000000, "toleranceRatio": 0.005 },
+          "CommonStockSharesOutstanding": { "value": 25219845601, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["GrossProfit", "CostOfRevenue", "AUM", "ContractLiabilities"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": false,
+        "capitalAllocationMode": "dividend_only"
+      }
+    },
+    {
+      "ticker": "601398",
+      "altTickers": ["601398.SS"],
+      "name": "工商银行",
+      "market": "cn",
+      "template": "bank",
+      "subModel": null,
+      "rationale": "国有特大行，巨人体量存贷款，账面权益资产比测试（与 CET1 解耦）。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "工商银行 2023 年年度报告",
+        "metrics": {
+          "Revenue": { "value": 843070000000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 363993000000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 44697079000000, "toleranceRatio": 0.005 },
+          "CommonStockSharesOutstanding": { "value": 356406257089, "toleranceRatio": 0.01 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["GrossProfit", "AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": false,
+        "capitalAllocationMode": "dividend_only"
+      }
+    },
+    {
+      "ticker": "2388.HK",
+      "altTickers": ["02388", "2388"],
+      "name": "BOC HONG KONG (HOLDINGS) LIMITED",
+      "market": "hk",
+      "template": "bank",
+      "subModel": null,
+      "rationale": "港股成熟商业银行体系，高派息与信贷周期。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "中银香港 2023 年报 (原币 HKD 65.498B / 32.723B / 3868.7B，东方财富港股财报折算人民币)",
+        "metrics": {
+          "Revenue": { "value": 59355597560, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 29654237060, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 3505968530260, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["GrossProfit", "CostOfRevenue", "AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": false,
+        "capitalAllocationMode": "dividend_only"
+      }
+    },
+    {
+      "ticker": "PGR",
+      "altTickers": ["PGR"],
+      "name": "PROGRESSIVE CORP/OH/",
+      "market": "us",
+      "template": "insurance",
+      "subModel": "property_casualty",
+      "rationale": "美股纯财产险（P&C）标杆，验证生效专属赔付率（ClaimsRatio）。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "USD",
+        "sourceReport": "Progressive Corp 2023 Form 10-K",
+        "metrics": {
+          "Revenue": { "value": 62145000000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 3902000000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 88725000000, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["GrossProfit", "LoansAndAdvances", "AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": false,
+        "capitalAllocationMode": "dividend_only"
+      }
+    },
+    {
+      "ticker": "MET",
+      "altTickers": ["MET"],
+      "name": "METLIFE INC",
+      "market": "us",
+      "template": "insurance",
+      "subModel": "life_health",
+      "rationale": "典型寿险，验证严格屏蔽财险专属赔付率，测试准备金负债与浮存金。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "USD",
+        "sourceReport": "MetLife 2023 Form 10-K",
+        "metrics": {
+          "Revenue": { "value": 66928000000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 1403000000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 687640000000, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["GrossProfit", "ClaimsRatio", "LoansAndAdvances", "AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": false,
+        "capitalAllocationMode": "dividend_only"
+      }
+    },
+    {
+      "ticker": "601318",
+      "altTickers": ["601318.SS"],
+      "name": "中国平安保险(集团)股份有限公司",
+      "market": "cn",
+      "template": "insurance",
+      "subModel": null,
+      "rationale": "综合金融与人身险，浮存金与投资收益双轮驱动。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "中国平安 2023 年年度报告",
+        "metrics": {
+          "Revenue": { "value": 913789000000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 85665000000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 11583417000000, "toleranceRatio": 0.005 },
+          "CommonStockSharesOutstanding": { "value": 18210234607, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["GrossProfit", "CostOfRevenue", "AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": false,
+        "capitalAllocationMode": "dividend_only"
+      }
+    },
+    {
+      "ticker": "1299.HK",
+      "altTickers": ["01299", "1299"],
+      "name": "AIA Group Limited",
+      "market": "hk",
+      "template": "insurance",
+      "subModel": "life_health",
+      "rationale": "跨国纯寿险巨头，新业务价值与内含价值典型，屏蔽财险赔付率。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "AIA Group 2023 年报 (原币 USD 24.209B / 3.764B / 286.2B，东方财富港股财报折算人民币)",
+        "metrics": {
+          "Revenue": { "value": 210604084500, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 26659282800, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 2027911581300, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["GrossProfit", "ClaimsRatio", "AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": false,
+        "capitalAllocationMode": "dividend_only"
+      }
+    },
+    {
+      "ticker": "BX",
+      "altTickers": ["BX"],
+      "name": "Blackstone Inc.",
+      "market": "us",
+      "template": "financial_services",
+      "subModel": "asset_mgmt",
+      "rationale": "轻资产资管，核验 AUM 与平均管理费率。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "USD",
+        "sourceReport": "Blackstone Inc. 2023 Form 10-K",
+        "metrics": {
+          "Revenue": { "value": 8016076000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 1390904000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 41818000000, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["GrossProfit", "LoansAndAdvances", "ContractLiabilities"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "CME",
+      "altTickers": ["CME"],
+      "name": "CME GROUP INC.",
+      "market": "us",
+      "template": "financial_services",
+      "subModel": "broker_exchange",
+      "rationale": "交易平台，测试严禁强加 AUM 考核与费率。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "USD",
+        "sourceReport": "CME Group 2023 Form 10-K",
+        "metrics": {
+          "Revenue": { "value": 5589500000, "toleranceRatio": 0.002 },
+          "OperatingIncome": { "value": 3425700000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 3199200000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 182747000000, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "OperatingIncome", "NetIncome"],
+        "forbiddenDashboardRows": ["AUM", "GrossProfit", "LoansAndAdvances"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "600030",
+      "altTickers": ["600030.SS"],
+      "name": "中信证券",
+      "market": "cn",
+      "template": "financial_services",
+      "subModel": "broker_exchange",
+      "rationale": "综合券商投行，佣金、承销与自营投资收益。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "中信证券 2023 年年度报告",
+        "metrics": {
+          "Revenue": { "value": 60068000000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 19721000000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 1453359000000, "toleranceRatio": 0.005 },
+          "CommonStockSharesOutstanding": { "value": 14820546829, "toleranceRatio": 0.01 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["GrossProfit", "AUM", "ContractLiabilities"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": false,
+        "capitalAllocationMode": "dividend_only"
+      }
+    },
+    {
+      "ticker": "300059",
+      "altTickers": ["300059.SZ"],
+      "name": "东方财富",
+      "market": "cn",
+      "template": "financial_services",
+      "subModel": "broker_exchange",
+      "rationale": "零售互联网券商与公募基金代销双轮驱动（A股特色金融科技样本）。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "东方财富 2023 年年度报告",
+        "metrics": {
+          "Revenue": { "value": 11081000000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 8193000000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 239566000000, "toleranceRatio": 0.005 },
+          "CommonStockSharesOutstanding": { "value": 15857000000, "toleranceRatio": 0.01 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["GrossProfit", "LoansAndAdvances"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": false,
+        "capitalAllocationMode": "dividend_only"
+      }
+    },
+    {
+      "ticker": "0388.HK",
+      "altTickers": ["00388", "0388"],
+      "name": "Hong Kong Exchanges And Clearing Ltd.",
+      "market": "hk",
+      "template": "financial_services",
+      "subModel": "broker_exchange",
+      "rationale": "轻资产特许垄断交易平台，高净利率，非 AUM 逻辑。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "香港交易所 2023 年报 (原币 HKD 20.516B / 11.862B / 393.99B，东方财富港股财报折算人民币)",
+        "metrics": {
+          "Revenue": { "value": 18592009520, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 10749581640, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 309183233380, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["AUM", "GrossProfit", "LoansAndAdvances"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "SPG",
+      "altTickers": ["SPG"],
+      "name": "SIMON PROPERTY GROUP INC.",
+      "market": "us",
+      "template": "real_estate",
+      "subModel": "reit_property",
+      "rationale": "商业持有型 REIT，重资产折旧，测试投资性物业与 FFO/NAV。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "USD",
+        "sourceReport": "Simon Property Group 2023 Form 10-K",
+        "metrics": {
+          "Revenue": { "value": 5659102000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 2281424000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 31920000000, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["LoansAndAdvances", "AUM", "ClaimsRatio"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "PLD",
+      "altTickers": ["PLD"],
+      "name": "Prologis, Inc.",
+      "market": "us",
+      "template": "real_estate",
+      "subModel": "reit_property",
+      "rationale": "物流仓储 REIT，高分红派息率。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "USD",
+        "sourceReport": "Prologis, Inc. 2023 Form 10-K",
+        "metrics": {
+          "Revenue": { "value": 8023000000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 3058000000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 93081000000, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["LoansAndAdvances", "AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "000002",
+      "altTickers": ["000002.SZ"],
+      "name": "万科企业股份有限公司",
+      "market": "cn",
+      "template": "real_estate",
+      "subModel": "developer",
+      "rationale": "典型开发商，测试巨额合同负债预售款与净负债率，不套用 FFO。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "万科企业 2023 年年度报告",
+        "metrics": {
+          "Revenue": { "value": 465739000000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 12163000000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 1504850000000, "toleranceRatio": 0.005 },
+          "CommonStockSharesOutstanding": { "value": 11930709471, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["LoansAndAdvances", "AUM", "FFO"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "600048",
+      "altTickers": ["600048.SS"],
+      "name": "保利发展",
+      "market": "cn",
+      "template": "real_estate",
+      "subModel": "developer",
+      "rationale": "央企开发商，土地储备存货周期与预售负债。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "保利发展 2023 年年度报告",
+        "metrics": {
+          "Revenue": { "value": 346828000000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 12067000000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 1432100000000, "toleranceRatio": 0.005 },
+          "CommonStockSharesOutstanding": { "value": 11970443418, "toleranceRatio": 0.01 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["LoansAndAdvances", "AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "0016.HK",
+      "altTickers": ["00016", "0016"],
+      "name": "Sun Hung Kai Properties Limited",
+      "market": "hk",
+      "template": "real_estate",
+      "subModel": "developer",
+      "rationale": "港股龙头地产旗舰（开发+持有双轮），测试投资性物业与合同负债。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "新鸿基地产 2022/2023 年报 (原币 HKD 71.195B / 23.907B / 802.3B，东方财富港股财报折算人民币)",
+        "metrics": {
+          "Revenue": { "value": 65640366100, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 22041775860, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 743107582180, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["LoansAndAdvances", "AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "BRK.B",
+      "altTickers": ["BRK-B", "BRK.A", "BRK-A"],
+      "name": "BERKSHIRE HATHAWAY INC",
+      "market": "us",
+      "template": "conglomerate",
+      "subModel": null,
+      "rationale": "跨行业多元控股典范，测试 BPS 复合增长与 SOTP 逻辑。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "USD",
+        "sourceReport": "Berkshire Hathaway 2023 Form 10-K",
+        "metrics": {
+          "Revenue": { "value": 364482000000, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 96223000000, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 1069978000000, "toleranceRatio": 0.005 },
+          "ShareholdersEquity": { "value": 561263000000, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets", "ShareholdersEquity"],
+        "forbiddenDashboardRows": ["AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "0001.HK",
+      "altTickers": ["00001", "0001"],
+      "name": "CK HUTCHISON HOLDINGS LIMITED",
+      "market": "hk",
+      "template": "conglomerate",
+      "subModel": null,
+      "rationale": "李嘉诚多元控股（港口+零售+基建+电讯），测试控股折价与多元报表。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "长和 2023 年报 (原币 HKD 275.63B / 23.50B / 1157B，东方财富港股财报折算人民币)",
+        "metrics": {
+          "Revenue": { "value": 249731576500, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 21603378580, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 1050221076660, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    },
+    {
+      "ticker": "0019.HK",
+      "altTickers": ["00019", "0019"],
+      "name": "Swire Pacific Limited A",
+      "market": "hk",
+      "template": "conglomerate",
+      "subModel": null,
+      "rationale": "老牌多元实业控股（航空+地产+饮料），测试跨分部并表。",
+      "groundTruth": {
+        "fiscalYear": 2023,
+        "currency": "CNY",
+        "sourceReport": "太古股份 2023 年报 (原币 HKD 94.827B / 28.853B / 461.97B，东方财富港股财报折算人民币)",
+        "metrics": {
+          "Revenue": { "value": 85930499060, "toleranceRatio": 0.005 },
+          "NetIncome": { "value": 26147165660, "toleranceRatio": 0.005 },
+          "TotalAssets": { "value": 405761817440, "toleranceRatio": 0.005 }
+        }
+      },
+      "uiExpectations": {
+        "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
+        "forbiddenDashboardRows": ["AUM"],
+        "dupontApplicable": true,
+        "roicProtectionApplicable": true,
+        "capitalAllocationMode": "fcf_vs_returns"
+      }
+    }
+  ]
+}
