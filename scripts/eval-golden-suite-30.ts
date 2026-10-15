@@ -14,6 +14,8 @@
  *   npx tsx --env-file=.env.local scripts/eval-golden-suite-30.ts --market cn
  */
 
+import * as dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
 import * as fs from "node:fs";
 import * as path from "node:path";
 import db from "../src/lib/prisma";
@@ -257,16 +259,23 @@ async function evaluateCompany(company: BenchmarkCompany) {
     });
     const subModelInferred = resolvedModel?.subModel ?? null;
 
-    if (resolvedModel && resolvedModel.template !== company.template) {
-      uiDetails.push(`⚠️ [模板差异] 解析模板为 ${resolvedModel.template}，基准期望为 ${company.template}`);
+    if (!resolvedModel) {
+      uiPass = false;
+      uiDetails.push(`❌ [模板解析失败] 无法解析商业模式模板`);
+    } else if (resolvedModel.template !== company.template) {
+      uiPass = false;
+      uiDetails.push(`❌ [模板差异] 解析模板为 ${resolvedModel.template}，基准期望为 ${company.template}`);
     } else {
       uiDetails.push(`✅ [模板精准] 商业模式模板正确解析为 ${company.template}`);
     }
 
-    if (company.subModel && subModelInferred !== company.subModel) {
-      uiDetails.push(`⚠️ [子模型待优化] 推断为 ${subModelInferred}，基准期望为 ${company.subModel}`);
-    } else if (company.subModel) {
-      uiDetails.push(`✅ [子模型精准] 推断子模型为 ${subModelInferred}`);
+    if (company.subModel) {
+      if (subModelInferred !== company.subModel) {
+        uiPass = false;
+        uiDetails.push(`❌ [子模型错误] 推断为 ${subModelInferred}，基准期望为 ${company.subModel}`);
+      } else {
+        uiDetails.push(`✅ [子模型精准] 推断子模型为 ${subModelInferred}`);
+      }
     }
 
     // Tab 2: 财务看板
@@ -281,6 +290,19 @@ async function evaluateCompany(company: BenchmarkCompany) {
     );
 
     const activeRowKeys = new Set(dashboard.rows.map((r) => r.key));
+
+    // 检查必需指标行是否全部呈现
+    let allRequiredPresent = true;
+    for (const reqKey of company.uiExpectations.requiredDashboardRows) {
+      if (!activeRowKeys.has(reqKey)) {
+        uiPass = false;
+        allRequiredPresent = false;
+        uiDetails.push(`❌ [缺失必需指标行] 看板未渲染必需科目: ${reqKey}`);
+      }
+    }
+    if (allRequiredPresent) {
+      uiDetails.push(`✅ [必需指标齐全] 成功渲染了 ${company.uiExpectations.requiredDashboardRows.join(", ")}`);
+    }
 
     // 检查禁用行是否被彻底屏蔽（专业性防跨界污染）
     for (const forbiddenKey of company.uiExpectations.forbiddenDashboardRows) {

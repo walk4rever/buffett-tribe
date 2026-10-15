@@ -117,49 +117,66 @@
 
 ---
 
-### 第四阶段：批次追踪、精准回滚机制与存量清洗受控回填 (P1/P2)
+### 第四阶段：批次追踪、精准回滚机制与存量清洗受控回填 (P1/P2 标的全覆盖)
 
-#### 任务 4.1：增强 `backfill-derived-metrics.ts` 参数与能力
+> **标的范围**：库内全量 Phase 1 与 Phase 2 公司，共计 **3,678 家**（美股 1,678、A 股 926、港股 1,024）。  
+> **核心原则**：**存量有效法定数据严禁废弃**（现有 3,622 家合法定三大表保留，仅做 56 家断点补漏与缺失派生科目增补）；**不可回滚，严禁写入**（强制 `--batch-id`，严格定界防前缀碰撞）。
+
+#### 任务 4.1：增强 `backfill-derived-metrics.ts` 参数与性能安全
 * **涉及文件**：`scripts/backfill-derived-metrics.ts`
 * **具体动作**：
-  1. 增加 `--market <us|cn|hk>` 参数支持，支持按市场真实分批；
-  2. 增加 `--batch-id <string>` 参数支持，写入时在 `mappingRule` 附加 `|batch:<batchId>` 溯源标记；
-  3. 增加 `--dry-run` 预览统计输出（预估写入行数、涉及公司数、抽样详情）。
+  1. **参数解析加固**：增加 `--phase <1,2>`、`--market <us|cn|hk>`、`--dry-run`；若传入 `--execute`，强制要求显式提供 `--batch-id <string>`，否则抛错阻断；未知参数严格抛出错误拒绝静默吞并；
+  2. **批次标签定界**：写入 `mappingRule` 必须采用严格定界格式 `...|batch:<batchId>|`，杜绝 `contains` 匹配时发生前缀碰撞（如 `bf-1` 误伤 `bf-10`）；
+  3. **分批读取与短事务写入**：将 entity 查询拆解为 50 家/批的 chunk 获取，规避大型 `in: [...]` 导致的数据库连接关闭（P1017）；写入使用批量短事务 `upsertFinancialRows`（带 5s 超时保护），将数千次网络 roundtrip 压缩为数十次。
 
 #### 任务 4.2：编写精准回滚脚本与回滚单元测试
 * **新建脚本**：`scripts/rollback-batch-financials.ts`
 * **新建测试**：`tests/backfill-rollback.test.ts`
 * **具体动作**：
-  * 实现通过 `--batch-id <id>` 精准删除该批次新增记录；
-  * 编写单元测试验证安全回滚能力。
+  * 实现通过 `--batch-id <id>` 精准匹配 `|batch:<id>|` 定界标签；
+  * 提供 `--dry-run` 预览受影响的记录数、涉及 Entity 清单，必须人工确认后方可执行 `--execute`；
+  * 编写单元测试验证安全回滚能力与隔离性（不误伤其他批次数据）。
 
-#### 任务 4.3：执行存量错误股数定点清洗与分市场受控回填
-* **新建脚本**：`scripts/fix-polluted-shares.ts`
+#### 任务 4.3：基础法定财报 56 家缺漏标的定向补齐
+* **涉及文件**：`scripts/batch-backfill-phase12-financials.ts`
 * **具体动作**：
-  1. 定点清洗历史被“实收资本”污染的股数旧记录；
-  2. 分市场执行 Dry-run 抽验并带批次号回填：
+  * 提取库内财务记录为 0 或少于 20 行的 56 家 P1/P2 标的清单；
+  * 运行定向补录，自动套用最新的防实收资本股数污染与港币/人民币汇率校验逻辑，入库三大表基础事实。
+
+#### 任务 4.4：P1/P2 派生指标分市场受控回填
+* **执行步骤**：
+  1. 分市场先执行 Dry-run 抽验，核查可派生行数、缺失情况与样例：
      ```bash
-     npx tsx scripts/backfill-derived-metrics.ts --market us --execute --batch-id "bf-20261015-us"
-     npx tsx scripts/backfill-derived-metrics.ts --market cn --execute --batch-id "bf-20261015-cn"
-     npx tsx scripts/backfill-derived-metrics.ts --market hk --execute --batch-id "bf-20261015-hk"
+     npx tsx scripts/backfill-derived-metrics.ts --phase 1,2 --market us --dry-run
+     npx tsx scripts/backfill-derived-metrics.ts --phase 1,2 --market cn --dry-run
+     npx tsx scripts/backfill-derived-metrics.ts --phase 1,2 --market hk --dry-run
      ```
-  3. 运行 `eval-golden-suite-30.ts` 进行回归验收。
+  2. 抽验通过后，分市场带批次号依次执行受控落库：
+     ```bash
+     npx tsx scripts/backfill-derived-metrics.ts --phase 1,2 --market us --execute --batch-id "bf-p1p2-20261015-us"
+     npx tsx scripts/backfill-derived-metrics.ts --phase 1,2 --market cn --execute --batch-id "bf-p1p2-20261015-cn"
+     npx tsx scripts/backfill-derived-metrics.ts --phase 1,2 --market hk --execute --batch-id "bf-p1p2-20261015-hk"
+     ```
 
----
-
-### 第五阶段：Mini 机器核查与增量 Cron 飞轮激活 (P2)
-
-#### 任务 5.1：Mini 机器运行状态核查
+#### 任务 4.5：评测脚本加固与全链路回归验收
+* **涉及文件**：`scripts/eval-golden-suite-30.ts`
 * **具体动作**：
-  * SSH 登录 Mac mini，检查现有 crontab 与后台 node 进程，排查孤儿进程；
-  * 检查 `scripts/cron/hourly-priority-worker.sh` 最近日志。
+  1. 修复评测器假绿灯：模型缺失或模板不匹配时置 `uiPass = false`；增加 `requiredDashboardRows` 必需报表行硬断言；
+  2. 明确区分“未建档缺失”、“数值偏差”与“币种口径偏差”三类统计产物；
+  3. 执行 30 家黄金集回归与全套测试（`npx vitest run`），确保回填后全站数据与页面 100% 正常。
 
-#### 任务 5.2：单标的手动增量测试与自动化恢复
-* **具体动作**：
-  1. Mini 机器 `git pull` 同步最新代码；
-  2. 手动指定 1 家新公司执行单点抓取与建档（Phase 1）；
-  3. 核查新入库数据是否自动归属六大模板并具备正确子模型与派生标记；
-  4. 恢复 mini 上的 hourly priority worker 定时任务。
+#### 阶段四耗时预算与执行周期预估
+
+| 执行项 | 涉及范围 / 标的量 | 预期动作 | 预估耗时 |
+| :--- | :--- | :--- | :---: |
+| **代码与单测开发** | 任务 4.1 & 4.2 | 回填参数改造、回滚脚本、单元测试编写 | **15 - 20 分钟** |
+| **56 家基础财报补漏** | 56 家缺失 P1/P2 公司 | 官方三大表定向抓取与短事务写入 | **3 - 5 分钟** |
+| **美股 P1/P2 派生回填** | 1,678 家美股公司 | 50-chunk 分批读取 + 派生毛利/加权股数批量写入 | **1.5 - 2.5 分钟** |
+| **A 股 P1/P2 派生回填** | 926 家 A 股公司 | 分批读取 + 派生毛利批量写入 | **1.0 - 1.5 分钟** |
+| **港股 P1/P2 派生回填** | 1,024 家港股公司 | 分批读取 + 汇率/派生科目批量写入 | **1.0 - 2.0 分钟** |
+| **黄金集与全量回归** | 30 家黄金集 + Vitest 全集 | 运行 eval 脚本与 56 个测试文件 | **2 - 3 分钟** |
+| **合计纯执行耗时** | 3,678 家公司全链路 | 脚本与测试净运行时间 | **约 10 - 15 分钟** |
+| **合计端到端交付周期** | 完整第四阶段 | 含开发、单测、分批运行与验收复核 | **约 25 - 35 分钟** |
 
 ---
 
@@ -200,30 +217,37 @@ flowchart LR
 
 ## 五、批次追踪与精准回滚技术方案
 
-### 1. 批次写入机制（无须改动 Prisma Schema）
-利用现有 `Financial.mappingRule` 字符串字段存储批次标签：
-* 派生毛利写入格式：`mappingRule = "derived:Revenue - CostOfRevenue|batch:bf-20261015-v2"`
-* 派生股数写入格式：`mappingRule = "derived:NetIncome / EPS|batch:bf-20261015-v2"`
+#### 1. 批次写入机制（无须改动 Prisma Schema）
+利用现有 `Financial.mappingRule` 字符串字段存储定界批次标签，末尾必须带有定界符 `|`：
+* 派生毛利写入格式：`mappingRule = "derived:Revenue - CostOfRevenue|batch:bf-20261015-v2|"`
+* 派生股数写入格式：`mappingRule = "derived:NetIncome / EPS|batch:bf-20261015-v2|"`
 
 ### 2. 精准回滚实现逻辑 (`scripts/rollback-batch-financials.ts`)
 ```ts
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-export async function rollbackBatch(batchId: string) {
+export async function rollbackBatch(batchId: string, options: { dryRun?: boolean } = {}) {
   if (!batchId || batchId.trim() === "") {
     throw new Error("必须提供明确的 batchId，严禁全量清空！");
   }
-  const tag = `batch:${batchId}`;
+  // 采用两端封闭定界符，杜绝 'batch:bf-1' 误匹配 'batch:bf-10' 等前缀碰撞
+  const strictTag = `|batch:${batchId}|`;
   const count = await prisma.financial.count({
-    where: { mappingRule: { contains: tag } }
+    where: { mappingRule: { contains: strictTag } }
   });
-  console.log(`找到批次 [${batchId}] 相关的财务记录共 ${count} 行。准备安全回滚...`);
+  console.log(`找到批次 [${batchId}] 相关的派生财务记录共 ${count} 行。`);
+
+  if (options.dryRun) {
+    console.log(`[DRY-RUN] 预览安全，未执行删除。传入 --execute 确认回滚。`);
+    return { count, rolledBack: false };
+  }
 
   const result = await prisma.financial.deleteMany({
-    where: { mappingRule: { contains: tag } }
+    where: { mappingRule: { contains: strictTag } }
   });
-  console.log(`✅ 成功回滚批次 [${batchId}]，共删除 ${result.count} 行数据。未影响其他数据。`);
+  console.log(`✅ 成功回滚批次 [${batchId}]，共删除 ${result.count} 行新增派生数据。未影响任何官方原始数据。`);
+  return { count: result.count, rolledBack: true };
 }
 ```
 
@@ -242,18 +266,19 @@ export async function rollbackBatch(batchId: string) {
   * `npx vitest run tests/derived-metrics.test.ts` 全部通过
   * `npx vitest run tests/backfill-rollback.test.ts` 回滚测试全部通过
 - [ ] **门禁 3：数据防污染核验**
-  * 确认 A/H 股资产负债表“实收资本/股本”已移出期末发行股数映射
+  * 确认 A/H 股资产负债表“实收资本/股本”已移出期末发行股数映射（已全量审计通过，0 行污染）
   * 确认未采集的分红回购保持 `null`，无任何伪造零值写入
 - [ ] **门禁 4：30 家黄金测试集双轨验收**
-  * 30 家公司底层数据与官方年报 100% 对齐
-  * 30 家公司前台 6 大 Tab 打开正常（无白屏、无 NaN、无破损）
-- [ ] **门禁 5：受控分批回填执行**
-  * US、CN、HK 分市场 dry-run 抽样核对无误
-  * 带明确 `--batch-id` 执行分批写入，记录写入日志
+  * **当前基线状态**：库内 25 家在库标的 100% 通过 UI 验收（0 NaN、指标有效隔离、ROIC 防护通过）；13 家 100% 对齐官方年报真值；5 家待建档，12 家在库标的待财年增补与币种换算对齐。
+  * **最终放行标准**：30 家标的全量在库，UI 验收 100% 通过，年报真值 100% 对齐。
+- [ ] **门禁 5：受控分批回填执行 (P1/P2)**
+  * 回填脚本具备 `--phase`、`--market`、强制 `--batch-id` 与分批 chunk 读取能力；
+  * US、CN、HK 分市场 dry-run 抽样核对无误；
+  * 带明确 `--batch-id` 执行受控回填，记录各市场回填日志与写入行数。
 - [ ] **门禁 6：Mini 机器恢复验收**
-  * Mini 现有 crontab 与进程已核实无冲突
-  * 单公司增量测试建档成功，数据符合 6 模板新规
-  * Hourly Priority Worker 恢复运行，增量飞轮转动
+  * Mini 现有 crontab 与后台进程已做排查，无历史僵死进程；
+  * 单公司增量测试建档成功，数据符合 6 模板新规；
+  * Hourly Priority Worker 恢复运行，增量飞轮转动。
 
 ---
 
@@ -376,19 +401,32 @@ ssh mini "cd /Users/rafael/buffett-tribe && nohup npm run backfill:phase12-finan
   2. **写入事务粒度过大**：财务批量写入曾使用长事务，锁等待可能拖慢其他数据库请求。
   3. **Prisma 实例重复创建**：子脚本各自创建客户端会增加连接池压力。
 
-#### 5.2 紧急自愈操作
-若再次发生类似锁死卡顿：
-1. **优先方案（SQL Editor 杀锁）**：
-   在 Supabase 控制台的 SQL Editor 执行：
+#### 5.2 紧急自愈操作（精准排查与定点解除）
+若再次发生写锁冲突或查询挂起卡顿，**严禁无差别杀除所有活跃连接**（会误伤正常用户的 Web 访问请求），必须采用“先诊断阻塞者、再定点杀 PID”的安全流程：
+
+1. **第一步：诊断长时间占用行锁或事务的阻塞进程 (SQL Editor)**：
    ```sql
-   SELECT pg_terminate_backend(pid) 
+   SELECT 
+     pid, 
+     now() - xact_start AS duration, 
+     query, 
+     state, 
+     wait_event_type, 
+     wait_event 
    FROM pg_stat_activity 
-   WHERE state != 'idle' 
-     AND pid != pg_backend_pid() 
-     AND query NOT LIKE '%pg_stat_activity%';
+   WHERE (query LIKE '%Financial%' OR query LIKE '%INSERT%' OR query LIKE '%UPDATE%')
+     AND state != 'idle' 
+     AND pid != pg_backend_pid()
+   ORDER BY duration DESC;
    ```
-2. **彻底方案（重启项目）**：
-   在 Supabase Dashboard -> **Project Settings** -> **General** -> 页面底部的 **Restart project** 重启数据库，所有未提交事务会自动回滚。
+2. **第二步：定点终止特定阻塞进程**：
+   在核实具体的阻塞 `pid` 后，定点释放：
+   ```sql
+   -- 将 <BLOCKED_PID> 替换为上述诊断出的具体数字 PID
+   SELECT pg_terminate_backend(<BLOCKED_PID>);
+   ```
+3. **彻底自愈方案（仅在数据库完全失联时使用）**：
+   在 Supabase Dashboard -> **Project Settings** -> **General** -> 页面底部的 **Restart project** 重启数据库，所有未提交事务会自动安全回滚。
 
 #### 5.3 已实施的系统防护
 * **优雅退出**：批处理脚本捕获 `SIGINT` / `SIGTERM` 并向子进程组传递信号；收到停止信号后保留检查点，子脚本在 `finally` 中断开 Prisma。

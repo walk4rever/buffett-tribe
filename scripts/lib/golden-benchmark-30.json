@@ -71,7 +71,7 @@
         }
       },
       "uiExpectations": {
-        "requiredDashboardRows": ["Revenue", "GrossProfit", "OperatingIncome", "NetIncome"],
+        "requiredDashboardRows": ["Revenue", "GrossMargin", "OperatingIncome", "NetIncome"],
         "forbiddenDashboardRows": ["LoansAndAdvances", "ClaimsRatio", "AUM"],
         "dupontApplicable": true,
         "roicProtectionApplicable": true,
@@ -153,7 +153,7 @@
         }
       },
       "uiExpectations": {
-        "requiredDashboardRows": ["Revenue", "CostOfRevenue", "GrossProfit", "OperatingIncome"],
+        "requiredDashboardRows": ["Revenue", "CostOfRevenue", "GrossMargin", "OperatingIncome"],
         "forbiddenDashboardRows": ["LoansAndAdvances", "AUM", "ContractLiabilities"],
         "dupontApplicable": true,
         "roicProtectionApplicable": true,
@@ -181,7 +181,7 @@
         }
       },
       "uiExpectations": {
-        "requiredDashboardRows": ["Revenue", "GrossProfit", "OperatingCashFlow"],
+        "requiredDashboardRows": ["Revenue", "GrossMargin", "OperatingCashFlow"],
         "forbiddenDashboardRows": ["LoansAndAdvances", "NetInterestMargin"],
         "dupontApplicable": true,
         "roicProtectionApplicable": true,
@@ -263,7 +263,7 @@
       },
       "uiExpectations": {
         "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets", "TotalStockholdersEquity"],
-        "forbiddenDashboardRows": ["GrossProfit", "CostOfRevenue", "OperatingCashFlow", "AUM"],
+        "forbiddenDashboardRows": ["GrossMargin", "CostOfRevenue", "OperatingCashFlow", "AUM"],
         "dupontApplicable": true,
         "roicProtectionApplicable": false,
         "capitalAllocationMode": "dividend_only"
@@ -289,7 +289,7 @@
       },
       "uiExpectations": {
         "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
-        "forbiddenDashboardRows": ["GrossProfit", "CostOfRevenue", "AUM"],
+        "forbiddenDashboardRows": ["GrossMargin", "CostOfRevenue", "AUM"],
         "dupontApplicable": true,
         "roicProtectionApplicable": false,
         "capitalAllocationMode": "dividend_only"
@@ -316,7 +316,7 @@
       },
       "uiExpectations": {
         "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
-        "forbiddenDashboardRows": ["GrossProfit", "CostOfRevenue", "AUM", "ContractLiabilities"],
+        "forbiddenDashboardRows": ["GrossMargin", "CostOfRevenue", "AUM", "ContractLiabilities"],
         "dupontApplicable": true,
         "roicProtectionApplicable": false,
         "capitalAllocationMode": "dividend_only"
@@ -343,7 +343,7 @@
       },
       "uiExpectations": {
         "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
-        "forbiddenDashboardRows": ["GrossProfit", "AUM"],
+        "forbiddenDashboardRows": ["GrossMargin", "AUM"],
         "dupontApplicable": true,
         "roicProtectionApplicable": false,
         "capitalAllocationMode": "dividend_only"
@@ -369,7 +369,7 @@
       },
       "uiExpectations": {
         "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
-        "forbiddenDashboardRows": ["GrossProfit", "CostOfRevenue", "AUM"],
+        "forbiddenDashboardRows": ["GrossMargin", "CostOfRevenue", "AUM"],
         "dupontApplicable": true,
         "roicProtectionApplicable": false,
         "capitalAllocationMode": "dividend_only"
@@ -395,7 +395,7 @@
       },
       "uiExpectations": {
         "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
-        "forbiddenDashboardRows": ["GrossProfit", "LoansAndAdvances", "AUM"],
+        "forbiddenDashboardRows": ["GrossMargin", "LoansAndAdvances", "AUM"],
         "dupontApplicable": true,
         "roicProtectionApplicable": false,
         "capitalAllocationMode": "dividend_only"
@@ -421,7 +421,7 @@
       },
       "uiExpectations": {
         "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
-        "forbiddenDashboardRows": ["GrossProfit", "ClaimsRatio", "LoansAndAdvances", "AUM"],
+        "forbiddenDashboardRows": ["GrossMargin", "ClaimsRatio", "LoansAndAdvances", "AUM"],
         "dupontApplicable": true,
         "roicProtectionApplicable": false,
         "capitalAllocationMode": "dividend_only"
@@ -448,7 +448,7 @@
       },
       "uiExpectations": {
         "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
-        "forbiddenDashboardRows": ["GrossProfit", "CostOfRevenue", "AUM"],
+        "forbiddenDashboardRows": ["GrossMargin", "CostOfRevenue", "AUM"],
         "dupontApplicable": true,
         "roicProtectionApplicable": false,
         "capitalAllocationMode": "dividend_only"
@@ -474,7 +474,7 @@
       },
       "uiExpectations": {
         "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
-        "forbiddenDashboardRows": ["GrossProfit", "ClaimsRatio", "AUM"],
+        "forbiddenDashboardRows": ["GrossMargin", "ClaimsRatio", "AUM"],
         "dupontApplicable": true,
         "roicProtectionApplicable": false,
         "capitalAllocationMode": "dividend_only"
@@ -500,7 +500,7 @@
       },
       "uiExpectations": {
         "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
-        "forbiddenDashboardRows": ["GrossProfit", "LoansAndAdvances", "ContractLiabilities"],
+        "forbiddenDashboardRows": ["GrossMargin", "LoansAndAdvances", "ContractLiabilities"],
         "dupontApplicable": true,
         "roicProtectionApplicable": true,
         "capitalAllocationMode": "fcf_vs_returns"
@@ -527,7 +527,7 @@
       },
       "uiExpectations": {
         "requiredDashboardRows": ["Revenue", "OperatingIncome", "NetIncome"],
-        "forbiddenDashboardRows": ["AUM", "GrossProfit", "LoansAndAdvances"],
+        "forbiddenDashboardRows": ["AUM", "GrossMargin", "LoansAndAdvances"],
         "dupontApplicable": true,
         "roicProtectionApplicable": true,
         "capitalAllocationMode": "fcf_vs_returns"
@@ -554,7 +554,7 @@
       },
       "uiExpectations": {
         "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
-        "forbiddenDashboardRows": ["GrossProfit", "AUM", "ContractLiabilities"],
+        "forbiddenDashboardRows": ["GrossMargin", "AUM", "ContractLiabilities"],
         "dupontApplicable": true,
         "roicProtectionApplicable": false,
         "capitalAllocationMode": "dividend_only"
@@ -581,7 +581,7 @@
       },
       "uiExpectations": {
         "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
-        "forbiddenDashboardRows": ["GrossProfit", "LoansAndAdvances"],
+        "forbiddenDashboardRows": ["GrossMargin", "LoansAndAdvances"],
         "dupontApplicable": true,
         "roicProtectionApplicable": false,
         "capitalAllocationMode": "dividend_only"
@@ -607,7 +607,7 @@
       },
       "uiExpectations": {
         "requiredDashboardRows": ["Revenue", "NetIncome", "TotalAssets"],
-        "forbiddenDashboardRows": ["AUM", "GrossProfit", "LoansAndAdvances"],
+        "forbiddenDashboardRows": ["AUM", "GrossMargin", "LoansAndAdvances"],
         "dupontApplicable": true,
         "roicProtectionApplicable": true,
         "capitalAllocationMode": "fcf_vs_returns"
