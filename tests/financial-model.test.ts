@@ -8,12 +8,13 @@ import {
 import { SECTOR_MODEL_13_TYPES } from "@/lib/sector-classification";
 
 describe("financial model registry", () => {
-  it("defines exactly the five agreed base templates", () => {
+  it("defines exactly the six agreed base templates", () => {
     expect(FINANCIAL_MODEL_TEMPLATES).toEqual([
       "industrial",
       "bank",
       "insurance",
       "financial_services",
+      "real_estate",
       "conglomerate",
     ]);
   });
@@ -28,7 +29,7 @@ describe("financial model registry", () => {
       banks: "bank",
       insurance: "insurance",
       capital_markets: "financial_services",
-      real_estate: "industrial",
+      real_estate: "real_estate",
       energy_materials: "industrial",
       utilities: "industrial",
       telecommunications: "industrial",
@@ -41,10 +42,10 @@ describe("financial model registry", () => {
     }
   });
 
-  it("keeps property and cyclical distinctions as modifiers of the industrial template", () => {
+  it("keeps cyclical distinctions as modifiers of the industrial template while real_estate is independent", () => {
     expect(resolveFinancialModel("real_estate")).toMatchObject({
-      template: "industrial",
-      modifiers: ["real_estate"],
+      template: "real_estate",
+      modifiers: [],
       valuationAnchor: "nav_ffo",
       capitalAllocationModel: "property_returns",
     });
@@ -60,7 +61,7 @@ describe("financial model registry", () => {
     });
   });
 
-  it("uses distinct anchors and allocation rules for the five templates", () => {
+  it("uses distinct anchors and allocation rules for the templates", () => {
     expect(resolveFinancialModel("banks")).toMatchObject({
       template: "bank",
       valuationAnchor: "pb_roe",
@@ -77,6 +78,12 @@ describe("financial model registry", () => {
       template: "financial_services",
       valuationAnchor: "fee_earnings",
       capitalAllocationModel: "financial_services_returns",
+      showIndustrialCashFlow: false,
+    });
+    expect(resolveFinancialModel("real_estate")).toMatchObject({
+      template: "real_estate",
+      valuationAnchor: "nav_ffo",
+      capitalAllocationModel: "property_returns",
       showIndustrialCashFlow: false,
     });
     expect(resolveFinancialModel("conglomerate")).toMatchObject({
@@ -106,8 +113,8 @@ describe("financial model registry", () => {
         industry: "Real Estate Investment Trust",
       }),
     ).toMatchObject({
-      template: "industrial",
-      modifiers: ["real_estate"],
+      template: "real_estate",
+      subModel: "reit_property",
     });
     expect(
       resolveFinancialModel(null, {

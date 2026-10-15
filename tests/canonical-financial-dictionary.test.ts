@@ -86,3 +86,48 @@ describe("financial-services operating metrics", () => {
     expect(managementFees?.tagsCustom).not.toContain("ManagementFeeRevenue");
   });
 });
+
+describe("share count and capital isolation (anti-pollution)", () => {
+  it("strictly separates share count (units: shares/pure) from share capital money amount", () => {
+    const sharesItem = CANONICAL_FINANCIAL_DICTIONARY.find(
+      (item) => item.key === "CommonStockSharesOutstanding",
+    );
+    const sharesJson = dictionary.find(
+      (item) => item.key === "CommonStockSharesOutstanding",
+    );
+    const capitalItem = CANONICAL_FINANCIAL_DICTIONARY.find(
+      (item) => item.key === "ShareCapital",
+    );
+    const capitalJson = dictionary.find(
+      (item) => item.key === "ShareCapital",
+    );
+
+    expect(sharesItem).toBeDefined();
+    expect(sharesJson).toBeDefined();
+    expect(capitalItem).toBeDefined();
+    expect(capitalJson).toBeDefined();
+
+    // 1. CommonStockSharesOutstanding must never contain monetary unit candidates
+    expect(sharesItem?.unitCandidates).toEqual(["shares", "pure"]);
+    expect(sharesJson?.unitCandidates).toEqual(["shares", "pure"]);
+
+    // 2. CommonStockSharesOutstanding must not contain "实收资本" or "股本"
+    expect(sharesItem?.cnAliases).not.toContain("实收资本");
+    expect(sharesItem?.cnAliases).not.toContain("股本");
+    expect(sharesItem?.cnAliases).not.toContain("实收资本(或股本)");
+    expect(sharesItem?.cnAliases).not.toContain("实收资本（或股本）");
+    expect(sharesJson?.cnAliases).not.toContain("实收资本");
+
+    // 3. ShareCapital must contain monetary unit candidates and Chinese aliases
+    expect(capitalItem?.unitCandidates).toEqual(["USD", "CNY", "HKD"]);
+    expect(capitalItem?.cnAliases).toContain("实收资本");
+    expect(capitalItem?.cnAliases).toContain("股本");
+
+    // 4. Verify morningstarId IFBS003308 is mapped to ShareCapital, not shares
+    expect(sharesItem?.morningstarId).toBeUndefined();
+    expect(sharesJson?.morningstarId).toBeUndefined();
+    expect(capitalItem?.morningstarId).toBe("IFBS003308");
+    expect(capitalJson?.morningstarId).toBe("IFBS003308");
+  });
+});
+

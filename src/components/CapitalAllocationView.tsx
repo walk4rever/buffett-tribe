@@ -470,7 +470,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
               </div>
             </div>
 
-            <div className="cap-wf-connector">=</div>
+            <div className="cap-wf-connector">−</div>
 
             {/* Step 5: Cash dividends */}
             <div
@@ -496,7 +496,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
             {/* Step 6: FCF after disclosed distributions */}
             <div
               className="cap-wf-step-card cap-wf-step-card--retained"
-              title="仅为 FCF 扣除已披露回购与分红后的差额，不代表期末现金余额"
+              title="仅为 FCF 与已披露股东回报对比差额，不代表期末现金余额"
             >
               <div className="cap-wf-step-badge">6. 扣除股东分配后</div>
               <div className="cap-wf-step-val cap-wf-step-val--purple">
@@ -504,8 +504,20 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                   ? "—"
                   : `${currencySym}${formatUsdInYi(stats.fcfAfterDistributions)}`}
               </div>
-              <div className="cap-wf-step-name">FCF 减回购与分红</div>
-              <div className="cap-wf-step-sub">仅在数据完整时计算</div>
+              <div className="cap-wf-step-name">
+                {stats.distributionScope === "both"
+                  ? "FCF 减回购与分红"
+                  : stats.distributionScope === "dividend_only"
+                    ? "FCF 减已披露分红"
+                    : stats.distributionScope === "buyback_only"
+                      ? "FCF 减已披露回购"
+                      : "FCF 与股东回报对比"}
+              </div>
+              <div className="cap-wf-step-sub">
+                {stats.fcfAfterDistributions != null && stats.fcfAfterDistributions < 0
+                  ? "当期 FCF 未覆盖已披露股东回报"
+                  : "仅为 FCF 与已披露回报对比"}
+              </div>
             </div>
           </div>
         </div>

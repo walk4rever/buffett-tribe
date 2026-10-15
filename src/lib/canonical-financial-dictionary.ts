@@ -663,7 +663,8 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     "hkAliases": [
       "每股基本盈利"
     ],
-    "description": "不设晨星映射。晨星标准化报表没有基本每股收益这个数据点——快照 EpsAndWaso 区块里只有 IFIS101199 Reported Normalized Diluted EPS。此前误指向 IFIS000150，那是 Basic Weighted Average Shares Outstanding（股数），与每股收益不是一个概念。"
+    "description": "不设晨星映射。晨星标准化报表没有基本每股收益这个数据点——快照 EpsAndWaso 区块里只有 IFIS101199 Reported Normalized Diluted EPS。此前误指向 IFIS000150，那是 Basic Weighted Average Shares Outstanding（股数），与每股收益不是一个概念。",
+    "morningstarId": "IFIS101198"
   },
   {
     "key": "EPSDiluted",
@@ -847,7 +848,8 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     ],
     "hkAliases": [
       "其他应收款项"
-    ]
+    ],
+    "morningstarId": "IFBS002709"
   },
   {
     "key": "Inventory",
@@ -971,7 +973,8 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     "hkAliases": [
       "于联营公司之权益",
       "长期股权投资"
-    ]
+    ],
+    "morningstarId": "IFBS001320"
   },
   {
     "key": "InvestmentProperty",
@@ -995,7 +998,8 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     ],
     "hkAliases": [
       "投资物业"
-    ]
+    ],
+    "morningstarId": "IFBS100681"
   },
   {
     "key": "PropertyPlantEquipmentNet",
@@ -1336,7 +1340,8 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     ],
     "hkAliases": [
       "其他应付款项"
-    ]
+    ],
+    "morningstarId": "IFBS002867"
   },
   {
     "key": "NonCurrentLiabilitiesDueWithinOneYear",
@@ -1558,25 +1563,51 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
   },
   {
     "key": "CommonStockSharesOutstanding",
-    "nameZh": "实收资本 / 普通股期末总股本",
+    "nameZh": "普通股期末总股本 (股数)",
     "nameEn": "Common Stock Shares Outstanding",
     "statement": "balance_sheet_equity",
     "periodType": "instant",
     "unitCandidates": [
       "shares",
-      "pure",
-      "USD",
-      "CNY",
-      "HKD"
+      "pure"
     ],
     "tagsUsGaap": [
       "CommonStockSharesOutstanding",
-      "WeightedAverageNumberOfDilutedSharesOutstanding",
-      "CommonStockSharesIssued",
       "EntityCommonStockSharesOutstanding"
     ],
     "tagsIfrs": [
       "NumberOfSharesOutstanding"
+    ],
+    "cnAliases": [
+      "期末普通股股份总数",
+      "总股本(股)",
+      "期末发行在外普通股股数",
+      "期末股份总数"
+    ],
+    "hkAliases": [
+      "已发行普通股股数",
+      "已发行股本(股)",
+      "期末股份总数"
+    ]
+  },
+  {
+    "key": "ShareCapital",
+    "nameZh": "实收资本 / 普通股股本金额",
+    "nameEn": "Common Stock Capital Amount / Stated Capital",
+    "statement": "balance_sheet_equity",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "morningstarId": "IFBS003308",
+    "tagsUsGaap": [
+      "CommonStockValue",
+      "CommonStocksIncludingAdditionalPaidInCapital"
+    ],
+    "tagsIfrs": [
+      "IssuedCapital"
     ],
     "cnAliases": [
       "实收资本(或股本)",
@@ -1585,8 +1616,10 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "实收资本",
       "实收资本净额"
     ],
-    "hkAliases": [],
-    "morningstarId": "IFBS003308"
+    "hkAliases": [
+      "股本",
+      "已发行股本"
+    ]
   },
   {
     "key": "CapitalSurplus",
@@ -1692,7 +1725,8 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     ],
     "hkAliases": [
       "非控股权益"
-    ]
+    ],
+    "morningstarId": "IFBS001381"
   },
   {
     "key": "TotalEquity",
@@ -2655,15 +2689,13 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "CNY",
       "HKD"
     ],
-    "tagsUsGaap": [
-    ],
+    "tagsUsGaap": [],
     "tagsCustom": [
       "AssetsUnderManagement",
       "TotalAssetsUnderManagement",
-      "ClientAssetsUnderManagement",
+      "ClientAssetsUnderManagement"
     ],
-    "tagsIfrs": [
-    ],
+    "tagsIfrs": [],
     "cnAliases": [
       "管理资产规模",
       "资产管理规模",
@@ -2691,16 +2723,14 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "CNY",
       "HKD"
     ],
-    "tagsUsGaap": [
-    ],
+    "tagsUsGaap": [],
     "tagsCustom": [
       "NetClientFlows",
       "TotalNetClientFlows",
       "NetClientInflowsOutflows",
       "NetAssetFlows"
     ],
-    "tagsIfrs": [
-    ],
+    "tagsIfrs": [],
     "cnAliases": [
       "客户资产净流入",
       "客户净流入",
@@ -2727,14 +2757,12 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "CNY",
       "HKD"
     ],
-    "tagsUsGaap": [
-    ],
+    "tagsUsGaap": [],
     "tagsCustom": [
       "InvestmentManagementFeeRevenue",
       "AssetManagementFeeRevenue"
     ],
-    "tagsIfrs": [
-    ],
+    "tagsIfrs": [],
     "cnAliases": [
       "资产管理费收入",
       "基金管理费收入"

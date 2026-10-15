@@ -26,10 +26,12 @@ function renderDashboard(sectorModelType: string) {
 describe("CompanyFinancialDashboardComponent", () => {
   it("shows the same base template and modifier labels as the shared model", () => {
     const industrialMarkup = renderDashboard("industrial");
+    const energyMarkup = renderDashboard("energy_materials");
     const propertyMarkup = renderDashboard("real_estate");
 
     expect(industrialMarkup).toContain("工商业");
-    expect(propertyMarkup).toContain("工商业");
-    expect(propertyMarkup).toContain("地产与 REIT");
+    expect(energyMarkup).toContain("工商业");
+    expect(energyMarkup).toContain("能源与材料周期");
+    expect(propertyMarkup).toContain("房地产与 REITs");
   });
 });

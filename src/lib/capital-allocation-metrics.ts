@@ -35,6 +35,7 @@ export type CapitalAllocationStats = {
   completeFlowDividends: number | null;
   fcfAfterBuybacks: number | null;
   fcfAfterDistributions: number | null;
+  distributionScope: "both" | "buyback_only" | "dividend_only" | "none";
   capexPct: number | null;
   buybackPct: number | null;
   dividendPct: number | null;
@@ -105,10 +106,22 @@ export function computeCapitalAllocationStats(
     cumFcf != null && completeFlowBuybacks != null
       ? cumFcf - completeFlowBuybacks
       : null;
-  const fcfAfterDistributions =
-    cumFcf != null && completeFlowBuybacks != null && completeFlowDividends != null
-      ? cumFcf - completeFlowBuybacks - completeFlowDividends
-      : null;
+
+  let distributionScope: "both" | "buyback_only" | "dividend_only" | "none" = "none";
+  let fcfAfterDistributions: number | null = null;
+
+  if (cumFcf != null) {
+    if (completeFlowBuybacks != null && completeFlowDividends != null) {
+      distributionScope = "both";
+      fcfAfterDistributions = cumFcf - completeFlowBuybacks - completeFlowDividends;
+    } else if (completeFlowDividends != null && knownBuybacks.length === 0) {
+      distributionScope = "dividend_only";
+      fcfAfterDistributions = cumFcf - completeFlowDividends;
+    } else if (completeFlowBuybacks != null && knownDividends.length === 0) {
+      distributionScope = "buyback_only";
+      fcfAfterDistributions = cumFcf - completeFlowBuybacks;
+    }
+  }
 
   const capexPct =
     cumOcf != null && cumCapEx != null && cumOcf > 0
@@ -163,6 +176,7 @@ export function computeCapitalAllocationStats(
     completeFlowDividends,
     fcfAfterBuybacks,
     fcfAfterDistributions,
+    distributionScope,
     capexPct,
     buybackPct,
     dividendPct,

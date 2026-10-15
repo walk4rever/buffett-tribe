@@ -127,7 +127,7 @@ describe("buildCompanyFinancialDashboard", () => {
     const cases = [
       ["insurance", "insurance"],
       ["capital_markets", "financial_services"],
-      ["real_estate", "industrial"],
+      ["real_estate", "real_estate"],
       ["conglomerate", "conglomerate"],
     ] as const;
 
@@ -139,8 +139,7 @@ describe("buildCompanyFinancialDashboard", () => {
 
       expect(dashboard.template).toBe(template);
       if (sectorModelType === "real_estate") {
-        expect(dashboard.financialModel.modifiers).toEqual(["real_estate"]);
-        expect(dashboard.rows.map((row) => row.key)).not.toContain("ROE");
+        expect(dashboard.financialModel.modifiers).toEqual([]);
         expect(dashboard.rows.map((row) => row.key)).not.toContain("FCFMargin");
         expect(dashboard.rows.map((row) => row.key)).not.toContain("CashConversion");
         expect(dashboard.templateNote).toContain("FFO/AFFO");
@@ -256,8 +255,8 @@ describe("buildCompanyFinancialDashboard", () => {
       generalFinancials,
     );
 
-    expect(dashboard.template).toBe("industrial");
-    expect(dashboard.financialModel.modifiers).toEqual(["real_estate"]);
+    expect(dashboard.template).toBe("real_estate");
+    expect(dashboard.financialModel.modifiers).toEqual([]);
   });
 
   it("treats persisted legacy types as missing and uses industry metadata", () => {
@@ -279,11 +278,11 @@ describe("buildCompanyFinancialDashboard", () => {
     );
 
     expect(bankDashboard.template).toBe("bank");
-    expect(realEstateDashboard.template).toBe("industrial");
-    expect(realEstateDashboard.financialModel.modifiers).toEqual(["real_estate"]);
+    expect(realEstateDashboard.template).toBe("real_estate");
+    expect(realEstateDashboard.financialModel.modifiers).toEqual([]);
   });
 
-  it("maps all 13 persisted industries into exactly five analysis templates", () => {
+  it("maps all 13 persisted industries into the six analysis templates", () => {
     const expectedTemplates = {
       consumer_brand: "industrial",
       healthcare: "industrial",
@@ -293,7 +292,7 @@ describe("buildCompanyFinancialDashboard", () => {
       banks: "bank",
       insurance: "insurance",
       capital_markets: "financial_services",
-      real_estate: "industrial",
+      real_estate: "real_estate",
       energy_materials: "industrial",
       utilities: "industrial",
       telecommunications: "industrial",
@@ -315,7 +314,7 @@ describe("buildCompanyFinancialDashboard", () => {
 
   it("shows insurance premiums, claims and claims ratio when those inputs exist", () => {
     const dashboard = buildCompanyFinancialDashboard(
-      { sector: "Financials", metadata: {}, sectorModelType: "insurance" },
+      { sector: "Financials", metadata: { industry: "Property & Casualty Insurance" }, sectorModelType: "insurance" },
       [
         financialYear(2025, {
           NetPremiumsEarned: "1000000000",

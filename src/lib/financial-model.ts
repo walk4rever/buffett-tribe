@@ -8,17 +8,26 @@ export const FINANCIAL_MODEL_TEMPLATES = [
   "bank",
   "insurance",
   "financial_services",
+  "real_estate",
   "conglomerate",
 ] as const;
 
 export type FinancialTemplate = (typeof FINANCIAL_MODEL_TEMPLATES)[number];
+
+export type RealEstateSubModel = "reit_property" | "developer";
+export type FinancialServicesSubModel = "asset_mgmt" | "broker_exchange";
+export type InsuranceSubModel = "property_casualty" | "life_health";
+
+export type FinancialSubModel =
+  | RealEstateSubModel
+  | FinancialServicesSubModel
+  | InsuranceSubModel;
 
 export type FinancialModelModifier =
   | "consumer_brand"
   | "healthcare"
   | "software_platform"
   | "semiconductor_hardware"
-  | "real_estate"
   | "energy_materials"
   | "utilities"
   | "telecommunications";
@@ -63,6 +72,8 @@ export type FinancialModelResolution = {
   sectorModelType: SectorModelType13 | null;
   template: FinancialTemplate;
   templateLabel: string;
+  subModel?: FinancialSubModel | null;
+  subModelLabel?: string | null;
   modifiers: FinancialModelModifier[];
   modifierLabels: string[];
   valuationAnchor: FinancialValuationAnchor;
@@ -107,6 +118,13 @@ const templateDefinitions: Record<FinancialTemplate, TemplateDefinition> = {
     valuationAnchor: "fee_earnings",
     valuationAnchorLabel: "手续费收入与盈利",
     capitalAllocationModel: "financial_services_returns",
+    showIndustrialCashFlow: false,
+  },
+  real_estate: {
+    templateLabel: "房地产与 REITs",
+    valuationAnchor: "nav_ffo",
+    valuationAnchorLabel: "资产净值与 FFO",
+    capitalAllocationModel: "property_returns",
     showIndustrialCashFlow: false,
   },
   conglomerate: {
@@ -165,12 +183,7 @@ const sectorModelDefinitions: Record<SectorModelType13, SectorModelDefinition> =
     template: "financial_services",
   },
   real_estate: {
-    template: "industrial",
-    modifier: "real_estate",
-    valuationAnchor: "nav_ffo",
-    valuationAnchorLabel: "资产净值与 FFO",
-    capitalAllocationModel: "property_returns",
-    showIndustrialCashFlow: false,
+    template: "real_estate",
   },
   energy_materials: {
     template: "industrial",
@@ -200,11 +213,88 @@ const modifierLabels: Record<FinancialModelModifier, string> = {
   healthcare: "医药健康",
   software_platform: "软件与平台",
   semiconductor_hardware: "半导体与硬件",
-  real_estate: "地产与 REIT",
   energy_materials: "能源与材料周期",
   utilities: "受监管公用事业",
   telecommunications: "电信运营",
 };
+
+export function inferSubModel(
+  template: FinancialTemplate,
+  context: FinancialModelFallbackContext,
+): { subModel: FinancialSubModel | null; subModelLabel: string | null } {
+  const industry = (context.industry ?? "").toLowerCase();
+
+  if (template === "real_estate") {
+    if (
+      industry.includes("reit") ||
+      industry.includes("real estate investment trust") ||
+      industry.includes("property trust") ||
+      industry.includes("收租") ||
+      industry.includes("商业不动产")
+    ) {
+      return { subModel: "reit_property", subModelLabel: "持有型 REITs" };
+    }
+    if (
+      industry.includes("develop") ||
+      industry.includes("builder") ||
+      industry.includes("开发")
+    ) {
+      return { subModel: "developer", subModelLabel: "地产开发商" };
+    }
+    return { subModel: null, subModelLabel: null };
+  }
+
+  if (template === "financial_services") {
+    if (
+      industry.includes("asset management") ||
+      industry.includes("wealth management") ||
+      industry.includes("资管") ||
+      industry.includes("资产管理") ||
+      industry.includes("基金")
+    ) {
+      return { subModel: "asset_mgmt", subModelLabel: "资产管理与财富" };
+    }
+    if (
+      industry.includes("broker") ||
+      industry.includes("exchange") ||
+      industry.includes("securit") ||
+      industry.includes("证券") ||
+      industry.includes("交易所")
+    ) {
+      return { subModel: "broker_exchange", subModelLabel: "券商与交易所" };
+    }
+    return { subModel: null, subModelLabel: null };
+  }
+
+  if (template === "insurance") {
+    const sic = String(context.sic ?? "");
+    if (
+      sic === "6331" ||
+      industry.includes("property") ||
+      industry.includes("casualty") ||
+      industry.includes("fire") ||
+      industry.includes("marine") ||
+      industry.includes("p&c") ||
+      industry.includes("财产险") ||
+      industry.includes("财险")
+    ) {
+      return { subModel: "property_casualty", subModelLabel: "财产险与再保险" };
+    }
+    if (
+      sic === "6311" ||
+      industry.includes("life") ||
+      industry.includes("health") ||
+      industry.includes("人寿") ||
+      industry.includes("寿险") ||
+      industry.includes("人身险")
+    ) {
+      return { subModel: "life_health", subModelLabel: "人身险与综合险" };
+    }
+    return { subModel: null, subModelLabel: null };
+  }
+
+  return { subModel: null, subModelLabel: null };
+}
 
 function inferSectorModelType(
   context: FinancialModelFallbackContext,
@@ -263,11 +353,17 @@ export function resolveFinancialModel(
   const modifiers = sectorDefinition.modifier
     ? [sectorDefinition.modifier]
     : [];
+  const { subModel, subModelLabel } = inferSubModel(
+    sectorDefinition.template,
+    fallbackContext,
+  );
 
   return {
     sectorModelType: resolvedSectorType,
     template: sectorDefinition.template,
     ...templateDefinition,
+    subModel,
+    subModelLabel,
     modifiers,
     modifierLabels: modifiers.map((modifier) => modifierLabels[modifier]),
     valuationAnchor:

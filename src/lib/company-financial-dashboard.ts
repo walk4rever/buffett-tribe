@@ -1,7 +1,9 @@
 import { formatMoneyInYi } from "@/lib/currency";
 import {
   calculateFreeCashFlow,
+  calculateInvestedCapital,
   calculateReturnOnAverageBalance,
+  calculateROIC,
 } from "@/lib/financial-math";
 import { FINANCIAL_DATA_START_YEAR } from "@/lib/financial-period";
 import {
@@ -370,9 +372,9 @@ const metrics: MetricDef[] = [
   },
   {
     key: "EquityToAssets",
-    zhLabel: "权益 / 资产",
-    enLabel: "Equity / Assets",
-    hint: "股东权益 / 总资产；账面比例，不等同于监管资本充足率",
+    zhLabel: "账面权益资产比",
+    enLabel: "Book Equity / Assets",
+    hint: "股东权益 / 总资产；账面比例，不等同于监管资本充足率 (CET1)",
     kind: "percent",
     compute: (year, ctx) => ratioWithPositiveDenominator(
       value(ctx, year, "ShareholdersEquity"),
@@ -520,6 +522,63 @@ const metrics: MetricDef[] = [
       return Math.abs(claims) / premiums;
     },
   },
+  {
+    key: "ContractLiabilities",
+    zhLabel: "合同负债 / 预收款",
+    enLabel: "Contract Liabilities",
+    hint: "预售房款与客户合同负债",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "ContractLiabilities"),
+  },
+  {
+    key: "InvestmentProperty",
+    zhLabel: "投资性物业",
+    enLabel: "Investment Property",
+    hint: "为赚取租金或资本增值而持有的物业资产",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "InvestmentProperty"),
+  },
+  {
+    key: "Inventory",
+    zhLabel: "存货 / 开发成本",
+    enLabel: "Inventory",
+    hint: "存货总额（含拟开发土地与在建开发成本）",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "Inventory"),
+  },
+  {
+    key: "ROIC",
+    zhLabel: "ROIC",
+    enLabel: "Return on Invested Capital",
+    hint: "NOPAT / 期初期末平均投入资本；投入资本 ≤ 0 时保护为 N/A",
+    kind: "percent",
+    compute: (year, ctx) => {
+      const opInc = value(ctx, year, "OperatingIncome");
+      const tax = value(ctx, year, "IncomeTaxExpense");
+      const ebt = value(ctx, year, "TotalProfit") ?? value(ctx, year, "PretaxIncome");
+      const effectiveTaxRate = tax != null && ebt != null && ebt > 0 ? tax / ebt : null;
+      const currentIC = calculateInvestedCapital({
+        totalEquity: value(ctx, year, "ShareholdersEquity") ?? value(ctx, year, "TotalEquity"),
+        totalDebt: value(ctx, year, "TotalDebt"),
+        shortTermDebt: value(ctx, year, "ShortTermDebt"),
+        longTermDebt: value(ctx, year, "LongTermDebt"),
+        cashAndEquivalents: value(ctx, year, "CashAndCashEquivalents"),
+      });
+      const prevIC = calculateInvestedCapital({
+        totalEquity: value(ctx, year - 1, "ShareholdersEquity") ?? value(ctx, year - 1, "TotalEquity"),
+        totalDebt: value(ctx, year - 1, "TotalDebt"),
+        shortTermDebt: value(ctx, year - 1, "ShortTermDebt"),
+        longTermDebt: value(ctx, year - 1, "LongTermDebt"),
+        cashAndEquivalents: value(ctx, year - 1, "CashAndCashEquivalents"),
+      });
+      return calculateROIC({
+        operatingIncome: opInc,
+        effectiveTaxRate,
+        currentInvestedCapital: currentIC,
+        previousInvestedCapital: prevIC,
+      });
+    },
+  },
 ];
 
 const operatingKeys = [
@@ -631,6 +690,35 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
       "EquityToAssets",
     ],
   },
+  real_estate: {
+    note: "房地产与 REITs：商业物业关注物业资产与租金分红；开发商关注预售合同负债、存货与净负债率；专项 FFO/AFFO 待后续接入。",
+    rowKeys: [
+      "Revenue",
+      "RevenueGrowth",
+      "OperatingIncome",
+      "OperatingMargin",
+      "NetIncome",
+      "NetIncomeGrowth",
+      "ROE",
+      "OperatingCashFlow",
+      "CapEx",
+      "FreeCashFlow",
+      "ContractLiabilities",
+      "InvestmentProperty",
+      "Inventory",
+      "TotalAssets",
+      "TotalLiabilities",
+      "LiabilitiesToAssets",
+      "ShareholdersEquity",
+      "DividendsPaid",
+    ],
+    trendKeys: [
+      "RevenueGrowth",
+      "NetIncomeGrowth",
+      "ROE",
+      "LiabilitiesToAssets",
+    ],
+  },
   conglomerate: {
     note: "按合并报表计算，未拆分业务分部；FCF = OCF − |CapEx|。",
     rowKeys: [
@@ -677,24 +765,6 @@ const modifierProfiles: Partial<Record<FinancialModelModifier, ModifierProfile>>
   },
   semiconductor_hardware: {
     note: "行业观察：需结合产能利用率与行业周期解读当期盈利。",
-  },
-  real_estate: {
-    note: "FFO/AFFO 与 NAV 尚未接入，不以净利润替代。",
-    rowKeys: [
-      "Revenue",
-      "RevenueGrowth",
-      "NetIncome",
-      "NetIncomeGrowth",
-      "TotalAssets",
-      "TotalLiabilities",
-      "ShareholdersEquity",
-      "LiabilitiesToAssets",
-    ],
-    trendKeys: [
-      "RevenueGrowth",
-      "NetIncomeGrowth",
-      "LiabilitiesToAssets",
-    ],
   },
   energy_materials: {
     note: "行业观察：利润与现金流受商品价格影响，单年表现不代表周期中枢。",
@@ -791,12 +861,90 @@ export function buildCompanyFinancialDashboard(
     }) ?? getDefaultFinancialModel();
   const template = financialModel.template;
   const profile = profiles[template];
+  let rowKeys = profile.rowKeys;
+  let trendKeys = profile.trendKeys;
+  let baseTemplateNote = profile.note;
+
+  if (template === "financial_services") {
+    if (financialModel.subModel === "broker_exchange") {
+      rowKeys = rowKeys.filter(
+        (k) =>
+          k !== "AssetsUnderManagement" &&
+          k !== "NetClientFlows" &&
+          k !== "InvestmentManagementFeeIncome",
+      );
+      trendKeys = trendKeys.filter(
+        (k) =>
+          k !== "AssetsUnderManagement" &&
+          k !== "NetClientFlows" &&
+          k !== "InvestmentManagementFeeIncome",
+      );
+      baseTemplateNote =
+        "券商与交易所聚焦经纪/手续费佣金、自营投资收益与经营杠杆；不适用 AUM 资产管理规模考核。";
+    } else if (financialModel.subModel === "asset_mgmt") {
+      baseTemplateNote =
+        "资产管理与财富机构关注 AUM 资产规模、客户净流入与费率稳定性；ROE/ROA按平均余额。";
+    }
+  } else if (template === "insurance") {
+    if (financialModel.subModel === "life_health") {
+      rowKeys = rowKeys.filter((k) => k !== "ClaimsRatio");
+      trendKeys = trendKeys.filter((k) => k !== "ClaimsRatio");
+      baseTemplateNote =
+        "人身险核心受准备金计提与长期投资收益驱动；不适用单一当期赔付率考核，偿付能力与内含价值待后续接入。";
+    } else if (financialModel.subModel === "property_casualty") {
+      baseTemplateNote =
+        "财产险注重承保质量与赔付率；综合成本率与偿付能力指标待后续接入。";
+    }
+  } else if (template === "real_estate") {
+    if (financialModel.subModel === "developer") {
+      rowKeys = [
+        "Revenue",
+        "RevenueGrowth",
+        "OperatingIncome",
+        "OperatingMargin",
+        "NetIncome",
+        "NetIncomeGrowth",
+        "ROE",
+        "OperatingCashFlow",
+        "ContractLiabilities",
+        "Inventory",
+        "TotalAssets",
+        "TotalLiabilities",
+        "LiabilitiesToAssets",
+        "ShareholdersEquity",
+      ];
+      trendKeys = ["RevenueGrowth", "NetIncomeGrowth", "LiabilitiesToAssets", "ROE"];
+      baseTemplateNote =
+        "地产开发商核心关注预售合同负债、存货土地储备与资产负债率；受结算与拿地节奏影响，单年经营现金流波动较大。";
+    } else if (financialModel.subModel === "reit_property") {
+      rowKeys = [
+        "Revenue",
+        "RevenueGrowth",
+        "InvestmentProperty",
+        "NetIncome",
+        "NetIncomeGrowth",
+        "OperatingCashFlow",
+        "CapEx",
+        "FreeCashFlow",
+        "DividendsPaid",
+        "TotalAssets",
+        "TotalLiabilities",
+        "LiabilitiesToAssets",
+        "ShareholdersEquity",
+        "ROE",
+      ];
+      trendKeys = ["RevenueGrowth", "NetIncomeGrowth", "LiabilitiesToAssets", "ROE"];
+      baseTemplateNote =
+        "商业不动产与 REITs 核心关注物业租金回报、资产净值与分红；标准 FFO/AFFO 专项指标待后续接入。";
+    }
+  }
+
   const modifierProfile = financialModel.modifiers[0]
     ? modifierProfiles[financialModel.modifiers[0]]
     : undefined;
-  const rowKeys = modifierProfile?.rowKeys ?? profile.rowKeys;
-  const trendKeys = modifierProfile?.trendKeys ?? profile.trendKeys;
-  const templateNote = [profile.note, modifierProfile?.note]
+  if (modifierProfile?.rowKeys) rowKeys = modifierProfile.rowKeys;
+  if (modifierProfile?.trendKeys) trendKeys = modifierProfile.trendKeys;
+  const templateNote = [baseTemplateNote, modifierProfile?.note]
     .filter(Boolean)
     .join(" ");
   const latestYear = normalizedFinancials[0]?.year ?? null;

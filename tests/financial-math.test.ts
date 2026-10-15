@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateFreeCashFlow,
+  calculateInvestedCapital,
   calculateReturnOnAverageBalance,
+  calculateROIC,
   detectSplitFactor,
   normalizeAnnualsStockSplits,
 } from "@/lib/financial-math";
@@ -85,6 +87,66 @@ describe("financial calculations", () => {
       const newest = recent[recent.length - 1].shares!;
       const changePct = Number((((newest - oldest) / oldest) * 100).toFixed(1));
       expect(changePct).toBe(-3.3);
+    });
+  });
+
+  describe("invested capital and ROIC calculations", () => {
+    it("calculates invested capital as equity + debt - cash", () => {
+      expect(
+        calculateInvestedCapital({
+          totalEquity: 500,
+          totalDebt: 300,
+          cashAndEquivalents: 100,
+        }),
+      ).toBe(700);
+    });
+
+    it("calculates ROIC with standard tax rate and positive invested capital", () => {
+      const roic = calculateROIC({
+        operatingIncome: 100,
+        effectiveTaxRate: 0.20,
+        currentInvestedCapital: 500,
+        previousInvestedCapital: 500,
+      });
+      // NOPAT = 100 * (1 - 0.20) = 80; averageIC = 500; 80 / 500 = 0.16
+      expect(roic).toBeCloseTo(0.16);
+    });
+
+    it("protects against negative or zero invested capital by returning null", () => {
+      // e.g. Extreme buyback company with negative equity / negative IC
+      expect(
+        calculateROIC({
+          operatingIncome: 100,
+          effectiveTaxRate: 0.21,
+          currentInvestedCapital: -50,
+          previousInvestedCapital: 100,
+        }),
+      ).toBeNull();
+
+      expect(
+        calculateROIC({
+          operatingIncome: 100,
+          currentInvestedCapital: 0,
+        }),
+      ).toBeNull();
+    });
+
+    it("normalizes anomalous effective tax rates outside [0, 0.50] to 21%", () => {
+      // Negative tax rate (e.g. tax benefit)
+      const roicNegativeTax = calculateROIC({
+        operatingIncome: 100,
+        effectiveTaxRate: -0.15,
+        currentInvestedCapital: 500,
+      });
+      expect(roicNegativeTax).toBeCloseTo((100 * (1 - 0.21)) / 500);
+
+      // Unusually high tax rate (>50%)
+      const roicHighTax = calculateROIC({
+        operatingIncome: 100,
+        effectiveTaxRate: 0.85,
+        currentInvestedCapital: 500,
+      });
+      expect(roicHighTax).toBeCloseTo((100 * (1 - 0.21)) / 500);
     });
   });
 });

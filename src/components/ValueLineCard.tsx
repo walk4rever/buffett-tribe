@@ -517,7 +517,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
       ? "银行专项资产质量与资本充足率尚未接入。"
       : financialModel.template === "insurance"
         ? "保险专项偿付能力与内含价值尚未接入。"
-        : financialModel.modifiers.includes("real_estate")
+        : financialModel.template === "real_estate"
           ? "FFO/AFFO 与 NAV 尚未接入。"
           : `${financialModel.valuationAnchorLabel}专项数据尚未接入。`;
   const curPricePoints = activeSecurity
@@ -534,7 +534,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
       ? "资产负债经营"
       : financialModel.template === "insurance"
         ? "保费与赔付"
-        : financialModel.modifiers.includes("real_estate")
+        : financialModel.template === "real_estate"
           ? "物业经营回报"
           : data.metric2Title ?? "管理资产规模";
   const cashFlowMetricBadge = financialModel.showIndustrialCashFlow
@@ -561,7 +561,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
       ? "净息差、信用成本与资本充足率尚未接入"
       : financialModel.template === "insurance"
         ? "综合成本率、偿付能力与内含价值尚未接入"
-        : financialModel.modifiers.includes("real_estate")
+        : financialModel.template === "real_estate"
           ? "FFO/AFFO 与 NAV 尚未接入"
           : "";
   const currencySymbol = getCurrencySymbol(data.market).symbol;

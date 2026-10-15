@@ -96,3 +96,48 @@ export function normalizeAnnualsStockSplits<T extends AnnualSharesAndEps>(annual
   return res;
 }
 
+export function calculateInvestedCapital(params: {
+  totalEquity: number | null;
+  totalDebt?: number | null;
+  shortTermDebt?: number | null;
+  longTermDebt?: number | null;
+  cashAndEquivalents?: number | null;
+}): number | null {
+  if (params.totalEquity == null) return null;
+  const debt =
+    params.totalDebt ??
+    ((params.shortTermDebt != null || params.longTermDebt != null)
+      ? (params.shortTermDebt ?? 0) + (params.longTermDebt ?? 0)
+      : 0);
+  const cash = params.cashAndEquivalents ?? 0;
+  const ic = params.totalEquity + debt - cash;
+  return ic;
+}
+
+export function calculateROIC(params: {
+  operatingIncome: number | null;
+  effectiveTaxRate?: number | null;
+  currentInvestedCapital: number | null;
+  previousInvestedCapital?: number | null;
+}): number | null {
+  if (params.operatingIncome == null || params.currentInvestedCapital == null) return null;
+
+  // Protect against negative or near-zero invested capital (e.g. extreme buybacks or distressed balance sheets)
+  if (params.currentInvestedCapital <= 0) return null;
+
+  let averageIC = params.currentInvestedCapital;
+  if (params.previousInvestedCapital != null) {
+    if (params.previousInvestedCapital <= 0) return null;
+    averageIC = (params.previousInvestedCapital + params.currentInvestedCapital) / 2;
+    if (averageIC <= 0) return null;
+  }
+
+  // Tax rate normalization: if effective tax rate is outside [0, 0.50], fallback to standard 21%
+  let t = params.effectiveTaxRate;
+  if (t == null || t < 0 || t > 0.5) {
+    t = 0.21;
+  }
+
+  const nopat = params.operatingIncome * (1 - t);
+  return nopat / averageIC;
+}
