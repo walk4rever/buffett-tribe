@@ -26082,3 +26082,150 @@ a.insight-entity-chip:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* Company financial tables share a restrained Apple-style data treatment. */
+.company-data-table-wrap {
+  overflow-x: hidden;
+  border: 1px solid #e5e5ea;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.company-data-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: #1d1d1f;
+}
+
+.company-data-table th,
+.company-data-table td {
+  padding: 0.58rem 0.62rem;
+  border-bottom: 1px solid #e8e8ed;
+  color: #1d1d1f;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+  vertical-align: middle;
+}
+
+.company-data-table thead th {
+  background: #f5f5f7;
+  color: #6e6e73;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.company-data-table tbody tr:last-child th,
+.company-data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.company-data-table tbody tr:hover {
+  background: #f8f8fa;
+}
+
+.company-data-table .company-table-label {
+  color: #1d1d1f;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.company-data-table .company-table-sub {
+  color: #86868b;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.company-financial-table th:first-child,
+.company-financial-table tbody th {
+  width: 25%;
+  min-width: 0;
+  text-align: left;
+  background: #fff;
+}
+
+.company-financial-table thead th:first-child {
+  background: #f5f5f7;
+}
+
+.company-financial-table th:not(:first-child),
+.company-financial-table td {
+  min-width: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.company-financial-history .company-table-units,
+.cap-table-units {
+  color: #6e6e73;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.cap-table-units {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.cap-table.company-data-table th:first-child,
+.cap-table.company-data-table td:first-child {
+  width: 9%;
+  text-align: left;
+}
+
+.cap-table.company-data-table th:not(:first-child),
+.cap-table.company-data-table td:not(:first-child) {
+  min-width: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cap-table.company-data-table th,
+.cap-table.company-data-table td {
+  padding-right: 0.55rem;
+  padding-left: 0.55rem;
+}
+
+.cap-table.company-data-table .cap-cell-tag {
+  font-size: 12px;
+}
+
+@media (max-width: 680px) {
+  .company-data-table-wrap {
+    overflow-x: auto;
+  }
+
+  .company-financial-table.company-data-table {
+    width: max-content;
+    min-width: 47.5rem;
+    table-layout: auto;
+  }
+
+  .cap-table.company-data-table {
+    min-width: 640px;
+  }
+
+  .company-data-table th,
+  .company-data-table td {
+    padding: 0.55rem 0.62rem;
+  }
+
+  .company-financial-history .company-table-units {
+    text-align: left;
+  }
+
+  .cap-table-units {
+    margin-left: 0;
+    text-align: left;
+    white-space: normal;
+  }
+}

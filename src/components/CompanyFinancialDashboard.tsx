@@ -23,6 +23,22 @@ function getFiscalDate(financials: FinancialYearItems[], year: number) {
   return row?.periodEnd ?? null;
 }
 
+function formatTableValue(value: number | null, kind: string) {
+  if (value == null || !Number.isFinite(value)) return "—";
+  const digits = kind === "number" ? 2 : 1;
+  const scaledValue = kind === "money" ? value / 1e8 : kind === "percent" ? value * 100 : value;
+  if (kind === "money" && scaledValue !== 0 && Math.abs(scaledValue) < 0.05) {
+    return scaledValue < 0 ? "−<0.1" : "<0.1";
+  }
+  const formatted = scaledValue.toLocaleString("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+  if (kind === "percent") return `${formatted}%`;
+  if (kind === "multiple") return `${formatted}x`;
+  return formatted;
+}
+
 function getTrendCoordinates(trend: FinancialDashboardTrend) {
   const width = 240;
   const height = 54;
@@ -161,21 +177,22 @@ export function CompanyFinancialDashboardComponent({
         <div className="company-financial-trend-head">
           <h3 id="financial-history-title">年度明细</h3>
           {dashboard.currency ? (
-            <span>报告币种：{currencyDisplayName(dashboard.currency)} · 金额单位：亿元</span>
+            <span className="company-table-units">
+              金额：亿 {dashboard.currency} · EPS：{dashboard.currency}/股 · 比率：% · 倍数：x
+            </span>
           ) : null}
         </div>
         <p className="company-financial-method-note">
-          明细 FY {yearRange}（{displayYears.length} 年）{dashboard.currency ? ` · 报告币种：${currencyDisplayName(dashboard.currency)}` : ""}；缺少必要输入时显示“—”，同比不跨年补算，不以零填补。
+          明细 FY {yearRange}（{displayYears.length} 年）；缺少必要输入时显示“—”，同比不跨年补算，不以零填补。
         </p>
 
         {dashboard.rows.length ? (
           <div
-            className="company-table-wrap company-financial-table-wrap"
+            className="company-table-wrap company-financial-table-wrap company-data-table-wrap"
             role="region"
-            aria-label="年度财务数据，可横向滚动查看"
-            tabIndex={0}
+            aria-label="年度财务数据"
           >
-            <table className="company-table company-financial-table">
+            <table className="company-table company-financial-table company-data-table">
               <thead>
                 <tr>
                   <th scope="col">
@@ -200,7 +217,9 @@ export function CompanyFinancialDashboardComponent({
                       <span className="company-table-sub">{row.enLabel}</span>
                     </th>
                     {displayYears.map((year) => (
-                      <td key={`${row.key}-${year}`}>{row.values[year] ?? "—"}</td>
+                      <td key={`${row.key}-${year}`}>
+                        {formatTableValue(row.rawValues[year] ?? null, row.kind)}
+                      </td>
                     ))}
                   </tr>
                 ))}

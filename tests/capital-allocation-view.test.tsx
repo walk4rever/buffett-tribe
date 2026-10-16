@@ -7,11 +7,12 @@ import { resolveFinancialModel } from "@/lib/financial-model";
 function renderCapitalAllocation(
   sectorModelType: string,
   useDerivedShares = false,
+  tradingCurrency = "USD",
 ) {
   const data = {
     sectorModelType,
     financialModel: resolveFinancialModel(sectorModelType),
-    tradingCurrency: "USD",
+    tradingCurrency,
     annuals: [
       {
         year: 2022,
@@ -68,6 +69,15 @@ describe("CapitalAllocationView", () => {
     expect(markup).toContain("资本开支 / 经营现金流");
     expect(markup).toContain("经营现金流 (OCF)");
     expect(markup).not.toContain("偿付能力充足率");
+  });
+
+  it("shows table units once and omits repeated currency symbols from numeric cells", () => {
+    const markup = renderCapitalAllocation("industrial", false, "HKD");
+    const tableMarkup = markup.slice(markup.indexOf('class="cap-table-wrap'));
+
+    expect(markup).toContain("金额：亿 HKD · 股数：亿股 · ROE：%");
+    expect(tableMarkup).not.toContain("HK$");
+    expect(tableMarkup).not.toContain("$");
   });
 
   it("shows derived share values without marking them as estimates or missing", () => {

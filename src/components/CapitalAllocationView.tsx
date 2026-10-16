@@ -50,6 +50,14 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
   const displayCurrency = data.tradingCurrency;
   const currencySym = displayCurrency ? currencySymbol(displayCurrency) : "";
   const [hoverYearIdx, setHoverYearIdx] = useState<number | null>(null);
+  const formatTableYi = (value: number) => {
+    const yi = value / 1e8;
+    if (yi !== 0 && Math.abs(yi) < 0.05) return yi < 0 ? "−<0.1" : "<0.1";
+    return yi.toLocaleString("en-US", {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    });
+  };
 
   const stats = useMemo(() => {
     return computeCapitalAllocationStats(data.annuals || []);
@@ -864,10 +872,13 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                     : "年度经营现金流、资本开支、回购、现金分红与股本变化"}
             </span>
           </div>
+          <span className="cap-table-units">
+            金额：亿 {displayCurrency || "交易币种"} · 股数：亿股 · ROE：%
+          </span>
         </div>
 
-        <div className="cap-table-wrap">
-          <table className="cap-table">
+        <div className="cap-table-wrap company-data-table-wrap">
+          <table className="cap-table company-data-table">
             <thead>
               <tr>
                 <th className="cap-th-year">财年</th>
@@ -915,86 +926,41 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                         <>
                           <td className="cap-td-num">
                             {a.operatingCashFlow != null
-                              ? `${currencySym}${formatUsdInYi(a.operatingCashFlow)}`
+                              ? formatTableYi(a.operatingCashFlow)
                               : "—"}
                           </td>
-                          <td
-                            className="cap-td-num"
-                            style={{
-                              color: a.capEx ? "#dc2626" : undefined,
-                            }}
-                          >
+                          <td className="cap-td-num">
                             {a.capEx != null
-                              ? `-${currencySym}${formatUsdInYi(Math.abs(a.capEx))}`
+                              ? `-${formatTableYi(Math.abs(a.capEx))}`
                               : "—"}
                           </td>
-                          <td
-                            className="cap-td-num"
-                            style={{
-                              color:
-                                annualFcf != null && annualFcf > 0
-                                  ? "#059669"
-                                  : undefined,
-                            }}
-                          >
+                          <td className="cap-td-num">
                             {annualFcf != null
-                              ? `${currencySym}${formatUsdInYi(annualFcf)}`
+                              ? formatTableYi(annualFcf)
                               : "—"}
                           </td>
                         </>
                       ) : (
-                        <td
-                          className="cap-td-num"
-                          style={{
-                            color:
-                              a.netIncome != null && a.netIncome < 0
-                                ? "#dc2626"
-                                : undefined,
-                          }}
-                        >
+                        <td className="cap-td-num">
                           {a.netIncome != null
-                            ? `${currencySym}${formatUsdInYi(a.netIncome)}`
+                            ? formatTableYi(a.netIncome)
                             : "—"}
                         </td>
                       )}
-                      <td
-                        className="cap-td-num"
-                        style={{
-                          color:
-                            a.repurchaseAmt != null && a.repurchaseAmt !== 0
-                              ? "#4f46e5"
-                              : undefined,
-                        }}
-                      >
+                      <td className="cap-td-num">
                         {a.repurchaseAmt == null
                           ? "—"
-                          : `${currencySym}${formatUsdInYi(Math.abs(a.repurchaseAmt))}`}
+                          : formatTableYi(Math.abs(a.repurchaseAmt))}
                       </td>
-                      <td
-                        className="cap-td-num"
-                        style={{
-                          color:
-                            a.dividendsPaid != null && a.dividendsPaid !== 0
-                              ? "#0f766e"
-                              : undefined,
-                        }}
-                      >
+                      <td className="cap-td-num">
                         {a.dividendsPaid == null
                           ? "—"
-                          : `${currencySym}${formatUsdInYi(Math.abs(a.dividendsPaid))}`}
+                          : formatTableYi(Math.abs(a.dividendsPaid))}
                       </td>
                       {!showIndustrialCashFlow && (
-                        <td
-                          className="cap-td-num"
-                          style={{
-                            color:
-                              annualReturn != null && annualReturn > 0
-                                ? "#0284c7"
-                                : undefined,
-                          }}
-                        >
+                        <td className="cap-td-num">
                           {annualReturn != null
-                            ? `${currencySym}${formatUsdInYi(annualReturn)}`
+                            ? formatTableYi(annualReturn)
                             : "—"}
                         </td>
                       )}
@@ -1010,28 +976,15 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                               </span>
                             )}
                             <span className="cap-num-val">
-                              {formatUsdInYi(a.shares)}股
+                              {formatTableYi(a.shares)}
                             </span>
                           </div>
                         ) : (
                           "—"
                         )}
                       </td>
-                      <td
-                        className="cap-td-num"
-                        style={{
-                          fontWeight: 600,
-                          color:
-                            a.roe == null
-                              ? undefined
-                              : a.roe >= 20
-                                ? "#059669"
-                                : a.roe >= 10
-                                  ? "#334155"
-                                  : "#dc2626",
-                        }}
-                      >
-                        {a.roe != null ? `${a.roe}%` : "—"}
+                      <td className="cap-td-num">
+                        {a.roe != null ? `${a.roe.toFixed(1)}%` : "—"}
                       </td>
                     </tr>
                   );

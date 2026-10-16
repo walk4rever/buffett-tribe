@@ -49,6 +49,7 @@ export type FinancialDashboardRow = {
   hint: string;
   kind: MetricKind;
   values: Record<number, string>;
+  rawValues: Record<number, number | null>;
 };
 
 export type FinancialDashboardTrend = {
@@ -1092,6 +1093,7 @@ export function buildCompanyFinancialDashboard(
       enLabel: metric.enLabel,
       hint: metric.hint,
       kind: metric.kind,
+      rawValues: Object.fromEntries(rawValues),
       values: Object.fromEntries(
         rawValues.map(([year, metricValue]) => [
           year,
