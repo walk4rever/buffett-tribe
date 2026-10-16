@@ -56,8 +56,14 @@ export interface EntityCandidate {
 
 export interface CheckpointData {
   lastUpdated: string;
-  completed: Record<string, { timestamp: string; rowsUpserted: number }>;
-  failed: Record<string, { timestamp: string; error: string }>;
+  completed: Record<
+    string,
+    { timestamp: string; rowsUpserted: number; phase?: number; market?: string }
+  >;
+  failed: Record<
+    string,
+    { timestamp: string; error: string; phase?: number; market?: string }
+  >;
 }
 
 export interface BackfillOptions {
@@ -418,47 +424,79 @@ export async function main() {
 
     console.log(`\n>>> ${prefix} (${c.canonicalName})...`);
 
-    try {
-      let rowsUpserted = 0;
-      if (c.market === "us") {
-        if (!c.cik) {
-          throw new Error(`US entity ${c.ticker} has no CIK`);
+    const maxRetries = 2;
+    let attempt = 0;
+    let succeeded = false;
+
+    while (attempt <= maxRetries && !succeeded && !shutdownRequested) {
+      attempt++;
+      try {
+        let rowsUpserted = 0;
+        if (c.market === "us") {
+          if (!c.cik) {
+            throw new Error(`US entity ${c.ticker} has no CIK`);
+          }
+          const res = await backfillCompanyFinancialsFast({
+            entityId: c.id,
+            cik: c.cik,
+            ticker: c.ticker,
+            fromYear: options.fromYear,
+          });
+          if (res.error) throw new Error(res.error);
+          rowsUpserted = res.financialRowsUpserted;
+        } else {
+          const currency = await resolveCompanyCurrency(c);
+          const res = await backfillCnHkCompany(c, options.fromYear, currency);
+          rowsUpserted = res.rowsUpserted;
         }
-        const res = await backfillCompanyFinancialsFast({
-          entityId: c.id,
-          cik: c.cik,
-          ticker: c.ticker,
-          fromYear: options.fromYear,
-        });
-        if (res.error) throw new Error(res.error);
-        rowsUpserted = res.financialRowsUpserted;
-      } else {
-        const currency = await resolveCompanyCurrency(c);
-        const res = await backfillCnHkCompany(c, options.fromYear, currency);
-        rowsUpserted = res.rowsUpserted;
-      }
 
-      checkpoint.completed[c.ticker] = {
-        timestamp: new Date().toISOString(),
-        rowsUpserted,
-      };
-      saveCheckpoint(checkpoint);
-      successCount++;
-
-      const costMs = Date.now() - companyStart;
-      console.log(`✓ ${prefix} complete: ${rowsUpserted} facts (${(costMs / 1000).toFixed(1)}s)`);
-    } catch (err) {
-      if (shutdownRequested) {
-        console.warn(`↩ ${prefix} interrupted; leaving it uncheckpointed for a safe retry.`);
-      } else {
-        failCount++;
-        const errMsg = err instanceof Error ? err.message : String(err);
-        checkpoint.failed[c.ticker] = {
+        checkpoint.completed[c.ticker] = {
           timestamp: new Date().toISOString(),
-          error: errMsg,
+          rowsUpserted,
+          phase: c.onboardPhase,
+          market: c.market,
         };
+        if (checkpoint.failed[c.ticker]) {
+          delete checkpoint.failed[c.ticker];
+        }
         saveCheckpoint(checkpoint);
-        console.error(`✗ ${prefix} failed: ${errMsg}`);
+        successCount++;
+        succeeded = true;
+
+        const costMs = Date.now() - companyStart;
+        const elapsedSec = (Date.now() - startTime) / 1000;
+        const avgSec = elapsedSec / (i + 1);
+        const remainingSec = avgSec * (slicedCandidates.length - (i + 1));
+        const etaHours = (remainingSec / 3600).toFixed(1);
+        const progressPct = (((i + 1) / slicedCandidates.length) * 100).toFixed(1);
+
+        console.log(
+          `✓ ${prefix} complete: ${rowsUpserted} facts (${(costMs / 1000).toFixed(1)}s) | ` +
+            `[${progressPct}%] elapsed: ${(elapsedSec / 60).toFixed(1)}m, ETA: ~${etaHours}h`,
+        );
+      } catch (err) {
+        if (shutdownRequested) {
+          console.warn(`↩ ${prefix} interrupted; leaving it uncheckpointed for a safe retry.`);
+          break;
+        }
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (attempt <= maxRetries) {
+          const backoffMs = attempt * 2000;
+          console.warn(
+            `⚠ ${prefix} error (attempt ${attempt}/${maxRetries + 1}): ${errMsg}. Retrying in ${backoffMs}ms...`,
+          );
+          await sleep(backoffMs);
+        } else {
+          failCount++;
+          checkpoint.failed[c.ticker] = {
+            timestamp: new Date().toISOString(),
+            error: errMsg,
+            phase: c.onboardPhase,
+            market: c.market,
+          };
+          saveCheckpoint(checkpoint);
+          console.error(`✗ ${prefix} failed after ${maxRetries + 1} attempts: ${errMsg}`);
+        }
       }
     }
 
