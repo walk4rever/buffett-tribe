@@ -25,12 +25,12 @@ import { getValueLineData } from "../src/lib/value-line-data";
 import {
   calculateROIC,
   calculateInvestedCapital,
-  calculateDuPontThreeWay,
 } from "../src/lib/financial-math";
 import {
   resolveFinancialModel,
   type FinancialTemplate,
   type FinancialSubModel,
+  type FinancialModelModifier,
 } from "../src/lib/financial-model";
 
 interface GoldenCompanySpec {
@@ -540,7 +540,7 @@ async function runGoldenAudit(): Promise<{ reports: CompanyAuditReport[]; allPas
         });
       }
 
-      if (spec.expectedModifier && !resolvedModel.modifiers.includes(spec.expectedModifier as any)) {
+      if (spec.expectedModifier && !resolvedModel.modifiers.includes(spec.expectedModifier as FinancialModelModifier)) {
         findings.push({
           layer: "Logic",
           severity: "P1",
@@ -723,7 +723,6 @@ async function runGoldenAudit(): Promise<{ reports: CompanyAuditReport[]; allPas
     // Determine overall status
     const p0Count = findings.filter((f) => f.severity === "P0").length;
     const p1Count = findings.filter((f) => f.severity === "P1").length;
-    const p2Count = findings.filter((f) => f.severity === "P2").length;
 
     const status = p0Count > 0 ? "FAIL" : p1Count > 0 ? "WARN" : "PASS";
 
