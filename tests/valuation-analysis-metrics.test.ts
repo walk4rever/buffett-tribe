@@ -4,6 +4,8 @@ import {
   buildHistoricalPeSeries,
   computeHistoricalPeMetrics,
   computeAnnualEpsGrowthPct,
+  buildHistoricalPbSeries,
+  computeHistoricalPbMetrics,
 } from "../src/lib/valuation-analysis-metrics";
 
 describe("buildHistoricalPeSeries", () => {
@@ -99,5 +101,40 @@ describe("computeAnnualEpsGrowthPct", () => {
 
   it("returns null without at least two positive annual EPS observations", () => {
     expect(computeAnnualEpsGrowthPct([{ year: 2024, eps: 10 }])).toBeNull();
+  });
+});
+
+describe("buildHistoricalPbSeries", () => {
+  const bpsAnnuals = [
+    { year: 2022, bps: 25 },
+    { year: 2023, bps: 30 },
+    { year: 2024, bps: 40 },
+  ];
+
+  it("builds PB series using the latest disclosed or prior-year BPS", () => {
+    const series = buildHistoricalPbSeries(
+      [
+        { date: "2023-12-29", close: 50 },
+        { date: "2024-12-31", close: 60 },
+        { date: "2025-12-31", close: 80 },
+      ],
+      bpsAnnuals,
+    );
+
+    expect(series.map((point) => point.pb)).toEqual([2, 2, 2]);
+    expect(series.map((point) => point.bps)).toEqual([25, 30, 40]);
+  });
+});
+
+describe("computeHistoricalPbMetrics", () => {
+  it("calculates median, percentiles, and sample count for PB", () => {
+    const metrics = computeHistoricalPbMetrics(
+      [{ pb: 0.8 }, { pb: 1.0 }, { pb: 1.2 }, { pb: 1.6 }],
+      1.0,
+    );
+
+    expect(metrics.pbMedian).toBe(1.1);
+    expect(metrics.currentPercentile).toBe(50);
+    expect(metrics.sampleCount).toBe(4);
   });
 });

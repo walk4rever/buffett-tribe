@@ -39,9 +39,12 @@ import {
   getAdrRatio,
 } from "@/lib/security-valuation-core";
 import {
+  buildHistoricalPbSeries,
   buildHistoricalPeSeries,
+  computeHistoricalPbMetrics,
   computeHistoricalPeMetrics,
   getAnnualEpsAvailableOnDate,
+  type HistoricalPbPoint,
 } from "@/lib/valuation-analysis-metrics";
 import {
   type SectorModelType13,
@@ -136,8 +139,10 @@ export type ValueLineSecurityOption = {
 
   pricePoints: Array<{ date: string; close: number }>;
   historicalPePoints: Array<{ date: string; close: number; eps: number; pe: number }>;
+  historicalPbPoints: HistoricalPbPoint[];
   valueLinePoints: Array<{ date: string; value: number }>;
   benchmarkPe: number | null;
+  benchmarkPb: number | null;
   valuationStatus: "undervalued" | "fair" | "overvalued" | "insufficient";
   valuationDiffPct: number | null;
 };
@@ -180,10 +185,12 @@ export type ValueLineData = {
   // Price history points (e.g. monthly for compact sparkline)
   pricePoints: Array<{ date: string; close: number }>;
   historicalPePoints: Array<{ date: string; close: number; eps: number; pe: number }>;
+  historicalPbPoints: HistoricalPbPoint[];
 
   // Value Line Corridor (Price vs. Earnings Corridor)
   valueLinePoints: Array<{ date: string; value: number }>;
   benchmarkPe: number | null;
+  benchmarkPb: number | null;
   valuationStatus: "undervalued" | "fair" | "overvalued" | "insufficient";
   valuationDiffPct: number | null;
 
@@ -1063,6 +1070,31 @@ export async function getValueLineData(
       }
     }
 
+    const securityBpsAnnuals = valuationAnnuals.map((annual) => {
+      const annualShares =
+        annual.shares != null && annual.shares > 0
+          ? shareClassEpsScale !== 1
+            ? Math.round(annual.shares / shareClassEpsScale)
+            : annual.shares
+          : secShares;
+      const bps =
+        annual.shareholdersEquity != null && annualShares != null && annualShares > 0
+          ? Number((annual.shareholdersEquity / annualShares).toFixed(4))
+          : null;
+      return {
+        year: annual.year,
+        bps,
+        disclosedAt: annual.disclosedAt,
+      };
+    });
+
+    const historicalPbPoints = valuationCurrencyAvailable
+      ? buildHistoricalPbSeries(pricePoints, securityBpsAnnuals)
+      : [];
+    const historicalMedianPb =
+      computeHistoricalPbMetrics(historicalPbPoints, pbRatio).pbMedian;
+    const benchmarkPb = historicalMedianPb ?? pbRatio;
+
     let valuationStatus: ValueLineData["valuationStatus"] = "insufficient";
     let valuationDiffPct: number | null = null;
     const latestValPoint = valueLinePoints[valueLinePoints.length - 1];
@@ -1102,8 +1134,10 @@ export async function getValueLineData(
       pbRatio,
       pricePoints,
       historicalPePoints,
+      historicalPbPoints,
       valueLinePoints,
       benchmarkPe: valuationBenchmarkPe,
+      benchmarkPb,
       valuationStatus,
       valuationDiffPct,
     };
@@ -1130,8 +1164,10 @@ export async function getValueLineData(
   const pbRatio = activeSec?.pbRatio ?? null;
   const pricePoints = activeSec?.pricePoints ?? [];
   const historicalPePoints = activeSec?.historicalPePoints ?? [];
+  const historicalPbPoints = activeSec?.historicalPbPoints ?? [];
   const valueLinePoints = activeSec?.valueLinePoints ?? [];
   const benchmarkPe = activeSec?.benchmarkPe ?? null;
+  const benchmarkPb = activeSec?.benchmarkPb ?? pbRatio;
   const valuationStatus = activeSec?.valuationStatus ?? "insufficient";
   const valuationDiffPct = activeSec?.valuationDiffPct ?? null;
 
@@ -1414,8 +1450,10 @@ export async function getValueLineData(
 
     pricePoints,
     historicalPePoints,
+    historicalPbPoints,
     valueLinePoints,
     benchmarkPe,
+    benchmarkPb,
     valuationStatus,
     valuationDiffPct,
 

@@ -115,4 +115,40 @@ describe("CapitalAllocationView", () => {
     expect(markup).toContain("业务分部");
     expect(markup).toContain("经营现金流 (OCF)");
   });
+
+  it("renders financial capital allocation waterfall when cumulative net income is available", () => {
+    const data = {
+      sectorModelType: "insurance",
+      financialModel: resolveFinancialModel("insurance"),
+      tradingCurrency: "USD",
+      annuals: [
+        {
+          year: 2023,
+          netIncome: 1000,
+          operatingCashFlow: null,
+          capEx: null,
+          repurchaseAmt: 200,
+          dividendsPaid: 300,
+          shares: 1000,
+          roe: 12,
+        },
+        {
+          year: 2024,
+          netIncome: 1200,
+          operatingCashFlow: null,
+          capEx: null,
+          repurchaseAmt: 200,
+          dividendsPaid: 300,
+          shares: 980,
+          roe: 14,
+        },
+      ],
+    } as unknown as ValueLineData;
+
+    const markup = renderToStaticMarkup(<CapitalAllocationView data={data} />);
+    expect(markup).toContain("金融资本分配去向 (净利润总账)");
+    expect(markup).toContain("累计归母净利润");
+    expect(markup).toContain("留存扩表 / 充实资本");
+    expect(markup).toContain("综合股东回报");
+  });
 });

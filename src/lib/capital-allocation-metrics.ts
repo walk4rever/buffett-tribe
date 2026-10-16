@@ -5,6 +5,7 @@ import {
 
 export type CapitalAllocationAnnualInput = {
   year: number;
+  netIncome?: number | null;
   operatingCashFlow: number | null;
   capEx: number | null;
   repurchaseAmt: number | null;
@@ -25,6 +26,14 @@ export type CapitalAllocationStats = {
   cumOcf: number | null;
   cumCapEx: number | null;
   cumFcf: number | null;
+  cumNetIncome: number | null;
+  netIncomeCoverage: number;
+  retainedEarnings: number | null;
+  retainedEarningsPct: number | null;
+  shareholderReturnAmt: number | null;
+  shareholderReturnPct: number | null;
+  netIncomeDividendPayoutPct: number | null;
+  netIncomeBuybackPayoutPct: number | null;
   cumBuybacks: number | null;
   cumDividends: number | null;
   buybackCoverage: number;
@@ -57,7 +66,10 @@ export function computeCapitalAllocationStats(
     .filter(
       (annual) =>
         Number.isFinite(annual.year) &&
-        (annual.operatingCashFlow != null || annual.capEx != null || annual.roe != null),
+        (annual.operatingCashFlow != null ||
+          annual.capEx != null ||
+          annual.roe != null ||
+          annual.netIncome != null),
     )
     .slice()
     .sort((a, b) => a.year - b.year)
@@ -155,6 +167,44 @@ export function computeCapitalAllocationStats(
     .map((annual) => annual.roe)
     .filter((roe): roe is number => roe != null && Number.isFinite(roe));
 
+  const knownNetIncomes = annuals.filter(
+    (annual) => annual.netIncome != null && Number.isFinite(annual.netIncome),
+  );
+  const cumNetIncome = knownNetIncomes.length
+    ? sum(knownNetIncomes.map((annual) => annual.netIncome!))
+    : null;
+  const netIncomeCoverage = knownNetIncomes.length;
+
+  const shareholderReturnAmt =
+    cumBuybacks != null || cumDividends != null
+      ? (cumBuybacks ?? 0) + (cumDividends ?? 0)
+      : null;
+
+  const retainedEarnings =
+    cumNetIncome != null && shareholderReturnAmt != null
+      ? cumNetIncome - shareholderReturnAmt
+      : null;
+
+  const retainedEarningsPct =
+    cumNetIncome != null && cumNetIncome > 0 && retainedEarnings != null
+      ? Number(((retainedEarnings / cumNetIncome) * 100).toFixed(1))
+      : null;
+
+  const shareholderReturnPct =
+    cumNetIncome != null && cumNetIncome > 0 && shareholderReturnAmt != null
+      ? Number(((shareholderReturnAmt / cumNetIncome) * 100).toFixed(1))
+      : null;
+
+  const netIncomeDividendPayoutPct =
+    cumNetIncome != null && cumDividends != null && cumNetIncome > 0
+      ? Number(((cumDividends / cumNetIncome) * 100).toFixed(1))
+      : null;
+
+  const netIncomeBuybackPayoutPct =
+    cumNetIncome != null && cumBuybacks != null && cumNetIncome > 0
+      ? Number(((cumBuybacks / cumNetIncome) * 100).toFixed(1))
+      : null;
+
   return {
     annuals,
     flowAnnuals,
@@ -166,6 +216,14 @@ export function computeCapitalAllocationStats(
     cumOcf,
     cumCapEx,
     cumFcf,
+    cumNetIncome,
+    netIncomeCoverage,
+    retainedEarnings,
+    retainedEarningsPct,
+    shareholderReturnAmt,
+    shareholderReturnPct,
+    netIncomeDividendPayoutPct,
+    netIncomeBuybackPayoutPct,
     cumBuybacks,
     cumDividends,
     buybackCoverage: knownBuybacks.length,

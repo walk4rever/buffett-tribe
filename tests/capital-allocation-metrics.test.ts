@@ -235,4 +235,39 @@ describe("computeCapitalAllocationStats", () => {
     expect(stats?.sharesEnd).toBe(90);
     expect(stats?.shareDeltaPct).toBe(-10);
   });
+
+  it("calculates financial capital allocation metrics from net income, dividends, and buybacks", () => {
+    const stats = computeCapitalAllocationStats([
+      {
+        year: 2024,
+        netIncome: 1000,
+        operatingCashFlow: null,
+        capEx: null,
+        repurchaseAmt: 200,
+        dividendsPaid: 300,
+        shares: 100,
+        roe: 15,
+      },
+      {
+        year: 2023,
+        netIncome: 1000,
+        operatingCashFlow: null,
+        capEx: null,
+        repurchaseAmt: 100,
+        dividendsPaid: 300,
+        shares: 100,
+        roe: 14,
+      },
+    ]);
+
+    expect(stats?.cumNetIncome).toBe(2000);
+    expect(stats?.cumDividends).toBe(600);
+    expect(stats?.cumBuybacks).toBe(300);
+    expect(stats?.shareholderReturnAmt).toBe(900);
+    expect(stats?.shareholderReturnPct).toBe(45);
+    expect(stats?.retainedEarnings).toBe(1100);
+    expect(stats?.retainedEarningsPct).toBe(55);
+    expect(stats?.netIncomeDividendPayoutPct).toBe(30);
+    expect(stats?.netIncomeBuybackPayoutPct).toBe(15);
+  });
 });

@@ -492,6 +492,114 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
             </div>
           </div>
         </div>
+      ) : !showIndustrialCashFlow && stats.cumNetIncome != null && stats.cumNetIncome > 0 ? (
+        <div className="val-chart-block">
+          <div className="val-chart-header">
+            <div>
+              <h4 className="val-block-title">金融资本分配去向 (净利润总账)</h4>
+              <span className="val-block-desc">
+                汇总 {stats.periodCount} 个财年累计归母净利润，观察资本留存（充实净资产/扩表）与股东回报（分红/回购）分配结构
+              </span>
+            </div>
+          </div>
+
+          <div className="cap-wf-steps-grid">
+            {/* Step 1: Cumulative Net Income Base */}
+            <div
+              className="cap-wf-step-card cap-wf-step-card--base"
+              title="近多期累计披露归母净利润"
+            >
+              <div className="cap-wf-step-badge">1. 利润源头</div>
+              <div className="cap-wf-step-val">
+                {formatAmount(stats.cumNetIncome)}
+              </div>
+              <div className="cap-wf-step-name">累计归母净利润</div>
+              <div className="cap-wf-step-sub">{stats.periodCount} 个财年累计披露</div>
+            </div>
+
+            <div className="cap-wf-connector">−</div>
+
+            {/* Step 2: Retained Earnings / Capital Reinvestment */}
+            <div
+              className="cap-wf-step-card cap-wf-step-card--capex"
+              title="留存收益充实核心一级资本及净资产，用于生息/投资资产扩表"
+            >
+              <div className="cap-wf-step-badge">2. 留存扩表 / 充实资本</div>
+              <div className="cap-wf-step-val cap-wf-step-val--purple">
+                {formatAmount(stats.retainedEarnings)}
+              </div>
+              <div className="cap-wf-step-name">留存收益扩表</div>
+              <div className="cap-wf-step-sub">
+                {stats.retainedEarningsPct != null
+                  ? `占净利润 ${stats.retainedEarningsPct}% · 充实净资产`
+                  : "用于充实资本金与业务扩张"}
+              </div>
+            </div>
+
+            <div className="cap-wf-connector">−</div>
+
+            {/* Step 3: Cash Dividends */}
+            <div
+              className="cap-wf-step-card cap-wf-step-card--dividend"
+              title="累计已披露现金分红总额"
+            >
+              <div className="cap-wf-step-badge">3. 现金分红</div>
+              <div className="cap-wf-step-val cap-wf-step-val--teal">
+                {stats.cumDividends != null
+                  ? `-${currencySym}${formatUsdInYi(stats.cumDividends)}`
+                  : "—"}
+              </div>
+              <div className="cap-wf-step-name">已披露现金分红</div>
+              <div className="cap-wf-step-sub">
+                {stats.netIncomeDividendPayoutPct != null
+                  ? `分红率 ${stats.netIncomeDividendPayoutPct}%`
+                  : `披露 ${stats.dividendCoverage}/${stats.periodCount} 年`}
+              </div>
+            </div>
+
+            <div className="cap-wf-connector">−</div>
+
+            {/* Step 4: Share Buybacks */}
+            <div
+              className="cap-wf-step-card cap-wf-step-card--buyback"
+              title="累计已披露股票回购支出"
+            >
+              <div className="cap-wf-step-badge">4. 股东回购</div>
+              <div className="cap-wf-step-val cap-wf-step-val--blue">
+                {stats.cumBuybacks != null && stats.cumBuybacks > 0
+                  ? `-${currencySym}${formatUsdInYi(stats.cumBuybacks)}`
+                  : "0"}
+              </div>
+              <div className="cap-wf-step-name">已披露回购</div>
+              <div className="cap-wf-step-sub">
+                {stats.cumBuybacks != null && stats.cumBuybacks > 0
+                  ? `回购率 ${stats.netIncomeBuybackPayoutPct}%`
+                  : "未实施回购或以分红为主"}
+              </div>
+            </div>
+
+            <div className="cap-wf-connector">=</div>
+
+            {/* Step 5: Total Shareholder Return */}
+            <div
+              className="cap-wf-step-card cap-wf-step-card--retained"
+              title="现金分红与股票回购合计总股东返还"
+            >
+              <div className="cap-wf-step-badge">5. 综合股东回报</div>
+              <div className="cap-wf-step-val cap-wf-step-val--green">
+                {stats.shareholderReturnAmt != null
+                  ? `${currencySym}${formatUsdInYi(stats.shareholderReturnAmt)}`
+                  : "—"}
+              </div>
+              <div className="cap-wf-step-name">分红与回购合计</div>
+              <div className="cap-wf-step-sub">
+                {stats.shareholderReturnPct != null
+                  ? `综合股东返还率 ${stats.shareholderReturnPct}%`
+                  : "分红与回购合计"}
+              </div>
+            </div>
+          </div>
+        </div>
       ) : showIndustrialCashFlow ? (
         <div className="val-chart-block">
           <div className="val-chart-header">
