@@ -10872,11 +10872,15 @@ body.layout-no-header {
   margin-top: 1rem;
   overscroll-behavior-inline: contain;
   -webkit-overflow-scrolling: touch;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
 }
 
 .cap-table {
   width: 100%;
-  border-collapse: collapse;
+  min-width: 680px;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 0.8rem;
   font-feature-settings: "tnum";
 }
@@ -10891,12 +10895,15 @@ body.layout-no-header {
   white-space: nowrap;
 }
 
+.cap-table th.cap-th-year,
 .cap-table th:first-child {
   position: sticky;
   left: 0;
   z-index: 2;
   text-align: left;
   background: #f8fafc;
+  border-right: 1px solid #e2e8f0;
+  min-width: 5.5rem;
 }
 
 .cap-table td {
@@ -10905,8 +10912,10 @@ body.layout-no-header {
   border-bottom: 1px solid #f1f5f9;
   text-align: right;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
+.cap-table td.cap-td-year,
 .cap-table td:first-child {
   position: sticky;
   left: 0;
@@ -10915,6 +10924,38 @@ body.layout-no-header {
   font-weight: 600;
   color: #0f172a;
   background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  min-width: 5.5rem;
+}
+
+.cap-table th.cap-th-num,
+.cap-table td.cap-td-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  min-width: 6.8rem;
+}
+
+.cap-cell-shares {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  vertical-align: middle;
+}
+
+.cap-cell-tag {
+  font-size: 0.68rem;
+  line-height: 1.2;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 400;
+}
+
+.cap-num-val {
+  font-variant-numeric: tabular-nums;
 }
 
 .cap-table tbody tr:hover {

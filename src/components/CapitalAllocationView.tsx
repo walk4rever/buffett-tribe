@@ -856,9 +856,9 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
             </h4>
             <span className="val-block-desc">
               {isInsurance
-                ? "年度回购、已实施现金分红、股数与 ROE"
+                ? "年度净利润、回购、已实施分红、股东回报、股数与 ROE"
                 : isShareholderReturnModel
-                  ? "年度回购、现金分红、股数（标明口径）与 ROE"
+                  ? "年度净利润、回购、分红、股东回报、股数（标明口径）与 ROE"
                   : allocationModel === "group_returns"
                     ? "合并经营现金流、资本开支、回购、现金分红与股本变化"
                     : "年度经营现金流、资本开支、回购、现金分红与股本变化"}
@@ -870,18 +870,23 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
           <table className="cap-table">
             <thead>
               <tr>
-                <th>财年</th>
-                {showIndustrialCashFlow && (
+                <th className="cap-th-year">财年</th>
+                {showIndustrialCashFlow ? (
                   <>
-                    <th style={{ textAlign: "right" }}>经营现金流 (OCF)</th>
-                    <th style={{ textAlign: "right" }}>资本开支 (CapEx)</th>
-                    <th style={{ textAlign: "right" }}>自由现金流 (FCF)</th>
+                    <th className="cap-th-num">经营现金流 (OCF)</th>
+                    <th className="cap-th-num">资本开支 (CapEx)</th>
+                    <th className="cap-th-num">自由现金流 (FCF)</th>
                   </>
+                ) : (
+                  <th className="cap-th-num">归母净利润</th>
                 )}
-                <th style={{ textAlign: "right" }}>股票回购</th>
-                <th style={{ textAlign: "right" }}>现金分红</th>
-                <th style={{ textAlign: "right" }}>股数</th>
-                <th style={{ textAlign: "right" }}>ROE</th>
+                <th className="cap-th-num">股票回购</th>
+                <th className="cap-th-num">现金分红</th>
+                {!showIndustrialCashFlow && (
+                  <th className="cap-th-num">股东回报</th>
+                )}
+                <th className="cap-th-num">股数</th>
+                <th className="cap-th-num">ROE</th>
               </tr>
             </thead>
             <tbody>
@@ -895,21 +900,27 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                     a.capEx != null
                       ? a.operatingCashFlow - Math.abs(a.capEx)
                       : null;
+                  const annualReturn =
+                    !showIndustrialCashFlow &&
+                    (a.repurchaseAmt != null || a.dividendsPaid != null)
+                      ? Math.abs(a.repurchaseAmt || 0) +
+                        Math.abs(a.dividendsPaid || 0)
+                      : null;
                   return (
                     <tr key={a.year}>
-                      <td>
+                      <td className="cap-td-year">
                         <strong>FY{a.year}</strong>
                       </td>
-                      {showIndustrialCashFlow && (
+                      {showIndustrialCashFlow ? (
                         <>
-                          <td style={{ textAlign: "right" }}>
+                          <td className="cap-td-num">
                             {a.operatingCashFlow != null
                               ? `${currencySym}${formatUsdInYi(a.operatingCashFlow)}`
                               : "—"}
                           </td>
                           <td
+                            className="cap-td-num"
                             style={{
-                              textAlign: "right",
                               color: a.capEx ? "#dc2626" : undefined,
                             }}
                           >
@@ -918,8 +929,8 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                               : "—"}
                           </td>
                           <td
+                            className="cap-td-num"
                             style={{
-                              textAlign: "right",
                               color:
                                 annualFcf != null && annualFcf > 0
                                   ? "#059669"
@@ -931,10 +942,24 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                               : "—"}
                           </td>
                         </>
+                      ) : (
+                        <td
+                          className="cap-td-num"
+                          style={{
+                            color:
+                              a.netIncome != null && a.netIncome < 0
+                                ? "#dc2626"
+                                : undefined,
+                          }}
+                        >
+                          {a.netIncome != null
+                            ? `${currencySym}${formatUsdInYi(a.netIncome)}`
+                            : "—"}
+                        </td>
                       )}
                       <td
+                        className="cap-td-num"
                         style={{
-                          textAlign: "right",
                           color:
                             a.repurchaseAmt != null && a.repurchaseAmt !== 0
                               ? "#4f46e5"
@@ -946,8 +971,8 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                           : `${currencySym}${formatUsdInYi(Math.abs(a.repurchaseAmt))}`}
                       </td>
                       <td
+                        className="cap-td-num"
                         style={{
-                          textAlign: "right",
                           color:
                             a.dividendsPaid != null && a.dividendsPaid !== 0
                               ? "#0f766e"
@@ -958,46 +983,55 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                           ? "—"
                           : `${currencySym}${formatUsdInYi(Math.abs(a.dividendsPaid))}`}
                       </td>
-                      <td style={{ textAlign: "right" }}>
+                      {!showIndustrialCashFlow && (
+                        <td
+                          className="cap-td-num"
+                          style={{
+                            color:
+                              annualReturn != null && annualReturn > 0
+                                ? "#0284c7"
+                                : undefined,
+                          }}
+                        >
+                          {annualReturn != null
+                            ? `${currencySym}${formatUsdInYi(annualReturn)}`
+                            : "—"}
+                        </td>
+                      )}
+                      <td className="cap-td-num">
                         {a.shares != null ? (
-                          <>
-                            {formatUsdInYi(a.shares)}股
+                          <div className="cap-cell-shares">
                             {a.sharesSource === "weighted_average" && (
                               <span
+                                className="cap-cell-tag"
                                 title="稀释加权平均股数（非期末时点流通股）"
-                                style={{
-                                  marginLeft: 4,
-                                  fontSize: "0.75rem",
-                                  color: "#6b7280",
-                                  background: "#f3f4f6",
-                                  padding: "1px 4px",
-                                  borderRadius: 3,
-                                }}
                               >
                                 加权
                               </span>
                             )}
-                          </>
+                            <span className="cap-num-val">
+                              {formatUsdInYi(a.shares)}股
+                            </span>
+                          </div>
                         ) : (
                           "—"
                         )}
                       </td>
-                      <td style={{ textAlign: "right" }}>
-                        {a.roe != null ? (
-                          <span
-                            className={`val-card-subtag ${
-                              a.roe >= 20
-                                ? "val-tag--sub-green"
+                      <td
+                        className="cap-td-num"
+                        style={{
+                          fontWeight: 600,
+                          color:
+                            a.roe == null
+                              ? undefined
+                              : a.roe >= 20
+                                ? "#059669"
                                 : a.roe >= 10
-                                  ? "val-tag--sub-slate"
-                                  : "val-tag--sub-red"
-                            }`}
-                          >
-                            {a.roe}%
-                          </span>
-                        ) : (
-                          "—"
-                        )}
+                                  ? "#334155"
+                                  : "#dc2626",
+                        }}
+                      >
+                        {a.roe != null ? `${a.roe}%` : "—"}
                       </td>
                     </tr>
                   );
