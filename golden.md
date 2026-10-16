@@ -170,3 +170,47 @@ flowchart LR
    - `[UI]` 页面渲染与视觉展示问题
 3. **定点闭环修复**：
    依 P0 $\to$ P1 $\to$ P2 优先级定点修复，直至 18 家标的在三层测试中实现 **18 / 18 全绿通过**。
+
+---
+
+## 六、真实数据价值释放成果与指标拓扑 (Value Release)
+
+经过对 18 家黄金标的在 2020~2025 财年库藏事实的全面穿透审计，针对以往“底层数据已入库但前台未透出、行业专属核心指标缺失”的脱节问题，全面释放了休眠高价值指标，并完成全模板自适应映射：
+
+| 行业模板 (`FinancialTemplate`) | 新增释放的高价值行 (`Dashboard Row`) | 库内实际事实与代表标的验证 | 核心投资分析与护城河价值 |
+| :--- | :--- | :--- | :--- |
+| **`bank`** (商业银行) | • `ProvisionForCreditLosses`<br>• `NetFeeAndCommissionIncome`<br>• `DividendsPaid`<br>• `ShareRepurchaseAmt` | • **JPM**: 拨备计提 $14.2B，分红 $16.6B，回购 $31.6B<br>• **招商银行**: 减值损失 395.9亿，手续费及佣金 752.6亿，分红 617.5亿<br>• **中银香港**: 手续费 101.8亿，分红 220.7亿 | 洞察资产质量与拨备调节平滑利润空间；展现财富管理与零售轻资本能力；全览高股息分红回报总账。 |
+| **`insurance`** (保险精算) | • `TotalInvestments`<br>• `InvestmentIncome`<br>• `InsuranceContractLiabilities`<br>• `DividendsPaid` / `ShareRepurchaseAmt` | • **友邦保险**: 投资组合 2.15万亿，准备金负债 1.85万亿，分红 171.6亿，回购 160.2亿<br>• **中国平安**: 投资收益 1,528.6亿，分红 467.0亿<br>• **PGR**: 投资收益 $4.28B，分红 $2.87B | 完整呈现保险“承保端 + 浮存金投资端”两大核心引擎；透出万亿级保单准备金底池与投资组合配置规模。 |
+| **`financial_services`** (非银金融/券商/交易所) | • `NetFeeAndCommissionIncome`<br>• `InvestmentIncome`<br>• `TotalInvestments`<br>• `DividendsPaid` / `ShareRepurchaseAmt` | • **广发证券**: 经纪与投行佣金 188.7亿，自营投资收益 84.2亿，分红 38.0亿<br>• **香港交易所**: 自营投资 51.0亿，合同负债 2,431.9亿，分红 124.5亿 (90%+ 派息率)<br>• **Blackstone**: 现金分红 $6.01B | 券商彻底摆脱传统 AUM 误导，清晰呈现佣金经纪、自营投资收益支柱；交易所展现极高派息与保证金投资底池。 |
+| **`real_estate`** (房地产/REITs) | • `ContractLiabilities`<br>• `Inventory`<br>• `InvestmentProperty`<br>• `NetDebtRatio`<br>• `DividendsPaid` | • **华侨城 A**: 预售合同负债 231.4亿，存货 1,280.5亿，投资性物业 180.6亿<br>• **新鸿基地产**: 投资物业 3,721.8亿，预售负债 90.7亿，分红 98.4亿<br>• **SPG**: 投资性物业 $50.95B，股票回购 $226.8M | 开发商专属透出预售定金蓄水池、土地/开发成本存货、净负债率安全边际；持有型标的透出商场/写字楼巨额租金资产。 |
+| **`industrial`** (工商业/科技/消费) | • `RnDExpense` & `RnDToRevenue`<br>• `ContractLiabilities`<br>• `Inventory` | • **AAPL**: 研发支出 $34.55B，合同负债 $9.06B，存货 $5.72B<br>• **贵州茅台**: 合同负债 80.1亿 (经销商打款蓄水池)，基酒存货 614.3亿，分红 646.7亿<br>• **腾讯控股**: 投资资产 5,647.5亿，分红 399.1亿，回购 781.8亿 | 揭示科技龙头研发强度护城河；直击茅台“经销商打款定金”与“数万吨老酒基酒存货”的最核心商业壁垒。 |
+| **`conglomerate`** (多元控股实业) | • `TotalInvestments`<br>• `InvestmentIncome`<br>• `InsuranceContractLiabilities`<br>• `TotalAssets` / `ShareholdersEquity` | • **BRK-B**: 保险准备金负债 $17.89B，存货 $24.42B，股票回购 $2.5B+<br>• **长和**: 投资资产 68.3亿，投资收益 80.4亿，分红 122.6亿<br>• **中国宝安**: 研发 10.5亿，存货 128.6亿，投资收益 1.36亿 | 伯克希尔全景展现跨板块总资产、股东权益、股票回购与保险浮存金底池；长和展现跨国多元控股分红对冲。 |
+
+### 验收结果
+
+```
+================================================================================
+📊 18 标杆全链路穿透审计执行结果总览 (3 市场 × 6 模板正交)
+================================================================================
+✅ PASS   | US  | AAPL       | Apple Inc.   | industrial | 事实:619行 (FY:6) | 缺陷:0项
+✅ PASS   | CN  | 600519.SS  | 贵州茅台         | industrial | 事实:2236行 (FY:6) | 缺陷:0项
+✅ PASS   | HK  | 0700.HK    | 腾讯控股         | industrial | 事实:1274行 (FY:6) | 缺陷:0项
+✅ PASS   | US  | JPM        | JPMorgan Chase & Co. | bank | 事实:269行 (FY:6) | 缺陷:0项
+✅ PASS   | CN  | 600036.SS  | 招商银行         | bank | 事实:1734行 (FY:6) | 缺陷:0项
+✅ PASS   | HK  | 2388.HK    | 中银香港         | bank | 事实:512行 (FY:6) | 缺陷:0项
+✅ PASS   | US  | PGR        | Progressive Corp | insurance (property_casualty) | 事实:252行 (FY:6) | 缺陷:0项
+✅ PASS   | CN  | 601318.SS  | 中国平安         | insurance (life_health) | 事实:1692行 (FY:6) | 缺陷:0项
+✅ PASS   | HK  | 1299.HK    | 友邦保险         | insurance (life_health) | 事实:564行 (FY:6) | 缺陷:0项
+✅ PASS   | US  | BX         | Blackstone Inc. | financial_services (asset_mgmt) | 事实:248行 (FY:6) | 缺陷:0项
+✅ PASS   | CN  | 000776.SZ  | 广发证券         | financial_services (broker_exchange) | 事实:1651行 (FY:6) | 缺陷:0项
+✅ PASS   | HK  | 0388.HK    | 香港交易所        | financial_services (broker_exchange) | 事实:479行 (FY:6) | 缺陷:0项
+✅ PASS   | US  | SPG        | Simon Property Group | real_estate (reit_property) | 事实:242行 (FY:6) | 缺陷:0项
+✅ PASS   | CN  | 000069.SZ  | 华侨城 A        | real_estate (developer) | 事实:2305行 (FY:6) | 缺陷:0项
+✅ PASS   | HK  | 0016.HK    | 新鸿基地产        | real_estate (developer) | 事实:542行 (FY:7) | 缺陷:0项
+✅ PASS   | US  | BRK-B      | Berkshire Hathaway Inc. | conglomerate | 事实:373行 (FY:6) | 缺陷:0项
+✅ PASS   | CN  | 000009.SZ  | 中国宝安         | conglomerate | 事实:2509行 (FY:6) | 缺陷:0项
+✅ PASS   | HK  | 0001.HK    | 长和           | conglomerate | 事实:485行 (FY:6) | 缺陷:0项
+================================================================================
+全部 18 家标杆在「数据集 → 处理逻辑 → 页面展示」三层穿透审计中 100% 通过（0 项 P0/P1/P2 缺陷）。
+```
+

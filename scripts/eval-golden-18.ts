@@ -286,7 +286,20 @@ async function runGoldenAudit(): Promise<{ reports: CompanyAuditReport[]; allPas
 
   const reports: CompanyAuditReport[] = [];
 
-  for (const spec of GOLDEN_18_MATRIX) {
+  const args = process.argv.slice(2);
+  const tickerArg = args.indexOf("--ticker") !== -1 ? args[args.indexOf("--ticker") + 1]?.toUpperCase() : null;
+  const templateArg = args.indexOf("--template") !== -1 ? args[args.indexOf("--template") + 1]?.toLowerCase() : null;
+  const marketArg = args.indexOf("--market") !== -1 ? args[args.indexOf("--market") + 1]?.toLowerCase() : null;
+
+  const targetMatrix = GOLDEN_18_MATRIX.filter((spec) => {
+    if (tickerArg && spec.ticker.toUpperCase() !== tickerArg && !spec.ticker.toUpperCase().startsWith(tickerArg)) return false;
+    if (templateArg && spec.expectedTemplate.toLowerCase() !== templateArg) return false;
+    if (marketArg && spec.market.toLowerCase() !== marketArg) return false;
+    return true;
+  });
+
+  for (const spec of targetMatrix) {
+    console.log(`[${reports.length + 1}/${targetMatrix.length}] 正在审计 ${spec.market.toUpperCase()} | ${spec.ticker} (${spec.name})...`);
     const findings: AuditFinding[] = [];
     const code = spec.ticker.replace(/\.(SS|SZ|HK)$/, "");
 

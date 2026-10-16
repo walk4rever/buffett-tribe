@@ -579,6 +579,91 @@ const metrics: MetricDef[] = [
       });
     },
   },
+  {
+    key: "ProvisionForCreditLosses",
+    zhLabel: "信用减值损失",
+    enLabel: "Provision for Credit Losses",
+    hint: "贷款及金融资产减值损失计提（拨备支出）",
+    kind: "money",
+    compute: (year, ctx) => {
+      const prov = value(ctx, year, "ProvisionForCreditLosses");
+      return prov == null ? null : Math.abs(prov);
+    },
+  },
+  {
+    key: "TotalInvestments",
+    zhLabel: "投资资产组合",
+    enLabel: "Total Investments",
+    hint: "持有至到期、交易性金融资产与长期股权投资总额",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "TotalInvestments"),
+  },
+  {
+    key: "InvestmentIncome",
+    zhLabel: "投资收益",
+    enLabel: "Investment Income",
+    hint: "利息、股息收益及金融工具公允价值变动损益",
+    kind: "money",
+    compute: (year, ctx) =>
+      value(ctx, year, "InvestmentIncome") ?? value(ctx, year, "NetInvestmentIncome"),
+  },
+  {
+    key: "InsuranceContractLiabilities",
+    zhLabel: "保单准备金负债",
+    enLabel: "Insurance Contract Liabilities",
+    hint: "未到期责任准备金与寿险/长期健康险责任准备金（核心浮存金池）",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "InsuranceContractLiabilities"),
+  },
+  {
+    key: "RnDExpense",
+    zhLabel: "研发费用",
+    enLabel: "R&D Expense",
+    hint: "年度研发投入支出",
+    kind: "money",
+    compute: (year, ctx) => {
+      const rnd =
+        value(ctx, year, "RnDExpense") ??
+        value(ctx, year, "ResearchAndDevelopmentExpense");
+      return rnd == null ? null : Math.abs(rnd);
+    },
+  },
+  {
+    key: "RnDToRevenue",
+    zhLabel: "研发费用率",
+    enLabel: "R&D / Revenue",
+    hint: "研发费用 / 营收",
+    kind: "percent",
+    compute: (year, ctx) => {
+      const revenue = value(ctx, year, "Revenue");
+      const rnd =
+        value(ctx, year, "RnDExpense") ??
+        value(ctx, year, "ResearchAndDevelopmentExpense");
+      if (revenue == null || revenue <= 0 || rnd == null) return null;
+      return Math.abs(rnd) / revenue;
+    },
+  },
+  {
+    key: "NetDebtRatio",
+    zhLabel: "净负债率",
+    enLabel: "Net Debt Ratio",
+    hint: "(有息负债 - 货币资金) / 净资产；衡量杠杆与偿债安全边际",
+    kind: "percent",
+    compute: (year, ctx) => {
+      const equity =
+        value(ctx, year, "ShareholdersEquity") ??
+        value(ctx, year, "TotalEquity") ??
+        value(ctx, year, "TotalStockholdersEquity");
+      if (equity == null || equity <= 0) return null;
+      const cash = value(ctx, year, "CashAndCashEquivalents") ?? 0;
+      const shortDebt = value(ctx, year, "ShortTermDebt") ?? 0;
+      const longDebt = value(ctx, year, "LongTermDebt") ?? 0;
+      const totalDebt =
+        value(ctx, year, "TotalDebt") ?? (shortDebt + longDebt > 0 ? shortDebt + longDebt : null);
+      if (totalDebt == null) return null;
+      return (totalDebt - cash) / equity;
+    },
+  },
 ];
 
 const operatingKeys = [
@@ -596,6 +681,10 @@ const operatingKeys = [
   "CapEx",
   "FreeCashFlow",
   "FCFMargin",
+  "RnDExpense",
+  "RnDToRevenue",
+  "ContractLiabilities",
+  "Inventory",
   "CashAndCashEquivalents",
   "ShareRepurchaseAmt",
   "DividendsPaid",
@@ -625,6 +714,9 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
       "Revenue",
       "NetInterestIncome",
       "NonInterestIncome",
+      "NetFeeAndCommissionIncome",
+      "ProvisionForCreditLosses",
+      "InvestmentIncome",
       "NetIncome",
       "NetIncomeGrowth",
       "EPSDiluted",
@@ -637,6 +729,8 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
       "TotalLiabilities",
       "ShareholdersEquity",
       "EquityToAssets",
+      "DividendsPaid",
+      "ShareRepurchaseAmt",
     ],
     trendKeys: ["NetIncomeGrowth", "EPSDiluted", "ROE", "ROA", "AssetGrowth", "EquityToAssets"],
   },
@@ -646,16 +740,21 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
       "NetPremiumsEarned",
       "PolicyClaimsAndBenefits",
       "ClaimsRatio",
+      "InvestmentIncome",
       "NetIncome",
       "NetIncomeGrowth",
       "EPSDiluted",
       "ROE",
       "ROA",
+      "TotalInvestments",
+      "InsuranceContractLiabilities",
       "TotalAssets",
       "AssetGrowth",
       "TotalLiabilities",
       "ShareholdersEquity",
       "EquityToAssets",
+      "DividendsPaid",
+      "ShareRepurchaseAmt",
     ],
     trendKeys: ["ClaimsRatio", "NetIncomeGrowth", "EPSDiluted", "ROE", "ROA", "AssetGrowth", "EquityToAssets"],
   },
@@ -668,15 +767,19 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
       "NetClientFlows",
       "InvestmentManagementFeeIncome",
       "NetFeeAndCommissionIncome",
+      "InvestmentIncome",
       "NetIncome",
       "NetIncomeGrowth",
       "NetMargin",
       "EPSDiluted",
       "ROE",
+      "TotalInvestments",
       "TotalAssets",
       "TotalLiabilities",
       "ShareholdersEquity",
       "EquityToAssets",
+      "DividendsPaid",
+      "ShareRepurchaseAmt",
     ],
     trendKeys: [
       "RevenueGrowth",
@@ -709,8 +812,10 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
       "TotalAssets",
       "TotalLiabilities",
       "LiabilitiesToAssets",
+      "NetDebtRatio",
       "ShareholdersEquity",
       "DividendsPaid",
+      "ShareRepurchaseAmt",
     ],
     trendKeys: [
       "RevenueGrowth",
@@ -734,7 +839,15 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
       "FreeCashFlow",
       "FCFMargin",
       "CashConversion",
+      "TotalInvestments",
+      "InvestmentIncome",
+      "InsuranceContractLiabilities",
+      "TotalAssets",
+      "TotalLiabilities",
       "LiabilitiesToAssets",
+      "ShareholdersEquity",
+      "DividendsPaid",
+      "ShareRepurchaseAmt",
     ],
     trendKeys: [
       "RevenueGrowth",
@@ -920,10 +1033,14 @@ export function buildCompanyFinancialDashboard(
         "OperatingCashFlow",
         "ContractLiabilities",
         "Inventory",
+        "InvestmentProperty",
         "TotalAssets",
         "TotalLiabilities",
         "LiabilitiesToAssets",
+        "NetDebtRatio",
         "ShareholdersEquity",
+        "DividendsPaid",
+        "ShareRepurchaseAmt",
       ];
       trendKeys = ["RevenueGrowth", "NetIncomeGrowth", "LiabilitiesToAssets", "ROE"];
       baseTemplateNote =
@@ -939,6 +1056,7 @@ export function buildCompanyFinancialDashboard(
         "CapEx",
         "FreeCashFlow",
         "DividendsPaid",
+        "ShareRepurchaseAmt",
         "TotalAssets",
         "TotalLiabilities",
         "LiabilitiesToAssets",
