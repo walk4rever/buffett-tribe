@@ -385,7 +385,7 @@ export function ValueLineHeader({
   const valuationStatusBadge = !usesPeValuation ? (
     <span className="vl-status-chip vl-status-chip--fair">
       <span className="vl-pulse-dot vl-pulse-dot--amber" />
-      专项估值模型尚未接入
+      行业特定估值通道
     </span>
   ) : curValuationStatus === "undervalued" ? (
       <span className="vl-status-chip vl-status-chip--undervalued">

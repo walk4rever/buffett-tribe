@@ -46,7 +46,8 @@ describe("ValuationAnalysisView", () => {
   it("keeps industrial cash-flow multiples out of financial-sector valuation", () => {
     const markup = renderValuationAnalysis("insurance");
 
-    expect(markup).toContain("保险专项偿付能力与内含价值指标尚未接入");
+    expect(markup).toContain("行业特定估值通道");
+    expect(markup).toContain("保险业核心聚焦内含价值变动");
     expect(markup).toContain("市净率 P/B");
     expect(markup).toContain("平均 ROE");
     expect(markup).not.toContain("FCF Yield");
@@ -65,7 +66,7 @@ describe("ValuationAnalysisView", () => {
     const markup = renderValuationAnalysis("banks");
 
     expect(markup).toContain("市净率与 ROE");
-    expect(markup).toContain("银行专项资产质量与资本充足指标尚未接入");
+    expect(markup).toContain("银行业核心聚焦信贷资产质量");
     expect(markup).toContain("市净率 P/B");
     expect(markup).not.toContain("当前 P/E");
     expect(markup).not.toContain("历史 P/E 参考带");

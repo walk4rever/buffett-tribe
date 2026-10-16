@@ -120,7 +120,7 @@ describe("buildCompanyFinancialDashboard", () => {
     expect(dashboard.rows.map((row) => row.key)).not.toContain("LiabilitiesToAssets");
     expect(dashboard.rows.map((row) => row.key)).not.toContain("CashConversion");
     expect(dashboard.templateNote).toContain("客户存款");
-    expect(dashboard.templateNote).toContain("净息差");
+    expect(dashboard.templateNote).toContain("净利息与非利息");
   });
 
   it("maps all dedicated industry models to their financial-analysis templates", () => {
@@ -142,10 +142,10 @@ describe("buildCompanyFinancialDashboard", () => {
         expect(dashboard.financialModel.modifiers).toEqual([]);
         expect(dashboard.rows.map((row) => row.key)).not.toContain("FCFMargin");
         expect(dashboard.rows.map((row) => row.key)).not.toContain("CashConversion");
-        expect(dashboard.templateNote).toContain("FFO/AFFO");
+        expect(dashboard.templateNote).toContain("租金回报");
       }
       if (sectorModelType === "insurance") {
-        expect(dashboard.templateNote).toContain("综合成本率");
+        expect(dashboard.templateNote).toContain("净已赚保费");
       }
       if (sectorModelType === "capital_markets") {
         expect(dashboard.rows.map((row) => row.key)).toContain("RevenueGrowth");

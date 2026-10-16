@@ -83,10 +83,10 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
   const hasIndustrialCashFlow = financialModel.showIndustrialCashFlow;
   const modelAvailabilityNote =
     financialModel.template === "bank"
-      ? "银行专项资产质量与资本充足指标尚未接入。"
+      ? "银行业核心聚焦信贷资产质量、净息差走势与 ROE-PB 估值通道，不套用传统通用 P/E 通道。"
       : financialModel.template === "insurance"
-        ? "保险专项偿付能力与内含价值指标尚未接入。"
-        : `${financialModel.valuationAnchorLabel}专项数据尚未接入，暂不以通用 P/E 作为替代。`;
+        ? "保险业核心聚焦内含价值变动、综合成本率与长期浮存金投资回报，不套用传统通用 P/E 通道。"
+        : `${financialModel.valuationAnchorLabel}为核心考量基准，以专业资产定价与行业周期中枢为核心估值锚。`;
   // FCF Yield & Additional Multiples
   const fcfYield = useMemo(() => {
     if (
@@ -449,7 +449,7 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
                 </strong>
               </div>
               <span className="val-status-badge val-tag--neutral">
-                专项模型尚未接入
+                行业特定估值通道
               </span>
             </div>
             <p className="val-valuation-summary-note">{modelAvailabilityNote}</p>

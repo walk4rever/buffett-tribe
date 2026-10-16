@@ -228,26 +228,52 @@ export function inferSubModel(
   const text = `${industry} ${context.sector ?? ""} ${context.name ?? ""} ${context.reason ?? ""}`.toLowerCase();
 
   if (template === "real_estate") {
+    // 1. Explicit REITs / trusts
     if (
       text.includes("reit") ||
       text.includes("real estate investment trust") ||
       text.includes("property trust") ||
-      text.includes("收租") ||
-      text.includes("商业不动产")
+      text.includes("信托基金") ||
+      text.includes("房托")
     ) {
       return { subModel: "reit_property", subModelLabel: "持有型 REITs" };
     }
+    // 2. Property development (sales, development, builders)
     if (
       text.includes("develop") ||
       text.includes("builder") ||
-      text.includes("开发")
+      text.includes("开发") ||
+      text.includes("物业发展") ||
+      text.includes("物业销售") ||
+      text.includes("地产销售")
     ) {
       return { subModel: "developer", subModelLabel: "地产开发商" };
+    }
+    // 3. Commercial holding / rental properties
+    if (
+      text.includes("收租") ||
+      text.includes("商业不动产") ||
+      text.includes("物业租赁")
+    ) {
+      return { subModel: "reit_property", subModelLabel: "持有型 REITs" };
     }
     return { subModel: null, subModelLabel: null };
   }
 
   if (template === "financial_services") {
+    // 1. Brokers and exchanges take precedence (full-service brokerages often have asset management lines)
+    if (
+      text.includes("broker") ||
+      text.includes("exchange") ||
+      text.includes("trading") ||
+      text.includes("securit") ||
+      text.includes("证券") ||
+      text.includes("券商") ||
+      text.includes("交易所")
+    ) {
+      return { subModel: "broker_exchange", subModelLabel: "券商与交易所" };
+    }
+    // 2. Asset management and wealth management
     if (
       text.includes("asset management") ||
       text.includes("wealth management") ||
@@ -257,21 +283,28 @@ export function inferSubModel(
     ) {
       return { subModel: "asset_mgmt", subModelLabel: "资产管理与财富" };
     }
-    if (
-      text.includes("broker") ||
-      text.includes("exchange") ||
-      text.includes("trading") ||
-      text.includes("securit") ||
-      text.includes("证券") ||
-      text.includes("交易所")
-    ) {
-      return { subModel: "broker_exchange", subModelLabel: "券商与交易所" };
-    }
     return { subModel: null, subModelLabel: null };
   }
 
   if (template === "insurance") {
     const sic = String(context.sic ?? "");
+    // 1. Life, health, and composite financial groups (like Ping An or AIA)
+    if (
+      sic === "6311" ||
+      text.includes("life") ||
+      text.includes("health") ||
+      text.includes("人寿") ||
+      text.includes("寿险") ||
+      text.includes("人身险") ||
+      text.includes("友邦") ||
+      text.includes("综合金融") ||
+      text.includes("综合险") ||
+      text.includes("内含价值") ||
+      (text.includes("平安") && text.includes("保险"))
+    ) {
+      return { subModel: "life_health", subModelLabel: "人身险与综合险" };
+    }
+    // 2. Pure property, casualty, and reinsurance (like Progressive PGR)
     if (
       sic === "6331" ||
       text.includes("property") ||
@@ -280,20 +313,10 @@ export function inferSubModel(
       text.includes("marine") ||
       text.includes("p&c") ||
       text.includes("财产险") ||
-      text.includes("财险")
+      text.includes("财险") ||
+      text.includes("车险")
     ) {
       return { subModel: "property_casualty", subModelLabel: "财产险与再保险" };
-    }
-    if (
-      sic === "6311" ||
-      text.includes("life") ||
-      text.includes("health") ||
-      text.includes("人寿") ||
-      text.includes("寿险") ||
-      text.includes("人身险") ||
-      text.includes("友邦")
-    ) {
-      return { subModel: "life_health", subModelLabel: "人身险与综合险" };
     }
     return { subModel: null, subModelLabel: null };
   }

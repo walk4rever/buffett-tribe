@@ -121,7 +121,7 @@ describe("ValueLineHeader", () => {
     expect(markup).toContain("PB");
     expect(markup).not.toContain(">PE</span>");
     expect(markup).not.toContain("合理估值中枢");
-    expect(markup).toContain("专项估值模型尚未接入");
+    expect(markup).toContain("行业特定估值通道");
   });
 
   it("keeps P/E and its valuation status for P/E-primary models", () => {

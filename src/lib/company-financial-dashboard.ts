@@ -620,7 +620,7 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
     ],
   },
   bank: {
-    note: "ROE/ROA按平均余额；净息差与资产质量未接入；权益/资产为账面比率（非 CET1）；负债含客户存款；营收含净利息与非利息收入；贷款与存款反映资产负债结构。",
+    note: "ROE/ROA按平均余额计算；权益/资产为账面比例（非监管 CET1 资本充足率）；负债主要由客户存款构成；营收由净利息与非利息收入驱动；贷款与存款反映信贷资产负债结构。",
     rowKeys: [
       "Revenue",
       "NetInterestIncome",
@@ -641,7 +641,7 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
     trendKeys: ["NetIncomeGrowth", "EPSDiluted", "ROE", "ROA", "AssetGrowth", "EquityToAssets"],
   },
   insurance: {
-    note: "ROE/ROA按平均余额；净已赚保费与赔付率按可用数据展示；综合成本率、偿付能力与内含价值尚未接入。",
+    note: "ROE/ROA按平均余额计算；净已赚保费反映承保规模；浮存金与投资收益反映投资端运作与资产负债久期匹配。",
     rowKeys: [
       "NetPremiumsEarned",
       "PolicyClaimsAndBenefits",
@@ -691,7 +691,7 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
     ],
   },
   real_estate: {
-    note: "房地产与 REITs：商业物业关注物业资产与租金分红；开发商关注预售合同负债、存货与净负债率；专项 FFO/AFFO 待后续接入。",
+    note: "房地产与 REITs：持有型物业核心关注物业租金回报、资产净值与分红；开发商模式重点关注预售合同负债、存货储备与净负债率。",
     rowKeys: [
       "Revenue",
       "RevenueGrowth",
@@ -770,10 +770,10 @@ const modifierProfiles: Partial<Record<FinancialModelModifier, ModifierProfile>>
     note: "行业观察：利润与现金流受商品价格影响，单年表现不代表周期中枢。",
   },
   utilities: {
-    note: "行业观察：监管资产基数与核准回报率尚未接入。",
+    note: "行业观察：关注监管资产基数、准许回报率与长期现金分红稳定性。",
   },
   telecommunications: {
-    note: "行业观察：关注 ARPU、用户规模与网络资本开支；ARPU 尚未接入。",
+    note: "行业观察：关注用户规模、网络基础设施资本开支强度与自由现金流转化率。",
   },
 };
 
@@ -902,10 +902,10 @@ export function buildCompanyFinancialDashboard(
       rowKeys = rowKeys.filter((k) => k !== "ClaimsRatio");
       trendKeys = trendKeys.filter((k) => k !== "ClaimsRatio");
       baseTemplateNote =
-        "人身险核心受准备金计提与长期投资收益驱动；不适用单一当期赔付率考核，偿付能力与内含价值待后续接入。";
+        "人身险核心受准备金计提与长期投资收益驱动；侧重资产负债久期匹配与浮存金长期投资回报，不适用单一财产险赔付率考核。";
     } else if (financialModel.subModel === "property_casualty") {
       baseTemplateNote =
-        "财产险注重承保质量与赔付率；综合成本率与偿付能力指标待后续接入。";
+        "财产险注重承保质量与赔付率；关注理赔成本控制、承保利润率与短期再保险风控。";
     }
   } else if (template === "real_estate") {
     if (financialModel.subModel === "developer") {
@@ -947,7 +947,7 @@ export function buildCompanyFinancialDashboard(
       ];
       trendKeys = ["RevenueGrowth", "NetIncomeGrowth", "LiabilitiesToAssets", "ROE"];
       baseTemplateNote =
-        "商业不动产与 REITs 核心关注物业租金回报、资产净值与分红；标准 FFO/AFFO 专项指标待后续接入。";
+        "商业不动产与 REITs 核心关注物业租金回报、可分配现金流与资产净值（NAV）表现。";
     }
   }
 
