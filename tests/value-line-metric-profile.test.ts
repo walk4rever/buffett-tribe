@@ -84,6 +84,66 @@ describe("buildValueLineMetricProfile", () => {
     );
   });
 
+  it.each([
+    ["industrial", undefined, "freeCashFlow", 2, "经营现金流增长"],
+    ["banks", undefined, "netIncome", 0, "营收增长"],
+    ["insurance", "property_casualty", "netPremiumsEarned", 0, "总资产增长"],
+    ["capital_markets", "asset_mgmt", "assetsUnderManagement", 0, "营收增长"],
+    ["real_estate", "developer", "revenue", 0, "合同负债增长"],
+    ["real_estate", "reit_property", "dividendsPaid", 1, "物业经营收益增长"],
+    ["conglomerate", undefined, "freeCashFlow", 2, "经营现金流增长"],
+  ] as const)(
+    "uses the configured %s fallback when its primary growth metric is unavailable",
+    (sector, subModel, missingField, slotIndex, expectedTitle) => {
+      const annuals = makeAnnuals();
+      for (const annual of annuals) {
+        (annual as unknown as Record<string, unknown>)[missingField] = null;
+      }
+
+      const profile = buildValueLineMetricProfile(
+        resolveModel(sector, subModel),
+        annuals,
+      );
+
+      expect(profile.growthMetrics).toHaveLength(4);
+      expect(profile.growthMetrics[slotIndex].title).toBe(expectedTitle);
+    },
+  );
+
+  it("uses operating cash-flow growth when FCF crosses from negative to positive", () => {
+    const annuals = makeAnnuals();
+    annuals[0].freeCashFlow = -14_726;
+    annuals[4].freeCashFlow = 7_695;
+
+    const profile = buildValueLineMetricProfile(
+      resolveModel("software_platform"),
+      annuals,
+    );
+
+    expect(profile.growthMetrics).toHaveLength(4);
+    expect(profile.growthMetrics[2]).toMatchObject({
+      key: "operating-cash-flow",
+      title: "经营现金流增长",
+    });
+  });
+
+  it("labels a net-income sign change as a turnaround instead of a CAGR", () => {
+    const annuals = makeAnnuals();
+    annuals[0].netIncome = -10;
+    annuals[4].netIncome = 5;
+
+    const profile = buildValueLineMetricProfile(
+      resolveModel("industrial"),
+      annuals,
+    );
+
+    expect(profile.growthMetrics.find((metric) => metric.key === "net-income"))
+      .toMatchObject({
+        title: "净利润增长",
+        value: "扭亏为盈",
+      });
+  });
+
   it("excludes premiums from years with undisclosed claims", () => {
     const annuals = makeAnnuals();
     annuals[4].policyClaimsAndBenefits = null;
@@ -95,13 +155,37 @@ describe("buildValueLineMetricProfile", () => {
     expect(profile.operatingMetric?.value).toBe("63.3%");
   });
 
+  it("uses a disclosed annual ROA when bank history is too short for a five-year average", () => {
+    const profile = buildValueLineMetricProfile(resolveModel("banks"), [
+      { year: 2025, netIncome: 12, totalAssets: 120 },
+    ]);
+
+    expect(profile.operatingMetric).toMatchObject({
+      title: "FY2025 ROA",
+      value: "10.0%",
+    });
+  });
+
+  it("uses annual investment yield when insurance history is too short for a multi-year rate", () => {
+    const profile = buildValueLineMetricProfile(
+      resolveModel("insurance", "life"),
+      [{ year: 2025, investmentIncome: 6, totalInvestments: 120 }],
+    );
+
+    expect(profile.operatingMetric).toMatchObject({
+      title: "FY2025 投资回报率",
+      value: "5.0%",
+    });
+  });
+
   it("does not invent metrics when required financial data is absent", () => {
     const profile = buildValueLineMetricProfile(
       resolveModel("banks"),
       [{ year: 2024 }],
     );
 
-    expect(profile.operatingMetric).toBeNull();
-    expect(profile.growthMetrics).toHaveLength(0);
+    expect(profile.operatingMetric?.value).toBe("—");
+    expect(profile.growthMetrics).toHaveLength(4);
+    expect(profile.growthMetrics.every((metric) => metric.value === "—")).toBe(true);
   });
 });

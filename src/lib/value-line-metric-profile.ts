@@ -36,7 +36,7 @@ export type ValueLineMetricCard = {
 };
 
 export type ValueLineMetricProfile = {
-  operatingMetric: ValueLineMetricCard | null;
+  operatingMetric: ValueLineMetricCard;
   growthMetrics: ValueLineMetricCard[];
 };
 
@@ -92,6 +92,42 @@ function makeGrowthCard(
   series: GrowthSeries,
 ): ValueLineMetricCard | null {
   const value = cagrValue(annuals, series.value);
+  if (value == null && series.allowTurnaround) {
+    const points = recentAnnuals(annuals)
+      .map((annual) => ({ annual, value: series.value(annual) }))
+      .filter(
+        (point): point is { annual: ValueLineMetricAnnual; value: number } =>
+          finite(point.value),
+      );
+    const first = points[0];
+    const last = points[points.length - 1];
+    if (first && last && first.annual.year < last.annual.year) {
+      let label: string;
+      if (first.value <= 0 && last.value > 0) {
+        label = "扭亏为盈";
+      } else if (first.value > 0 && last.value <= 0) {
+        label = "由盈转亏";
+      } else if (last.value > first.value) {
+        label = "持续减亏";
+      } else if (last.value < first.value) {
+        label = "持续亏损";
+      } else {
+        label = "盈亏持平";
+      }
+
+      return {
+        key: series.key,
+        title: series.title,
+        value: label,
+        badge: first.value <= 0 && last.value > 0 ? "盈利改善" : "趋势观察",
+        badgeClass:
+          first.value > 0 && last.value <= 0
+            ? "vl-badge--alert"
+            : "vl-badge--neutral",
+        subText: `${first.annual.year}–${last.annual.year} 盈利变化`,
+      };
+    }
+  }
   if (value == null) return null;
   const badge = growthBadge(value);
   return {
@@ -110,17 +146,77 @@ function selectGrowthMetrics(
 ) {
   const selectedKeys = new Set<string>();
   const metrics: ValueLineMetricCard[] = [];
-  for (const candidates of slots) {
+  for (const [slotIndex, candidates] of slots.entries()) {
+    let selectedMetric: ValueLineMetricCard | null = null;
     for (const candidate of candidates) {
       if (selectedKeys.has(candidate.key)) continue;
       const metric = makeGrowthCard(annuals, candidate);
       if (!metric) continue;
-      metrics.push(metric);
-      selectedKeys.add(candidate.key);
+      selectedMetric = metric;
       break;
     }
+
+    if (selectedMetric) {
+      metrics.push(selectedMetric);
+      selectedKeys.add(selectedMetric.key);
+      continue;
+    }
+
+    const primary = candidates[0];
+    if (!primary) continue;
+    metrics.push({
+      key: `${primary.key}-unavailable-${slotIndex}`,
+      title: primary.title,
+      value: "—",
+      badge: "趋势观察",
+      badgeClass: "vl-badge--neutral",
+      subText: primary.subText ?? "5年复合增速 (CAGR)",
+    });
   }
   return metrics;
+}
+
+function unavailableOperatingMetric(
+  model: FinancialModelResolution,
+): ValueLineMetricCard {
+  let title = "现金转化率";
+  let subText = "经营现金流 / 净利润";
+
+  if (model.template === "bank") {
+    title = "5年 ROA 均值";
+    subText = "净利润 / 平均总资产";
+  } else if (model.template === "insurance") {
+    title =
+      model.subModel === "property_casualty" ? "5年赔付率" : "5年投资回报率";
+    subText =
+      model.subModel === "property_casualty"
+        ? "赔付及保单利益 / 净已赚保费"
+        : "投资收益 / 平均投资资产";
+  } else if (model.template === "financial_services") {
+    title = "5年净利率";
+    subText = "净利润 / 营收";
+  } else if (model.template === "real_estate") {
+    title =
+      model.subModel === "reit_property"
+        ? "物业经营回报"
+        : "合同负债 / 营收";
+    subText =
+      model.subModel === "reit_property"
+        ? "经营利润 / 投资性房地产"
+        : "预售合同负债 / 年度营收";
+  } else if (model.template === "conglomerate") {
+    title = "综合现金造血";
+    subText = "合并经营现金流 / 净利润";
+  }
+
+  return {
+    key: "operating-metric-unavailable",
+    title,
+    value: "—",
+    badge: "趋势观察",
+    badgeClass: "vl-badge--neutral",
+    subText,
+  };
 }
 
 function rateOfReturn(
@@ -186,12 +282,28 @@ function operatingMetric(
   const roa = returnOnAssets(annuals);
 
   if (model.template === "bank") {
-    return percentageCard(
-      "roa",
-      "5年 ROA 均值",
-      roa,
-      "净利润 / 平均总资产",
-      "资产回报",
+    const latestRoa =
+      latest &&
+      finite(latest.netIncome) &&
+      finite(latest.totalAssets) &&
+      latest.totalAssets > 0
+        ? (latest.netIncome / latest.totalAssets) * 100
+        : null;
+    return (
+      percentageCard(
+        "roa",
+        "5年 ROA 均值",
+        roa,
+        "净利润 / 平均总资产",
+        "资产回报",
+      ) ??
+      percentageCard(
+        "roa-latest",
+        `FY${latest?.year ?? ""} ROA`,
+        latestRoa,
+        "净利润 / 期末总资产",
+        "当年资产回报",
+      )
     );
   }
 
@@ -225,6 +337,13 @@ function operatingMetric(
       (annual) => annual.investmentIncome,
       (annual) => annual.totalInvestments,
     );
+    const latestInvestmentYield =
+      latest &&
+      finite(latest.investmentIncome) &&
+      finite(latest.totalInvestments) &&
+      latest.totalInvestments > 0
+        ? (latest.investmentIncome / latest.totalInvestments) * 100
+        : null;
     return (
       percentageCard(
         "investment-yield",
@@ -232,6 +351,13 @@ function operatingMetric(
         investmentYield,
         "投资收益 / 平均投资资产",
         "投资质量",
+      ) ??
+      percentageCard(
+        "investment-yield-latest",
+        `FY${latest?.year ?? ""} 投资回报率`,
+        latestInvestmentYield,
+        "投资收益 / 期末投资资产",
+        "当年投资回报",
       ) ??
       percentageCard("roa", "5年 ROA 均值", roa, "净利润 / 平均总资产", "资产回报")
     );
@@ -401,6 +527,12 @@ function growthMetrics(
     title: "每股收益增长",
     value: (annual) => annual.eps,
   };
+  const operatingCashFlow: GrowthSeries = {
+    key: "operating-cash-flow",
+    title: "经营现金流增长",
+    subText: "5年复合增速 (CAGR) · 经营现金创造能力",
+    value: (annual) => annual.operatingCashFlow,
+  };
   const assets: GrowthSeries = {
     key: "assets",
     title: "总资产增长",
@@ -425,11 +557,43 @@ function growthMetrics(
     subText: "5年复合增速 (CAGR) · 物业资产组合扩张",
     value: (annual) => annual.investmentProperty,
   };
+  const operatingIncome: GrowthSeries = {
+    key: "operating-income",
+    title: "经营利润增长",
+    value: (annual) => annual.operatingIncome,
+  };
+  const contractLiabilities: GrowthSeries = {
+    key: "contract-liabilities",
+    title: "合同负债增长",
+    value: (annual) => annual.contractLiabilities,
+  };
+  const inventory: GrowthSeries = {
+    key: "inventory",
+    title: "存货规模增长",
+    value: (annual) => annual.inventory,
+  };
+  const shares: GrowthSeries = {
+    key: "shares",
+    title: "期末股数变化",
+    subText: "5年复合变化率 · 股本稀释或回购",
+    value: (annual) => annual.shares,
+  };
+  const totalDistributions: GrowthSeries = {
+    key: "total-distributions",
+    title: "现金分红增长",
+    value: (annual) =>
+      finite(annual.dividendsPaid) ? Math.abs(annual.dividendsPaid) : null,
+  };
 
   let slots: GrowthSeries[][];
   switch (model.template) {
     case "bank":
-      slots = [[netIncome], [eps], [assets], [equity]];
+      slots = [
+        [netIncome, revenue],
+        [eps, revenue, assets],
+        [assets, equity],
+        [equity, assets, shares],
+      ];
       break;
     case "insurance": {
       const premiums: GrowthSeries = {
@@ -437,7 +601,12 @@ function growthMetrics(
         title: "已赚保费增长",
         value: (annual) => annual.netPremiumsEarned,
       };
-      slots = [[premiums, assets], [netIncome], [eps, assets], [equity]];
+      slots = [
+        [premiums, assets, revenue],
+        [netIncome, eps, revenue],
+        [eps, assets, revenue],
+        [equity, assets, shares],
+      ];
       break;
     }
     case "financial_services": {
@@ -469,15 +638,15 @@ function growthMetrics(
         slots = [
           [aum, servicesRevenue],
           [managementFees, netFees, servicesRevenue, servicesScale],
-          [netIncome],
-          [eps, equity],
+          [netIncome, eps, servicesRevenue],
+          [eps, equity, shares],
         ];
       } else {
         slots = [
           [netFees, servicesRevenue],
           [servicesRevenue, servicesScale],
-          [netIncome],
-          [eps, equity],
+          [netIncome, eps, servicesRevenue],
+          [eps, equity, shares],
         ];
       }
       break;
@@ -490,26 +659,40 @@ function growthMetrics(
           subText: "按年度已实施分红 / 期末股数计算",
           value: perShareDividend,
         };
-        const operatingIncome: GrowthSeries = {
-          key: "operating-income",
+        const reitOperatingIncome: GrowthSeries = {
+          ...operatingIncome,
           title: "物业经营收益增长",
-          value: (annual) => annual.operatingIncome,
         };
         slots = [
-          [revenue],
-          [dividendPerShare, operatingIncome],
+          [revenue, reitOperatingIncome, assets],
+          [dividendPerShare, reitOperatingIncome, totalDistributions],
           [investmentProperty, assets],
-          [equity],
+          [equity, assets, shares],
         ];
       } else {
-        slots = [[revenue], [netIncome], [assets], [equity]];
+        slots = [
+          [revenue, contractLiabilities, inventory],
+          [netIncome, operatingIncome, eps],
+          [assets, inventory, contractLiabilities],
+          [equity, assets, shares],
+        ];
       }
       break;
     case "conglomerate":
-      slots = [[revenue], [netIncome], [fcf], [equity]];
+      slots = [
+        [revenue, operatingIncome, assets],
+        [netIncome, eps],
+        [fcf, operatingCashFlow],
+        [equity, assets, shares],
+      ];
       break;
     default:
-      slots = [[revenue], [netIncome], [fcf], [equity]];
+      slots = [
+        [revenue, operatingIncome, assets],
+        [netIncome, eps, operatingCashFlow],
+        [fcf, operatingCashFlow, revenue],
+        [equity, assets, shares],
+      ];
       break;
   }
 
@@ -525,7 +708,9 @@ export function buildValueLineMetricProfile(
   } = {},
 ): ValueLineMetricProfile {
   return {
-    operatingMetric: operatingMetric(model, annuals, options),
+    operatingMetric:
+      operatingMetric(model, annuals, options) ??
+      unavailableOperatingMetric(model),
     growthMetrics: growthMetrics(model, annuals),
   };
 }

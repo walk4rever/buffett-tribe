@@ -24601,10 +24601,20 @@ a.insight-entity-chip:hover {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 0.85rem;
+  margin-top: 0.9rem;
   width: 100%;
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
+}
+
+.vl-quadrant-heading {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .vl-triad-box {

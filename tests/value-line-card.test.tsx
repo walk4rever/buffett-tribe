@@ -155,13 +155,29 @@ describe("ValueLineBody", () => {
     expect(markup).not.toContain("AUM、净流入");
   });
 
-  it("omits the financial-services operating card when no source metric exists", () => {
+  it("keeps the operating metric slot with an unavailable value when data is absent", () => {
     const markup = renderValueLine("capital_markets", { annuals: [] });
 
-    expect(markup).not.toContain("手续费及佣金净收入");
-    expect(markup).not.toContain("5年净利率");
+    expect(markup).toContain("5年净利率");
     expect(markup).not.toContain("专项指标未接入");
     expect(markup).not.toContain("尚未接入");
+    expect((markup.match(/class="vl-triad-box"/g) ?? []).length).toBe(8);
+  });
+
+  it.each([
+    "industrial",
+    "banks",
+    "insurance",
+    "capital_markets",
+    "real_estate",
+    "conglomerate",
+  ])("keeps both four-card perspective rows for sparse %s data", (sector) => {
+    const markup = renderValueLine(sector, { annuals: [{ year: 2024 }] });
+    const cardCount = (markup.match(/class="vl-triad-box"/g) ?? []).length;
+
+    expect(cardCount).toBe(8);
+    expect(markup).toContain("经营质量 · 资本配置 · 财务安全");
+    expect(markup).toContain("长期增长");
   });
 
   it.each([

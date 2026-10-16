@@ -591,8 +591,14 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
         ) : null}
       </section>
 
-      {/* ── 3. The Buffett Quadrant: 巴菲特价值体检精密四宫格 ── */}
-      <section className="vl-card-triad vl-card-quadrant">
+      {/* ── 3. Business quality, capital allocation and safety ── */}
+      <section
+        className="vl-card-triad vl-card-quadrant"
+        aria-label="经营质量、资本配置与财务安全"
+      >
+        <h3 className="vl-quadrant-heading">
+          经营质量 · 资本配置 · 财务安全
+        </h3>
         {/* Metric 1: ROE */}
         <div className="vl-triad-box">
           <div className="vl-triad-head">
@@ -612,22 +618,20 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
         </div>
 
         {/* Metric 2: Cash Conversion or Specialized Operational Metric */}
-        {data.metric2Applicable && cashFlowMetricValue && cashFlowMetricValue !== "—" ? (
-          <div className="vl-triad-box">
-            <div className="vl-triad-head">
-              <span className="vl-triad-title">{cashFlowMetricTitle}</span>
-              <span className={`vl-triad-badge ${financialModel.showIndustrialCashFlow ? data.metric2BadgeClass ?? "vl-badge--cash" : "vl-badge--neutral"}`}>
-                {cashFlowMetricBadge}
-              </span>
-            </div>
-            <div className="vl-triad-body">
-              <span className="vl-triad-main-num">
-                {cashFlowMetricValue}
-              </span>
-              <span className="vl-triad-sub-text">{cashFlowMetricSubText}</span>
-            </div>
+        <div className="vl-triad-box">
+          <div className="vl-triad-head">
+            <span className="vl-triad-title">{cashFlowMetricTitle}</span>
+            <span className={`vl-triad-badge ${financialModel.showIndustrialCashFlow ? data.metric2BadgeClass ?? "vl-badge--cash" : "vl-badge--neutral"}`}>
+              {cashFlowMetricBadge}
+            </span>
           </div>
-        ) : null}
+          <div className="vl-triad-body">
+            <span className="vl-triad-main-num">
+              {cashFlowMetricValue || "—"}
+            </span>
+            <span className="vl-triad-sub-text">{cashFlowMetricSubText}</span>
+          </div>
+        </div>
 
         {/* Metric 3: Capital Allocation (Share count / Buyback) */}
         <div className="vl-triad-box">
@@ -684,8 +688,9 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
         </div>
       </section>
 
-      {/* ── 4. Long-Term Growth Metrics: 4-Way CAGR Dashboard ── */}
-      <section className="vl-card-triad vl-card-quadrant">
+      {/* ── 4. Long-term growth perspective ── */}
+      <section className="vl-card-triad vl-card-quadrant" aria-label="长期增长">
+        <h3 className="vl-quadrant-heading">长期增长</h3>
         {data.growthMetrics ? (
           data.growthMetrics.map((metric) => (
             <div className="vl-triad-box" key={metric.key}>
