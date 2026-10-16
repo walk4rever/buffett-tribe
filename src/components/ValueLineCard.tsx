@@ -686,6 +686,23 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
 
       {/* ── 4. Long-Term Growth Metrics: 4-Way CAGR Dashboard ── */}
       <section className="vl-card-triad vl-card-quadrant">
+        {data.growthMetrics ? (
+          data.growthMetrics.map((metric) => (
+            <div className="vl-triad-box" key={metric.key}>
+              <div className="vl-triad-head">
+                <span className="vl-triad-title">{metric.title}</span>
+                <span className={`vl-triad-badge ${metric.badgeClass}`}>
+                  {metric.badge}
+                </span>
+              </div>
+              <div className="vl-triad-body">
+                <span className="vl-triad-main-num">{metric.value}</span>
+                <span className="vl-triad-sub-text">{metric.subText}</span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <>
           {/* Metric 1: Revenue CAGR (non-financial) or Net Income CAGR (financial) */}
           {isBalanceSheetFinancialModel ? (
             <div className="vl-triad-box">
@@ -804,6 +821,8 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
               <span className="vl-triad-sub-text">5年复合增速 (CAGR) · 内在价值增长</span>
             </div>
           </div>
+          </>
+        )}
       </section>
     </div>
   );

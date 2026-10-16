@@ -3,6 +3,42 @@ import { describe, expect, it } from "vitest";
 import { ValueLineBody, ValueLineHeader } from "@/components/ValueLineCard";
 import type { ValueLineData } from "@/lib/value-line-data";
 import { resolveFinancialModel } from "@/lib/financial-model";
+import {
+  buildValueLineMetricProfile,
+  type ValueLineMetricAnnual,
+} from "@/lib/value-line-metric-profile";
+
+function metricAnnuals(): ValueLineMetricAnnual[] {
+  return Array.from({ length: 5 }, (_, index) => {
+    const year = 2020 + index;
+    const growth = (base: number, rate: number) => base * (1 + rate) ** index;
+    return {
+      year,
+      revenue: growth(100, 0.08),
+      netIncome: growth(12, 0.1),
+      operatingCashFlow: growth(16, 0.09),
+      freeCashFlow: growth(10, 0.12),
+      shareholdersEquity: growth(60, 0.07),
+      totalAssets: growth(240, 0.06),
+      totalLiabilities: growth(150, 0.05),
+      eps: growth(2, 0.11),
+      shares: 100,
+      dividendsPaid: growth(5, 0.08),
+      assetsUnderManagement: growth(800, 0.13),
+      netClientFlows: 25,
+      investmentManagementFeeIncome: growth(8, 0.12),
+      netFeeAndCommissionIncome: growth(15, 0.09),
+      netPremiumsEarned: growth(70, 0.06),
+      policyClaimsAndBenefits: -growth(45, 0.05),
+      investmentIncome: growth(9, 0.07),
+      totalInvestments: growth(180, 0.05),
+      contractLiabilities: growth(40, 0.08),
+      inventory: growth(55, 0.04),
+      operatingIncome: growth(18, 0.075),
+      investmentProperty: growth(150, 0.05),
+    };
+  });
+}
 
 function renderHeader(sectorModelType: string) {
   const data = {
@@ -34,8 +70,15 @@ function renderValueLine(
   sectorModelType: string,
   overrides: Partial<ValueLineData> = {},
 ) {
+  const financialModel =
+    overrides.financialModel ?? resolveFinancialModel(sectorModelType);
+  const annuals = overrides.annuals ?? metricAnnuals();
+  const profile = buildValueLineMetricProfile(financialModel!, annuals, {
+    cashConversionRatio: 1.4,
+    currencySymbol: "$",
+  });
   const data = {
-    financialModel: resolveFinancialModel(sectorModelType),
+    financialModel,
     sectorModelType,
     market: "us",
     ticker: "TEST",
@@ -45,7 +88,13 @@ function renderValueLine(
     valueLinePoints: [{ date: "2025-01-01", value: 80 }],
     availableSecurities: [],
     cashConversionRatio: 2,
-    metric2Applicable: sectorModelType !== "capital_markets",
+    metric2Title: profile.operatingMetric?.title ?? "",
+    metric2Badge: profile.operatingMetric?.badge ?? "",
+    metric2BadgeClass: profile.operatingMetric?.badgeClass ?? "",
+    metric2MainNum: profile.operatingMetric?.value ?? "",
+    metric2SubText: profile.operatingMetric?.subText ?? "",
+    metric2Applicable: profile.operatingMetric != null,
+    growthMetrics: profile.growthMetrics,
     ...overrides,
   } as unknown as ValueLineData;
 
@@ -80,7 +129,8 @@ describe("ValueLineBody", () => {
     });
 
     expect(markup).toContain("营收增长");
-    expect(markup).toContain("总资产增长");
+    expect(markup).toContain("投资物业增长");
+    expect(markup).toContain("每股已实施分红增长");
     expect(markup).toContain("物业资产组合扩张");
     expect(markup).toContain("股东权益增长");
     expect(markup).not.toContain("净利润增长");
@@ -106,11 +156,31 @@ describe("ValueLineBody", () => {
   });
 
   it("omits the financial-services operating card when no source metric exists", () => {
-    const markup = renderValueLine("capital_markets");
+    const markup = renderValueLine("capital_markets", { annuals: [] });
 
-    expect(markup).not.toContain("金融服务经营");
+    expect(markup).not.toContain("手续费及佣金净收入");
+    expect(markup).not.toContain("5年净利率");
     expect(markup).not.toContain("专项指标未接入");
     expect(markup).not.toContain("尚未接入");
+  });
+
+  it.each([
+    ["industrial", undefined],
+    ["banks", undefined],
+    ["insurance", "property_casualty"],
+    ["capital_markets", "asset_mgmt"],
+    ["real_estate", "developer"],
+    ["real_estate", "reit_property"],
+    ["conglomerate", undefined],
+  ] as const)("renders eight metric cards for %s / %s with complete data", (sector, subModel) => {
+    const financialModel = {
+      ...resolveFinancialModel(sector)!,
+      ...(subModel ? { subModel } : {}),
+    };
+    const markup = renderValueLine(sector, { financialModel });
+    const cardCount = (markup.match(/class="vl-triad-box"/g) ?? []).length;
+
+    expect(cardCount).toBe(8);
   });
 });
 

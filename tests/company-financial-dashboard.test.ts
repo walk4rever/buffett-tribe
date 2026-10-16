@@ -140,6 +140,8 @@ describe("buildCompanyFinancialDashboard", () => {
       expect(dashboard.template).toBe(template);
       if (sectorModelType === "real_estate") {
         expect(dashboard.financialModel.modifiers).toEqual([]);
+        expect(dashboard.rows.map((row) => row.key)).not.toContain("FreeCashFlow");
+        expect(dashboard.rows.map((row) => row.key)).not.toContain("CapEx");
         expect(dashboard.rows.map((row) => row.key)).not.toContain("FCFMargin");
         expect(dashboard.rows.map((row) => row.key)).not.toContain("CashConversion");
         expect(dashboard.templateNote).toContain("租金回报");

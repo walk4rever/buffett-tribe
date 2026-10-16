@@ -57,7 +57,10 @@ import {
   type FinancialModelResolution,
 } from "@/lib/financial-model";
 import { getCikLookupVariants } from "@/lib/cik";
-import { buildFinancialServicesMetricCard } from "@/lib/financial-services-metrics";
+import {
+  buildValueLineMetricProfile,
+  type ValueLineMetricCard,
+} from "@/lib/value-line-metric-profile";
 
 function parseNum(items: Record<string, string | number> | undefined, key: string): number | null {
   if (!items) return null;
@@ -87,6 +90,14 @@ export type ValueLineAnnualData = {
   sharesSource?: "disclosed" | "disclosed_period_end" | "weighted_average" | "derived" | null;
   repurchaseAmt: number | null;
   dividendsPaid: number | null;
+  operatingIncome?: number | null;
+  contractLiabilities?: number | null;
+  inventory?: number | null;
+  investmentProperty?: number | null;
+  netPremiumsEarned?: number | null;
+  policyClaimsAndBenefits?: number | null;
+  investmentIncome?: number | null;
+  totalInvestments?: number | null;
   assetsUnderManagement?: number | null;
   netClientFlows?: number | null;
   investmentManagementFeeIncome?: number | null;
@@ -226,6 +237,7 @@ export type ValueLineData = {
   metric2MainNum: string;
   metric2SubText: string;
   metric2Applicable?: boolean;
+  growthMetrics?: ValueLineMetricCard[];
 
   metric4Title: string;
   metric4Badge: string;
@@ -411,6 +423,17 @@ export async function getValueLineData(
       const repAmt = repAmtRaw != null ? repAmtRaw : null;
       const divRaw = parseNum(f.items, "DividendsPaid");
       const dividendsPaid = divRaw != null ? divRaw : null;
+      const operatingIncome = parseNum(f.items, "OperatingIncome");
+      const contractLiabilities = parseNum(f.items, "ContractLiabilities");
+      const inventory = parseNum(f.items, "Inventory");
+      const investmentProperty = parseNum(f.items, "InvestmentProperty");
+      const netPremiumsEarned = parseNum(f.items, "NetPremiumsEarned");
+      const policyClaimsAndBenefits = parseNum(
+        f.items,
+        "PolicyClaimsAndBenefits",
+      );
+      const investmentIncome = parseNum(f.items, "InvestmentIncome");
+      const totalInvestments = parseNum(f.items, "TotalInvestments");
       const assetsUnderManagement = parseNum(f.items, "AssetsUnderManagement");
       const netClientFlows = parseNum(f.items, "NetClientFlows");
       const investmentManagementFeeIncome = parseNum(
@@ -469,6 +492,14 @@ export async function getValueLineData(
         sharesSource,
         repurchaseAmt: repAmt,
         dividendsPaid,
+        operatingIncome,
+        contractLiabilities,
+        inventory,
+        investmentProperty,
+        netPremiumsEarned,
+        policyClaimsAndBenefits,
+        investmentIncome,
+        totalInvestments,
         assetsUnderManagement,
         netClientFlows,
         investmentManagementFeeIncome,
@@ -482,7 +513,15 @@ export async function getValueLineData(
       a.assetsUnderManagement != null ||
       a.netClientFlows != null ||
       a.investmentManagementFeeIncome != null ||
-      a.netFeeAndCommissionIncome != null
+      a.netFeeAndCommissionIncome != null ||
+      a.operatingIncome != null ||
+      a.contractLiabilities != null ||
+      a.inventory != null ||
+      a.investmentProperty != null ||
+      a.netPremiumsEarned != null ||
+      a.policyClaimsAndBenefits != null ||
+      a.investmentIncome != null ||
+      a.totalInvestments != null
     )
     .sort((a, b) => a.year - b.year);
 
@@ -512,6 +551,14 @@ export async function getValueLineData(
         [epsLine]: annual.eps,
         [repurchaseLine]: annual.repurchaseAmt,
         DividendsPaid: annual.dividendsPaid,
+        OperatingIncome: annual.operatingIncome ?? null,
+        ContractLiabilities: annual.contractLiabilities ?? null,
+        Inventory: annual.inventory ?? null,
+        InvestmentProperty: annual.investmentProperty ?? null,
+        NetPremiumsEarned: annual.netPremiumsEarned ?? null,
+        PolicyClaimsAndBenefits: annual.policyClaimsAndBenefits ?? null,
+        InvestmentIncome: annual.investmentIncome ?? null,
+        TotalInvestments: annual.totalInvestments ?? null,
         AssetsUnderManagement: annual.assetsUnderManagement ?? null,
         NetClientFlows: annual.netClientFlows ?? null,
         InvestmentManagementFeeIncome:
@@ -575,6 +622,14 @@ export async function getValueLineData(
       eps,
       repurchaseAmt: values[repurchaseLine] ?? null,
       dividendsPaid: values.DividendsPaid ?? null,
+      operatingIncome: values.OperatingIncome ?? null,
+      contractLiabilities: values.ContractLiabilities ?? null,
+      inventory: values.Inventory ?? null,
+      investmentProperty: values.InvestmentProperty ?? null,
+      netPremiumsEarned: values.NetPremiumsEarned ?? null,
+      policyClaimsAndBenefits: values.PolicyClaimsAndBenefits ?? null,
+      investmentIncome: values.InvestmentIncome ?? null,
+      totalInvestments: values.TotalInvestments ?? null,
       assetsUnderManagement: values.AssetsUnderManagement ?? null,
       netClientFlows: values.NetClientFlows ?? null,
       investmentManagementFeeIncome:
@@ -603,19 +658,27 @@ export async function getValueLineData(
     else roeStability = "negative";
   }
 
-  const totalOcf = recentAnnuals.reduce((acc, a) => acc + (a.operatingCashFlow ?? 0), 0);
-  const totalNet = recentAnnuals.reduce((acc, a) => acc + (a.netIncome ?? 0), 0);
+  const cashFlowPairs = recentAnnuals.filter(
+    (annual) => annual.operatingCashFlow != null && annual.netIncome != null,
+  );
+  const totalOcf = cashFlowPairs.reduce(
+    (acc, annual) => acc + annual.operatingCashFlow!,
+    0,
+  );
+  const totalNet = cashFlowPairs.reduce(
+    (acc, annual) => acc + annual.netIncome!,
+    0,
+  );
   const cashConversionRatio =
-    financialModel.showIndustrialCashFlow && totalNet > 0 && totalOcf > 0
+    financialModel.showIndustrialCashFlow &&
+    cashFlowPairs.length > 0 &&
+    totalNet > 0 &&
+    totalOcf > 0
       ? Number((totalOcf / totalNet).toFixed(2))
       : null;
 
   const latestAnnual = annuals[annuals.length - 1] ?? null;
   const sym = tradingCurrency ? currencySymbol(tradingCurrency) : "";
-  const financialServicesCard = buildFinancialServicesMetricCard(
-    annuals,
-    sym,
-  );
   const debtToAssetsRatio =
     latestAnnual?.totalLiabilities != null && latestAnnual?.totalAssets != null && latestAnnual.totalAssets > 0
       ? Number(((latestAnnual.totalLiabilities / latestAnnual.totalAssets) * 100).toFixed(1))
@@ -633,6 +696,10 @@ export async function getValueLineData(
   const sectorModelType = financialModel.sectorModelType;
   const sectorModel = sectorModelType ? getSectorModel13Info(sectorModelType) : null;
   const sectorModelLabel = sectorModel?.label ?? null;
+  const metricProfile = buildValueLineMetricProfile(financialModel, annuals, {
+    cashConversionRatio,
+    currencySymbol: sym,
+  });
 
   // ── Metric 1: 5-Year ROE ──
   const metric1Title = "5年 ROE 均值";
@@ -679,54 +746,13 @@ export async function getValueLineData(
     metric1SubText = "消费心智与定价权 · 稳健抗周期复利回报";
   }
 
-  // ── Metric 2: Cash Conversion ──
-  let metric2Title = "真金白银造血力";
-  let metric2Badge =
-    cashConversionRatio && cashConversionRatio >= 1 ? "纯正造血" : "稳健现金";
-  let metric2BadgeClass = "vl-badge--cash";
-  let metric2MainNum =
-    cashConversionRatio != null ? `${cashConversionRatio}x` : "—";
-  let metric2SubText = "经营现金流 / 净利润";
-  const metric2Applicable =
-    financialModel.template === "financial_services"
-      ? financialServicesCard.applicable
-      : Boolean(financialModel.showIndustrialCashFlow);
-
-  if (financialModel.template === "financial_services") {
-    metric2Title = financialServicesCard.title;
-    metric2Badge = financialServicesCard.badge;
-    metric2BadgeClass = "vl-badge--neutral";
-    metric2MainNum = financialServicesCard.mainNum;
-    metric2SubText = financialServicesCard.subText;
-  } else if (!financialModel.showIndustrialCashFlow) {
-    metric2Title = "";
-    metric2Badge = "";
-    metric2BadgeClass = "vl-badge--neutral";
-    metric2MainNum = "";
-    metric2SubText = "";
-  } else if (sectorModelType === "utilities") {
-    metric2Title = "特许现金造血";
-    metric2Badge = "特许现金奶牛";
-    metric2BadgeClass = "vl-badge--cash";
-    metric2MainNum =
-      cashConversionRatio != null ? `${cashConversionRatio}x` : "—";
-    metric2SubText = "特许权持续现金流入 · 高折旧充沛现金流";
-  } else if (sectorModelType === "energy_materials") {
-    metric2Title = "周期现金造血";
-    metric2Badge =
-      cashConversionRatio && cashConversionRatio >= 1 ? "高景气现金回流" : "资本开支吸收";
-    metric2BadgeClass =
-      cashConversionRatio && cashConversionRatio >= 1 ? "vl-badge--cash" : "vl-badge--neutral";
-    metric2MainNum =
-      cashConversionRatio != null ? `${cashConversionRatio}x` : "—";
-    metric2SubText = "经营现金流 / 净利润 (随大宗商品价格剧烈联动)";
-  } else if (sectorModelType === "conglomerate") {
-    metric2Title = "综合现金造血";
-    metric2Badge = cashConversionRatio && cashConversionRatio >= 1 ? "多元现金流" : "稳健现金";
-    metric2BadgeClass = "vl-badge--cash";
-    metric2MainNum = cashConversionRatio != null ? `${cashConversionRatio}x` : "—";
-    metric2SubText = "多元经营实体分红现金回流与保费浮存金";
-  }
+  const metric2Title = metricProfile.operatingMetric?.title ?? "";
+  const metric2Badge = metricProfile.operatingMetric?.badge ?? "";
+  const metric2BadgeClass =
+    metricProfile.operatingMetric?.badgeClass ?? "vl-badge--neutral";
+  const metric2MainNum = metricProfile.operatingMetric?.value ?? "";
+  const metric2SubText = metricProfile.operatingMetric?.subText ?? "";
+  const metric2Applicable = metricProfile.operatingMetric != null;
 
   // ── Metric 4: Balance Sheet & Safety ──
   let metric4Title = "资产负债与安全性";
@@ -1508,6 +1534,7 @@ export async function getValueLineData(
     epsCagrLabel,
     assetsCagr5Y,
     assetsCagrLabel,
+    growthMetrics: metricProfile.growthMetrics,
 
     hasDeepDive,
     overview,
