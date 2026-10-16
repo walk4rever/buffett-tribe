@@ -85,7 +85,11 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
     financialModel.template === "bank"
       ? "银行业核心聚焦信贷资产质量、净息差走势与 ROE-PB 估值通道，不套用传统通用 P/E 通道。"
       : financialModel.template === "insurance"
-        ? "保险业核心聚焦内含价值变动、综合成本率与长期浮存金投资回报，不套用传统通用 P/E 通道。"
+        ? financialModel.subModel === "life_health"
+          ? "人身险核心聚焦新业务价值（NBV）增长、内含价值（EV）变动与长期浮存金投资回报，不套用传统通用 P/E 通道。"
+          : financialModel.subModel === "property_casualty"
+            ? "财产险核心聚焦承保质量、综合成本率与短期赔付风控，不套用传统通用 P/E 通道。"
+            : "保险业核心聚焦内含价值变动、承保质量与长期浮存金投资回报，不套用传统通用 P/E 通道。"
         : `${financialModel.valuationAnchorLabel}为核心考量基准，以专业资产定价与行业周期中枢为核心估值锚。`;
   // FCF Yield & Additional Multiples
   const fcfYield = useMemo(() => {
