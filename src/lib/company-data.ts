@@ -10,6 +10,7 @@ import {
   OFFICIAL_FILINGS_START_DATE,
 } from "@/lib/financial-period";
 import { normalizeCik, unpadCik, getCikLookupVariants } from "@/lib/cik";
+import { applyOptionalCashFlowZeroDefaults } from "@/lib/financial-normalization";
 import {
   buildMasterHolderTrends,
   type MasterHolderTrendGroup,
@@ -457,7 +458,7 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
     }
   }
 
-  return [...byYear.entries()]
+  const financialYears = [...byYear.entries()]
     .filter(([, data]) =>
       Boolean(
         data.items.Revenue ||
@@ -479,6 +480,8 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
       items: data.items,
       itemUnits: data.itemUnits,
     }));
+
+  return applyOptionalCashFlowZeroDefaults(financialYears);
 }
 
 /**
