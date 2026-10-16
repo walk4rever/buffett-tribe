@@ -39,11 +39,13 @@ export interface Message {
 }
 
 export const TOOL_META: Record<string, { icon: string; label: string }> = {
-  search_wisdom:   { icon: "🧠", label: "查询资料库" },
-  search_holdings: { icon: "📊", label: "查询持仓明细" },
-  search_filings:  { icon: "📄", label: "查询公司年报" },
-  get_company_analysis: { icon: "🔍", label: "查询公司分析" },
-  get_insight_content:  { icon: "📰", label: "查询洞见全文" },
+  search_wisdom:           { icon: "🧠", label: "查询大师资料库" },
+  search_holdings:         { icon: "📊", label: "查询机构持仓明细" },
+  search_filings:          { icon: "📄", label: "检索公司年报原文" },
+  get_company_analysis:    { icon: "🔍", label: "查询公司深度分析" },
+  get_insight_content:     { icon: "📰", label: "查询洞见研报" },
+  get_stock_price_history: { icon: "📈", label: "查询股价与行情走势" },
+  get_company_financials:  { icon: "📑", label: "查询财务报表与指标" },
 };
 
 function resolveToolDetail(name: string, args: Record<string, unknown> | undefined): string | undefined {
@@ -67,7 +69,24 @@ function resolveToolDetail(name: string, args: Record<string, unknown> | undefin
     return parts.join(" · ") || undefined;
   }
   if (name === "get_insight_content") {
-    return str("slug");
+    return str("slug") || str("query");
+  }
+  if (name === "get_stock_price_history") {
+    return str("company");
+  }
+  if (name === "get_company_financials") {
+    const statementMap: Record<string, string> = {
+      income_statement: "利润表",
+      balance_sheet: "资产负债表",
+      cash_flow: "现金流量表",
+    };
+    const stmt = str("statement") ? (statementMap[str("statement")!] ?? str("statement")) : undefined;
+    const lineItems = Array.isArray(args.lineItems)
+      ? (args.lineItems as string[]).slice(0, 3).join(", ") + ((args.lineItems as string[]).length > 3 ? "..." : "")
+      : str("lineItems");
+    const years = num("years") ? `近${num("years")}年` : undefined;
+    const parts = [str("company"), stmt, lineItems, years].filter(Boolean);
+    return parts.join(" · ") || undefined;
   }
   return str("query");
 }

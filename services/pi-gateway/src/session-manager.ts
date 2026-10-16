@@ -9,6 +9,7 @@ import { searchFilingsTool } from "./tools/search-filings.js";
 import { getInsightContentTool } from "./tools/get-insight-content.js";
 import { getCompanyAnalysisTool } from "./tools/get-company-analysis.js";
 import { getStockPriceHistoryTool } from "./tools/get-stock-price-history.js";
+import { getCompanyFinancialsTool } from "./tools/get-company-financials.js";
 import type { HistoryTurn } from "./history.js";
 
 const GATEWAY_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -126,6 +127,7 @@ async function makeSession(history?: HistoryTurn[]): Promise<AgentSession> {
       getInsightContentTool,
       getCompanyAnalysisTool,
       getStockPriceHistoryTool,
+      getCompanyFinancialsTool,
     ],
   });
   return session;
