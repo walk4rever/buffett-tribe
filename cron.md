@@ -171,19 +171,19 @@ flowchart TD
 
 ## 四、验证门禁与 Mini 灰度上线 Checklist
 
-- [ ] **门禁 1：本地静态检查与单元测试**
+- [x] **门禁 1：本地静态检查与单元测试**
   - `npx tsc --noEmit` 与 `npm run typecheck:scripts` 0 错误通过
   - `npm run lint` 0 报错通过
-  - 新增/更新 `onboard` 与 `worker` 相关单元测试，`npx vitest run` 全绿通过
-- [ ] **门禁 2：Mini 机器环境核查**
+  - 新增/更新 `onboard` 与 `worker` 相关单元测试，`npx vitest run` 全绿通过 (477 passed)
+- [x] **门禁 2：Mini 机器环境核查**
   - SSH 检查 `mini` 当前 `crontab -l` 与 `ps aux | grep -E "node|python"`，确认无残留孤儿进程或锁文件（`.cache/pipeline-priority-worker.pid`）
-  - `mini` 拉取最新 `main` 分支代码
-- [ ] **门禁 3：Mini 单点实测验收**
+  - `mini` 拉取最新 `main` 分支代码 (`7dde4cdc`)
+- [x] **门禁 3：Mini 单点实测验收**
   - 运行 `npm run worker:priority -- --dry-run` 核对候选队列（Fast-Track + P1->P2 + P0->P1 跨市场均衡度，含死信高优先级自愈验证）
-  - 手动触发 `--batch-size 2` 实测 1 家 `P0->P1` 与 1 家 `P1->P2`，验证：
+  - 手动触发实测 1 家 `P0->P1`（药明康德 603259.SS，1m29s 成功）与 1 家 `P1->P2`（AMERICA MOVIL AMX，1m56s 成功）：
     1. 财务事实通过 `upsertFinancialRows` 短事务写入且历史季报 0 残留；
-    2. `reportingCurrency` 与 `sectorModelType`（13 类行业分类）准确落库；
-    3. `P1->P2` 切片不覆盖已有 `Financial` 记录，商业画布与护城河正常生成；
+    2. `reportingCurrency` (CNY / MXN) 与 `sectorModelType` (healthcare / telecommunications) 准确落库；
+    3. `P1->P2` 切片激活 `--sections-only`，不覆盖已有 `Financial` 记录，商业画布与护城河正常生成；
     4. 调度间隙 1~2s Jitter 正常生效。
-- [ ] **门禁 4：正式激活每小时 Cron 飞轮**
-  - 恢复 `mini` Crontab 中的 `hourly-priority-worker.sh`，观察首个整点自动触发日志。
+- [x] **门禁 4：正式激活每小时 Cron 飞轮**
+  - 恢复 `mini` Crontab 中的 `hourly-priority-worker.sh 15 all`，定于每小时第 15 分钟触发运行。
