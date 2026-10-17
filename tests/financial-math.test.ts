@@ -223,6 +223,126 @@ describe("financial calculations", () => {
       // 2020 EPS should be multiplied by 8 (divided by 0.125) to 4.00
       expect(Number(res.find((y) => y.year === 2020)?.items.EPSDiluted)).toBe(4.00);
     });
+
+    it("normalizes NVDA multi-split history (2021 1:4 + 2024 1:10 = 40x cumulative) across both tears", () => {
+      const nvdaYears = [
+        {
+          year: 2020,
+          items: {
+            CommonStockSharesOutstanding: "612000000", // Pre-4x and Pre-10x (needs 40x)
+            WeightedAverageSharesDiluted: "2472000000", // Restated for 2021 4x, but pre-2024 10x
+            EPSDiluted: "1.13",
+            NetIncome: "2796000000",
+          },
+        },
+        {
+          year: 2022,
+          items: {
+            CommonStockSharesOutstanding: "2506000000", // Pre-10x
+            WeightedAverageSharesDiluted: "2535000000", // Pre-10x
+            EPSDiluted: "3.85",
+            NetIncome: "9752000000",
+          },
+        },
+        {
+          year: 2023,
+          items: {
+            CommonStockSharesOutstanding: "2466000000", // T-2 tear: BS pre-10x
+            WeightedAverageSharesDiluted: "25070000000", // IS restated post-10x
+            EPSDiluted: "0.17",
+            NetIncome: "4368000000",
+          },
+        },
+        {
+          year: 2024,
+          items: {
+            CommonStockSharesOutstanding: "24643000000",
+            WeightedAverageSharesDiluted: "24940000000",
+            EPSDiluted: "1.19",
+            NetIncome: "29760000000",
+          },
+        },
+      ];
+
+      const res = normalizeFinancialYearsStockSplits(nvdaYears);
+
+      // FY2020 CommonStockSharesOutstanding (612M * 40 = 24.48B)
+      expect(Number(res.find((y) => y.year === 2020)?.items.CommonStockSharesOutstanding)).toBe(24480000000);
+      expect(Number(res.find((y) => y.year === 2020)?.items.WeightedAverageSharesDiluted)).toBe(24720000000);
+      expect(Number(res.find((y) => y.year === 2020)?.items.EPSDiluted)).toBeCloseTo(0.113, 3);
+      // FY2023 T-2 tear fixed (2.466B * 10 = 24.66B)
+      expect(Number(res.find((y) => y.year === 2023)?.items.CommonStockSharesOutstanding)).toBe(24660000000);
+    });
+
+    it("normalizes AMZN 20-for-1 split T-2 intra-year tear and DECK 6-for-1 split T-2 tear", () => {
+      const amznYears = [
+        {
+          year: 2020,
+          items: {
+            CommonStockSharesOutstanding: "503000000", // Pre-20x
+            WeightedAverageSharesDiluted: "10198000000", // Post-20x
+            EPSDiluted: "2.09",
+            NetIncome: "21331000000",
+          },
+        },
+        {
+          year: 2021,
+          items: {
+            CommonStockSharesOutstanding: "10175000000",
+            WeightedAverageSharesDiluted: "10296000000",
+            EPSDiluted: "3.24",
+            NetIncome: "33364000000",
+          },
+        },
+      ];
+      const amznRes = normalizeFinancialYearsStockSplits(amznYears);
+      expect(Number(amznRes.find((y) => y.year === 2020)?.items.CommonStockSharesOutstanding)).toBe(10060000000);
+
+      const deckYears = [
+        {
+          year: 2023,
+          items: {
+            CommonStockSharesOutstanding: "26200000", // Pre-6x
+            WeightedAverageSharesDiluted: "160100000", // Post-6x
+            EPSDiluted: "3.23",
+            NetIncome: "516800000",
+          },
+        },
+        {
+          year: 2024,
+          items: {
+            CommonStockSharesOutstanding: "152500000",
+            WeightedAverageSharesDiluted: "155400000",
+            EPSDiluted: "4.86",
+            NetIncome: "759600000",
+          },
+        },
+      ];
+      const deckRes = normalizeFinancialYearsStockSplits(deckYears);
+      expect(Number(deckRes.find((y) => y.year === 2023)?.items.CommonStockSharesOutstanding)).toBe(157200000);
+    });
+
+    it("falls back to adjacent-year CommonStockSharesOutstanding jump detection when weighted shares anchor is missing", () => {
+      const noAnchorYears = [
+        {
+          year: 2022,
+          items: {
+            CommonStockSharesOutstanding: "200000000", // Pre-10x, no weighted shares item
+            EPSDiluted: "12.00",
+          },
+        },
+        {
+          year: 2023,
+          items: {
+            CommonStockSharesOutstanding: "2000000000", // Post-10x
+            EPSDiluted: "1.50",
+          },
+        },
+      ];
+      const res = normalizeFinancialYearsStockSplits(noAnchorYears);
+      expect(Number(res.find((y) => y.year === 2022)?.items.CommonStockSharesOutstanding)).toBe(2000000000);
+      expect(Number(res.find((y) => y.year === 2022)?.items.EPSDiluted)).toBe(1.2);
+    });
   });
 
   describe("invested capital and ROIC calculations", () => {

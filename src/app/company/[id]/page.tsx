@@ -13,6 +13,7 @@ import {
   getCompanyAnalysis,
   getCompanyByIdentifier,
   getCompanyFinancials,
+  getLatestInterimFinancial,
   getFinancialsCurrency,
   getCompanySecurities,
   formatCompanyUrl,
@@ -379,6 +380,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
 
   const [
     financials,
+    latestInterim,
     financialsCurrency,
     holders,
     securities,
@@ -388,6 +390,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
     valueLineData,
   ] = await Promise.all([
     getCompanyFinancials(company.id, 10),
+    getLatestInterimFinancial(company.id),
     getFinancialsCurrency(company.id),
     getRecentHolders(company.id, 30),
     getCompanySecurities(company.id),
@@ -476,7 +479,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
 
   const dashboardTradingCurrency = tradingCurrencyForMarket(company.market);
   const dashboardItemCurrencies = new Set(
-    financials.flatMap((financial) =>
+    [...financials, ...(latestInterim ? [latestInterim] : [])].flatMap((financial) =>
       Object.values(financial.itemUnits ?? {})
         .map(extractCurrencyCode)
         .filter((currency): currency is string => currency != null),
@@ -499,6 +502,7 @@ export default async function CompanyPage({ params, searchParams }: Props) {
       tradingCurrency: dashboardTradingCurrency,
       fxRates: dashboardFxRates,
     },
+    latestInterim,
   );
 
   // Phase 1 公司：只显示可用 tab + 深度分析按钮，不显示灰色锁住的 tab

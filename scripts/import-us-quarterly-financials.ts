@@ -85,15 +85,34 @@ export async function importUsQuarterlyFinancialsForEntity(
   }
 
   const minYear = options?.fromYear ?? 2020;
-  const sortedFilings = [...filingsByQuarter.values()]
-    .filter((f) => f.fy >= minYear)
+  const maxFyAgg = await db.financial.aggregate({
+    where: { entityId, periodType: "FY" },
+    _max: { periodEnd: true },
+  });
+  const maxFyDateStr = maxFyAgg._max.periodEnd
+    ? maxFyAgg._max.periodEnd.toISOString().slice(0, 10)
+    : null;
+
+  const allDiscovered = [...filingsByQuarter.values()].filter((f) => f.fy >= minYear);
+  const maxDiscoveredFy = allDiscovered.reduce((max, f) => (f.fy > max ? f.fy : max), 0);
+
+  const sortedFilings = allDiscovered
+    .filter((f) => {
+      if (!f.periodEnd) return false;
+      if (maxFyDateStr) {
+        return f.periodEnd > maxFyDateStr;
+      }
+      return f.fy === maxDiscoveredFy;
+    })
     .sort((a, b) => {
       if (a.fy !== b.fy) return a.fy - b.fy;
       return a.fp.localeCompare(b.fp);
     });
 
   if (!sortedFilings.length) {
-    console.log(`  ${ticker} (${cik}): no 10-Q filings discovered in SEC CompanyFacts.`);
+    console.log(
+      `  ${ticker} (${cik}): no newer 10-Q filings after max FY date (${maxFyDateStr ?? "none"}).`,
+    );
     return 0;
   }
 
@@ -103,10 +122,6 @@ export async function importUsQuarterlyFinancialsForEntity(
     select: { id: true, accessionNumber: true, url: true },
   });
   const existingSourceMap = new Map(existingSources.map((s) => [s.accessionNumber, s]));
-
-  // YTD cash-flow values for calculating discrete quarter values:
-  // Map `${fy}-${fp}-${lineItem}` -> cumulative YTD value
-  const ytdValues = new Map<string, number>();
 
   const financialRowsToInsert: Array<{
     entityId: string;
@@ -207,42 +222,16 @@ export async function importUsQuarterlyFinancialsForEntity(
               candidateUnit = unit;
               break;
             } else {
-              // Duration item:
-              // Sort by duration ascending so discrete 3-month is preferred over 6-month / 9-month YTD
+              // Duration item: preserve native YTD cumulative value (longest duration: Q1=3M, Q2=6M YTD, Q3=9M YTD)
+              // to align Income Statement and Cash Flow Statement on the same YTD basis without cross-quarter subtraction noise.
               matching.sort((a, b) => {
                 const durA = a.start && a.end ? new Date(a.end).getTime() - new Date(a.start).getTime() : 0;
                 const durB = b.start && b.end ? new Date(b.end).getTime() - new Date(b.start).getTime() : 0;
                 return durA - durB;
               });
-              const shortest = matching[0];
               const longest = matching[matching.length - 1];
-
-              const durationDays =
-                shortest.start && shortest.end
-                  ? (new Date(shortest.end).getTime() - new Date(shortest.start).getTime()) / 86400000
-                  : 0;
-
-              // If duration is <= 110 days, it is a single quarter (~3 months)
-              if (durationDays > 0 && durationDays <= 110) {
-                candidateVal = shortest.val!;
-                candidateUnit = unit;
-              } else {
-                // Cash flow statement or YTD: record YTD value and subtract prior quarter if available
-                const ytdVal = longest.val!;
-                ytdValues.set(`${filing.fy}-${filing.fp}-${item.key}`, ytdVal);
-
-                let discreteVal = ytdVal;
-                if (filing.fp === "Q2") {
-                  const q1Val = ytdValues.get(`${filing.fy}-Q1-${item.key}`);
-                  if (q1Val != null) discreteVal = ytdVal - q1Val;
-                } else if (filing.fp === "Q3") {
-                  const q2Val = ytdValues.get(`${filing.fy}-Q2-${item.key}`);
-                  if (q2Val != null) discreteVal = ytdVal - q2Val;
-                }
-
-                candidateVal = discreteVal;
-                candidateUnit = unit;
-              }
+              candidateVal = longest.val!;
+              candidateUnit = unit;
               break;
             }
           }

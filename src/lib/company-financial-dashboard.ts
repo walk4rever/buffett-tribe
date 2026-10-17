@@ -42,6 +42,13 @@ export type CompanyFinancialContext = {
 
 type MetricKind = "money" | "percent" | "number" | "multiple";
 
+export type FinancialDashboardInterimColumn = {
+  year: number;
+  periodType: string;
+  periodEnd: Date;
+  label: string;
+};
+
 export type FinancialDashboardRow = {
   key: string;
   zhLabel: string;
@@ -50,6 +57,8 @@ export type FinancialDashboardRow = {
   kind: MetricKind;
   values: Record<number, string>;
   rawValues: Record<number, number | null>;
+  interimValue?: string;
+  interimRawValue?: number | null;
 };
 
 export type FinancialDashboardTrend = {
@@ -70,6 +79,7 @@ export type CompanyFinancialDashboard = {
   trends: FinancialDashboardTrend[];
   rows: FinancialDashboardRow[];
   currency: string | null;
+  latestInterim?: FinancialDashboardInterimColumn | null;
 };
 
 type MetricDef = {
@@ -951,11 +961,28 @@ function normalizeFinancialYears(
   });
 }
 
+const ANNUAL_ONLY_METRIC_KEYS = new Set([
+  "RevenueGrowth",
+  "NetIncomeGrowth",
+  "AssetGrowth",
+  "ROE",
+  "ROA",
+  "ROIC",
+  "AssetTurnover",
+]);
+
 export function buildCompanyFinancialDashboard(
   company: CompanyFinancialContext,
   financials: FinancialYearItems[],
   currency: string | null = null,
   currencyContext?: FinancialDashboardCurrencyContext,
+  latestInterim?: {
+    year?: number;
+    periodType: string;
+    periodEnd: Date;
+    items: Record<string, string>;
+    itemUnits?: Record<string, string | null | undefined>;
+  } | null,
 ): CompanyFinancialDashboard {
   const normalizedFinancials = uniqueByYear(
     normalizeFinancialYears(financials, currencyContext),
@@ -964,6 +991,39 @@ export function buildCompanyFinancialDashboard(
   const displayYears = normalizedFinancials.slice(0, 5).map((row) => row.year);
   const byYear = new Map(normalizedFinancials.map((row) => [row.year, row]));
   const ctx: MetricContext = { byYear };
+
+  let interimColumn: FinancialDashboardInterimColumn | null = null;
+  let interimCtx: MetricContext | null = null;
+  const INTERIM_SYNTHETIC_YEAR = 9999;
+
+  if (latestInterim && Object.keys(latestInterim.items).length > 0) {
+    const interimYear = latestInterim.year ?? latestInterim.periodEnd.getUTCFullYear();
+    const [normalizedInterim] = normalizeFinancialYears(
+      [
+        {
+          year: interimYear,
+          periodEnd: latestInterim.periodEnd,
+          items: latestInterim.items,
+          itemUnits: latestInterim.itemUnits,
+        },
+      ],
+      currencyContext,
+    );
+    if (normalizedInterim) {
+      interimColumn = {
+        year: interimYear,
+        periodType: latestInterim.periodType,
+        periodEnd: latestInterim.periodEnd,
+        label: `${interimYear} ${latestInterim.periodType} (YTD)`,
+      };
+      const mapWithInterim = new Map(byYear);
+      mapWithInterim.set(INTERIM_SYNTHETIC_YEAR, {
+        ...normalizedInterim,
+        year: INTERIM_SYNTHETIC_YEAR,
+      });
+      interimCtx = { byYear: mapWithInterim };
+    }
+  }
   const meta = normalizeMeta(company.metadata);
   const sectorModelReason =
     meta.sectorModel && typeof meta.sectorModel === "object" && "reason" in meta.sectorModel
@@ -1084,7 +1144,14 @@ export function buildCompanyFinancialDashboard(
     if (!metric) return [];
 
     const rawValues = displayYears.map((year) => [year, metric.compute(year, ctx)] as const);
-    if (rawValues.every(([, metricValue]) => metricValue == null)) return [];
+    const interimRawValue =
+      interimCtx && !ANNUAL_ONLY_METRIC_KEYS.has(metric.key)
+        ? metric.compute(INTERIM_SYNTHETIC_YEAR, interimCtx)
+        : null;
+
+    if (rawValues.every(([, metricValue]) => metricValue == null) && interimRawValue == null) {
+      return [];
+    }
 
     return [{
       key: metric.key,
@@ -1099,6 +1166,12 @@ export function buildCompanyFinancialDashboard(
           formatMetricValue(metricValue, metric.kind, currency),
         ]),
       ),
+      ...(interimColumn
+        ? {
+            interimRawValue,
+            interimValue: formatMetricValue(interimRawValue, metric.kind, currency),
+          }
+        : {}),
     }];
   });
 
@@ -1141,5 +1214,7 @@ export function buildCompanyFinancialDashboard(
     trends,
     rows,
     currency,
+    latestInterim: interimColumn,
   };
 }
+

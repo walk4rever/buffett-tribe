@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildFinancialsMarkdown,
   formatFinancialNumber,
+  normalizeNumericYearsStockSplits,
   resolveFinancialLineItem,
 } from "./get-company-financials.js";
 
@@ -29,6 +30,7 @@ describe("resolveFinancialLineItem", () => {
     expect(resolveFinancialLineItem("真自由现金流")).toBe("FCF_Ex_SBC");
     expect(resolveFinancialLineItem("roe")).toBe("ROE");
     expect(resolveFinancialLineItem("净资产收益率")).toBe("ROE");
+    expect(resolveFinancialLineItem("收并购净现金流")).toBe("PurchaseSaleOfBusinessNet");
   });
 
   it("returns null for unrecognized line item", () => {
@@ -60,13 +62,27 @@ describe("formatFinancialNumber", () => {
   });
 });
 
+describe("normalizeNumericYearsStockSplits", () => {
+  it("normalizes NVDA two-stage stock splits across FY2020-2025", () => {
+    const dataByYear = new Map<number, Record<string, number>>([
+      [2020, { WeightedAverageSharesDiluted: 2_472_000_000, CommonStockSharesOutstanding: 612_000_000, EPSDiluted: 1.13 }],
+      [2023, { WeightedAverageSharesDiluted: 2_507_000_000, CommonStockSharesOutstanding: 2_466_136_539, EPSDiluted: 1.74 }],
+      [2025, { WeightedAverageSharesDiluted: 24_804_000_000, CommonStockSharesOutstanding: 24_477_000_000, EPSDiluted: 2.94 }],
+    ]);
+    normalizeNumericYearsStockSplits(dataByYear);
+    expect(dataByYear.get(2020)?.CommonStockSharesOutstanding).toBe(24_480_000_000);
+    expect(dataByYear.get(2023)?.CommonStockSharesOutstanding).toBe(24_661_365_390);
+    expect(dataByYear.get(2023)?.EPSDiluted).toBe(0.174);
+  });
+});
+
 describe("buildFinancialsMarkdown", () => {
-  it("renders notice when years are empty", () => {
+  it("renders notice when years are empty and no latestInterim", () => {
     const md = buildFinancialsMarkdown("Amazon (AMZN)", "USD", [], new Map(), ["Revenue"]);
     expect(md).toContain("未找到该公司的历史年度财务报表数据");
   });
 
-  it("generates markdown table with years and values", () => {
+  it("generates markdown table with years and optional latestInterim column", () => {
     const dataByYear = new Map<number, Record<string, number>>([
       [
         2024,
@@ -98,14 +114,19 @@ describe("buildFinancialsMarkdown", () => {
       [2024, 2025],
       dataByYear,
       ["Revenue", "OperatingCashFlow", "CapEx", "FreeCashFlow", "ShareBasedCompensation", "FCF_Ex_SBC"],
+      {
+        label: "2026 Q1 (YTD)",
+        items: { Revenue: 180000000000 },
+      },
     );
 
-    expect(md).toContain("Amazon.com Inc (AMZN) 历年财务报表数据");
-    expect(md).toContain("| 2024 | 2025 |");
+    expect(md).toContain("Amazon.com Inc (AMZN) 历年财务报表数据 (FY2024–2025 + 2026 Q1 (YTD))");
+    expect(md).toContain("| 2024 | 2025 | 2026 Q1 (YTD) |");
     expect(md).toContain("营业收入 (Revenue)");
     expect(md).toContain("自由现金流 (FCF)");
     expect(md).toContain("扣除SBC后的真自由现金流");
-    expect(md).toContain("6380 亿 | 7169 亿");
-    expect(md).toContain("329 亿 | 77.0 亿");
+    expect(md).toContain("6380 亿 | 7169 亿 | 1800 亿");
+    expect(md).toContain("329 亿 | 77.0 亿 | —");
   });
 });
+

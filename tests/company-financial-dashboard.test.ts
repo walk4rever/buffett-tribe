@@ -533,6 +533,33 @@ describe("buildCompanyFinancialDashboard", () => {
     expect(dashboard.trends).toEqual([]);
     expect(dashboard.rows).toEqual([]);
   });
+
+  it("includes latestInterim YTD snapshot without computing unannualized ROE or YoY growth", () => {
+    const dashboard = buildCompanyFinancialDashboard(
+      { sector: "Technology", metadata: { industry: "Software" }, sectorModelType: "software_platform" },
+      generalFinancials,
+      "USD",
+      undefined,
+      {
+        year: 2026,
+        periodType: "Q1",
+        periodEnd: new Date("2026-03-31T00:00:00.000Z"),
+        items: {
+          Revenue: "350",
+          GrossProfit: "210",
+          NetIncome: "70",
+          ShareholdersEquity: "950",
+        },
+      },
+    );
+
+    expect(dashboard.latestInterim?.label).toBe("2026 Q1 (YTD)");
+    expect(dashboard.rows.find((r) => r.key === "Revenue")?.interimRawValue).toBe(350);
+    expect(dashboard.rows.find((r) => r.key === "GrossMargin")?.interimRawValue).toBeCloseTo(0.6);
+    // Annual-only metrics must be null on unannualized interim snapshot
+    expect(dashboard.rows.find((r) => r.key === "ROE")?.interimRawValue).toBeNull();
+    expect(dashboard.rows.find((r) => r.key === "RevenueGrowth")?.interimRawValue).toBeNull();
+  });
 });
 
 describe("buildFinancialDashboardText", () => {

@@ -187,24 +187,35 @@ export function normalizeFinancialYearsStockSplits<
     }
   }
 
-  // Generate cumulative confirmed factors (e.g., if 4 and 10 confirmed, 40 is also valid)
+  // Generate cumulative confirmed factors (e.g., if 10 is confirmed in Stage 1 and an older year
+  // also had a prior 4x intra-year BS tear, 4 * 10 = 40 is valid)
   const allValidFactors = new Set<number>(confirmedSplitFactors);
-  const factorList = [...confirmedSplitFactors];
-  for (let a = 0; a < factorList.length; a++) {
-    for (let b = 0; b < factorList.length; b++) {
-      allValidFactors.add(factorList[a] * factorList[b]);
+  const integerSplitFactors = [2, 3, 4, 5, 6, 7, 8, 10, 15, 20];
+  for (const f of confirmedSplitFactors) {
+    for (const c of integerSplitFactors) {
+      allValidFactors.add(f * c);
     }
   }
 
   // Stage 2: Balance Sheet Period-End Shares (CommonStockSharesOutstanding) Intra-Year Alignment
-  for (let k = 0; k < timeline.length; k++) {
+  // Iterate backwards from latest year so adjacent-year fallback can reference already-normalized k+1 shares
+  for (let k = timeline.length - 1; k >= 0; k--) {
     const { idx } = timeline[k];
     const target = res[idx];
     const periodEndShares = parseNum(target.items, "CommonStockSharesOutstanding");
+    if (periodEndShares == null || periodEndShares <= 0) continue;
+
     const anchorShares = timeline[k].refShares ?? getRefWeightedShares(target.items, target.itemUnits);
 
-    if (periodEndShares != null && periodEndShares > 0 && anchorShares != null && anchorShares > 0) {
-      const ratio = anchorShares / periodEndShares;
+    let comparisonShares: number | null = anchorShares;
+    if ((comparisonShares == null || comparisonShares <= 0) && k < timeline.length - 1) {
+      // Fallback when no weighted-share/EPS anchor exists: compare against next chronological year's period-end shares
+      const nextTarget = res[timeline[k + 1].idx];
+      comparisonShares = parseNum(nextTarget.items, "CommonStockSharesOutstanding");
+    }
+
+    if (comparisonShares != null && comparisonShares > 0) {
+      const ratio = comparisonShares / periodEndShares;
       if (ratio >= 0.82 && ratio <= 1.22) {
         continue;
       }
@@ -220,7 +231,7 @@ export function normalizeFinancialYearsStockSplits<
         }
       }
 
-      // If no confirmed factor matched, allow integer factor >= 2.0 or reverse <= 0.5
+      // If no confirmed factor matched, allow factor >= 2.0 or reverse <= 0.5
       // (Strict financial guard: DO NOT match 1.5x here to protect real 20-30% share issuances/M&A)
       if (matchedFactor == null) {
         for (const candidate of SPLIT_FACTOR_CANDIDATES) {
@@ -236,6 +247,15 @@ export function normalizeFinancialYearsStockSplits<
 
       if (matchedFactor != null && matchedFactor !== 1) {
         target.items["CommonStockSharesOutstanding"] = String(Math.round(periodEndShares * matchedFactor));
+        // If we fell back to adjacent-year comparison (no Stage 1 anchor), also normalize EPS/DPS for this year if present
+        if (anchorShares == null) {
+          for (const key of ["EPSDiluted", "EPSBasic", "DividendPerShare"] as const) {
+            const v = parseNum(target.items, key);
+            if (v != null) {
+              target.items[key] = String(Number((v / matchedFactor).toFixed(4)));
+            }
+          }
+        }
       }
     }
   }

@@ -23,7 +23,6 @@ import {
 import {
   calculateFreeCashFlow,
   calculateReturnOnAverageBalance,
-  normalizeAnnualsStockSplits,
 } from "@/lib/financial-math";
 import {
   deriveSharesFromFinancials,
@@ -645,8 +644,7 @@ export async function getValueLineData(
         values.NetFeeAndCommissionIncome ?? null,
     };
   });
-  // Normalize historical shares & EPS for stock splits so older years are on the latest share basis.
-  const annuals: ValueLineAnnualData[] = normalizeAnnualsStockSplits(normalizedAnnuals);
+  const annuals: ValueLineAnnualData[] = normalizedAnnuals;
   const valuationAnnuals = annuals;
 
   // Value Triad & Capital Allocation Metrics

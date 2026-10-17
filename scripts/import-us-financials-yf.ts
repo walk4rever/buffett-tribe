@@ -8,14 +8,16 @@
  *   node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-us-financials-yf.ts --ticker BSP
  */
 
+import * as dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import db from "../src/lib/prisma";
-import { Prisma } from "@prisma/client";
 import { normalizeCurrencyCode } from "../src/lib/fx-rates-core";
 import { persistReportingCurrency } from "../src/lib/reporting-currency";
+import { upsertFinancialRows } from "./lib/upsert-financial-rows";
 
 const execFileAsync = promisify(execFile);
 
@@ -123,9 +125,17 @@ export async function importUsFinancialsFromYfinance(ticker: string): Promise<nu
     }
   }
 
-  let written = 0;
-  const recordList = Array.from(uniqueRecords.values());
-  for (const record of recordList) {
+  const rowsToUpsert: Array<{
+    entityId: string;
+    sourceId: string;
+    periodEnd: Date;
+    periodType: string;
+    lineItem: string;
+    value: number;
+    unit: string | null;
+  }> = [];
+
+  for (const record of uniqueRecords.values()) {
     const periodEndDate = new Date(record.periodEnd);
     if (Number.isNaN(periodEndDate.getTime())) continue;
 
@@ -134,35 +144,23 @@ export async function importUsFinancialsFromYfinance(ticker: string): Promise<nu
         ? record.unit
         : (normalizeCurrencyCode(record.unit) ?? reportingCurrency);
 
-    await db.financial.upsert({
-      where: {
-        entityId_periodEnd_periodType_lineItem: {
-          entityId: entity.id,
-          periodEnd: periodEndDate,
-          periodType: record.periodType,
-          lineItem: record.lineItem,
-        },
-      },
-      create: {
-        entityId: entity.id,
-        sourceId: extSource.id,
-        periodEnd: periodEndDate,
-        periodType: record.periodType,
-        lineItem: record.lineItem,
-        value: new Prisma.Decimal(record.value),
-        unit: unitToPersist,
-        confidence: 1,
-      },
-      update: {
-        value: new Prisma.Decimal(record.value),
-        unit: unitToPersist,
-      },
+    rowsToUpsert.push({
+      entityId: entity.id,
+      sourceId: extSource.id,
+      periodEnd: periodEndDate,
+      periodType: record.periodType,
+      lineItem: record.lineItem,
+      value: record.value,
+      unit: unitToPersist,
     });
-    written++;
   }
 
-  console.log(`✓ [yfinance] Wrote ${written} financial records for ${upperTicker} (${entity.canonicalName})`);
-  return written;
+  if (rowsToUpsert.length > 0) {
+    await upsertFinancialRows(db, rowsToUpsert);
+  }
+
+  console.log(`✓ [yfinance] Wrote ${rowsToUpsert.length} financial records for ${upperTicker} (${entity.canonicalName})`);
+  return rowsToUpsert.length;
 }
 
 async function main() {

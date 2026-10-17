@@ -125,7 +125,7 @@ export function CompanyFinancialDashboardComponent({
   dashboard,
   financials,
 }: CompanyFinancialDashboardProps) {
-  const { displayYears, trendYears } = dashboard;
+  const { displayYears, trendYears, latestInterim } = dashboard;
   const yearRange = displayYears.length
     ? `${Math.min(...displayYears)}–${Math.max(...displayYears)}`
     : "";
@@ -133,7 +133,7 @@ export function CompanyFinancialDashboardComponent({
     ? `${Math.min(...trendYears)}–${Math.max(...trendYears)}`
     : "";
 
-  if (!displayYears.length) {
+  if (!displayYears.length && !latestInterim) {
     return (
       <div className="company-financial-dashboard-root">
         <p className="company-empty company-financial-empty">
@@ -169,7 +169,9 @@ export function CompanyFinancialDashboardComponent({
           <p className="company-empty">趋势数据不足。</p>
         )}
         <p className="company-financial-method-note">
-          年度口径自 FY {FINANCIAL_DATA_START_YEAR} 起；趋势 FY {trendRange}（{trendYears.length} 年）。{dashboard.templateNote}
+          {trendYears.length
+            ? `年度口径自 FY ${FINANCIAL_DATA_START_YEAR} 起；趋势 FY ${trendRange}（${trendYears.length} 年）。${dashboard.templateNote}`
+            : `次新股暂无完整年度趋势，下方列示最新一期季报快照（${latestInterim?.label ?? ""}）。`}
         </p>
       </section>
 
@@ -183,7 +185,9 @@ export function CompanyFinancialDashboardComponent({
           ) : null}
         </div>
         <p className="company-financial-method-note">
-          明细 FY {yearRange}（{displayYears.length} 年）；缺少必要输入时显示“—”，同比不跨年补算，不以零填补。
+          {displayYears.length
+            ? `明细 FY ${yearRange}（${displayYears.length} 年）${latestInterim ? ` 及最新期中快照 ${latestInterim.label}` : ""}；缺少必要输入时显示“—”，同比不跨年补算，不以零填补。`
+            : `明细 ${latestInterim?.label ?? ""}（最新未结转期中快照）；缺少必要输入时显示“—”。`}
         </p>
 
         {dashboard.rows.length ? (
@@ -199,6 +203,14 @@ export function CompanyFinancialDashboardComponent({
                     <span className="company-table-label">指标</span>
                     <span className="company-table-sub">Metric</span>
                   </th>
+                  {latestInterim ? (
+                    <th scope="col">
+                      <span className="company-table-label">{latestInterim.label}</span>
+                      <span className="company-table-sub">
+                        {formatFiscalDate(latestInterim.periodEnd)}
+                      </span>
+                    </th>
+                  ) : null}
                   {displayYears.map((year) => (
                     <th key={year} scope="col">
                       <span className="company-table-label">FY {year}</span>
@@ -216,6 +228,11 @@ export function CompanyFinancialDashboardComponent({
                       <span className="company-table-label">{row.zhLabel}</span>
                       <span className="company-table-sub">{row.enLabel}</span>
                     </th>
+                    {latestInterim ? (
+                      <td key={`${row.key}-interim`}>
+                        {formatTableValue(row.interimRawValue ?? null, row.kind)}
+                      </td>
+                    ) : null}
                     {displayYears.map((year) => (
                       <td key={`${row.key}-${year}`}>
                         {formatTableValue(row.rawValues[year] ?? null, row.kind)}

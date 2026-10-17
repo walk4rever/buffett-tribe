@@ -33,6 +33,7 @@ export const FINANCIAL_ITEMS: Record<string, FinancialItemDef> = {
   FinancingCashFlow: { key: "FinancingCashFlow", nameZh: "筹资活动现金流", nameEn: "Financing Cash Flow", statement: "cash_flow" },
   DividendsPaid: { key: "DividendsPaid", nameZh: "现金分红", nameEn: "Dividends Paid", statement: "cash_flow" },
   ShareRepurchaseAmt: { key: "ShareRepurchaseAmt", nameZh: "股份回购", nameEn: "Share Repurchase", statement: "cash_flow" },
+  PurchaseSaleOfBusinessNet: { key: "PurchaseSaleOfBusinessNet", nameZh: "外延并购净支出 (M&A)", nameEn: "Net M&A Cash Outflow", statement: "cash_flow" },
   NetChangeInCash: { key: "NetChangeInCash", nameZh: "现金净增加额", nameEn: "Net Change in Cash", statement: "cash_flow" },
 
   // ── 资产负债表 ──
@@ -52,6 +53,8 @@ export const FINANCIAL_ITEMS: Record<string, FinancialItemDef> = {
   TotalCurrentLiabilities: { key: "TotalCurrentLiabilities", nameZh: "流动负债合计", nameEn: "Total Current Liabilities", statement: "balance_sheet" },
   TotalLiabilities: { key: "TotalLiabilities", nameZh: "负债总计", nameEn: "Total Liabilities", statement: "balance_sheet" },
   ShareholdersEquity: { key: "ShareholdersEquity", nameZh: "股东权益合计", nameEn: "Shareholders' Equity", statement: "balance_sheet" },
+  CommonStockSharesOutstanding: { key: "CommonStockSharesOutstanding", nameZh: "期末流通股数", nameEn: "Common Shares Outstanding", statement: "balance_sheet" },
+  WeightedAverageSharesDiluted: { key: "WeightedAverageSharesDiluted", nameZh: "稀释加权平均股数", nameEn: "Diluted Weighted Avg Shares", statement: "income_statement" },
 
   // ── 衍生比率指标 ──
   GrossMargin: { key: "GrossMargin", nameZh: "毛利率", nameEn: "Gross Margin", statement: "metric" },
@@ -122,6 +125,12 @@ const ALIASES: Record<string, string> = {
   "股份回购": "ShareRepurchaseAmt",
   "分红": "DividendsPaid",
   "现金分红": "DividendsPaid",
+  "并购": "PurchaseSaleOfBusinessNet",
+  "外延并购": "PurchaseSaleOfBusinessNet",
+  "收并购净现金流": "PurchaseSaleOfBusinessNet",
+  "收购": "PurchaseSaleOfBusinessNet",
+  "m&a": "PurchaseSaleOfBusinessNet",
+  "acquisitions": "PurchaseSaleOfBusinessNet",
 
   // 资产负债表
   "总资产": "TotalAssets",
@@ -150,6 +159,12 @@ const ALIASES: Record<string, string> = {
   "应付账款": "AccountsPayable",
   "固定资产": "PropertyPlantEquipmentNet",
   "商誉": "Goodwill",
+  "股数": "CommonStockSharesOutstanding",
+  "总股本": "CommonStockSharesOutstanding",
+  "期末股数": "CommonStockSharesOutstanding",
+  "流通股数": "CommonStockSharesOutstanding",
+  "shares": "CommonStockSharesOutstanding",
+  "加权股数": "WeightedAverageSharesDiluted",
 
   // 衍生比率
   "毛利率": "GrossMargin",
@@ -165,6 +180,154 @@ const ALIASES: Record<string, string> = {
   "自由现金流率": "FCFMargin",
   "fcfmargin": "FCFMargin",
 };
+
+const SPLIT_FACTOR_CANDIDATES = [
+  1.5, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20, 25, 50,
+  0.5, 0.25, 0.2, 0.125, 0.1, 0.05,
+];
+
+function detectNumericSplitFactor(
+  currShares: number,
+  nextShares: number,
+  currEps?: number | null,
+  nextEps?: number | null,
+): number | null {
+  if (!currShares || !nextShares || currShares <= 0 || nextShares <= 0) return null;
+  const ratio = nextShares / currShares;
+  if (ratio >= 0.78 && ratio <= 1.28) return null;
+
+  let bestCandidate: number | null = null;
+  let minError = Infinity;
+  for (const c of SPLIT_FACTOR_CANDIDATES) {
+    const err = Math.abs(ratio - c) / c;
+    if (err < 0.14 && err < minError) {
+      bestCandidate = c;
+      minError = err;
+    }
+  }
+  if (bestCandidate == null) return null;
+
+  if (currEps != null && nextEps != null && currEps !== 0 && nextEps !== 0) {
+    const epsRatio = currEps / nextEps;
+    if (bestCandidate > 1.4 && epsRatio < 0.3) return null;
+    if (bestCandidate < 0.7 && epsRatio > 3.0) return null;
+  }
+  return bestCandidate;
+}
+
+/**
+ * Two-stage stock split normalization on numeric year maps for pi-gateway Agent tool.
+ */
+export function normalizeNumericYearsStockSplits(
+  dataByYear: Map<number, Record<string, number>>,
+): void {
+  const sortedYears = [...dataByYear.keys()].sort((a, b) => a - b);
+  if (sortedYears.length === 0) return;
+
+  const refSharesByYear = new Map<number, number>();
+  for (const yr of sortedYears) {
+    const m = dataByYear.get(yr)!;
+    const wDiluted = m["WeightedAverageSharesDiluted"];
+    const wBasic = m["WeightedAverageShares"];
+    if (wDiluted && wDiluted > 0) {
+      refSharesByYear.set(yr, wDiluted);
+    } else if (wBasic && wBasic > 0) {
+      refSharesByYear.set(yr, wBasic);
+    } else if (m["NetIncome"] && m["EPSDiluted"] && m["NetIncome"] * m["EPSDiluted"] > 0) {
+      refSharesByYear.set(yr, Math.round(m["NetIncome"] / m["EPSDiluted"]));
+    }
+  }
+
+  const confirmedFactors = new Set<number>();
+
+  // Stage 1: Income statement backwards normalization
+  for (let i = sortedYears.length - 2; i >= 0; i--) {
+    const currYr = sortedYears[i];
+    const nextYr = sortedYears[i + 1];
+    const currRef = refSharesByYear.get(currYr);
+    const nextRef = refSharesByYear.get(nextYr);
+    const currMap = dataByYear.get(currYr)!;
+    const nextMap = dataByYear.get(nextYr)!;
+
+    if (currRef && nextRef) {
+      const factor = detectNumericSplitFactor(
+        currRef,
+        nextRef,
+        currMap["EPSDiluted"] ?? currMap["EPSBasic"],
+        nextMap["EPSDiluted"] ?? nextMap["EPSBasic"],
+      );
+      if (factor != null && factor !== 1) {
+        confirmedFactors.add(factor);
+        for (let j = 0; j <= i; j++) {
+          const targetYr = sortedYears[j];
+          const targetMap = dataByYear.get(targetYr)!;
+          for (const shKey of ["WeightedAverageSharesDiluted", "WeightedAverageShares"]) {
+            if (targetMap[shKey] != null) targetMap[shKey] = Math.round(targetMap[shKey] * factor);
+          }
+          for (const epsKey of ["EPSDiluted", "EPSBasic", "DividendPerShare"]) {
+            if (targetMap[epsKey] != null) targetMap[epsKey] = Number((targetMap[epsKey] / factor).toFixed(4));
+          }
+          const prevRef = refSharesByYear.get(targetYr);
+          if (prevRef != null) refSharesByYear.set(targetYr, Math.round(prevRef * factor));
+        }
+      }
+    }
+  }
+
+  const allValidFactors = new Set<number>(confirmedFactors);
+  const integerSplitFactors = [2, 3, 4, 5, 6, 7, 8, 10, 15, 20];
+  for (const f of confirmedFactors) {
+    for (const c of integerSplitFactors) {
+      allValidFactors.add(f * c);
+    }
+  }
+
+  // Stage 2: Balance sheet CommonStockSharesOutstanding alignment
+  for (let k = sortedYears.length - 1; k >= 0; k--) {
+    const yr = sortedYears[k];
+    const targetMap = dataByYear.get(yr)!;
+    const periodEndShares = targetMap["CommonStockSharesOutstanding"];
+    if (!periodEndShares || periodEndShares <= 0) continue;
+
+    let comparisonShares: number | undefined = refSharesByYear.get(yr);
+    if ((!comparisonShares || comparisonShares <= 0) && k < sortedYears.length - 1) {
+      comparisonShares = dataByYear.get(sortedYears[k + 1])?.["CommonStockSharesOutstanding"];
+    }
+    if (!comparisonShares || comparisonShares <= 0) continue;
+
+    const ratio = comparisonShares / periodEndShares;
+    if (ratio >= 0.82 && ratio <= 1.22) continue;
+
+    let matchedFactor: number | null = null;
+    let minErr = Infinity;
+    for (const f of allValidFactors) {
+      const err = Math.abs(ratio - f) / f;
+      if (err < 0.16 && err < minErr) {
+        matchedFactor = f;
+        minErr = err;
+      }
+    }
+    if (matchedFactor == null) {
+      for (const candidate of SPLIT_FACTOR_CANDIDATES) {
+        if (candidate >= 2.0 || candidate <= 0.5) {
+          const err = Math.abs(ratio - candidate) / candidate;
+          if (err < 0.14 && err < minErr) {
+            matchedFactor = candidate;
+            minErr = err;
+          }
+        }
+      }
+    }
+    if (matchedFactor != null && matchedFactor !== 1) {
+      targetMap["CommonStockSharesOutstanding"] = Math.round(periodEndShares * matchedFactor);
+      if (!refSharesByYear.has(yr)) {
+        for (const epsKey of ["EPSDiluted", "EPSBasic", "DividendPerShare"]) {
+          if (targetMap[epsKey] != null) targetMap[epsKey] = Number((targetMap[epsKey] / matchedFactor).toFixed(4));
+        }
+      }
+    }
+  }
+}
 
 export function resolveFinancialLineItem(input: string): string | null {
   const normalized = input.trim();
@@ -185,6 +348,7 @@ export function resolveFinancialLineItem(input: string): string | null {
 export type DbFactRow = {
   line_item: string;
   period_end: string;
+  period_type?: string;
   value: string | number;
   unit: string | null;
 };
@@ -203,7 +367,7 @@ export function formatFinancialNumber(val: number | null, unit: string | null, i
     if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(2)} 百万股`;
     return `${sign}${abs.toLocaleString()}`;
   }
-  if (unit === "USD/share" || unit === "CNY/share" || unit === "HKD/share") {
+  if (unit === "USD/share" || unit === "CNY/share" || unit === "HKD/share" || unit?.endsWith("/shares")) {
     return `${sign}${abs.toFixed(2)}`;
   }
 
@@ -224,14 +388,16 @@ export function buildFinancialsMarkdown(
   years: number[],
   dataByYear: Map<number, Record<string, number>>,
   requestedKeys: string[],
+  latestInterim?: { label: string; items: Record<string, number> } | null,
 ): string {
-  if (years.length === 0) {
+  if (years.length === 0 && !latestInterim) {
     return `### ${companyLabel} 财务报表数据\n\n未找到该公司的历史年度财务报表数据（可能尚未入库或回填中）。`;
   }
 
   const sortedYears = [...years].sort((a, b) => a - b);
-  const header = `| 财务科目 / 核心指标 | ${sortedYears.join(" | ")} |`;
-  const divider = `| :--- | ${sortedYears.map(() => "---:").join(" | ")} |`;
+  const colHeaders = [...sortedYears.map(String), ...(latestInterim ? [latestInterim.label] : [])];
+  const header = `| 财务科目 / 核心指标 | ${colHeaders.join(" | ")} |`;
+  const divider = `| :--- | ${colHeaders.map(() => "---:").join(" | ")} |`;
 
   const rows: string[] = [];
 
@@ -243,20 +409,36 @@ export function buildFinancialsMarkdown(
       statement: "income_statement",
     };
     const isRatio = meta.statement === "metric";
+    const itemUnit =
+      key === "CommonStockSharesOutstanding" || key === "WeightedAverageSharesDiluted" || key === "WeightedAverageShares"
+        ? "shares"
+        : key === "EPSDiluted" || key === "EPSBasic"
+          ? `${reportingCurrency || "USD"}/shares`
+          : reportingCurrency;
+
     const values = sortedYears.map((yr) => {
       const yearMap = dataByYear.get(yr);
       const val = yearMap ? yearMap[key] ?? null : null;
-      return formatFinancialNumber(val, reportingCurrency, isRatio);
+      return formatFinancialNumber(val, itemUnit, isRatio);
     });
+    if (latestInterim) {
+      const interimVal = latestInterim.items[key] ?? null;
+      values.push(formatFinancialNumber(interimVal, itemUnit, isRatio));
+    }
 
     const label = `${meta.nameZh} (${meta.nameEn})`;
     rows.push(`| **${label}** | ${values.join(" | ")} |`);
   }
 
+  const rangeLabel =
+    sortedYears.length > 0
+      ? `FY${sortedYears[0]}–${sortedYears[sortedYears.length - 1]}${latestInterim ? ` + ${latestInterim.label}` : ""}`
+      : latestInterim?.label ?? "";
+
   const noteLines = [
-    `### ${companyLabel} 历年财务报表数据 (FY2020–${sortedYears[sortedYears.length - 1]})`,
+    `### ${companyLabel} 历年财务报表数据 (${rangeLabel})`,
     `- **主表币种**: ${reportingCurrency || "USD / 原始币种"}（金额单位除特别标注外均为：亿）`,
-    `- **数据范围**: 覆盖近 ${sortedYears.length} 年法定年报三大报表（经标准会计规则归一化）`,
+    `- **数据范围**: ${sortedYears.length > 0 ? `覆盖近 ${sortedYears.length} 年法定年报三大报表（经标准会计规则与拆股同源复权归一化）` : "次新股/最新未结转季报快照 (YTD)"}`,
     ``,
     header,
     divider,
@@ -264,6 +446,33 @@ export function buildFinancialsMarkdown(
   ];
 
   return noteLines.join("\n");
+}
+
+function computeDerivedMetricsForMap(map: Record<string, number>) {
+  const ocf = map["OperatingCashFlow"] ?? null;
+  const capex = map["CapEx"] ?? null;
+  const rev = map["Revenue"] ?? null;
+  const net = map["NetIncome"] ?? null;
+  const opIncome = map["OperatingIncome"] ?? null;
+  const gross = map["GrossProfit"] ?? null;
+  const equity = map["ShareholdersEquity"] ?? null;
+  const sbc = map["ShareBasedCompensation"] ?? map["StockBasedCompensation"] ?? null;
+
+  if (ocf != null && capex != null) {
+    map["FreeCashFlow"] = ocf - Math.abs(capex);
+  }
+  if (map["FreeCashFlow"] != null && sbc != null) {
+    map["FCF_Ex_SBC"] = map["FreeCashFlow"] - sbc;
+  }
+  if (rev != null && rev > 0) {
+    if (gross != null) map["GrossMargin"] = gross / rev;
+    if (opIncome != null) map["OperatingMargin"] = opIncome / rev;
+    if (net != null) map["NetMargin"] = net / rev;
+    if (map["FreeCashFlow"] != null) map["FCFMargin"] = map["FreeCashFlow"] / rev;
+  }
+  if (net != null && equity != null && equity > 0) {
+    map["ROE"] = net / equity;
+  }
 }
 
 export const getCompanyFinancialsTool = defineTool({
@@ -314,6 +523,7 @@ export const getCompanyFinancialsTool = defineTool({
     const sql = `
       SELECT f."lineItem" AS line_item,
              f."periodEnd" AS period_end,
+             f."periodType" AS period_type,
              f.value::text AS value,
              f.unit
       FROM "Financial" f
@@ -333,11 +543,39 @@ export const getCompanyFinancialsTool = defineTool({
       return { content: [{ type: "text" as const, text: `查询财务数据失败: ${msg}` }], details: null };
     }
 
-    if (rows.length === 0) {
+    // Also query latest interim snapshot (periodType <> 'FY' where periodEnd > max_fy_date)
+    const maxFyDate = rows.length > 0 ? rows[0].period_end : null;
+    const interimSql = `
+      SELECT f."lineItem" AS line_item,
+             f."periodEnd" AS period_end,
+             f."periodType" AS period_type,
+             f.value::text AS value,
+             f.unit
+      FROM "Financial" f
+      JOIN "Entity" e ON f."entityId" = e.id
+      WHERE (f."entityId" = $1 OR UPPER(e.ticker) = UPPER($2))
+        AND f."periodType" <> 'FY'
+        ${maxFyDate ? `AND f."periodEnd" > $3` : ""}
+      ORDER BY f."periodEnd" DESC, f."lineItem" ASC
+      LIMIT 200
+    `;
+
+    let interimRows: DbFactRow[] = [];
+    try {
+      const ir = await pool.query<DbFactRow>(
+        interimSql,
+        maxFyDate ? [entity.id, entity.ticker ?? "", maxFyDate] : [entity.id, entity.ticker ?? ""],
+      );
+      interimRows = ir.rows;
+    } catch {
+      interimRows = [];
+    }
+
+    if (rows.length === 0 && interimRows.length === 0) {
       return {
         content: [{
           type: "text" as const,
-          text: `未在数据库中找到 ${entity.name ?? company} (${entity.ticker ?? "N/A"}) 的年度财务报表事实数据（可能尚未回填）。请使用 search_filings 检索年报原文。`,
+          text: `未在数据库中找到 ${entity.name ?? company} (${entity.ticker ?? "N/A"}) 的年度或季度财务报表事实数据（可能尚未回填）。请使用 search_filings 检索年报/招股书原文。`,
         }],
         details: { count: 0 },
       };
@@ -357,41 +595,43 @@ export const getCompanyFinancialsTool = defineTool({
       if (Number.isFinite(numVal)) {
         dataByYear.get(yr)![row.line_item] = numVal;
       }
-      if (row.unit && ["USD", "CNY", "HKD", "EUR"].includes(row.unit)) {
+      if (row.unit && ["USD", "CNY", "HKD", "EUR", "JPY", "INR", "CHF", "CAD", "AUD"].includes(row.unit)) {
         reportingCurrency = row.unit;
       }
     }
 
-    // Compute derived metrics for each year
-    for (const map of dataByYear.values()) {
-      const ocf = map["OperatingCashFlow"] ?? null;
-      const capex = map["CapEx"] ?? null;
-      const rev = map["Revenue"] ?? null;
-      const net = map["NetIncome"] ?? null;
-      const opIncome = map["OperatingIncome"] ?? null;
-      const gross = map["GrossProfit"] ?? null;
-      const equity = map["ShareholdersEquity"] ?? null;
-      const sbc = map["ShareBasedCompensation"] ?? map["StockBasedCompensation"] ?? null;
+    // Apply two-stage stock split normalization across FY series
+    normalizeNumericYearsStockSplits(dataByYear);
 
-      // Free Cash Flow = OCF - CapEx
-      if (ocf != null && capex != null) {
-        map["FreeCashFlow"] = ocf - capex;
+    // Compute derived metrics for each FY year
+    for (const map of dataByYear.values()) {
+      computeDerivedMetricsForMap(map);
+    }
+
+    // Build latestInterim snapshot if available
+    let latestInterim: { label: string; items: Record<string, number> } | null = null;
+    if (interimRows.length > 0) {
+      const targetPeriodEnd = interimRows[0].period_end;
+      const targetPeriodType = interimRows[0].period_type ?? "Q";
+      const interimYear = new Date(targetPeriodEnd).getUTCFullYear();
+      const interimItems: Record<string, number> = {};
+      for (const r of interimRows) {
+        if (r.period_end !== targetPeriodEnd || r.period_type !== targetPeriodType) continue;
+        const numVal = Number(r.value);
+        if (Number.isFinite(numVal) && !(r.line_item in interimItems)) {
+          interimItems[r.line_item] = numVal;
+        }
+        if (r.unit && ["USD", "CNY", "HKD", "EUR", "JPY", "INR", "CHF", "CAD", "AUD"].includes(r.unit)) {
+          reportingCurrency = r.unit;
+        }
       }
-      // FCF ex-SBC = FreeCashFlow - SBC
-      if (map["FreeCashFlow"] != null && sbc != null) {
-        map["FCF_Ex_SBC"] = map["FreeCashFlow"] - sbc;
-      }
-      // Margins
-      if (rev != null && rev > 0) {
-        if (gross != null) map["GrossMargin"] = gross / rev;
-        if (opIncome != null) map["OperatingMargin"] = opIncome / rev;
-        if (net != null) map["NetMargin"] = net / rev;
-        if (map["FreeCashFlow"] != null) map["FCFMargin"] = map["FreeCashFlow"] / rev;
-      }
-      // ROE
-      if (net != null && equity != null && equity > 0) {
-        map["ROE"] = net / equity;
-      }
+      computeDerivedMetricsForMap(interimItems);
+      // Do not annualize ROE on interim YTD snapshot
+      delete interimItems["ROE"];
+      latestInterim = {
+        label: `${interimYear} ${targetPeriodType} (YTD)`,
+        items: interimItems,
+      };
     }
 
     const availableYears = [...dataByYear.keys()].sort((a, b) => b - a).slice(0, maxYears);
@@ -445,14 +685,21 @@ export const getCompanyFinancialsTool = defineTool({
       ];
     }
 
-    // Filter to keys that have data in at least one year OR were specifically requested by user
+    // Filter to keys that have data in at least one year OR latestInterim OR were specifically requested by user
     const finalKeys = targetKeys.filter((k) => {
       if (inputLineItems && inputLineItems.length > 0) return true;
-      return availableYears.some((yr) => dataByYear.get(yr)?.[k] != null);
+      return availableYears.some((yr) => dataByYear.get(yr)?.[k] != null) || latestInterim?.items[k] != null;
     });
 
     const companyLabel = entity.ticker ? `${entity.name ?? company} (${entity.ticker})` : entity.name ?? company;
-    const tableMd = buildFinancialsMarkdown(companyLabel, reportingCurrency, availableYears, dataByYear, finalKeys);
+    const tableMd = buildFinancialsMarkdown(
+      companyLabel,
+      reportingCurrency,
+      availableYears,
+      dataByYear,
+      finalKeys,
+      latestInterim,
+    );
 
     // If SBC or RnD was requested but not populated, add an intelligent hint
     const hints: string[] = [];

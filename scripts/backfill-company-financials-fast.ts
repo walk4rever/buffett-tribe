@@ -39,6 +39,7 @@ import { normalizeCurrencyCode } from "../src/lib/fx-rates-core";
 import { persistReportingCurrency } from "../src/lib/reporting-currency";
 import { withShortWriteTransaction } from "../src/lib/db-short-write";
 import { importUsFinancialsFromYfinance } from "./import-us-financials-yf";
+import { importUsQuarterlyFinancialsForEntity } from "./import-us-quarterly-financials";
 
 function getArg(flag: string): string | undefined {
   const idx = process.argv.indexOf(flag);
@@ -213,6 +214,29 @@ export async function backfillCompanyFinancialsFast(params: {
         }
       } catch (yfErr) {
         console.warn(`[Tier-2 Fallback] yfinance fallback also failed for ${params.ticker}:`, yfErr);
+      }
+
+      // Tier-3 Fallback to SEC 10-Q (recent IPOs with CIK that have no 10-K yet)
+      if (paddedCik && paddedCik !== "0000000000") {
+        console.log(`[Tier-3 Fallback] Invoking SEC 10-Q quarterly extraction for ${params.ticker} (${paddedCik})...`);
+        try {
+          const qRowsCount = await importUsQuarterlyFinancialsForEntity(params.entityId, paddedCik, params.ticker, {
+            fromYear,
+          });
+          if (qRowsCount > 0) {
+            return {
+              ticker: params.ticker,
+              cik: paddedCik,
+              name: subData ? pickCompanyProfile(subData).name ?? params.ticker : params.ticker,
+              filingsCount: 1,
+              financialRowsUpserted: qRowsCount,
+              years: [],
+              durationMs: Date.now() - start,
+            };
+          }
+        } catch (qErr) {
+          console.warn(`[Tier-3 Fallback] SEC 10-Q fallback failed for ${params.ticker}:`, qErr);
+        }
       }
     }
 
