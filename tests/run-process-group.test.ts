@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { runProcessGroup } from "../scripts/lib/run-process-group";
+import { runProcessGroup, terminateActiveProcessGroups } from "../scripts/lib/run-process-group";
 
 describe("runProcessGroup", () => {
   it("terminates its detached process group when the abort signal fires", async () => {
@@ -13,6 +13,19 @@ describe("runProcessGroup", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 100));
     controller.abort();
+
+    const result = await resultPromise;
+    expect(result.signal).toBe("SIGTERM");
+  }, 5_000);
+
+  it("terminates all active child process groups via terminateActiveProcessGroups", async () => {
+    const resultPromise = runProcessGroup(
+      process.execPath,
+      ["-e", "setInterval(() => {}, 1000)"],
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await terminateActiveProcessGroups(1_000);
 
     const result = await resultPromise;
     expect(result.signal).toBe("SIGTERM");
@@ -52,3 +65,4 @@ describe("runProcessGroup", () => {
     }
   });
 });
+

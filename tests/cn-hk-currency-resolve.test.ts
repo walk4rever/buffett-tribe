@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type db from "@/lib/prisma";
-import { resolveCompanyReportingCurrency } from "../scripts/lib/cn-hk-currency-resolve";
+import {
+  resolveCompanyReportingCurrency,
+  reconcileCompanyFinancialCurrencyUnits,
+} from "../scripts/lib/cn-hk-currency-resolve";
 
 describe("resolveCompanyReportingCurrency", () => {
   it("resolves from CN_HK_SEEDS first", async () => {
@@ -140,4 +143,24 @@ describe("resolveCompanyReportingCurrency", () => {
     );
     expect(hkYf).toBe("USD");
   });
+
+  it("reconciles mismatched Financial.unit rows without touching share counts", async () => {
+    const mockDb = {
+      financial: {
+        updateMany: vi.fn().mockResolvedValue({ count: 42 }),
+      },
+    } as unknown as typeof db;
+
+    const updated = await reconcileCompanyFinancialCurrencyUnits("entity_hk_1", "CNY", mockDb);
+    expect(updated).toBe(42);
+    expect(mockDb.financial.updateMany).toHaveBeenCalledWith({
+      where: {
+        entityId: "entity_hk_1",
+        lineItem: { not: "CommonStockSharesOutstanding" },
+        unit: { in: ["CNY", "HKD", "USD"], not: "CNY" },
+      },
+      data: { unit: "CNY" },
+    });
+  });
 });
+

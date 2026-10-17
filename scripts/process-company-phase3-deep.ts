@@ -35,7 +35,31 @@ import {
   resolveCompanyReportingCurrency,
   persistCompanyReportingCurrency,
 } from "./lib/cn-hk-currency-resolve";
-import { runProcessGroup } from "./lib/run-process-group";
+import { runProcessGroup, terminateActiveProcessGroups } from "./lib/run-process-group";
+
+const parentAbortController = new AbortController();
+let shuttingDown = false;
+
+async function handleShutdownSignal(signal: "SIGTERM" | "SIGINT", exitCode: number) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.warn(`[process-company-phase3-deep] Received ${signal}, terminating child process groups and disconnecting Prisma...`);
+  parentAbortController.abort();
+  try {
+    await terminateActiveProcessGroups(1_500);
+  } catch {}
+  try {
+    await prisma.$disconnect();
+  } catch {}
+  process.exit(exitCode);
+}
+
+process.on("SIGTERM", () => {
+  void handleShutdownSignal("SIGTERM", 143);
+});
+process.on("SIGINT", () => {
+  void handleShutdownSignal("SIGINT", 130);
+});
 
 type Market = "us" | "hk" | "cn";
 
@@ -62,8 +86,13 @@ function hasFlag(flag: string): boolean {
 
 async function runCommand(cmd: string, args: string[], timeoutMs = 600_000): Promise<number> {
   try {
+    const combinedSignal = AbortSignal.any([
+      parentAbortController.signal,
+      AbortSignal.timeout(timeoutMs),
+    ]);
     const res = await runProcessGroup(cmd, args, {
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: combinedSignal,
+      forceKillAfterMs: 2_000,
       inheritStdio: true,
     });
     return res.exitCode;

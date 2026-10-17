@@ -56,21 +56,39 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import prisma from "@/lib/prisma";
-import { runProcessGroup } from "./lib/run-process-group";
+import { runProcessGroup, terminateActiveProcessGroups } from "./lib/run-process-group";
+import { isRetryableStepError, type StepCommandError } from "./lib/retryable-error";
 
-// Ensure graceful DB disconnect upon SIGTERM from worker timeout or parent abort
-process.on("SIGTERM", async () => {
-  console.warn("[onboard-company] Received SIGTERM, disconnecting Prisma...");
+const parentAbortController = new AbortController();
+let shuttingDown = false;
+
+async function handleShutdownSignal(signal: "SIGTERM" | "SIGINT", exitCode: number) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.warn(`[onboard-company] Received ${signal}, terminating child process groups and disconnecting Prisma...`);
+  parentAbortController.abort();
+  try {
+    await terminateActiveProcessGroups(1_500);
+  } catch {}
   try {
     await prisma.$disconnect();
   } catch {}
-  process.exit(143);
+  process.exit(exitCode);
+}
+
+// Ensure graceful child process group cleanup and DB disconnect upon SIGTERM/SIGINT
+process.on("SIGTERM", () => {
+  void handleShutdownSignal("SIGTERM", 143);
+});
+process.on("SIGINT", () => {
+  void handleShutdownSignal("SIGINT", 130);
 });
 
 import { CN_HK_SEEDS } from "./lib/cn-hk-company-seeds";
 import {
   resolveCompanyReportingCurrency,
   persistCompanyReportingCurrency,
+  reconcileCompanyFinancialCurrencyUnits,
   resolveHkCurrencyFromAnnualReport,
 } from "./lib/cn-hk-currency-resolve";
 import { getPersistedSectorClassificationStatus } from "../src/lib/sector-classification-state";
@@ -155,26 +173,41 @@ async function saveCheckpoint(checkpoint: Checkpoint) {
   await writeFile(checkpointFile(checkpoint.ticker), `${JSON.stringify(checkpoint, null, 2)}\n`, "utf8");
 }
 
-async function runCommand(cmd: string, args: string[], timeoutMs = 900_000): Promise<number> {
+async function runCommand(
+  cmd: string,
+  args: string[],
+  timeoutMs = 900_000,
+): Promise<{ exitCode: number; output: string }> {
   try {
+    const combinedSignal = AbortSignal.any([
+      parentAbortController.signal,
+      AbortSignal.timeout(timeoutMs),
+    ]);
     const res = await runProcessGroup(cmd, args, {
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: combinedSignal,
+      forceKillAfterMs: 2_000,
       inheritStdio: true,
     });
-    return res.exitCode;
+    return { exitCode: res.exitCode, output: res.output };
   } catch (err: unknown) {
     if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
-      console.error(`[onboard-company] Process group timed out after ${timeoutMs}ms: ${cmd} ${args.join(" ")}`);
-      return 124;
+      const msg = `[onboard-company] Process group timed out after ${timeoutMs}ms: ${cmd} ${args.join(" ")}`;
+      console.error(msg);
+      return { exitCode: 124, output: msg };
     }
     console.error(`[onboard-company] Process execution error:`, err);
-    return 1;
+    return { exitCode: 1, output: err instanceof Error ? err.message : String(err) };
   }
 }
 
 async function runNpmScript(script: string, args: string[], timeoutMs = 900_000) {
-  const code = await runCommand("npm", ["run", script, "--", ...args], timeoutMs);
-  if (code !== 0) throw new Error(`npm run ${script} exited with code ${code}`);
+  const { exitCode, output } = await runCommand("npm", ["run", script, "--", ...args], timeoutMs);
+  if (exitCode !== 0) {
+    const error = new Error(`npm run ${script} exited with code ${exitCode}`) as StepCommandError;
+    error.exitCode = exitCode;
+    error.output = output;
+    throw error;
+  }
 }
 
 async function findEntityId(ticker: string): Promise<string | null> {
@@ -468,15 +501,38 @@ function buildSliceAnnualReportStep(ticker: string, market: "cn" | "hk", fromYea
         if (entity) {
           try {
             const annualReportCurrency = await resolveHkCurrencyFromAnnualReport(entity.id);
-            if (annualReportCurrency && annualReportCurrency !== entity.reportingCurrency) {
-              console.log(
-                `[onboard-company] [HK Currency Cross-Check] 年报原文币种 (${annualReportCurrency}) 与登记币种 (${entity.reportingCurrency ?? "none"}) 不一致，自动修正并留痕...`,
-              );
-              await persistCompanyReportingCurrency(
+            if (annualReportCurrency) {
+              const seed = CN_HK_SEEDS[ticker];
+              const expectedDataCurrency = seed?.financialDataCurrency ?? annualReportCurrency;
+              const entityMismatch = annualReportCurrency !== entity.reportingCurrency;
+              const reconciledCount = await reconcileCompanyFinancialCurrencyUnits(
                 entity.id,
-                annualReportCurrency,
+                expectedDataCurrency,
                 prisma,
               );
+
+              if (entityMismatch || reconciledCount > 0) {
+                console.log(
+                  `[onboard-company] [HK Currency Cross-Check] 年报原文币种 (${annualReportCurrency}) 与登记币种 (${entity.reportingCurrency ?? "none"}) 或财务行单位不一致 (已同步订正 ${reconciledCount} 条 Financial.unit)，重新导入财务数据确保一致...`,
+                );
+                await persistCompanyReportingCurrency(
+                  entity.id,
+                  annualReportCurrency,
+                  prisma,
+                );
+                const finArgs = [
+                  "--code", code,
+                  "--market", "hk",
+                  "--ticker", ticker,
+                  "--currency", annualReportCurrency,
+                  "--from-year", fromYear,
+                ];
+                if (seed?.financialDataCurrency) {
+                  finArgs.push("--data-currency", seed.financialDataCurrency);
+                }
+                finArgs.push("--import-db");
+                await runNpmScript("import:cn-hk-financials", finArgs);
+              }
             }
           } catch (err) {
             console.warn(`[onboard-company] 年报币种二次复核跳过:`, err);
@@ -887,12 +943,17 @@ async function main() {
         break;
       } catch (err) {
         stepError = err;
-        console.warn(`${prefix} — attempt ${attempt}/${maxRetries} failed:`, err instanceof Error ? err.message : String(err));
-        if (attempt < maxRetries) {
-          const backoffMs = attempt * 2000;
-          console.log(`Waiting ${backoffMs}ms before retrying ${step.id}...`);
-          await new Promise((r) => setTimeout(r, backoffMs));
+        const retryable = isRetryableStepError(err);
+        console.warn(
+          `${prefix} — attempt ${attempt}/${maxRetries} failed (${retryable ? "transient" : "deterministic"}):`,
+          err instanceof Error ? err.message : String(err),
+        );
+        if (!retryable || attempt >= maxRetries) {
+          break;
         }
+        const backoffMs = attempt * 2000;
+        console.log(`Waiting ${backoffMs}ms before retrying ${step.id}...`);
+        await new Promise((r) => setTimeout(r, backoffMs));
       }
     }
 

@@ -13,6 +13,8 @@ export type RunProcessGroupOptions = SpawnOptions & {
   inheritStdio?: boolean;
 };
 
+const activeChildPids = new Set<number>();
+
 function signalProcessGroup(pid: number, signal: NodeJS.Signals) {
   try {
     process.kill(process.platform === "win32" ? pid : -pid, signal);
@@ -24,6 +26,41 @@ function signalProcessGroup(pid: number, signal: NodeJS.Signals) {
         // The process may have exited between the group and process signals.
       }
     }
+  }
+}
+
+function isProcessGroupAlive(pid: number): boolean {
+  try {
+    process.kill(process.platform === "win32" ? pid : -pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+export async function terminateActiveProcessGroups(graceMs = 1_500): Promise<void> {
+  const pids = [...activeChildPids];
+  if (pids.length === 0) return;
+
+  for (const pid of pids) {
+    signalProcessGroup(pid, "SIGTERM");
+  }
+
+  const deadline = Date.now() + graceMs;
+  while (Date.now() < deadline) {
+    const alive = pids.some((pid) => isProcessGroupAlive(pid));
+    if (!alive) {
+      for (const pid of pids) activeChildPids.delete(pid);
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  for (const pid of pids) {
+    if (isProcessGroupAlive(pid)) {
+      signalProcessGroup(pid, "SIGKILL");
+    }
+    activeChildPids.delete(pid);
   }
 }
 
@@ -40,12 +77,18 @@ export function runProcessGroup(
       detached: process.platform !== "win32",
       stdio: ["ignore", "pipe", "pipe"],
     });
+    if (child.pid) {
+      activeChildPids.add(child.pid);
+    }
     let stdout = "";
     let stderr = "";
     let settled = false;
     let forceKillTimer: ReturnType<typeof setTimeout> | undefined;
 
     const clearShutdownHooks = () => {
+      if (child.pid) {
+        activeChildPids.delete(child.pid);
+      }
       signal?.removeEventListener("abort", onAbort);
       if (forceKillTimer) clearTimeout(forceKillTimer);
     };

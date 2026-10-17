@@ -264,4 +264,29 @@ export async function persistCompanyReportingCurrency(
   }
 }
 
-
+/**
+ * 修正已入库 Financial 记录的记账币种单位 (unit)，确保与复核后的权威财报币种保持一致
+ * （仅更新原 unit 为货币代码 CNY/HKD/USD 且不等于目标币种的金额行，保留 shares 等非货币单位）
+ */
+export async function reconcileCompanyFinancialCurrencyUnits(
+  entityId: string,
+  currency: string,
+  dbClient = db,
+): Promise<number> {
+  const norm = normalizeCurrencyCode(currency);
+  if (!norm) return 0;
+  try {
+    const res = await dbClient.financial.updateMany({
+      where: {
+        entityId,
+        lineItem: { not: "CommonStockSharesOutstanding" },
+        unit: { in: ["CNY", "HKD", "USD"], not: norm },
+      },
+      data: { unit: norm },
+    });
+    return res.count;
+  } catch (err) {
+    console.warn(`[reconcileCompanyFinancialCurrencyUnits] Failed to update financial units for entity ${entityId}:`, err);
+    return 0;
+  }
+}

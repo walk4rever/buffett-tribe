@@ -30,6 +30,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, appendFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import prisma from "@/lib/prisma";
 import { evaluateOnboardExclusion } from "@/lib/onboard-exclusion";
 
@@ -50,6 +51,7 @@ interface CandidateCompany {
 
 const PID_FILE = path.join(process.cwd(), ".cache", "pipeline-priority-worker.pid");
 const LOG_FILE = path.join(process.cwd(), "logs", "pipeline-priority.log");
+export const DEAD_LETTER_BACKOFF_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // Core HK tickers for initial priority seeding
 const CORE_HK_TICKERS = new Set([
@@ -90,11 +92,13 @@ function logMessage(msg: string) {
   }
 }
 
-function acquireLock(): boolean {
-  mkdirSync(path.dirname(PID_FILE), { recursive: true });
-  if (existsSync(PID_FILE)) {
+let lockAcquired = false;
+
+export function acquireLock(pidFilePath = PID_FILE): boolean {
+  mkdirSync(path.dirname(pidFilePath), { recursive: true });
+  if (existsSync(pidFilePath)) {
     try {
-      const existingPid = parseInt(readFileSync(PID_FILE, "utf8").trim(), 10);
+      const existingPid = parseInt(readFileSync(pidFilePath, "utf8").trim(), 10);
       if (existingPid && !Number.isNaN(existingPid)) {
         // Test if process is still running
         try {
@@ -110,21 +114,37 @@ function acquireLock(): boolean {
   }
 
   try {
-    writeFileSync(PID_FILE, String(process.pid), "utf8");
+    writeFileSync(pidFilePath, String(process.pid), "utf8");
+    lockAcquired = true;
     return true;
   } catch {
     return false;
   }
 }
 
-function releaseLock() {
+export function releaseLock(pidFilePath = PID_FILE) {
+  if (!lockAcquired) return;
   try {
-    if (existsSync(PID_FILE)) {
-      unlinkSync(PID_FILE);
+    if (existsSync(pidFilePath)) {
+      const existingPid = parseInt(readFileSync(pidFilePath, "utf8").trim(), 10);
+      if (!existingPid || Number.isNaN(existingPid) || existingPid === process.pid) {
+        unlinkSync(pidFilePath);
+      }
     }
   } catch {
     // Ignore cleanup error
+  } finally {
+    lockAcquired = false;
   }
+}
+
+export function computeInterCompanyDelayMs(
+  delayMs: number,
+  randomFn: () => number = Math.random,
+): number {
+  const baseDelayMs = Math.max(0, Number.isFinite(delayMs) ? delayMs : 1000);
+  const jitterMs = Math.floor(randomFn() * 1000);
+  return baseDelayMs + jitterMs;
 }
 
 let activeChildPid: number | null = null;
@@ -139,8 +159,8 @@ async function killChildProcessGroup(pid: number | null): Promise<void> {
     return;
   }
 
-  // Allow up to 2.5 seconds for graceful exit and Prisma disconnect
-  const deadline = Date.now() + 2500;
+  // Allow up to 3 seconds for child process group cleanup and Prisma disconnect
+  const deadline = Date.now() + 3000;
   while (Date.now() < deadline) {
     try {
       process.kill(-pid, 0); // Check if process group is still alive
@@ -204,13 +224,31 @@ function formatDuration(ms: number): string {
   return `${mins}m ${secs}s`;
 }
 
+export interface SelfHealDeadLetterOptions {
+  forceHeal?: boolean;
+  dryRun?: boolean;
+  dbClient?: typeof prisma;
+  nowMs?: number;
+}
+
 /**
  * Auto-recover dead-letter priority companies (onboardPhase = -1 with priority > 0)
- * after an exponential backoff period (>= 30 mins) so transient outages don't leave
- * priority targets permanently abandoned.
+ * after a 24-hour backoff period (or immediately when --heal-deadletter is passed)
+ * so transient outages don't leave priority targets permanently abandoned.
  */
-async function selfHealDeadLetterPriorityCompanies(): Promise<number> {
-  const deadLetters = await prisma.entity.findMany({
+export async function selfHealDeadLetterPriorityCompanies(
+  options: SelfHealDeadLetterOptions = {},
+): Promise<number> {
+  const {
+    forceHeal = false,
+    dryRun = false,
+    dbClient = prisma,
+    nowMs = Date.now(),
+  } = options;
+
+  if (dryRun) return 0;
+
+  const deadLetters = await dbClient.entity.findMany({
     where: {
       type: "company",
       onboardPhase: -1,
@@ -225,20 +263,21 @@ async function selfHealDeadLetterPriorityCompanies(): Promise<number> {
     const meta = (dl.metadata as Record<string, unknown>) || {};
     if (meta.isExcluded) continue; // Skip manually or policy-excluded entities
 
-    // Check last attempt time and backoff: at least 30 minutes since last attempt
+    // Check last attempt time and backoff: at least 24 hours since last attempt unless --heal-deadletter is set
     const lastAttemptStr =
       (meta.onboardPhase1LastAttemptAt as string) ||
       (meta.onboardPhase2LastAttemptAt as string) ||
       (meta.phase3LastAttemptAt as string);
-    if (lastAttemptStr) {
+    if (!forceHeal && lastAttemptStr) {
       const lastAttemptMs = new Date(lastAttemptStr).getTime();
-      if (Date.now() - lastAttemptMs < 30 * 60 * 1000) {
-        continue; // Wait for 30m backoff window
+      if (!Number.isNaN(lastAttemptMs) && nowMs - lastAttemptMs < DEAD_LETTER_BACKOFF_MS) {
+        continue; // Wait for 24h backoff window
       }
     }
 
-    logMessage(`[Dead-Letter Self-Healing] 自动自愈重点关注标的 ${dl.ticker ?? dl.id}: 重置 onboardPhase -1 -> 0 (30m+ 退避窗口已过)`);
-    await prisma.entity.update({
+    const reasonLabel = forceHeal ? "--heal-deadletter 强制触发" : "24h+ 退避窗口已过";
+    logMessage(`[Dead-Letter Self-Healing] 自动自愈重点关注标的 ${dl.ticker ?? dl.id}: 重置 onboardPhase -1 -> 0 (${reasonLabel})`);
+    await dbClient.entity.update({
       where: { id: dl.id },
       data: {
         onboardPhase: 0,
@@ -246,7 +285,7 @@ async function selfHealDeadLetterPriorityCompanies(): Promise<number> {
           ...meta,
           onboardPhase1Attempts: 0,
           onboardPhase2Attempts: 0,
-          healedFromDeadLetterAt: new Date().toISOString(),
+          healedFromDeadLetterAt: new Date(nowMs).toISOString(),
         },
       },
     }).catch(() => {});
@@ -259,7 +298,11 @@ async function selfHealDeadLetterPriorityCompanies(): Promise<number> {
  * Fetch fast-track expedited candidates:
  * Covers both Phase 0 (target Phase 1) and Phase 1 (target Phase 2) companies with priority > 0.
  */
-async function fetchFastTrackCandidates(limit: number, marketFilter?: Market): Promise<CandidateCompany[]> {
+async function fetchFastTrackCandidates(
+  limit: number,
+  marketFilter?: Market,
+  dryRun = false,
+): Promise<CandidateCompany[]> {
   const rows = await prisma.entity.findMany({
     where: {
       type: "company",
@@ -298,10 +341,14 @@ async function fetchFastTrackCandidates(limit: number, marketFilter?: Market): P
       : (typeof meta.phase3Attempts === "number" ? meta.phase3Attempts : 0);
 
     if (attempts >= 3) {
-      if ((r.priority ?? 0) > 0) {
+      if (!dryRun && (r.priority ?? 0) > 0) {
         await prisma.entity.update({
           where: { id: r.id },
-          data: { priority: 0, priorityRequestedAt: null },
+          data: {
+            onboardPhase: r.onboardPhase === 0 ? -1 : r.onboardPhase,
+            priority: r.onboardPhase === 0 ? r.priority : 0,
+            priorityRequestedAt: r.onboardPhase === 0 ? r.priorityRequestedAt : null,
+          },
         }).catch(() => {});
       }
       continue; // Skip persistent failures
@@ -330,21 +377,23 @@ async function fetchFastTrackCandidates(limit: number, marketFilter?: Market): P
       metadata: meta,
     });
     if (exclusion.isExcluded) {
-      await prisma.entity.update({
-        where: { id: r.id },
-        data: {
-          onboardPhase: -1,
-          priority: 0,
-          priorityRequestedAt: null,
-          metadata: {
-            ...meta,
-            isExcluded: true,
-            exclusionReason: exclusion.reason,
-            exclusionLabel: exclusion.label,
-            excludedAt: new Date().toISOString(),
+      if (!dryRun) {
+        await prisma.entity.update({
+          where: { id: r.id },
+          data: {
+            onboardPhase: -1,
+            priority: 0,
+            priorityRequestedAt: null,
+            metadata: {
+              ...meta,
+              isExcluded: true,
+              exclusionReason: exclusion.reason,
+              exclusionLabel: exclusion.label,
+              excludedAt: new Date().toISOString(),
+            },
           },
-        },
-      }).catch(() => {});
+        }).catch(() => {});
+      }
       continue;
     }
 
@@ -372,7 +421,8 @@ async function fetchCandidatesForMarket(
   market: Market,
   targetPhase: 1 | 2,
   limit: number,
-  excludeIds: Set<string> = new Set()
+  excludeIds: Set<string> = new Set(),
+  dryRun = false,
 ): Promise<CandidateCompany[]> {
   if (limit <= 0) return [];
   const currentPhase = targetPhase === 1 ? 0 : 1;
@@ -427,21 +477,23 @@ async function fetchCandidatesForMarket(
       metadata: meta,
     });
     if (exclusion.isExcluded) {
-      await prisma.entity.update({
-        where: { id: r.id },
-        data: {
-          onboardPhase: -1,
-          priority: 0,
-          priorityRequestedAt: null,
-          metadata: {
-            ...meta,
-            isExcluded: true,
-            exclusionReason: exclusion.reason,
-            exclusionLabel: exclusion.label,
-            excludedAt: new Date().toISOString(),
+      if (!dryRun) {
+        await prisma.entity.update({
+          where: { id: r.id },
+          data: {
+            onboardPhase: -1,
+            priority: 0,
+            priorityRequestedAt: null,
+            metadata: {
+              ...meta,
+              isExcluded: true,
+              exclusionReason: exclusion.reason,
+              exclusionLabel: exclusion.label,
+              excludedAt: new Date().toISOString(),
+            },
           },
-        },
-      }).catch(() => {});
+        }).catch(() => {});
+      }
       continue;
     }
 
@@ -495,7 +547,8 @@ async function fetchStandardCandidates(
   targetMarket: string,
   totalSlots: number,
   excludeIds: Set<string>,
-  phaseFilter?: string
+  phaseFilter?: string,
+  dryRun = false,
 ): Promise<CandidateCompany[]> {
   if (totalSlots <= 0) return [];
 
@@ -504,9 +557,9 @@ async function fetchStandardCandidates(
     if (targetMarket === "all") {
       const perMarket = Math.ceil(limit / 3);
       const [usList, hkList, cnList] = await Promise.all([
-        fetchCandidatesForMarket("us", phase, perMarket, currentExcludes),
-        fetchCandidatesForMarket("hk", phase, perMarket, currentExcludes),
-        fetchCandidatesForMarket("cn", phase, perMarket, currentExcludes),
+        fetchCandidatesForMarket("us", phase, perMarket, currentExcludes, dryRun),
+        fetchCandidatesForMarket("hk", phase, perMarket, currentExcludes, dryRun),
+        fetchCandidatesForMarket("cn", phase, perMarket, currentExcludes, dryRun),
       ]);
       const merged: CandidateCompany[] = [];
       const maxLen = Math.max(usList.length, hkList.length, cnList.length);
@@ -517,7 +570,7 @@ async function fetchStandardCandidates(
       }
       return merged.slice(0, limit);
     } else if (targetMarket === "us" || targetMarket === "hk" || targetMarket === "cn") {
-      return fetchCandidatesForMarket(targetMarket as Market, phase, limit, currentExcludes);
+      return fetchCandidatesForMarket(targetMarket as Market, phase, limit, currentExcludes, dryRun);
     } else {
       throw new Error(`Invalid --market "${targetMarket}". Expected all, us, hk, or cn.`);
     }
@@ -566,9 +619,10 @@ async function fetchStandardCandidates(
 
 async function main() {
   const dryRun = hasFlag("--dry-run");
+  const healDeadLetter = hasFlag("--heal-deadletter");
   const batchSize = Math.max(1, parseInt(getArg("--batch-size") ?? "15", 10));
   const targetMarket = (getArg("--market") ?? "all").toLowerCase();
-  const delayMs = parseInt(getArg("--delay") ?? "2000", 10);
+  const delayMs = parseInt(getArg("--delay") ?? "1000", 10);
   const customTimeoutArg = getArg("--company-timeout-mins");
   const customCompanyTimeoutMs = customTimeoutArg ? Math.max(1, parseInt(customTimeoutArg, 10)) * 60 * 1000 : null;
   const companyTimeoutMins = customTimeoutArg ? Math.max(1, parseInt(customTimeoutArg, 10)) : 8; // Phase 2/3 default max
@@ -578,8 +632,8 @@ async function main() {
   const phaseFilter = getArg("--phase"); // optional override: "1" | "2"
 
   logMessage("=======================================================");
-  logMessage(`PRIORITY BATCH WORKER STARTED [Mode: ${dryRun ? "DRY-RUN" : "LIVE"}${priorityOnly ? ", PRIORITY-ONLY" : ""}]`);
-  logMessage(`Configuration: BatchSize=${batchSize}, Market=${targetMarket}, Delay=${delayMs}ms, Timeout=${timeoutMins}m, CompanyTimeout=${customTimeoutArg ? `${companyTimeoutMins}m (custom)` : "P1: 5m, P2/P3: 8m (dynamic)"}, PriorityOnly=${priorityOnly}${phaseFilter ? `, Phase=${phaseFilter}` : ""}`);
+  logMessage(`PRIORITY BATCH WORKER STARTED [Mode: ${dryRun ? "DRY-RUN" : "LIVE"}${priorityOnly ? ", PRIORITY-ONLY" : ""}${healDeadLetter ? ", HEAL-DEADLETTER" : ""}]`);
+  logMessage(`Configuration: BatchSize=${batchSize}, Market=${targetMarket}, Delay=${delayMs}ms (+0~999ms jitter), Timeout=${timeoutMins}m, CompanyTimeout=${customTimeoutArg ? `${companyTimeoutMins}m (custom)` : "P1: 5m, P2/P3: 8m (dynamic)"}, PriorityOnly=${priorityOnly}${phaseFilter ? `, Phase=${phaseFilter}` : ""}`);
 
   if (!dryRun) {
     if (!acquireLock()) {
@@ -589,36 +643,48 @@ async function main() {
   }
 
   // Setup hard timeout guard (Dead Man's Switch)
-  const timeoutTimer = setTimeout(() => {
+  const timeoutTimer = setTimeout(async () => {
     logMessage(`WARNING: Worker reached maximum execution timeout of ${timeoutMins} minutes! Exiting gracefully.`);
     if (activeChildPid) {
-      killChildProcessGroup(activeChildPid);
+      await killChildProcessGroup(activeChildPid);
     }
     releaseLock();
+    await prisma.$disconnect().catch(() => {});
     process.exit(0);
   }, timeoutMins * 60 * 1000);
 
-  const cleanupAndExit = (signal: string, code: number) => {
+  let shuttingDown = false;
+  const cleanupAndExit = async (signal: string, code: number) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
     logMessage(`Worker received ${signal}. Cleaning up child processes and exiting...`);
     if (activeChildPid) {
-      killChildProcessGroup(activeChildPid);
+      await killChildProcessGroup(activeChildPid);
     }
     releaseLock();
+    await prisma.$disconnect().catch(() => {});
     process.exit(code);
   };
-  process.on("SIGINT", () => cleanupAndExit("SIGINT", 130));
-  process.on("SIGTERM", () => cleanupAndExit("SIGTERM", 143));
+  process.on("SIGINT", () => {
+    void cleanupAndExit("SIGINT", 130);
+  });
+  process.on("SIGTERM", () => {
+    void cleanupAndExit("SIGTERM", 143);
+  });
 
   try {
     let candidateList: CandidateCompany[] = [];
 
     // 0. Auto-recover any priority companies that died transiently into dead-letter (onboardPhase = -1)
-    await selfHealDeadLetterPriorityCompanies();
+    if (!dryRun) {
+      await selfHealDeadLetterPriorityCompanies({ forceHeal: healDeadLetter, dryRun });
+    }
 
     // 1. Fetch Fast-Track expedited companies first (Phase 0, Phase 1, Phase 2)
     let fastTrackList = await fetchFastTrackCandidates(
       batchSize,
-      targetMarket === "all" ? undefined : (targetMarket as Market)
+      targetMarket === "all" ? undefined : (targetMarket as Market),
+      dryRun,
     );
     if (phaseFilter) {
       fastTrackList = fastTrackList.filter((c) => String(c.targetPhase) === phaseFilter);
@@ -630,7 +696,7 @@ async function main() {
 
     // 2. Supplement remaining slots with standard dual-drive companies (P1->P2 and P0->P1)
     if (!priorityOnly && remainingSlots > 0 && phaseFilter !== "3") {
-      regularList = await fetchStandardCandidates(targetMarket, remainingSlots, excludeIds, phaseFilter);
+      regularList = await fetchStandardCandidates(targetMarket, remainingSlots, excludeIds, phaseFilter, dryRun);
     }
 
     candidateList = [...fastTrackList, ...regularList];
@@ -647,15 +713,16 @@ async function main() {
     if (dryRun) {
       logMessage("\nDry-run complete. No changes were made to the database.");
       clearTimeout(timeoutTimer);
-      releaseLock();
-      process.exit(0);
+      await prisma.$disconnect();
+      return;
     }
 
     if (candidateList.length === 0) {
       logMessage("No candidates available for onboarding. Work complete!");
       clearTimeout(timeoutTimer);
       releaseLock();
-      process.exit(0);
+      await prisma.$disconnect();
+      return;
     }
 
     let succeeded = 0;
@@ -758,12 +825,13 @@ async function main() {
                 });
               } else if (company.currentPhase === 0) {
                 const attempts = ((meta.onboardPhase1Attempts as number) || 0) + 1;
+                // Preserve priority > 0 when demoting fast-track companies to dead-letter (-1)
+                // so selfHealDeadLetterPriorityCompanies can select them after the 24h backoff window.
                 await prisma.entity.update({
                   where: { id: company.id },
                   data: {
                     onboardPhase: attempts >= 3 ? -1 : 0,
-                    priority: attempts >= 3 ? 0 : (company.isFastTrack ? Math.max(0, company.priorityScore - 1000) : undefined),
-                    priorityRequestedAt: attempts >= 3 ? null : undefined,
+                    priority: company.isFastTrack ? Math.max(1, company.priorityScore - 1000) : undefined,
                     metadata: {
                       ...meta,
                       onboardPhase1Attempts: attempts,
@@ -800,9 +868,8 @@ async function main() {
       }
 
       if (i < candidateList.length - 1) {
-        // Add 1000~2000ms jitter sleep between companies to protect SEC EDGAR / HKEXnews / akshare rate limits
-        const jitterMs = Math.floor(Math.random() * 1000) + 1000;
-        const totalSleepMs = Math.max(delayMs, jitterMs);
+        // Add random jitter (0~999ms) to base delay (default 1000ms -> 1000~1999ms) to protect external API rate limits
+        const totalSleepMs = computeInterCompanyDelayMs(delayMs);
         await new Promise((r) => setTimeout(r, totalSleepMs));
       }
     }
@@ -818,9 +885,11 @@ async function main() {
   }
 }
 
-main().catch(async (e) => {
-  logMessage(`FATAL WORKER ERROR: ${e instanceof Error ? e.message : String(e)}`);
-  releaseLock();
-  await prisma.$disconnect();
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(async (e) => {
+    logMessage(`FATAL WORKER ERROR: ${e instanceof Error ? e.message : String(e)}`);
+    releaseLock();
+    await prisma.$disconnect();
+    process.exit(1);
+  });
+}
