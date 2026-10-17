@@ -158,7 +158,7 @@ export type BackfillResult = {
 
 export async function backfillCompanyFinancialsFast(params: {
   entityId: string;
-  cik: string;
+  cik?: string | null;
   ticker: string;
   fromYear?: number;
   toYear?: number;
@@ -167,27 +167,32 @@ export async function backfillCompanyFinancialsFast(params: {
   const start = Date.now();
   const fromYear = params.fromYear ?? 2020;
   const toYear = params.toYear ?? new Date().getFullYear();
-  const paddedCik = params.cik.replace(/^CIK/i, "").padStart(10, "0");
+  const rawCik = (params.cik ?? "").replace(/^CIK/i, "").trim();
+  const paddedCik = rawCik && rawCik !== "0" ? rawCik.padStart(10, "0") : "";
 
   // 1. Fetch SEC submissions & profile in parallel with company facts
   let subData: Awaited<ReturnType<typeof fetchSecSubmissions>> | null = null;
   let facts: Awaited<ReturnType<typeof getCompanyFacts>> | null = null;
   let secError: string | null = null;
 
-  try {
-    const results = await Promise.all([
-      fetchSecSubmissions(paddedCik),
-      getCompanyFacts(paddedCik),
-    ]);
-    subData = results[0];
-    facts = results[1];
-  } catch (err: unknown) {
-    secError = err instanceof Error ? err.message : String(err);
+  if (paddedCik && paddedCik !== "0000000000") {
+    try {
+      const results = await Promise.all([
+        fetchSecSubmissions(paddedCik),
+        getCompanyFacts(paddedCik),
+      ]);
+      subData = results[0];
+      facts = results[1];
+    } catch (err: unknown) {
+      secError = err instanceof Error ? err.message : String(err);
+    }
+  } else {
+    secError = "No valid CIK provided";
   }
 
   // 2. Fetch annual filings (10-K, 20-F) within range
   let targetFilings: SecRecentFiling[] = [];
-  if (subData && facts) {
+  if (subData && facts && paddedCik) {
     const allAnnuals = await fetchTargetAnnualFilings(paddedCik, fromYear);
     targetFilings = allAnnuals.filter((f) => {
       const y = new Date(f.reportDate).getUTCFullYear();
@@ -513,22 +518,44 @@ async function main() {
   console.log(`Config: from=${fromYear}, to=${toYear}, dryRun=${dryRun}, delay=${delayMs}ms\n`);
 
   if (tickerArg || cikArg) {
-    const entity = await db.entity.findFirst({
-      where: tickerArg ? { ticker: tickerArg, cik: { not: null } } : { cik: cikArg },
-      select: { id: true, ticker: true, cik: true, canonicalName: true },
+    const upperTicker = tickerArg?.trim().toUpperCase();
+    let entity = await db.entity.findFirst({
+      where: upperTicker
+        ? {
+            type: "company",
+            OR: [{ ticker: upperTicker }, { code: upperTicker }],
+          }
+        : { cik: cikArg },
+      select: { id: true, ticker: true, cik: true, canonicalName: true, market: true },
     });
 
-    if (!entity || !entity.cik) {
-      console.error(`Error: Entity not found or missing CIK for ${tickerArg ?? cikArg}`);
+    if (!entity && upperTicker) {
+      entity = await db.entity.create({
+        data: {
+          ticker: upperTicker,
+          code: upperTicker,
+          canonicalName: upperTicker,
+          type: "company",
+          market: "us",
+          metadata: { country: "US" },
+        },
+        select: { id: true, ticker: true, cik: true, canonicalName: true, market: true },
+      });
+      console.log(`Created new base Entity for [${upperTicker}] (id: ${entity.id})`);
+    }
+
+    if (!entity) {
+      console.error(`Error: Entity not found for ${tickerArg ?? cikArg}`);
       process.exitCode = 1;
       return;
     }
 
-    console.log(`Backfilling [${entity.ticker ?? entity.canonicalName}] (CIK ${entity.cik})...`);
+    const cikToUse = entity.cik ?? cikArg ?? "";
+    console.log(`Backfilling [${entity.ticker ?? entity.canonicalName}] (CIK ${cikToUse || "none - using fallback"})...`);
     try {
       const res = await backfillCompanyFinancialsFast({
         entityId: entity.id,
-        cik: entity.cik,
+        cik: cikToUse,
         ticker: entity.ticker ?? entity.canonicalName,
         fromYear,
         toYear,
@@ -539,6 +566,9 @@ async function main() {
       console.log(`   - Filings: ${res.filingsCount} annual filings`);
       console.log(`   - Financials upserted: ${res.financialRowsUpserted} rows`);
       console.log(`   - Years covered: [${res.years.join(", ")}]`);
+      if (res.error) {
+        console.warn(`   - Warning/Error: ${res.error}`);
+      }
     } catch (err) {
       console.error("❌ Failed:", err);
       process.exitCode = 1;

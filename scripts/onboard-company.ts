@@ -54,9 +54,9 @@
  */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { spawn } from "node:child_process";
 import path from "node:path";
 import prisma from "@/lib/prisma";
+import { runProcessGroup } from "./lib/run-process-group";
 
 // Ensure graceful DB disconnect upon SIGTERM from worker timeout or parent abort
 process.on("SIGTERM", async () => {
@@ -68,7 +68,11 @@ process.on("SIGTERM", async () => {
 });
 
 import { CN_HK_SEEDS } from "./lib/cn-hk-company-seeds";
-import { resolveCnCurrency, resolveHkCurrencyFromAnnualReport, resolveHkCurrencyViaYfinance } from "./lib/cn-hk-currency-resolve";
+import {
+  resolveCompanyReportingCurrency,
+  persistCompanyReportingCurrency,
+  resolveHkCurrencyFromAnnualReport,
+} from "./lib/cn-hk-currency-resolve";
 import { getPersistedSectorClassificationStatus } from "../src/lib/sector-classification-state";
 
 type Market = "us" | "cn" | "hk";
@@ -151,15 +155,25 @@ async function saveCheckpoint(checkpoint: Checkpoint) {
   await writeFile(checkpointFile(checkpoint.ticker), `${JSON.stringify(checkpoint, null, 2)}\n`, "utf8");
 }
 
-function runCommand(cmd: string, args: string[]): Promise<number> {
-  return new Promise((resolve) => {
-    const child = spawn(cmd, args, { stdio: "inherit", env: process.env, cwd: process.cwd() });
-    child.on("close", (code) => resolve(code ?? 1));
-  });
+async function runCommand(cmd: string, args: string[], timeoutMs = 900_000): Promise<number> {
+  try {
+    const res = await runProcessGroup(cmd, args, {
+      signal: AbortSignal.timeout(timeoutMs),
+      inheritStdio: true,
+    });
+    return res.exitCode;
+  } catch (err: unknown) {
+    if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
+      console.error(`[onboard-company] Process group timed out after ${timeoutMs}ms: ${cmd} ${args.join(" ")}`);
+      return 124;
+    }
+    console.error(`[onboard-company] Process execution error:`, err);
+    return 1;
+  }
 }
 
-async function runNpmScript(script: string, args: string[]) {
-  const code = await runCommand("npm", ["run", script, "--", ...args]);
+async function runNpmScript(script: string, args: string[], timeoutMs = 900_000) {
+  const code = await runCommand("npm", ["run", script, "--", ...args], timeoutMs);
   if (code !== 0) throw new Error(`npm run ${script} exited with code ${code}`);
 }
 
@@ -364,32 +378,27 @@ function buildSeedEntityStep(ticker: string, market: "cn" | "hk", code: string):
   };
 }
 
-// currency: CN is a hardcoded regulatory fact (resolveCnCurrency); HK is
-// extracted from the annual report text (resolveHkCurrencyFromAnnualReport),
-// which is only available once import_annual_report has run — see the HK
-// step reordering in main() below. A manual CN_HK_SEEDS override still wins
-// verbatim if present.
-async function resolveCnHkCurrency(ticker: string, market: "cn" | "hk"): Promise<string> {
-  const seed = CN_HK_SEEDS[ticker];
-  if (seed) return seed.currency;
-  if (market === "cn") return resolveCnCurrency();
-  const entityId = await findEntityId(ticker);
-  if (!entityId) throw new Error(`No Entity found for ticker ${ticker} — seed_entity must run first.`);
-  try {
-    return await resolveHkCurrencyFromAnnualReport(entityId);
-  } catch (err) {
-    const yfCurrency = resolveHkCurrencyViaYfinance(ticker);
-    if (yfCurrency) return yfCurrency;
-    throw err;
-  }
-}
-
 function buildImportFinancialsStep(ticker: string, market: "cn" | "hk", code: string, fromYear: string): Step {
   return {
     id: "import_financials",
     label: "导入财务数据（akshare 三大报表 → Financial）",
     run: async () => {
-      const currency = await resolveCnHkCurrency(ticker, market);
+      const entity = await prisma.entity.findFirst({
+        where: { type: "company", market, code },
+        select: { id: true, ticker: true, canonicalName: true, reportingCurrency: true, metadata: true },
+      });
+      const currency = await resolveCompanyReportingCurrency(
+        {
+          id: entity?.id,
+          ticker,
+          market,
+          reportingCurrency: entity?.reportingCurrency,
+        },
+        prisma,
+      );
+      if (entity?.id) {
+        await persistCompanyReportingCurrency(entity.id, currency, prisma);
+      }
       const seed = CN_HK_SEEDS[ticker];
       const args = [
         "--code", code,
@@ -439,9 +448,9 @@ function buildSliceAnnualReportStep(ticker: string, market: "cn" | "hk", fromYea
   return {
     id: "slice_annual_report",
     label: "切片年报原文（下载 PDF → FilingSection，不上传 R2）",
-    run: () => {
+    run: async () => {
       const scriptName = market === "hk" ? "import:hk-annual-report" : "import:cn-annual-report";
-      return runNpmScript(scriptName, [
+      await runNpmScript(scriptName, [
         "--code", code,
         "--market", market,
         "--ticker", ticker,
@@ -450,6 +459,30 @@ function buildSliceAnnualReportStep(ticker: string, market: "cn" | "hk", fromYea
         "--skip-r2-upload",  // Skip PDF upload to R2, user reads from external link
         "--latest-only",     // Only slice the single most recent annual report
       ]);
+
+      if (market === "hk") {
+        const entity = await prisma.entity.findFirst({
+          where: { type: "company", market: "hk", code },
+          select: { id: true, reportingCurrency: true },
+        });
+        if (entity) {
+          try {
+            const annualReportCurrency = await resolveHkCurrencyFromAnnualReport(entity.id);
+            if (annualReportCurrency && annualReportCurrency !== entity.reportingCurrency) {
+              console.log(
+                `[onboard-company] [HK Currency Cross-Check] 年报原文币种 (${annualReportCurrency}) 与登记币种 (${entity.reportingCurrency ?? "none"}) 不一致，自动修正并留痕...`,
+              );
+              await persistCompanyReportingCurrency(
+                entity.id,
+                annualReportCurrency,
+                prisma,
+              );
+            }
+          } catch (err) {
+            console.warn(`[onboard-company] 年报币种二次复核跳过:`, err);
+          }
+        }
+      }
     },
     verify: async (entityId) => {
       // Verify that at least one ExtSource record has sliced FilingSection children
@@ -620,58 +653,21 @@ async function main() {
 
   const importFinancialsFastStep: Step = {
     id: "import_financials_fast",
-    label: "导入财务数据（10-K 年度财报 → 10-Q 季度 → yfinance 降级兜底）",
+    label: "导入财务数据（纯 TS SEC CompanyFacts → 10-Q → yfinance 兜底）",
     run: async () => {
       // 优先使用高效纯 TS SEC 官方 REST 管道（0 Python, 全量法定三张主表）
-      let fastSucceeded = false;
-      try {
-        const fastArgs = ["--ticker", ticker, "--from", fromYear, "--to", toYear];
-        if (resolvedCik) fastArgs.push("--cik", resolvedCik);
-        await runNpmScript("backfill:us-financials:fast", fastArgs);
-        fastSucceeded = true;
-      } catch (err) {
-        console.log(`[onboard-company] 快速 SEC REST 导入异常，回退到 edgartools import:10k:`, err);
-      }
-
-      if (!fastSucceeded) {
-        const args = ["--ticker", ticker, "--from", fromYear, "--to", toYear, "--fast", "--filing-concurrency", "6"];
-        if (resolvedCik) args.push("--cik", resolvedCik);
-        try {
-          await runNpmScript("import:10k", args);
-        } catch {
-          console.log(`[onboard-company] import:10k annual facts exited, checking for 10-Q quarterly fallback for ${ticker}...`);
-        }
-      }
-
-      // 降级检查 1：对于次新上市无 10-K 的公司（如 SpaceX），自动从 10-Q 季报抽取财务数据
-      const existingEntityId = await findEntityId(ticker);
-      let finCount = existingEntityId ? await prisma.financial.count({ where: { entityId: existingEntityId } }) : 0;
-      if (finCount === 0) {
-        console.log(`[onboard-company] 10-K 暂无数据，触发次新股降级：从 10-Q 季度报表提取财务数据 (${ticker})...`);
-        try {
-          await runNpmScript("import:us-quarterly-financials", ["--ticker", ticker]);
-        } catch (err) {
-          console.warn(`[onboard-company] 10-Q 导入退出:`, err);
-        }
-      }
-
-      // 降级检查 2：对于无 10-K 且无 10-Q 的次新股/外国发行人（如 BSP / Bending Spoons），自动从 yfinance 获取财报
-      finCount = existingEntityId ? await prisma.financial.count({ where: { entityId: existingEntityId } }) : 0;
-      if (finCount === 0) {
-        console.log(`[onboard-company] SEC CompanyFacts 暂无财务数据，触发次新股/外国发行人降级：从 yfinance 提取财务数据 (${ticker})...`);
-        try {
-          await runNpmScript("import:us-financials-yf", ["--ticker", ticker]);
-        } catch (err) {
-          console.warn(`[onboard-company] yfinance 财务数据导入退出:`, err);
-        }
-      }
+      // backfillCompanyFinancialsFast 已内置 Tier-2 yfinance 和 Tier-3 10-Q 降级
+      const fastArgs = ["--ticker", ticker, "--from", fromYear, "--to", toYear];
+      if (resolvedCik) fastArgs.push("--cik", resolvedCik);
+      await runNpmScript("backfill:us-financials:fast", fastArgs);
 
       // 预先检查是否有年报/招股书切片证据：若尚无切片证据，预先拉取次新股招股书切片以支撑 Phase 1 概览生成
+      const existingEntityId = await findEntityId(ticker);
       const sectionCount = existingEntityId
         ? await prisma.filingSection.count({ where: { entityId: existingEntityId } })
         : 0;
       if (sectionCount === 0) {
-        console.log(`[onboard-company] 暂无年报全文切片，预先拉取次新股招股书切片 (${ticker})...`);
+        console.log(`[onboard-company] 暂无年报全文切片，检查拉取次新股招股书切片 (${ticker})...`);
         try {
           await runNpmScript("import:us-prospectus", ["--ticker", ticker]);
         } catch (err) {
@@ -687,13 +683,16 @@ async function main() {
 
   const import10kFullStep: Step = {
     id: "import_10k",
-    label: "导入年报/招股书全文切片（10-K/20-F/40-F → S-1/424B4 降级兜底）",
+    label: "切片年报/招股书全文（10-K/20-F/40-F → S-1/424B4 降级兜底，仅切片不改财务）",
     run: async () => {
-      // --extract-timeout-ms 15min: the default 8min helper timeout is not
-      // enough for giant foreign filers (e.g. VOD's 20-Fs are 10-20MB HTML
-      // each and mini→SEC latency compounds per filing). Still bounded by the
-      // worker's overall 35min batch timeout.
-      const args = ["--ticker", ticker, "--from", fromYear, "--to", toYear, "--extract-timeout-ms", "900000", "--latest-only"];
+      const args = [
+        "--ticker", ticker,
+        "--from", fromYear,
+        "--to", toYear,
+        "--sections-only",  // CRITICAL: Protect Phase 1 financials and currency!
+        "--latest-only",    // Only slice the single most recent annual report
+        "--extract-timeout-ms", "900000",
+      ];
       if (resolvedCik) args.push("--cik", resolvedCik);
       try {
         await runNpmScript("import:10k", args);
@@ -720,7 +719,6 @@ async function main() {
       if (financialCount === 0) return false;
 
       const filingKindFilter = { in: ["10k", "20f", "40f", "us-prospectus"] };
-      // Verify that at least one filing has sections
       const validFilingWithSections = await prisma.extSource.count({
         where: {
           filerEntityId: entityId,
@@ -728,7 +726,19 @@ async function main() {
           sections: { some: {} },
         },
       });
-      return validFilingWithSections > 0;
+      if (validFilingWithSections > 0) return true;
+
+      // Strict gate: CN, HK, and standard US filers MUST extract sections.
+      // Exception: US OTC ADRs without SEC filings (yfinance fallback) where no SEC ExtSource exists.
+      const totalSecFilings = await prisma.extSource.count({
+        where: { filerEntityId: entityId, kind: filingKindFilter },
+      });
+      if (totalSecFilings === 0 && financialCount > 0) {
+        console.warn(`[onboard-company] [ADR Exception] 美股 OTC ADR 无 SEC 备案文件 (${ticker})，财务由 yfinance 提供，豁免切片准入`);
+        return true;
+      }
+
+      return false;
     },
   };
 
@@ -737,14 +747,31 @@ async function main() {
     id: "create_annual_report_extsource",
     label: "创建年报 ExtSource 记录（仅 URL，不切片）",
     run: async () => {
+      const existingEntityId = await findEntityId(ticker);
+      if (existingEntityId) {
+        const existingCount = await prisma.extSource.count({
+          where: { filerEntityId: existingEntityId, kind: { in: ["10k", "20f", "40f"] } },
+        });
+        if (existingCount > 0) {
+          console.log(`[onboard-company] 已有 ${existingCount} 份 ExtSource 年报记录，无需重复调用 Python`);
+          return;
+        }
+      }
       const args = ["--ticker", ticker, "--from", fromYear, "--to", toYear];
       if (resolvedCik) args.push("--cik", resolvedCik);
       return runNpmScript("create:us-annual-extsource", args);
     },
     verify: async (entityId) => {
       const count = await prisma.extSource.count({
-        where: { filerEntityId: entityId, kind: { in: ["10k", "20f", "40f"] } }
+        where: { filerEntityId: entityId, kind: { in: ["10k", "20f", "40f", "us-prospectus"] } }
       });
+      if (count === 0) {
+        const finCount = await prisma.financial.count({ where: { entityId } });
+        if (finCount > 0) {
+          console.log(`[onboard-company] 未发现 SEC 年报 ExtSource，但存在已导入财务数据（如 yfinance ADR），豁免 ExtSource 校验`);
+          return true;
+        }
+      }
       return count > 0;
     },
   };
@@ -754,14 +781,15 @@ async function main() {
   if (market === "us") {
     const phase1Steps: Step[] = [
       importFinancialsFastStep,
-      createUsAnnualExtSourceStep,  // NEW: Create ExtSource at P1
+      createUsAnnualExtSourceStep,
       importPriceStep,
       generateOverviewStep,
-      classifySectorStep,  // NEW: 13类分类，依赖 overview
+      classifySectorStep,
       syncNameMapStep,
     ];
     const phase2Steps: Step[] = [
-      import10kFullStep,  // P2: Slice the ExtSource records created at P1
+      import10kFullStep,
+      classifySectorStep,
       ...phase2AnalysisSteps,
     ];
 
@@ -781,15 +809,16 @@ async function main() {
 
     const phase1Steps: Step[] = [
       seedEntityStep,
-      createAnnualExtSourceStep,  // NEW: Create ExtSource at P1
+      createAnnualExtSourceStep,
       importPriceStep,
       importFinancialsStep,
       generateOverviewStep,
-      classifySectorStep,  // NEW: 13类分类，依赖 overview
+      classifySectorStep,
       syncNameMapStep,
     ];
     const phase2Steps: Step[] = [
-      sliceAnnualReportStep,  // P2: Slice the ExtSource records created at P1
+      sliceAnnualReportStep,
+      classifySectorStep,
       ...phase2AnalysisSteps,
     ];
 
@@ -848,7 +877,30 @@ async function main() {
 
     console.log(`\n${prefix}`);
     const stepStartedAt = Date.now();
-    await step.run();
+
+    const maxRetries = 2;
+    let stepError: unknown = null;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await step.run();
+        stepError = null;
+        break;
+      } catch (err) {
+        stepError = err;
+        console.warn(`${prefix} — attempt ${attempt}/${maxRetries} failed:`, err instanceof Error ? err.message : String(err));
+        if (attempt < maxRetries) {
+          const backoffMs = attempt * 2000;
+          console.log(`Waiting ${backoffMs}ms before retrying ${step.id}...`);
+          await new Promise((r) => setTimeout(r, backoffMs));
+        }
+      }
+    }
+
+    if (stepError) {
+      summary.push({ step: step.id, label: step.label, status: "failed", durationMs: Date.now() - stepStartedAt });
+      console.error(`${prefix} — failed after ${maxRetries} attempts`);
+      break;
+    }
 
     // Steps before import_10k completes have no entityId yet; resolve fresh each time
     // since import_10k may have just created it.

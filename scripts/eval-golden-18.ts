@@ -59,6 +59,7 @@ import {
   type FinancialTemplate,
   type FinancialValuationAnchor,
 } from "../src/lib/financial-model";
+import type { SectorModelType13 } from "../src/lib/sector-classification";
 import { getLatestFxRates } from "../src/lib/fx-rates";
 import {
   convertCurrency,
@@ -1311,7 +1312,7 @@ export async function runGoldenAudit(): Promise<{ reports: CompanyAuditReport[];
       });
     }
 
-    const tradingCurrency = tradingCurrencyForMarket(spec.market);
+    const tradingCurrency = tradingCurrencyForMarket(spec.market) ?? "USD";
     const itemCurrencies = new Set(
       rawFinList.flatMap((f) =>
         Object.values(f.itemUnits ?? {})
@@ -1477,7 +1478,7 @@ export async function runGoldenAudit(): Promise<{ reports: CompanyAuditReport[];
       {
         sector: entity.sector,
         metadata: entity.metadata,
-        sectorModelType: entity.sectorModelType,
+        sectorModelType: entity.sectorModelType as SectorModelType13 | null,
       },
       rawFinList,
       tradingCurrency,

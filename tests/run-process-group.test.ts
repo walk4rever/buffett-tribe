@@ -17,4 +17,38 @@ describe("runProcessGroup", () => {
     const result = await resultPromise;
     expect(result.signal).toBe("SIGTERM");
   }, 5_000);
+
+  it("captures stdout and exit code cleanly", async () => {
+    const result = await runProcessGroup(process.execPath, [
+      "-e",
+      "console.log('hello from process group');",
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.signal).toBeNull();
+    expect(result.output.trim()).toBe("hello from process group");
+  });
+
+  it("streams to process.stdout when inheritStdio is enabled while still capturing output", async () => {
+    let intercepted = "";
+    const origWrite = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: unknown) => {
+      intercepted += String(chunk);
+      return true;
+    }) as unknown as typeof process.stdout.write;
+
+    try {
+      const result = await runProcessGroup(
+        process.execPath,
+        ["-e", "console.log('streaming message');"],
+        { inheritStdio: true },
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.output.trim()).toBe("streaming message");
+      expect(intercepted).toContain("streaming message");
+    } finally {
+      process.stdout.write = origWrite;
+    }
+  });
 });

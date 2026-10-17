@@ -612,11 +612,13 @@ export const getCompanyFinancialsTool = defineTool({
     let latestInterim: { label: string; items: Record<string, number> } | null = null;
     if (interimRows.length > 0) {
       const targetPeriodEnd = interimRows[0].period_end;
+      const targetPeriodEndKey = new Date(targetPeriodEnd).toISOString().slice(0, 10);
       const targetPeriodType = interimRows[0].period_type ?? "Q";
       const interimYear = new Date(targetPeriodEnd).getUTCFullYear();
       const interimItems: Record<string, number> = {};
       for (const r of interimRows) {
-        if (r.period_end !== targetPeriodEnd || r.period_type !== targetPeriodType) continue;
+        const rowPeriodEndKey = new Date(r.period_end).toISOString().slice(0, 10);
+        if (rowPeriodEndKey !== targetPeriodEndKey || r.period_type !== targetPeriodType) continue;
         const numVal = Number(r.value);
         if (Number.isFinite(numVal) && !(r.line_item in interimItems)) {
           interimItems[r.line_item] = numVal;

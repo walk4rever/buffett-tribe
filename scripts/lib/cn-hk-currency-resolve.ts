@@ -17,6 +17,8 @@
 // time like the CN case.
 import { execSync } from "node:child_process";
 import db from "@/lib/prisma";
+import { normalizeCurrencyCode } from "@/lib/fx-rates-core";
+import { CN_HK_SEEDS } from "./cn-hk-company-seeds";
 
 export function resolveCnCurrency(): "CNY" {
   return "CNY";
@@ -152,4 +154,114 @@ export function resolveHkCurrencyViaYfinance(ticker: string): CurrencyGuess | nu
     return null;
   }
 }
+
+export interface ResolveCurrencyCandidate {
+  id?: string | null;
+  ticker: string;
+  market?: string | null;
+  reportingCurrency?: string | null;
+}
+
+/**
+ * 跨市场权威五级币种推导解析器 (5-Tier Currency Resolver):
+ * 1. 精准种子表 (CN_HK_SEEDS) 覆盖 (如 AIA 友邦标示为 USD)
+ * 2. Entity 库内已登记且合规的 reportingCurrency
+ * 3. 市场级法定规则 (US -> USD, CN -> CNY)
+ * 4. 港股 (HK) 多级推导:
+ *    4a. 库内已有 Financial 表的法定记账单位 unit
+ *    4b. 从年报正文 (FilingSection) 中提取词频 (resolveHkCurrencyFromAnnualReport)
+ *    4c. Yahoo Finance 财报币种 (financialCurrency)
+ *    4d. 最终兜底为 HKD
+ */
+export interface ResolveCurrencyOptions {
+  dbClient?: typeof db;
+  yfResolver?: (ticker: string) => CurrencyGuess | null;
+}
+
+export async function resolveCompanyReportingCurrency(
+  candidate: ResolveCurrencyCandidate,
+  optionsOrDb?: ResolveCurrencyOptions | typeof db,
+): Promise<string> {
+  const options: ResolveCurrencyOptions =
+    optionsOrDb && "financial" in optionsOrDb
+      ? { dbClient: optionsOrDb }
+      : (optionsOrDb ?? {});
+  const dbClient = options.dbClient ?? db;
+  const yfResolver = options.yfResolver ?? resolveHkCurrencyViaYfinance;
+
+  // 1. 手工精准种子表兜底与优先匹配
+  const seed = (CN_HK_SEEDS as Record<string, { currency?: string }>)[candidate.ticker];
+  if (seed?.currency) {
+    const normSeed = normalizeCurrencyCode(seed.currency);
+    if (normSeed) return normSeed;
+  }
+
+  // 2. 检查 Entity 上已登记且合规的 reportingCurrency
+  const registered = normalizeCurrencyCode(candidate.reportingCurrency);
+  if (registered) return registered;
+
+  // 3. 市场级别默认
+  const normMarket = candidate.market?.toLowerCase();
+  if (normMarket === "us" || (!normMarket && !candidate.ticker.includes("."))) return "USD";
+  if (
+    normMarket === "cn" ||
+    candidate.ticker.endsWith(".SS") ||
+    candidate.ticker.endsWith(".SZ") ||
+    candidate.ticker.endsWith(".BJ")
+  ) {
+    return "CNY";
+  }
+
+  // 4. 港股 (HK) 多级推导:
+  // 4a. 检查库内已有 Financial 表的法定记账单位 unit
+  if (candidate.id) {
+    try {
+      const existingFin = await dbClient.financial.findFirst({
+        where: { entityId: candidate.id, unit: { in: ["CNY", "HKD", "USD"] } },
+        select: { unit: true },
+      });
+      const normFinUnit = normalizeCurrencyCode(existingFin?.unit);
+      if (normFinUnit) return normFinUnit;
+    } catch {
+      // 忽略查询失败
+    }
+
+    // 4b. 尝试从年报正文（FilingSection）中统计币种词频
+    try {
+      const fromReport = await resolveHkCurrencyFromAnnualReport(candidate.id);
+      const normReport = normalizeCurrencyCode(fromReport);
+      if (normReport) return normReport;
+    } catch {
+      // Phase 1 阶段尚未切出 FilingSection，静默 fallback
+    }
+  }
+
+  // 4c. 尝试从 Yahoo Finance 接口获取财报申报币种 (financialCurrency)
+  const fromYf = normalizeCurrencyCode(yfResolver(candidate.ticker));
+  if (fromYf) return fromYf;
+
+  // 4d. 最终兜底为 HKD
+  return "HKD";
+}
+
+/**
+ * 将解析出的权威币种写回 Entity.reportingCurrency (若库内尚未登记或不一致)
+ */
+export async function persistCompanyReportingCurrency(
+  entityId: string,
+  currency: string,
+  dbClient = db,
+): Promise<void> {
+  const norm = normalizeCurrencyCode(currency);
+  if (!norm) return;
+  try {
+    await dbClient.entity.update({
+      where: { id: entityId },
+      data: { reportingCurrency: norm },
+    });
+  } catch (err) {
+    console.warn(`[persistCompanyReportingCurrency] Failed to update entity ${entityId}:`, err);
+  }
+}
+
 

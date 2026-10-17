@@ -30,15 +30,11 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import prisma from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
-import { normalizeCurrencyCode } from "../src/lib/fx-rates-core";
 import { persistReportingCurrency } from "../src/lib/reporting-currency";
 import { backfillCompanyFinancialsFast } from "./backfill-company-financials-fast";
 import { CN_HK_SEEDS } from "./lib/cn-hk-company-seeds";
 import { runProcessGroup } from "./lib/run-process-group";
-import {
-  resolveHkCurrencyFromAnnualReport,
-  resolveHkCurrencyViaYfinance,
-} from "./lib/cn-hk-currency-resolve";
+import { resolveCompanyReportingCurrency } from "./lib/cn-hk-currency-resolve";
 
 export type Market = "us" | "cn" | "hk";
 
@@ -244,34 +240,8 @@ function runCommand(cmd: string, args: string[]) {
   });
 }
 
-async function resolveCompanyCurrency(entity: EntityCandidate): Promise<string> {
-  const seed = CN_HK_SEEDS[entity.ticker];
-  if (seed?.currency) return seed.currency;
-
-  const registeredCurrency = normalizeCurrencyCode(entity.reportingCurrency);
-  if (registeredCurrency) return registeredCurrency;
-  if (entity.market === "us") return "USD";
-  if (entity.market === "cn") return "CNY";
-
-  // For HK, inspect existing Financial record unit
-  const existingFin = await prisma.financial.findFirst({
-    where: { entityId: entity.id },
-    select: { unit: true },
-  });
-  const existingCurrency = normalizeCurrencyCode(existingFin?.unit);
-  if (existingCurrency) return existingCurrency;
-
-  // Extract from stored annual report text if available
-  try {
-    const fromReport = await resolveHkCurrencyFromAnnualReport(entity.id);
-    if (fromReport) return fromReport;
-  } catch {}
-
-  // Fallback to Yahoo Finance metadata
-  const fromYf = normalizeCurrencyCode(resolveHkCurrencyViaYfinance(entity.ticker));
-  if (fromYf) return fromYf;
-
-  return "HKD";
+function resolveCompanyCurrency(entity: EntityCandidate): Promise<string> {
+  return resolveCompanyReportingCurrency(entity);
 }
 
 async function backfillCnHkCompany(

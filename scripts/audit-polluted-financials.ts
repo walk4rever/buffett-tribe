@@ -45,7 +45,7 @@ export interface RawShareRow {
   entity: {
     ticker: string | null;
     canonicalName: string;
-    market: string;
+    market: string | null;
   } | null;
 }
 
@@ -155,8 +155,8 @@ async function main() {
 
   const BATCH_SIZE = 2000;
   const { totalScanned, polluted, entityIds, report } = await processShareBatches(
-    (skip, take) =>
-      prisma.financial.findMany({
+    async (skip, take) => {
+      const rows = await prisma.financial.findMany({
         where: { lineItem: "CommonStockSharesOutstanding" },
         skip,
         take,
@@ -177,7 +177,12 @@ async function main() {
             },
           },
         },
-      }),
+      });
+      return rows.map((r) => ({
+        ...r,
+        value: r.value != null ? Number(r.value) : null,
+      }));
+    },
     totalShareRows,
     BATCH_SIZE,
     (scanned, total, pCount) => {

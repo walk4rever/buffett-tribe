@@ -26,13 +26,16 @@
  *   node --env-file=.env.local ./node_modules/.bin/tsx scripts/process-company-phase3-deep.ts --all-pending
  */
 
-import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import prisma from "@/lib/prisma";
 import { runPhase3Update, type Phase3UpdateResult } from "@/lib/phase3-update";
 import { importUsQuarterlyFinancialsForEntity } from "./import-us-quarterly-financials";
 import { backfillCompanyFinancialsFast } from "./backfill-company-financials-fast";
-import { resolveHkCurrencyFromAnnualReport, resolveHkCurrencyViaYfinance } from "./lib/cn-hk-currency-resolve";
+import {
+  resolveCompanyReportingCurrency,
+  persistCompanyReportingCurrency,
+} from "./lib/cn-hk-currency-resolve";
+import { runProcessGroup } from "./lib/run-process-group";
 
 type Market = "us" | "hk" | "cn";
 
@@ -57,11 +60,21 @@ function hasFlag(flag: string): boolean {
   return process.argv.slice(2).includes(flag);
 }
 
-function runCommand(cmd: string, args: string[]): Promise<number> {
-  return new Promise((resolve) => {
-    const child = spawn(cmd, args, { stdio: "inherit", env: process.env, cwd: process.cwd() });
-    child.on("close", (code) => resolve(code ?? 1));
-  });
+async function runCommand(cmd: string, args: string[], timeoutMs = 600_000): Promise<number> {
+  try {
+    const res = await runProcessGroup(cmd, args, {
+      signal: AbortSignal.timeout(timeoutMs),
+      inheritStdio: true,
+    });
+    return res.exitCode;
+  } catch (err: unknown) {
+    if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
+      console.error(`[process-company-phase3-deep] Command timed out after ${timeoutMs}ms: ${cmd} ${args.join(" ")}`);
+      return 124;
+    }
+    console.error(`[process-company-phase3-deep] Command error:`, err);
+    return 1;
+  }
 }
 
 function deriveCnHkCode(ticker: string, market: "cn" | "hk"): string {
@@ -73,35 +86,6 @@ function deriveCnHkCode(ticker: string, market: "cn" | "hk"): string {
   const match = ticker.match(/^(\d{1,5})\.HK$/i);
   if (!match) throw new Error(`Cannot derive HK exchange code from ticker "${ticker}". Expected format like 9992.HK.`);
   return match[1].padStart(5, "0");
-}
-
-async function resolveHkCurrency(entityId: string, ticker: string): Promise<string> {
-  // 1. Check if existing Financial records already have a confirmed currency
-  const existingFin = await prisma.financial.findFirst({
-    where: { entityId, unit: { in: ["CNY", "HKD", "USD"] } },
-    select: { unit: true },
-  });
-  if (existingFin?.unit) {
-    return existingFin.unit;
-  }
-
-  // 2. Try resolving from stored annual report text
-  try {
-    const annualCur = await resolveHkCurrencyFromAnnualReport(entityId);
-    if (annualCur) return annualCur;
-  } catch {
-    // Continue to fallback
-  }
-
-  // 3. Try resolving via Yahoo Finance profile
-  try {
-    const yfCur = resolveHkCurrencyViaYfinance(ticker);
-    if (yfCur) return yfCur;
-  } catch {
-    // Fallback
-  }
-
-  return "HKD";
 }
 
 export async function processCompanyPhase3Deep(options: {
@@ -136,6 +120,7 @@ export async function processCompanyPhase3Deep(options: {
       market: true,
       onboardPhase: true,
       priority: true,
+      reportingCurrency: true,
       metadata: true,
     },
   });
@@ -157,12 +142,25 @@ export async function processCompanyPhase3Deep(options: {
 
   // 2. Heavy Data Ingestion by Market
   if (market === "us") {
-    if (!entity.cik) {
-      console.warn(`  ⚠️ [US] Entity ${primaryTicker} missing CIK, skipping SEC EDGAR quarterly ingestion`);
-    } else {
-      console.log(`\n[Step 1/3] Extracting 10-Q quarterly financial statements from SEC EDGAR (CIK ${entity.cik})...`);
+    const cikToUse = entity.cik ?? "";
+    console.log(`\n[Step 1/3] Checking & backfilling annual 10-K financial facts...`);
+    try {
+      const annualRes = await backfillCompanyFinancialsFast({
+        entityId: entity.id,
+        cik: cikToUse,
+        ticker: primaryTicker,
+        dryRun,
+      });
+      financialsUpserted += annualRes.financialRowsUpserted;
+      console.log(`  ✓ Annual 10-K Financial facts processed: ${annualRes.financialRowsUpserted}`);
+    } catch (aErr) {
+      console.warn(`  ⚠️ Annual facts check warning:`, aErr instanceof Error ? aErr.message : String(aErr));
+    }
+
+    if (cikToUse) {
+      console.log(`\n[Step 2/3] Extracting 10-Q quarterly financial statements from SEC EDGAR (CIK ${cikToUse})...`);
       try {
-        const qCount = await importUsQuarterlyFinancialsForEntity(entity.id, entity.cik, primaryTicker, {
+        const qCount = await importUsQuarterlyFinancialsForEntity(entity.id, cikToUse, primaryTicker, {
           archiveHtml: false,
         });
         financialsUpserted += qCount;
@@ -170,20 +168,8 @@ export async function processCompanyPhase3Deep(options: {
       } catch (qErr) {
         console.warn(`  ⚠️ 10-Q extraction warning:`, qErr instanceof Error ? qErr.message : String(qErr));
       }
-
-      console.log(`\n[Step 2/3] Checking & backfilling annual 10-K financial facts...`);
-      try {
-        const annualRes = await backfillCompanyFinancialsFast({
-          entityId: entity.id,
-          cik: entity.cik,
-          ticker: primaryTicker,
-          dryRun,
-        });
-        financialsUpserted += annualRes.financialRowsUpserted;
-        console.log(`  ✓ Annual 10-K Financial facts processed: ${annualRes.financialRowsUpserted}`);
-      } catch (aErr) {
-        console.warn(`  ⚠️ Annual facts check warning:`, aErr instanceof Error ? aErr.message : String(aErr));
-      }
+    } else {
+      console.warn(`  ⚠️ [US] Entity ${primaryTicker} missing CIK, skipping SEC EDGAR quarterly ingestion`);
     }
   } else if (market === "cn") {
     const code = entity.code || deriveCnHkCode(primaryTicker, "cn");
@@ -209,7 +195,18 @@ export async function processCompanyPhase3Deep(options: {
     }
   } else if (market === "hk") {
     const code = entity.code ? entity.code.padStart(5, "0") : deriveCnHkCode(primaryTicker, "hk");
-    const currency = await resolveHkCurrency(entity.id, primaryTicker);
+    const currency = await resolveCompanyReportingCurrency(
+      {
+        id: entity.id,
+        ticker: primaryTicker,
+        market: "hk",
+        reportingCurrency: entity.reportingCurrency,
+      },
+      prisma,
+    );
+    if (currency) {
+      await persistCompanyReportingCurrency(entity.id, currency, prisma);
+    }
     console.log(`\n[Step 1/3] Fetching HK financial statements via akshare (${code}.HK, currency: ${currency})...`);
     const codeStatus = await runCommand("npm", [
       "run",

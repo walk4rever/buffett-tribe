@@ -7,9 +7,10 @@ export type ProcessGroupResult = {
   output: string;
 };
 
-type RunProcessGroupOptions = SpawnOptions & {
+export type RunProcessGroupOptions = SpawnOptions & {
   signal?: AbortSignal;
   forceKillAfterMs?: number;
+  inheritStdio?: boolean;
 };
 
 function signalProcessGroup(pid: number, signal: NodeJS.Signals) {
@@ -31,7 +32,7 @@ export function runProcessGroup(
   args: string[],
   options: RunProcessGroupOptions = {},
 ): Promise<ProcessGroupResult> {
-  const { signal, forceKillAfterMs = 10_000, ...spawnOptions } = options;
+  const { signal, forceKillAfterMs = 10_000, inheritStdio = false, ...spawnOptions } = options;
 
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -67,9 +68,15 @@ export function runProcessGroup(
 
     child.stdout?.on("data", (chunk: Buffer) => {
       stdout += chunk.toString();
+      if (inheritStdio) {
+        process.stdout.write(chunk);
+      }
     });
     child.stderr?.on("data", (chunk: Buffer) => {
       stderr += chunk.toString();
+      if (inheritStdio) {
+        process.stderr.write(chunk);
+      }
     });
     child.once("error", (error) => {
       if (settled) return;

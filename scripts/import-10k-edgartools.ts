@@ -109,6 +109,7 @@ function parseArgs(args: string[]) {
   const filingConcurrency = parsePositiveInt(getArg("--filing-concurrency"), 1);
   const extractTimeoutMs = parsePositiveInt(getArg("--extract-timeout-ms"), 8 * 60 * 1000);
   const financialsOnly = hasFlag("--financials-only") || hasFlag("--fast");
+  const sectionsOnly = hasFlag("--sections-only") || hasFlag("--skip-financials");
   const noHtml = financialsOnly || hasFlag("--no-edgartools-html");
   const latestOnly = hasFlag("--latest-only");
   const python = getArg("--python") ?? (process.env.EDGARTOOLS_PYTHON || path.join(process.cwd(), ".venv/bin/python"));
@@ -131,7 +132,7 @@ function parseArgs(args: string[]) {
   }
   fromYear = Math.max(fromYear, 2020);
 
-  return { ticker, fromYear, toYear, filingConcurrency, extractTimeoutMs, noHtml, latestOnly, python, financialsOnly, cik };
+  return { ticker, fromYear, toYear, filingConcurrency, extractTimeoutMs, noHtml, latestOnly, python, financialsOnly, sectionsOnly, cik };
 }
 
 function runEdgarToolsHelper(params: {
@@ -233,6 +234,7 @@ async function importEdgarToolsAnnualReports(params: {
   latestOnly?: boolean;
   python: string;
   financialsOnly?: boolean;
+  sectionsOnly?: boolean;
 }) {
   const importTimer = new ImportTimer("[10K]");
   const extracted = await importTimer.time(
@@ -262,27 +264,29 @@ async function importEdgarToolsAnnualReports(params: {
     targetFilings = targetFilings.slice(0, 1);
   }
 
-  const reportingCurrencyCounts = new Map<string, number>();
-  for (const filing of targetFilings) {
-    const revenue = findBestFactValue(
-      facts,
-      LINE_ITEMS.find((item) => item.key === "Revenue")?.tagsUsGaap ?? [],
-      LINE_ITEMS.find((item) => item.key === "Revenue")?.tagsIfrs ?? [],
-      LINE_ITEMS.find((item) => item.key === "Revenue")?.unitCandidates ?? [],
-      filing.reportDate,
-      "duration",
-    );
-    const currency = normalizeCurrencyCode(revenue?.unit);
-    if (currency) {
-      reportingCurrencyCounts.set(currency, (reportingCurrencyCounts.get(currency) ?? 0) + 1);
+  if (!params.sectionsOnly) {
+    const reportingCurrencyCounts = new Map<string, number>();
+    for (const filing of targetFilings) {
+      const revenue = findBestFactValue(
+        facts,
+        LINE_ITEMS.find((item) => item.key === "Revenue")?.tagsUsGaap ?? [],
+        LINE_ITEMS.find((item) => item.key === "Revenue")?.tagsIfrs ?? [],
+        LINE_ITEMS.find((item) => item.key === "Revenue")?.unitCandidates ?? [],
+        filing.reportDate,
+        "duration",
+      );
+      const currency = normalizeCurrencyCode(revenue?.unit);
+      if (currency) {
+        reportingCurrencyCounts.set(currency, (reportingCurrencyCounts.get(currency) ?? 0) + 1);
+      }
     }
-  }
-  const rankedReportingCurrencies = [...reportingCurrencyCounts.entries()].sort((a, b) => b[1] - a[1]);
-  if (
-    rankedReportingCurrencies.length > 0 &&
-    rankedReportingCurrencies[0][1] > (rankedReportingCurrencies[1]?.[1] ?? 0)
-  ) {
-    await persistReportingCurrency(companyEntity.id, "us", rankedReportingCurrencies[0][0]);
+    const rankedReportingCurrencies = [...reportingCurrencyCounts.entries()].sort((a, b) => b[1] - a[1]);
+    if (
+      rankedReportingCurrencies.length > 0 &&
+      rankedReportingCurrencies[0][1] > (rankedReportingCurrencies[1]?.[1] ?? 0)
+    ) {
+      await persistReportingCurrency(companyEntity.id, "us", rankedReportingCurrencies[0][0]);
+    }
   }
 
   console.log(`Found ${targetFilings.length} annual filings from edgartools (${params.fromYear}-${params.toYear})`);
@@ -428,81 +432,85 @@ async function importEdgarToolsAnnualReports(params: {
     let missing = 0;
     let fallbackUsed = 0;
 
-    await filingTimer.time("upsert derived financials", async () => {
-      const results = await mapLimit(LINE_ITEMS, 5, async (item) => {
-        const companyFactsFact = findBestFactValue(
-          facts,
-          item.tagsUsGaap,
-          item.tagsIfrs,
-          item.unitCandidates,
-          filing.reportDate,
-          item.periodType,
-        );
-
-        let value = companyFactsFact?.value ?? null;
-        let unit = companyFactsFact?.unit ?? null;
-        let usedFallback = false;
-        if (value == null) {
-          const inlineFact = pickInlineFactWithUnit(
-            inlineDoc,
+    if (!params.sectionsOnly) {
+      await filingTimer.time("upsert derived financials", async () => {
+        const results = await mapLimit(LINE_ITEMS, 5, async (item) => {
+          const companyFactsFact = findBestFactValue(
+            facts,
             item.tagsUsGaap,
             item.tagsIfrs,
+            item.unitCandidates,
             filing.reportDate,
             item.periodType,
-            item.unitCandidates,
-            item.tagsCustom,
           );
-          if (inlineFact) {
-            value = inlineFact.value;
-            unit = inlineFact.unit ? normalizeInlineUnitRef(inlineFact.unit) ?? unit : unit;
-            usedFallback = true;
-          }
-        }
 
-        if (value == null) return { upserted: 0, missing: 1, fallbackUsed: 0 };
-        if (item.key === "Revenue") {
-          const currency = normalizeCurrencyCode(unit);
-          if (currency) {
-            await persistReportingCurrency(companyEntity.id, "us", currency);
+          let value = companyFactsFact?.value ?? null;
+          let unit = companyFactsFact?.unit ?? null;
+          let usedFallback = false;
+          if (value == null) {
+            const inlineFact = pickInlineFactWithUnit(
+              inlineDoc,
+              item.tagsUsGaap,
+              item.tagsIfrs,
+              filing.reportDate,
+              item.periodType,
+              item.unitCandidates,
+              item.tagsCustom,
+            );
+            if (inlineFact) {
+              value = inlineFact.value;
+              unit = inlineFact.unit ? normalizeInlineUnitRef(inlineFact.unit) ?? unit : unit;
+              usedFallback = true;
+            }
           }
-        }
 
-        await db.financial.upsert({
-          where: {
-            entityId_periodEnd_periodType_lineItem: {
+          if (value == null) return { upserted: 0, missing: 1, fallbackUsed: 0 };
+          if (item.key === "Revenue") {
+            const currency = normalizeCurrencyCode(unit);
+            if (currency) {
+              await persistReportingCurrency(companyEntity.id, "us", currency);
+            }
+          }
+
+          await db.financial.upsert({
+            where: {
+              entityId_periodEnd_periodType_lineItem: {
+                entityId: companyEntity.id,
+                periodEnd: new Date(filing.reportDate),
+                periodType: "FY",
+                lineItem: item.key,
+              },
+            },
+            create: {
               entityId: companyEntity.id,
+              sourceId: extSource.id,
               periodEnd: new Date(filing.reportDate),
               periodType: "FY",
               lineItem: item.key,
+              value: decimalFromNumber(value),
+              unit,
             },
-          },
-          create: {
-            entityId: companyEntity.id,
-            sourceId: extSource.id,
-            periodEnd: new Date(filing.reportDate),
-            periodType: "FY",
-            lineItem: item.key,
-            value: decimalFromNumber(value),
-            unit,
-          },
-          update: {
-            sourceId: extSource.id,
-            value: decimalFromNumber(value),
-            unit,
-          },
+            update: {
+              sourceId: extSource.id,
+              value: decimalFromNumber(value),
+              unit,
+            },
+          });
+          return { upserted: 1, missing: 0, fallbackUsed: usedFallback ? 1 : 0 };
         });
-        return { upserted: 1, missing: 0, fallbackUsed: usedFallback ? 1 : 0 };
-      });
 
-      for (const result of results) {
-        upserted += result.upserted;
-        missing += result.missing;
-        fallbackUsed += result.fallbackUsed;
-      }
-    }, () => `derived=${upserted}, missing=${missing}, fallback=${fallbackUsed}`);
+        for (const result of results) {
+          upserted += result.upserted;
+          missing += result.missing;
+          fallbackUsed += result.fallbackUsed;
+        }
+      }, () => `derived=${upserted}, missing=${missing}, fallback=${fallbackUsed}`);
+    } else {
+      console.log(`  [sections-only] Skipping derived financials upsert for ${filing.reportDate} (${filing.accession})`);
+    }
 
     console.log(
-      `  ${filing.reportDate} (${filing.accession}) -> sections ${sectionCount}+${attachmentSectionCount}, attachments ${attachmentCount}, derived ${upserted}, missing ${missing}, fallback ${fallbackUsed}`,
+      `  ${filing.reportDate} (${filing.accession}) -> sections ${sectionCount}+${attachmentSectionCount}, attachments ${attachmentCount}${params.sectionsOnly ? " (sections-only)" : `, derived ${upserted}, missing ${missing}, fallback ${fallbackUsed}`}`,
     );
   });
 }

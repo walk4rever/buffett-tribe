@@ -17,8 +17,21 @@ cd "$REPO_DIR"
 
 export PATH="/Users/rafael/node/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
-mkdir -p logs
+mkdir -p logs .cache
+
+PID_FILE=".cache/pipeline-priority-worker.pid"
+if [ -f "$PID_FILE" ]; then
+  OLD_PID=$(cat "$PID_FILE" 2>/dev/null || true)
+  if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Worker is already running with PID ${OLD_PID}. Exiting to prevent overlap."
+    exit 0
+  else
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Found stale PID file (${OLD_PID:-empty} is dead). Removing ${PID_FILE}."
+    rm -f "$PID_FILE"
+  fi
+fi
 
 echo "=== $(date '+%Y-%m-%d %H:%M:%S') : Starting Hourly Priority Worker (batch=${BATCH_SIZE}, market=${MARKET}) ==="
 
-npm run worker:priority -- --batch-size "$BATCH_SIZE" --market "$MARKET" --delay 2000 --timeout-mins 45 --company-timeout-mins 4 "${@:3}"
+npm run worker:priority -- --batch-size "$BATCH_SIZE" --market "$MARKET" --delay 2000 --timeout-mins 48 "${@:3}"
+

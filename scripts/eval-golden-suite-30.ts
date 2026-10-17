@@ -24,6 +24,7 @@ import { buildCompanyFinancialDashboard } from "../src/lib/company-financial-das
 import { getValueLineData } from "../src/lib/value-line-data";
 import { calculateROIC, calculateInvestedCapital } from "../src/lib/financial-math";
 import { resolveFinancialModel, type FinancialTemplate } from "../src/lib/financial-model";
+import type { SectorModelType13 } from "../src/lib/sector-classification";
 
 const BENCHMARK_PATH = path.join(process.cwd(), "scripts", "lib", "golden-benchmark-30.json");
 
@@ -283,7 +284,7 @@ async function evaluateCompany(company: BenchmarkCompany) {
       {
         sector: entity.sector,
         metadata: entity.metadata,
-        sectorModelType: entity.sectorModelType,
+        sectorModelType: entity.sectorModelType as SectorModelType13 | null,
       },
       rawFinList,
       entity.reportingCurrency
@@ -320,7 +321,7 @@ async function evaluateCompany(company: BenchmarkCompany) {
     if (valueLine && valueLine.annuals) {
       let hasNan = false;
       for (const ann of valueLine.annuals) {
-        if (Number.isNaN(ann.eps) || Number.isNaN(ann.bps) || Number.isNaN(ann.roe)) {
+        if (Number.isNaN(ann.eps) || Number.isNaN(ann.roe)) {
           hasNan = true;
           break;
         }

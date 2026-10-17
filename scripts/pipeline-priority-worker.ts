@@ -205,6 +205,57 @@ function formatDuration(ms: number): string {
 }
 
 /**
+ * Auto-recover dead-letter priority companies (onboardPhase = -1 with priority > 0)
+ * after an exponential backoff period (>= 30 mins) so transient outages don't leave
+ * priority targets permanently abandoned.
+ */
+async function selfHealDeadLetterPriorityCompanies(): Promise<number> {
+  const deadLetters = await prisma.entity.findMany({
+    where: {
+      type: "company",
+      onboardPhase: -1,
+      priority: { gt: 0 },
+    },
+    select: { id: true, ticker: true, metadata: true },
+    take: 10,
+  });
+
+  let healedCount = 0;
+  for (const dl of deadLetters) {
+    const meta = (dl.metadata as Record<string, unknown>) || {};
+    if (meta.isExcluded) continue; // Skip manually or policy-excluded entities
+
+    // Check last attempt time and backoff: at least 30 minutes since last attempt
+    const lastAttemptStr =
+      (meta.onboardPhase1LastAttemptAt as string) ||
+      (meta.onboardPhase2LastAttemptAt as string) ||
+      (meta.phase3LastAttemptAt as string);
+    if (lastAttemptStr) {
+      const lastAttemptMs = new Date(lastAttemptStr).getTime();
+      if (Date.now() - lastAttemptMs < 30 * 60 * 1000) {
+        continue; // Wait for 30m backoff window
+      }
+    }
+
+    logMessage(`[Dead-Letter Self-Healing] 自动自愈重点关注标的 ${dl.ticker ?? dl.id}: 重置 onboardPhase -1 -> 0 (30m+ 退避窗口已过)`);
+    await prisma.entity.update({
+      where: { id: dl.id },
+      data: {
+        onboardPhase: 0,
+        metadata: {
+          ...meta,
+          onboardPhase1Attempts: 0,
+          onboardPhase2Attempts: 0,
+          healedFromDeadLetterAt: new Date().toISOString(),
+        },
+      },
+    }).catch(() => {});
+    healedCount++;
+  }
+  return healedCount;
+}
+
+/**
  * Fetch fast-track expedited candidates:
  * Covers both Phase 0 (target Phase 1) and Phase 1 (target Phase 2) companies with priority > 0.
  */
@@ -518,8 +569,9 @@ async function main() {
   const batchSize = Math.max(1, parseInt(getArg("--batch-size") ?? "15", 10));
   const targetMarket = (getArg("--market") ?? "all").toLowerCase();
   const delayMs = parseInt(getArg("--delay") ?? "2000", 10);
-  const companyTimeoutMins = Math.max(1, parseInt(getArg("--company-timeout-mins") ?? "4", 10));
-  const companyTimeoutMs = companyTimeoutMins * 60 * 1000;
+  const customTimeoutArg = getArg("--company-timeout-mins");
+  const customCompanyTimeoutMs = customTimeoutArg ? Math.max(1, parseInt(customTimeoutArg, 10)) * 60 * 1000 : null;
+  const companyTimeoutMins = customTimeoutArg ? Math.max(1, parseInt(customTimeoutArg, 10)) : 8; // Phase 2/3 default max
   const defaultGlobalTimeout = Math.min(Math.max(45, Math.ceil(batchSize * companyTimeoutMins + 5)), 55);
   const timeoutMins = parseInt(getArg("--timeout-mins") ?? String(defaultGlobalTimeout), 10);
   const priorityOnly = hasFlag("--priority-only");
@@ -527,7 +579,7 @@ async function main() {
 
   logMessage("=======================================================");
   logMessage(`PRIORITY BATCH WORKER STARTED [Mode: ${dryRun ? "DRY-RUN" : "LIVE"}${priorityOnly ? ", PRIORITY-ONLY" : ""}]`);
-  logMessage(`Configuration: BatchSize=${batchSize}, Market=${targetMarket}, Delay=${delayMs}ms, Timeout=${timeoutMins}m, CompanyTimeout=${companyTimeoutMins}m, PriorityOnly=${priorityOnly}${phaseFilter ? `, Phase=${phaseFilter}` : ""}`);
+  logMessage(`Configuration: BatchSize=${batchSize}, Market=${targetMarket}, Delay=${delayMs}ms, Timeout=${timeoutMins}m, CompanyTimeout=${customTimeoutArg ? `${companyTimeoutMins}m (custom)` : "P1: 5m, P2/P3: 8m (dynamic)"}, PriorityOnly=${priorityOnly}${phaseFilter ? `, Phase=${phaseFilter}` : ""}`);
 
   if (!dryRun) {
     if (!acquireLock()) {
@@ -559,6 +611,9 @@ async function main() {
 
   try {
     let candidateList: CandidateCompany[] = [];
+
+    // 0. Auto-recover any priority companies that died transiently into dead-letter (onboardPhase = -1)
+    await selfHealDeadLetterPriorityCompanies();
 
     // 1. Fetch Fast-Track expedited companies first (Phase 0, Phase 1, Phase 2)
     let fastTrackList = await fetchFastTrackCandidates(
@@ -632,14 +687,19 @@ async function main() {
                 targetPhaseStr,
               ];
 
+        const targetTimeoutMs = customCompanyTimeoutMs ?? (
+          company.targetPhase === 1 ? 5 * 60 * 1000 : 8 * 60 * 1000
+        );
+        const targetTimeoutMins = Math.round(targetTimeoutMs / 60000);
+
         const { exitCode, timedOut } = await runCommandWithTimeout(
           cmd,
           args,
-          companyTimeoutMs
+          targetTimeoutMs
         );
 
         if (timedOut) {
-          throw new Error(`单标的执行超时（超过 ${companyTimeoutMins} 分钟），已主动熔断跳过并清理进程组`);
+          throw new Error(`单标的执行超时（超过 ${targetTimeoutMins} 分钟），已主动熔断跳过并清理进程组`);
         }
 
         if (exitCode !== 0) {
@@ -739,8 +799,11 @@ async function main() {
         }
       }
 
-      if (i < candidateList.length - 1 && delayMs > 0) {
-        await new Promise((r) => setTimeout(r, delayMs));
+      if (i < candidateList.length - 1) {
+        // Add 1000~2000ms jitter sleep between companies to protect SEC EDGAR / HKEXnews / akshare rate limits
+        const jitterMs = Math.floor(Math.random() * 1000) + 1000;
+        const totalSleepMs = Math.max(delayMs, jitterMs);
+        await new Promise((r) => setTimeout(r, totalSleepMs));
       }
     }
 

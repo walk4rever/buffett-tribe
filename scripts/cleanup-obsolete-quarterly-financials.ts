@@ -102,22 +102,29 @@ async function main() {
     }
   }
 
-  // Also clean up any older years' interim rows for entities without FY records (keep only latest year)
+  // Also clean up any older fiscal years' interim rows for entities without FY records (keep only latest reported fiscal year)
   const ipoOldDeleted = await db.$executeRawUnsafe(`
     WITH fy_entities AS (
       SELECT DISTINCT "entityId" FROM "Financial" WHERE "periodType" = 'FY'
     ),
     ipo_max_year AS (
-      SELECT "entityId", MAX(EXTRACT(YEAR FROM "periodEnd")) AS max_yr
-      FROM "Financial"
-      WHERE "entityId" NOT IN (SELECT "entityId" FROM fy_entities)
-      GROUP BY "entityId"
+      SELECT f."entityId",
+             MAX(COALESCE(s."periodYear", EXTRACT(YEAR FROM f."periodEnd")::int)) AS max_yr
+      FROM "Financial" f
+      LEFT JOIN "ExtSource" s ON f."sourceId" = s.id
+      WHERE f."entityId" NOT IN (SELECT "entityId" FROM fy_entities)
+      GROUP BY f."entityId"
+    ),
+    target_ipo_ids AS (
+      SELECT f.id
+      FROM "Financial" f
+      JOIN ipo_max_year m ON f."entityId" = m."entityId"
+      LEFT JOIN "ExtSource" s ON f."sourceId" = s.id
+      WHERE f."periodType" <> 'FY'
+        AND COALESCE(s."periodYear", EXTRACT(YEAR FROM f."periodEnd")::int) < m.max_yr
     )
-    DELETE FROM "Financial" f
-    USING ipo_max_year m
-    WHERE f."entityId" = m."entityId"
-      AND f."periodType" <> 'FY'
-      AND EXTRACT(YEAR FROM f."periodEnd") < m.max_yr
+    DELETE FROM "Financial"
+    WHERE id IN (SELECT id FROM target_ipo_ids)
   `);
   if (Number(ipoOldDeleted) > 0) {
     totalDeleted += Number(ipoOldDeleted);

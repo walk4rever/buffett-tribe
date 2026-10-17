@@ -2,7 +2,7 @@
 
 > **版本**：v2.2 (2026-10-17 全库回填收官与全生命周期架构版)  
 > **定位**：全站财务数据工程的顶层设计与实施宪章。以公司详情页 6 大 Tab 的最终展示和深度分析需求为导向，确立 6 大标准财务模板及其子模型，划定公共科目与行业专属科目，建立股数/拆股/并购/分红/季报生命周期的防污染机制，并指导全库数据治理与 Mac mini 自动化飞轮运转。  
-> **关联执行文档**：[handoff.md](file:///Users/rafael/R129/buffett-tribe/handoff.md) ｜ [fix.md](file:///Users/rafael/R129/buffett-tribe/fix.md)
+> **关联文档**：[GOLDEN.md](file:///Users/rafael/R129/buffett-tribe/GOLDEN.md)（黄金测试集与全量回填/收官治理总台账） ｜ [cron.md](file:///Users/rafael/R129/buffett-tribe/cron.md)（Mini 每小时 Cron 与 Onboard 重构计划）
 
 ---
 
@@ -69,7 +69,7 @@
 
 ### 2. 拆股（Stock Split）两阶段同源复权与同年锚点对齐契约
 * **现状隐患**：
-  SEC 10-K 强制利润表回溯 3 年（$T, T-1, T-2$），而资产负债表仅回溯 2 年（$T, T-1$）。当第 $T$ 年发生 $1:k$ 拆股时，$T-2$ 年的利润表科目（`WeightedAverageSharesDiluted`、`EPSDiluted`）已被第 $T$ 年 10-K 重述为拆股后口径，但 $T-2$ 年的资产负债表期末股数（`CommonStockSharesOutstanding`）仍停留在拆股前旧 10-K 的未复权口径，造成 $T-2$ 年**同年内股数相差 $k$ 倍**；此外，`valuation-metrics.ts` 旁路直查未复权 EPS 会导致拆股前历史 PE 分位算小 $k$ 倍（详见 [fix.md](file:///Users/rafael/R129/buffett-tribe/fix.md)）。
+  SEC 10-K 强制利润表回溯 3 年（$T, T-1, T-2$），而资产负债表仅回溯 2 年（$T, T-1$）。当第 $T$ 年发生 $1:k$ 拆股时，$T-2$ 年的利润表科目（`WeightedAverageSharesDiluted`、`EPSDiluted`）已被第 $T$ 年 10-K 重述为拆股后口径，但 $T-2$ 年的资产负债表期末股数（`CommonStockSharesOutstanding`）仍停留在拆股前旧 10-K 的未复权口径，造成 $T-2$ 年**同年内股数相差 $k$ 倍**；此外，`valuation-metrics.ts` 旁路直查未复权 EPS 会导致拆股前历史 PE 分位算小 $k$ 倍（详见 [GOLDEN.md](file:///Users/rafael/R129/buffett-tribe/GOLDEN.md) 第四节）。
 * **治理契约**：
   1. 数据库 `Financial` 表保持 SEC 原始披露值不变（确保对账可追溯）；
   2. 在统一数据读取出口 `getCompanyFinancials()`、`valuation-metrics.ts` 及 Agent 工具出口执行**两阶段复权**：先在利润表内部用同源的加权股数与同币种 EPS 完成跨年拆股复权（建立全历史 Post-Split 锚点），再用同年复权后的加权股数锚点去对齐同年的 `CommonStockSharesOutstanding`，既消除拆股断崖，又 100% 保留期末真实股本变动。
