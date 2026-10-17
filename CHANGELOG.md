@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.47.11] - 2026-10-18
+
+### Fixed
+- **定时 Worker 调度与建档流水线系统性加固（6 大 Bug 修复）**：
+  - **Dry-run 零副作用与锁安全**：`acquireLock`/`releaseLock` 绑定 PID 锁所有权，`--dry-run` 不再误删活跃 Worker 锁文件，且只读跳过死信自愈与候选排除状态写库；
+  - **嵌套进程组生命周期与优雅退出**：`runProcessGroup` 追踪子进程组 PID，`onboard-company` 与 `process-company-phase3-deep` 接入父级信号传播，父进程超时或收到 `SIGTERM`/`SIGINT` 时强制清理全部嵌套子进程树后再断开 Prisma；
+  - **港股年报币种复核与财务行单位同步**：新增 `reconcileCompanyFinancialCurrencyUnits`，年报切片后核对币种若与登记币种或财务记录不一致，同步订正 `Financial.unit` 并以修正币种重刷财务；
+  - **高优先级死信自愈策略对齐**：重点标的失败满 3 次打入 `onboardPhase = -1` 时保留其 `priority > 0`，自愈退避窗口对齐为 24 小时并支持 `--heal-deadletter` 参数手动穿透；
+  - **单步重试区分瞬时错误与确定性错误**：通过 `isRetryableStepError` 仅对网络抖动、超时、429/5xx、Prisma 锁争用（如 `P2028`）进行退避重试，遇到 400/401/403/404 或参数校验等确定性错误立即退出；
+  - **调度间隔 Jitter 生效**：Cron 调度默认延迟调整为 1000ms 并叠加 0~999ms 随机抖动（实际等待 1000~1999ms），保护外部 API 频控。
+
+### Removed
+- **废弃离线估值生成逻辑清理**：
+  - 删除死代码组件 `CompanyGeneratedSections.tsx` 与废弃离线生成脚本 `scripts/generate-valuation-analysis.ts`；
+  - 清理 `package.json` 中的 `generate:valuation-analysis` 脚本定义与 `onboard-company.ts` / `regenerate-hk-analyses.ts` 遗留引用；
+  - 估值分析（`ValuationAnalysisView`）全面由 ValueLine 事实数据与实时市价通过前端纯代码动态计算渲染。
+
 ## [v0.47.5] - 2026-10-11
 
 ### Added

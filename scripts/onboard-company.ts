@@ -109,7 +109,6 @@ type StepId =
   | "generate_business_model"
   | "generate_value_analysis"
   | "generate_management_analysis"
-  | "generate_valuation_analysis"
   | "sync_name_map";
 
 type Checkpoint = {
@@ -218,7 +217,7 @@ async function findEntityId(ticker: string): Promise<string | null> {
   return entity?.id ?? null;
 }
 
-type CompanyAnalysisField = "overview" | "canvas" | "profile" | "business" | "moat" | "management" | "valuation";
+type CompanyAnalysisField = "overview" | "canvas" | "profile" | "business" | "moat" | "management";
 
 function isValidAnalysisPayload(field: CompanyAnalysisField, value: unknown): boolean {
   if (value == null || typeof value !== "object") return false;
@@ -249,17 +248,6 @@ function isValidAnalysisPayload(field: CompanyAnalysisField, value: unknown): bo
       const capAlloc = record.capitalAllocation as Record<string, unknown> | undefined;
       const cards = Array.isArray(capAlloc?.cards) ? capAlloc.cards : [];
       return typeof record.headline === "string" && cards.length > 0;
-    }
-    case "valuation": {
-      if (record.status === "insufficient_data") return true;
-      const metrics = record.metrics as Record<string, unknown> | undefined;
-      const scenarios = record.scenarios as Record<string, unknown> | undefined;
-      return (
-        metrics != null &&
-        metrics.pe != null &&
-        scenarios != null &&
-        record.position != null
-      );
     }
     default:
       return true;

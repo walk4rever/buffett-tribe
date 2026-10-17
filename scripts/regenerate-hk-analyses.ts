@@ -29,7 +29,6 @@ const ANALYSIS_STEPS = [
   { script: "generate:business-model", name: "商业模式画布 (business)" },
   { script: "generate:value-analysis", name: "价值驱动与护城河 (moat)" },
   { script: "generate:management-analysis", name: "管理层与治理 (management)" },
-  { script: "generate:valuation-analysis", name: "估值分析叙事 (valuation)" },
 ];
 
 function runCommand(cmd: string, args: string[]): Promise<number> {

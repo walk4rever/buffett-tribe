@@ -16,7 +16,7 @@
     4. `sync:company-name-map --ticker XXXX`（同步更新 CompanyNameMap 代码与名称映射）
   - **Phase 2（异步深度挖掘）**：
     1. `import:10k`（完整下载 HTML/PDF、解析 FilingSection 长切片并归档 R2）
-    2. 深度研报生成：`generate:business-model` / `generate:value-analysis` / `generate:management-analysis` / `generate:valuation-analysis`
+    2. 深度研报生成：`generate:business-model` / `generate:value-analysis`（注：估值分析与资本配置已全面收敛至基于财务数据的实时前端纯计算，无需离线 LLM 生成）
 - 常用参数：
   - `--phase 1|2|all`：选择执行阶段（默认 `1`，`all` 为完整 8 步全流程）。
   - `--cik 0001234567`：显式传入 SEC CIK（尤其针对退市/未自动匹配代码）。
