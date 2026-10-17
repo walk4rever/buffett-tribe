@@ -336,79 +336,19 @@ def fetch_hk_records(code: str, from_year: int = 2020) -> list[dict[str, object]
             for item, val in fy_items.items():
                 add_rec(fy_date, "FY", item, val)
 
-        if has_q1:
-            # Quarterly reporter (e.g. Tencent, Meituan)
-            # Balance sheet (point-in-time snapshot)
-            for dtc, ptype in [("003", "Q1"), ("002", "Q2"), ("004", "Q3"), ("001", "Q4")]:
+        else:
+            # Uncompleted year (no FY yet): preserve latest available native interim period without difference tampering
+            interim_candidates = [("004", "Q3"), ("002", "H1" if not has_q1 else "Q2"), ("003", "Q1")]
+            for dtc, ptype in interim_candidates:
                 if dtc in periods:
                     p_date, p_items = periods[dtc]
                     for item in BALANCE_LINE_ITEMS:
                         if item in p_items:
                             add_rec(p_date, ptype, item, p_items[item])
-
-            # Flow items: cumulative subtraction
-            # Q1
-            if "003" in periods:
-                q1_date, q1_items = periods["003"]
-                for item in FLOW_LINE_ITEMS:
-                    if item in q1_items:
-                        add_rec(q1_date, "Q1", item, q1_items[item])
-
-            # Q2 = H1(002) - Q1(003)
-            if "002" in periods:
-                h1_date, h1_items = periods["002"]
-                q1_items = periods.get("003", (None, {}))[1]
-                for item in FLOW_LINE_ITEMS:
-                    if item in h1_items:
-                        cum_h1 = h1_items[item]
-                        cum_q1 = q1_items.get(item)
-                        val = cum_h1 - cum_q1 if cum_q1 is not None else cum_h1
-                        add_rec(h1_date, "Q2", item, val)
-
-            # Q3 = 9M(004) - H1(002)
-            if "004" in periods:
-                q3_date, q3_items = periods["004"]
-                h1_items = periods.get("002", (None, {}))[1]
-                for item in FLOW_LINE_ITEMS:
-                    if item in q3_items:
-                        cum_q3 = q3_items[item]
-                        cum_h1 = h1_items.get(item)
-                        val = cum_q3 - cum_h1 if cum_h1 is not None else cum_q3
-                        add_rec(q3_date, "Q3", item, val)
-
-            # Q4 = FY(001) - 9M(004)
-            if "001" in periods and "004" in periods:
-                fy_date, fy_items = periods["001"]
-                q3_items = periods["004"][1]
-                for item in FLOW_LINE_ITEMS:
-                    if item in fy_items:
-                        cum_fy = fy_items[item]
-                        cum_q3 = q3_items.get(item)
-                        if cum_q3 is not None:
-                            add_rec(fy_date, "Q4", item, cum_fy - cum_q3)
-        else:
-            # Semi-annual reporter (e.g. Pop Mart, Nongfu Spring)
-            if "002" in periods:
-                h1_date, h1_items = periods["002"]
-                # Balance sheet at 06-30
-                for item in BALANCE_LINE_ITEMS:
-                    if item in h1_items:
-                        add_rec(h1_date, "H1", item, h1_items[item])
-                # Flow items (first 6 months)
-                for item in FLOW_LINE_ITEMS:
-                    if item in h1_items:
-                        add_rec(h1_date, "H1", item, h1_items[item])
-
-            # H2 = FY(001) - H1(002)
-            if "001" in periods and "002" in periods:
-                fy_date, fy_items = periods["001"]
-                h1_items = periods["002"][1]
-                for item in FLOW_LINE_ITEMS:
-                    if item in fy_items:
-                        cum_fy = fy_items[item]
-                        cum_h1 = h1_items.get(item)
-                        if cum_h1 is not None:
-                            add_rec(fy_date, "H2", item, cum_fy - cum_h1)
+                    for item in FLOW_LINE_ITEMS:
+                        if item in p_items:
+                            add_rec(p_date, ptype, item, p_items[item])
+                    break
 
     # Fetch latest issued shares (CommonStockSharesOutstanding) via HK financial indicator
     try:
@@ -541,47 +481,17 @@ def fetch_cn_records(code: str, from_year: int) -> list[dict[str, object]]:
         if d_fy in raw_by_date:
             for item, val in raw_by_date[d_fy].items():
                 add_rec(d_fy, "FY", item, val)
-
-        # 2. Balance sheet snapshot at each quarter end
-        for p_date, ptype in [(d_q1, "Q1"), (d_q2, "Q2"), (d_q3, "Q3"), (d_fy, "Q4")]:
-            if p_date in raw_by_date:
-                for item in BALANCE_LINE_ITEMS:
-                    if item in raw_by_date[p_date]:
-                        add_rec(p_date, ptype, item, raw_by_date[p_date][item])
-
-        # 3. Flow items (discrete quarters via cumulative subtractions)
-        # Q1 = raw(03-31)
-        if d_q1 in raw_by_date:
-            for item in FLOW_LINE_ITEMS:
-                if item in raw_by_date[d_q1]:
-                    add_rec(d_q1, "Q1", item, raw_by_date[d_q1][item])
-
-        # Q2 = raw(06-30) - raw(03-31)
-        if d_q2 in raw_by_date:
-            for item in FLOW_LINE_ITEMS:
-                if item in raw_by_date[d_q2]:
-                    cum_q2 = raw_by_date[d_q2][item]
-                    cum_q1 = raw_by_date.get(d_q1, {}).get(item)
-                    val = cum_q2 - cum_q1 if cum_q1 is not None else cum_q2
-                    add_rec(d_q2, "Q2", item, val)
-
-        # Q3 = raw(09-30) - raw(06-30)
-        if d_q3 in raw_by_date:
-            for item in FLOW_LINE_ITEMS:
-                if item in raw_by_date[d_q3]:
-                    cum_q3 = raw_by_date[d_q3][item]
-                    cum_prev = raw_by_date.get(d_q2, {}).get(item) or raw_by_date.get(d_q1, {}).get(item)
-                    val = cum_q3 - cum_prev if cum_prev is not None else cum_q3
-                    add_rec(d_q3, "Q3", item, val)
-
-        # Q4 = raw(12-31) - raw(09-30)
-        if d_fy in raw_by_date:
-            for item in FLOW_LINE_ITEMS:
-                if item in raw_by_date[d_fy]:
-                    cum_fy = raw_by_date[d_fy][item]
-                    cum_prev = raw_by_date.get(d_q3, {}).get(item) or raw_by_date.get(d_q2, {}).get(item)
-                    if cum_prev is not None:
-                        add_rec(d_fy, "Q4", item, cum_fy - cum_prev)
+        else:
+            # Uncompleted year (no FY yet): preserve latest available native interim period without difference tampering
+            for p_date, ptype in [(d_q3, "Q3"), (d_q2, "Q2"), (d_q1, "Q1")]:
+                if p_date in raw_by_date:
+                    for item in BALANCE_LINE_ITEMS:
+                        if item in raw_by_date[p_date]:
+                            add_rec(p_date, ptype, item, raw_by_date[p_date][item])
+                    for item in FLOW_LINE_ITEMS:
+                        if item in raw_by_date[p_date]:
+                            add_rec(p_date, ptype, item, raw_by_date[p_date][item])
+                    break
 
     # Incorporate share repurchases (ShareRepurchaseAmt) from East Money repurchase disclosures
     completed_fy_years = sorted({int(d[:4]) for d in raw_by_date.keys() if d.endswith("-12-31")})

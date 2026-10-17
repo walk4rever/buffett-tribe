@@ -270,4 +270,41 @@ describe("computeCapitalAllocationStats", () => {
     expect(stats?.netIncomeDividendPayoutPct).toBe(30);
     expect(stats?.netIncomeBuybackPayoutPct).toBe(15);
   });
+
+  it("calculates M&A acquisitions metrics and deducts from FCF residual", () => {
+    // Like Broadcom AVGO FY24 acquiring VMware
+    const stats = computeCapitalAllocationStats([
+      {
+        year: 2024,
+        operatingCashFlow: 200,
+        capEx: 10,
+        acquisitionsAmt: 80, // M&A net cash outflow
+        repurchaseAmt: 30,
+        dividendsPaid: 40,
+        shares: 468,
+        roe: 13,
+      },
+      {
+        year: 2023,
+        operatingCashFlow: 180,
+        capEx: 10,
+        acquisitionsAmt: 0,
+        repurchaseAmt: 20,
+        dividendsPaid: 30,
+        shares: 414,
+        roe: 60,
+      },
+    ]);
+
+    expect(stats?.cumOcf).toBe(380);
+    expect(stats?.cumCapEx).toBe(20);
+    expect(stats?.cumFcf).toBe(360);
+    expect(stats?.cumAcquisitions).toBe(80);
+    expect(stats?.acquisitionsCoverage).toBe(2);
+    expect(stats?.acquisitionsPct).toBe(Number(((80 / 360) * 100).toFixed(1)));
+    expect(stats?.completeFlowBuybacks).toBe(50);
+    expect(stats?.completeFlowDividends).toBe(70);
+    // Residual = FCF (360) - M&A (80) - Buybacks (50) - Dividends (70) = 160
+    expect(stats?.fcfAfterDistributions).toBe(160);
+  });
 });

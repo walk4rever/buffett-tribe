@@ -118,7 +118,7 @@ describe("Golden Benchmark Suite (18 Core Orthogonal + 5 Modifier Extension = 23
     }
   });
 
-  it("enforces 4-quarter completeness check on all 8 A-share flagships and quarterly-reporting HK flagships (0700.HK, 0941.HK)", () => {
+  it("enforces quarterly GC check on all 8 A-share flagships and quarterly-reporting HK flagships (0700.HK, 0941.HK)", () => {
     const cnSpecs = GOLDEN_23_SUITE.filter((s) => s.market === "cn");
     expect(cnSpecs.length).toBe(8);
     for (const spec of cnSpecs) {

@@ -90,7 +90,8 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
     stats.shareDeltaPct == null
       ? "—"
       : `${stats.shareDeltaPct > 0 ? "+" : ""}${stats.shareDeltaPct}%`;
-  const shareDesc = "股数净变动不等同于回购注销。";
+  const shareDesc =
+    "股数净变动综合反映股票回购注销、换股并购增发与股权激励稀释。";
   const formatAmount = (value: number | null) =>
     value == null
       ? "—"
@@ -428,6 +429,28 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
               </div>
             </div>
 
+            {/* Step 3.5: M&A Acquisitions if any */}
+            {stats.cumAcquisitions != null && stats.cumAcquisitions > 0 ? (
+              <>
+                <div className="cap-wf-connector">−</div>
+                <div
+                  className="cap-wf-step-card cap-wf-step-card--capex"
+                  title="累计外延并购净现金支出（收购及处置业务净额）"
+                >
+                  <div className="cap-wf-step-badge">外延并购</div>
+                  <div className="cap-wf-step-val cap-wf-step-val--purple">
+                    -{formatAmount(stats.cumAcquisitions)}
+                  </div>
+                  <div className="cap-wf-step-name">外延并购 (M&A)</div>
+                  <div className="cap-wf-step-sub">
+                    {stats.acquisitionsPct != null
+                      ? `占 FCF ${stats.acquisitionsPct}% · 披露 ${stats.acquisitionsCoverage}/${stats.periodCount} 年`
+                      : `披露 ${stats.acquisitionsCoverage}/${stats.periodCount} 年`}
+                  </div>
+                </div>
+              </>
+            ) : null}
+
             <div className="cap-wf-connector">−</div>
 
             {/* Step 4: Share Buybacks */}
@@ -475,27 +498,31 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
             {/* Step 6: FCF after disclosed distributions */}
             <div
               className="cap-wf-step-card cap-wf-step-card--retained"
-              title="仅为 FCF 与已披露股东回报对比差额，不代表期末现金余额"
+              title="仅为 FCF 与已披露并购及股东回报对比差额，不代表期末现金余额"
             >
-              <div className="cap-wf-step-badge">6. 扣除股东分配后</div>
+              <div className="cap-wf-step-badge">6. 扣除分配结余</div>
               <div className="cap-wf-step-val cap-wf-step-val--purple">
                 {stats.fcfAfterDistributions == null
                   ? "—"
                   : `${currencySym}${formatUsdInYi(stats.fcfAfterDistributions)}`}
               </div>
               <div className="cap-wf-step-name">
-                {stats.distributionScope === "both"
-                  ? "FCF 减回购与分红"
-                  : stats.distributionScope === "dividend_only"
-                    ? "FCF 减已披露分红"
-                    : stats.distributionScope === "buyback_only"
-                      ? "FCF 减已披露回购"
-                      : "FCF 与股东回报对比"}
+                {stats.cumAcquisitions != null && stats.cumAcquisitions > 0
+                  ? "FCF 减并购与股东回报"
+                  : stats.distributionScope === "both"
+                    ? "FCF 减回购与分红"
+                    : stats.distributionScope === "dividend_only"
+                      ? "FCF 减已披露分红"
+                      : stats.distributionScope === "buyback_only"
+                        ? "FCF 减已披露回购"
+                        : "FCF 与股东回报对比"}
               </div>
               <div className="cap-wf-step-sub">
                 {stats.fcfAfterDistributions != null && stats.fcfAfterDistributions < 0
-                  ? "当期 FCF 未覆盖已披露股东回报"
-                  : "仅为 FCF 与已披露回报对比"}
+                  ? "当期 FCF 未覆盖并购与股东回报"
+                  : stats.cumAcquisitions != null && stats.cumAcquisitions > 0
+                    ? "扣除外延并购与股东回报后净结余"
+                    : "仅为 FCF 与已披露回报对比"}
               </div>
             </div>
           </div>
@@ -891,6 +918,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                 ) : (
                   <th className="cap-th-num">归母净利润</th>
                 )}
+                <th className="cap-th-num">外延并购 (M&A)</th>
                 <th className="cap-th-num">股票回购</th>
                 <th className="cap-th-num">现金分红</th>
                 {!showIndustrialCashFlow && (
@@ -947,6 +975,11 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                             : "—"}
                         </td>
                       )}
+                      <td className="cap-td-num">
+                        {a.acquisitionsAmt != null
+                          ? formatTableYi(a.acquisitionsAmt)
+                          : "—"}
+                      </td>
                       <td className="cap-td-num">
                         {a.repurchaseAmt == null
                           ? "—"

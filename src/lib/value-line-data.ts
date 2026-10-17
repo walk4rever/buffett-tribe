@@ -90,6 +90,7 @@ export type ValueLineAnnualData = {
   sharesSource?: "disclosed" | "disclosed_period_end" | "weighted_average" | "derived" | null;
   repurchaseAmt: number | null;
   dividendsPaid: number | null;
+  acquisitionsAmt?: number | null;
   operatingIncome?: number | null;
   contractLiabilities?: number | null;
   inventory?: number | null;
@@ -444,9 +445,12 @@ export async function getValueLineData(
         f.items,
         "NetFeeAndCommissionIncome",
       );
+      const acquisitionsAmt = parseNum(f.items, "PurchaseSaleOfBusinessNet");
 
       const periodEndShs = parseNum(f.items, "CommonStockSharesOutstanding");
-      const weightedAvgShs = parseNum(f.items, "WeightedAverageNumberOfDilutedSharesOutstanding");
+      const weightedAvgShs =
+        parseNum(f.items, "WeightedAverageSharesDiluted") ??
+        parseNum(f.items, "WeightedAverageShares");
       const epsLine = f.items.EPSDiluted != null ? "EPSDiluted" : "EPSBasic";
       const epsUnit = f.itemUnits?.[epsLine];
       const derivedShs =
@@ -504,6 +508,7 @@ export async function getValueLineData(
         netClientFlows,
         investmentManagementFeeIncome,
         netFeeAndCommissionIncome,
+        acquisitionsAmt,
       };
     })
     .filter((a) =>
@@ -564,6 +569,7 @@ export async function getValueLineData(
         InvestmentManagementFeeIncome:
           annual.investmentManagementFeeIncome ?? null,
         NetFeeAndCommissionIncome: annual.netFeeAndCommissionIncome ?? null,
+        PurchaseSaleOfBusinessNet: annual.acquisitionsAmt ?? null,
       },
       f.itemUnits ?? {},
       {
@@ -622,6 +628,7 @@ export async function getValueLineData(
       eps,
       repurchaseAmt: values[repurchaseLine] ?? null,
       dividendsPaid: values.DividendsPaid ?? null,
+      acquisitionsAmt: values.PurchaseSaleOfBusinessNet ?? null,
       operatingIncome: values.OperatingIncome ?? null,
       contractLiabilities: values.ContractLiabilities ?? null,
       inventory: values.Inventory ?? null,

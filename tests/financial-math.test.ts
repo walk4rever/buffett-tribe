@@ -6,6 +6,7 @@ import {
   calculateROIC,
   detectSplitFactor,
   normalizeAnnualsStockSplits,
+  normalizeFinancialYearsStockSplits,
 } from "@/lib/financial-math";
 
 describe("financial calculations", () => {
@@ -87,6 +88,140 @@ describe("financial calculations", () => {
       const newest = recent[recent.length - 1].shares!;
       const changePct = Number((((newest - oldest) / oldest) * 100).toFixed(1));
       expect(changePct).toBe(-3.3);
+    });
+
+    it("normalizes AVGO two-stage split correctly where periodEnd was pre-split at T-2", () => {
+      // AVGO real data: 1:10 split in 2024.
+      // FY22 had WeightedAverageSharesDiluted post-split (4.232B) but CommonStockSharesOutstanding pre-split (418M)
+      const avgoYears = [
+        {
+          year: 2020,
+          items: {
+            CommonStockSharesOutstanding: "407000000",
+            WeightedAverageSharesDiluted: "421000000",
+            EPSDiluted: "6.33",
+            NetIncome: "2960000000",
+          },
+        },
+        {
+          year: 2021,
+          items: {
+            CommonStockSharesOutstanding: "413000000",
+            WeightedAverageSharesDiluted: "429000000",
+            EPSDiluted: "15.00",
+            NetIncome: "4365000000",
+          },
+        },
+        {
+          year: 2022,
+          items: {
+            CommonStockSharesOutstanding: "418000000", // pre-split in EDGAR
+            WeightedAverageSharesDiluted: "4232000000", // post-split in EDGAR
+            EPSDiluted: "2.65", // post-split in EDGAR
+            NetIncome: "11495000000",
+          },
+        },
+        {
+          year: 2023,
+          items: {
+            CommonStockSharesOutstanding: "4139000000",
+            WeightedAverageSharesDiluted: "4272000000",
+            EPSDiluted: "3.30",
+            NetIncome: "14082000000",
+          },
+        },
+        {
+          year: 2024,
+          items: {
+            CommonStockSharesOutstanding: "4686000000", // VMware acquisition ~5.5亿股增发
+            WeightedAverageSharesDiluted: "4778000000",
+            EPSDiluted: "1.23",
+            NetIncome: "5878000000",
+          },
+        },
+        {
+          year: 2025,
+          items: {
+            CommonStockSharesOutstanding: "4741000000",
+            WeightedAverageSharesDiluted: "4853000000",
+            EPSDiluted: "4.77",
+            NetIncome: "23136000000",
+          },
+        },
+      ];
+
+      const res = normalizeFinancialYearsStockSplits(avgoYears);
+
+      // FY22 CommonStockSharesOutstanding should be scaled by 10 to ~4.18B, NOT staying at 418M!
+      expect(Number(res.find((y) => y.year === 2022)?.items.CommonStockSharesOutstanding)).toBe(4180000000);
+      expect(Number(res.find((y) => y.year === 2022)?.items.EPSDiluted)).toBe(2.65);
+
+      // FY21 should be scaled by 10
+      expect(Number(res.find((y) => y.year === 2021)?.items.CommonStockSharesOutstanding)).toBe(4130000000);
+      expect(Number(res.find((y) => y.year === 2021)?.items.WeightedAverageSharesDiluted)).toBe(4290000000);
+      expect(Number(res.find((y) => y.year === 2021)?.items.EPSDiluted)).toBe(1.50);
+
+      // FY24 VMware acquisition share increase (~4.686B) should be preserved
+      expect(Number(res.find((y) => y.year === 2024)?.items.CommonStockSharesOutstanding)).toBe(4686000000);
+    });
+
+    it("does NOT falsely flag genuine 30% share issuance/M&A as a 1.5x split", () => {
+      const dilutionYears = [
+        {
+          year: 2023,
+          items: {
+            CommonStockSharesOutstanding: "100000000",
+            WeightedAverageSharesDiluted: "100000000",
+            EPSDiluted: "2.00",
+            NetIncome: "200000000",
+          },
+        },
+        {
+          year: 2024,
+          items: {
+            CommonStockSharesOutstanding: "130000000", // +30% genuine issuance
+            WeightedAverageSharesDiluted: "115000000", // weighted average during the year
+            EPSDiluted: "2.20", // earnings also grew, EPS didn't drop by 33%
+            NetIncome: "253000000",
+          },
+        },
+      ];
+
+      const res = normalizeFinancialYearsStockSplits(dilutionYears);
+
+      // Should remain 100M and 130M, NOT multiplied by 1.5
+      expect(Number(res.find((y) => y.year === 2023)?.items.CommonStockSharesOutstanding)).toBe(100000000);
+      expect(Number(res.find((y) => y.year === 2024)?.items.CommonStockSharesOutstanding)).toBe(130000000);
+    });
+
+    it("correctly handles reverse stock split (e.g. 1-for-8 like GE 2021)", () => {
+      const reverseSplitYears = [
+        {
+          year: 2020,
+          items: {
+            CommonStockSharesOutstanding: "8800000000",
+            WeightedAverageSharesDiluted: "8780000000",
+            EPSDiluted: "0.50",
+            NetIncome: "4390000000",
+          },
+        },
+        {
+          year: 2021,
+          items: {
+            CommonStockSharesOutstanding: "1100000000",
+            WeightedAverageSharesDiluted: "1098000000",
+            EPSDiluted: "4.00",
+            NetIncome: "4392000000",
+          },
+        },
+      ];
+
+      const res = normalizeFinancialYearsStockSplits(reverseSplitYears);
+
+      // 2020 shares should be divided by 8 (multiplied by 0.125) to ~1.1B
+      expect(Number(res.find((y) => y.year === 2020)?.items.CommonStockSharesOutstanding)).toBe(1100000000);
+      // 2020 EPS should be multiplied by 8 (divided by 0.125) to 4.00
+      expect(Number(res.find((y) => y.year === 2020)?.items.EPSDiluted)).toBe(4.00);
     });
   });
 

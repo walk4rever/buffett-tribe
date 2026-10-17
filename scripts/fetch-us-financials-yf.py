@@ -31,23 +31,27 @@ MAPPING_INCOME = {
     "Net Income": "NetIncome",
     "Net Income Common Stockholders": "NetIncome",
     "Net Income From Continuing Operation Net Minority Interest": "NetIncome",
-    "Diluted EPS": "DilutedEPS",
-    "Basic EPS": "BasicEPS",
+    "Diluted EPS": "EPSDiluted",
+    "Basic EPS": "EPSBasic",
+    "Diluted Average Shares": "WeightedAverageSharesDiluted",
+    "Basic Average Shares": "WeightedAverageShares",
 }
 
 MAPPING_BALANCE_SHEET = {
     "Total Assets": "TotalAssets",
-    "Current Assets": "CurrentAssets",
-    "Current Liabilities": "CurrentLiabilities",
+    "Current Assets": "TotalCurrentAssets",
+    "Current Liabilities": "TotalCurrentLiabilities",
     "Total Liabilities Net Minority Interest": "TotalLiabilities",
     "Total Non Current Liabilities Net Minority Interest": "TotalNonCurrentLiabilities",
-    "Stockholders Equity": "StockholdersEquity",
-    "Common Stock Equity": "StockholdersEquity",
+    "Stockholders Equity": "ShareholdersEquity",
+    "Common Stock Equity": "ShareholdersEquity",
     "Cash And Cash Equivalents": "CashAndCashEquivalents",
     "Cash Cash Equivalents And Short Term Investments": "CashAndCashEquivalents",
     "Working Capital": "WorkingCapital",
     "Total Debt": "TotalDebt",
     "Net Debt": "NetDebt",
+    "Ordinary Shares Number": "CommonStockSharesOutstanding",
+    "Share Issued": "CommonStockSharesOutstanding",
 }
 
 MAPPING_CASH_FLOW = {
@@ -58,10 +62,56 @@ MAPPING_CASH_FLOW = {
     "Cash Dividends Paid": "DividendsPaid",
     "Dividends Paid": "DividendsPaid",
     "Common Stock Dividend Paid": "DividendsPaid",
+    "Repurchase Of Capital Stock": "ShareRepurchaseAmt",
+    "Net Business Purchase And Sale": "PurchaseSaleOfBusinessNet",
 }
 
+SHARE_ITEMS = {
+    "CommonStockSharesOutstanding",
+    "WeightedAverageSharesDiluted",
+    "WeightedAverageShares",
+}
 
-def process_df(df, ptype: str, mapping: dict[str, str], currency: str, items: list[dict]):
+PER_SHARE_ITEMS = {
+    "EPSDiluted",
+    "EPSBasic",
+}
+
+ADR_CANDIDATES = [0.1, 0.2, 0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 8.0, 10.0, 20.0]
+
+
+def detect_adr_factor(info: dict, ordinary_shares: float | None) -> float:
+    if not ordinary_shares or ordinary_shares <= 0:
+        return 1.0
+    adr_shares = info.get("sharesOutstanding")
+    if not adr_shares or adr_shares <= 0:
+        return 1.0
+    try:
+        raw_ratio = float(adr_shares) / float(ordinary_shares)
+    except (ZeroDivisionError, ValueError):
+        return 1.0
+
+    best_cand = 1.0
+    min_err = float("inf")
+    for cand in ADR_CANDIDATES:
+        err = abs(raw_ratio - cand) / cand
+        if err < min_err:
+            min_err = err
+            best_cand = cand
+
+    if min_err <= 0.05:
+        return best_cand
+    return 1.0
+
+
+def process_df(
+    df,
+    ptype: str,
+    mapping: dict[str, str],
+    currency: str,
+    adr_factor: float,
+    items: list[dict],
+):
     if df is None or df.empty:
         return
     for col in df.columns:
@@ -88,12 +138,36 @@ def process_df(df, ptype: str, mapping: dict[str, str], currency: str, items: li
                     try:
                         fval = float(val)
                         seen_targets.add(target_item)
+
+                        # Adjust signs
+                        if target_item == "ShareRepurchaseAmt":
+                            fval = abs(fval)
+                        elif target_item == "PurchaseSaleOfBusinessNet":
+                            # yfinance net business purchase and sale is negative for net acquisition outflow;
+                            # we canonicalize positive = net cash acquisition outflow
+                            fval = -fval
+
+                        # Adjust ADR ratio if applicable
+                        if adr_factor != 1.0:
+                            if target_item in SHARE_ITEMS:
+                                fval = fval * adr_factor
+                            elif target_item in PER_SHARE_ITEMS:
+                                fval = fval / adr_factor
+
+                        # Assign unit
+                        if target_item in SHARE_ITEMS:
+                            unit = "shares"
+                        elif target_item in PER_SHARE_ITEMS:
+                            unit = f"{currency}/shares" if currency else "USD/shares"
+                        else:
+                            unit = currency if currency else "USD"
+
                         items.append({
                             "periodEnd": date_str,
                             "periodType": period_type,
                             "lineItem": target_item,
                             "value": fval,
-                            "unit": currency,
+                            "unit": unit,
                         })
                     except (ValueError, TypeError):
                         pass
@@ -105,23 +179,44 @@ def fetch_financials(ticker: str) -> dict:
     currency_value = info.get("financialCurrency") or info.get("currency")
     currency = str(currency_value).strip().upper() if currency_value else ""
     if not re.fullmatch(r"[A-Z]{3}", currency):
-        currency = ""
+        currency = "USD"
+
+    # Detect ordinary shares for ADR factor detection
+    ordinary_shares = None
+    for bs in [t.balance_sheet, t.quarterly_balance_sheet]:
+        if bs is not None and not bs.empty:
+            for k in ["Ordinary Shares Number", "Share Issued"]:
+                if k in bs.index:
+                    row_vals = bs.loc[k].dropna()
+                    if len(row_vals) > 0:
+                        try:
+                            val = float(row_vals.iloc[0])
+                            if val > 0:
+                                ordinary_shares = val
+                                break
+                        except (ValueError, TypeError):
+                            pass
+            if ordinary_shares:
+                break
+
+    adr_factor = detect_adr_factor(info, ordinary_shares)
 
     items: list[dict] = []
 
     # Annual
-    process_df(t.financials, "FY", MAPPING_INCOME, currency, items)
-    process_df(t.balance_sheet, "FY", MAPPING_BALANCE_SHEET, currency, items)
-    process_df(t.cashflow, "FY", MAPPING_CASH_FLOW, currency, items)
+    process_df(t.financials, "FY", MAPPING_INCOME, currency, adr_factor, items)
+    process_df(t.balance_sheet, "FY", MAPPING_BALANCE_SHEET, currency, adr_factor, items)
+    process_df(t.cashflow, "FY", MAPPING_CASH_FLOW, currency, adr_factor, items)
 
     # Quarterly
-    process_df(t.quarterly_financials, "Q", MAPPING_INCOME, currency, items)
-    process_df(t.quarterly_balance_sheet, "Q", MAPPING_BALANCE_SHEET, currency, items)
-    process_df(t.quarterly_cashflow, "Q", MAPPING_CASH_FLOW, currency, items)
+    process_df(t.quarterly_financials, "Q", MAPPING_INCOME, currency, adr_factor, items)
+    process_df(t.quarterly_balance_sheet, "Q", MAPPING_BALANCE_SHEET, currency, adr_factor, items)
+    process_df(t.quarterly_cashflow, "Q", MAPPING_CASH_FLOW, currency, adr_factor, items)
 
     return {
         "ticker": ticker.upper(),
         "currency": currency,
+        "adrFactor": adr_factor,
         "records": items,
     }
 

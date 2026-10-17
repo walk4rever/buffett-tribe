@@ -1375,59 +1375,33 @@ export async function runGoldenAudit(): Promise<{ reports: CompanyAuditReport[];
       }
     }
 
-    // D5. 离散单季 Q1~Q4 完备性与做差自洽审计 (误差 <= 0.1% - P0)
-    if (spec.checkQuarterly) {
-      const qYear = gtSpec.fiscalYear;
-      const quarterlyRecords = await db.financial.findMany({
+    // D5. 历史已完结财年季度冗余垃圾回收 (GC) 审计 (P0)
+    // 契约：凡是拥有 FY 年报的已完结财年（periodEnd <= max(FY.periodEnd)），库内绝不允许残留任何非 FY 季度冗余记录
+    const latestFyRecord = await db.financial.findFirst({
+      where: {
+        entityId: entity.id,
+        periodType: "FY",
+      },
+      orderBy: { periodEnd: "desc" },
+      select: { periodEnd: true },
+    });
+
+    if (latestFyRecord) {
+      const obsoleteInterimCount = await db.financial.count({
         where: {
           entityId: entity.id,
-          periodType: { in: ["Q1", "Q2", "Q3", "Q4"] },
-          periodEnd: {
-            gte: new Date(`${qYear}-01-01`),
-            lte: new Date(`${qYear}-12-31`),
-          },
-          lineItem: { in: ["Revenue", "NetIncome"] },
+          periodType: { not: "FY" },
+          periodEnd: { lte: latestFyRecord.periodEnd },
         },
       });
 
-      const byItemQuarters: Record<string, Set<string>> = {
-        Revenue: new Set(),
-        NetIncome: new Set(),
-      };
-      const qSums: Record<string, number> = { Revenue: 0, NetIncome: 0 };
-
-      for (const qr of quarterlyRecords) {
-        if (qr.value != null && (qr.lineItem === "Revenue" || qr.lineItem === "NetIncome")) {
-          byItemQuarters[qr.lineItem].add(qr.periodType);
-          qSums[qr.lineItem] += Number(qr.value);
-        }
-      }
-
-      for (const testKey of ["Revenue", "NetIncome"] as const) {
-        const presentQuarters = [...byItemQuarters[testKey]].sort();
-        if (presentQuarters.length !== 4) {
-          findings.push({
-            layer: "Dataset",
-            severity: "P0",
-            code: "QUARTERLY_RECORDS_INCOMPLETE",
-            message: `FY${qYear} ${testKey} 离散单季不完整，必须齐备 Q1~Q4 四个季度，实际仅有: [${presentQuarters.join(", ")}]`,
-          });
-          continue;
-        }
-
-        const fyVal = getNumericFact(gtFin, testKey);
-        const qSumVal = qSums[testKey];
-        if (fyVal != null && Math.abs(fyVal) > 1000) {
-          const diffRatio = Math.abs(qSumVal - fyVal) / Math.abs(fyVal);
-          if (diffRatio > 0.001) {
-            findings.push({
-              layer: "Dataset",
-              severity: "P0",
-              code: "QUARTERLY_SUM_MISMATCH",
-              message: `FY${qYear} ${testKey} 四季之和与全年 FY 误差 ${(diffRatio * 100).toFixed(4)}% > 0.1% (FY=${fyVal.toLocaleString()}, Q1-Q4=${qSumVal.toLocaleString()})`,
-            });
-          }
-        }
+      if (obsoleteInterimCount > 0) {
+        findings.push({
+          layer: "Dataset",
+          severity: "P0",
+          code: "OBSOLETE_INTERIM_RECORDS_REMAIN",
+          message: `已完结财年（periodEnd <= ${latestFyRecord.periodEnd.toISOString().slice(0, 10)}）在库内残留 ${obsoleteInterimCount} 条非 FY 季度冗余记录，违反季度滚动 GC 契约`,
+        });
       }
     }
 

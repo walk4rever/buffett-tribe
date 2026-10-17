@@ -89,5 +89,28 @@ export async function upsertFinancialRows(
     await db.$transaction(operations);
   }
 
+  // Auto-GC: delete obsolete non-FY interim rows whose periodEnd <= max(FY.periodEnd)
+  const maxFyByEntity = new Map<string, Date>();
+  for (const row of sortedRows) {
+    if (row.periodType === "FY") {
+      const dt = new Date(row.periodEnd);
+      const existing = maxFyByEntity.get(row.entityId);
+      if (!existing || dt > existing) {
+        maxFyByEntity.set(row.entityId, dt);
+      }
+    }
+  }
+
+  if (maxFyByEntity.size > 0) {
+    for (const [entityId, maxFyDate] of maxFyByEntity.entries()) {
+      await db.$executeRaw`
+        DELETE FROM "Financial"
+        WHERE "entityId" = ${entityId}
+          AND "periodType" <> 'FY'
+          AND "periodEnd" <= ${maxFyDate}
+      `;
+    }
+  }
+
   return sortedRows.length;
 }

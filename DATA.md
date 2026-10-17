@@ -1,14 +1,15 @@
 # 财务数据与模型体系深度审阅与实施规约 (DATA.md)
 
-> **版本**：v2.1 (2026-10-15 架构与金融工程严密版)  
-> **定位**：全站财务数据工程的顶层设计与实施宪章。以公司详情页 6 大 Tab 的最终展示和深度分析需求为导向，确立 6 大标准财务模板及其子模型，划定公共科目与行业专属科目，建立股数/分红/监管指标的防污染机制，并指导存量数据受控 Backfill 补录与 Mac mini 自动化 Cron 的稳定运转。
+> **版本**：v2.2 (2026-10-17 全库回填收官与全生命周期架构版)  
+> **定位**：全站财务数据工程的顶层设计与实施宪章。以公司详情页 6 大 Tab 的最终展示和深度分析需求为导向，确立 6 大标准财务模板及其子模型，划定公共科目与行业专属科目，建立股数/拆股/并购/分红/季报生命周期的防污染机制，并指导全库数据治理与 Mac mini 自动化飞轮运转。  
+> **关联执行文档**：[handoff.md](file:///Users/rafael/R129/buffett-tribe/handoff.md) ｜ [fix.md](file:///Users/rafael/R129/buffett-tribe/fix.md)
 
 ---
 
 ## 目录
 
 1. [执行摘要与核心架构决断](#一执行摘要与核心架构决断)
-2. [数据防污染底线：四大高风险口径勘误与治理契约](#二数据防污染底线四大高风险口径勘误与治理契约)
+2. [数据防污染底线：六大高风险口径勘误与治理契约](#二数据防污染底线六大高风险口径勘误与治理契约)
 3. [从详情页 6 大 Tab 倒推数据需求（四象限全景分析）](#三从详情页-6-大-tab-倒推数据需求四象限全景分析)
 4. [6 大标准财务模板与子业务模型正交契约](#四6-大标准财务模板与子业务模型正交契约)
 5. [全行业公共科目与行业专属科目的严密划定](#五全行业公共科目与行业专属科目的严密划定)
@@ -19,9 +20,9 @@
 
 ## 一、执行摘要与核心架构决断
 
-全系统财务数据闭环的演进逻辑确定为：**“先定规矩与地基 $\rightarrow$ 严格防污染清洗 $\rightarrow$ 存量受控 Backfill 补录 $\rightarrow$ 恢复 mini cron 自动化飞轮”**。
+全系统财务数据闭环的演进逻辑确定为：**“先定规矩与地基 $\rightarrow$ 严格防污染清洗 $\rightarrow$ 存量受控 Backfill 补录 $\rightarrow$ 收官治理（拆股/并购/次新股/季报瘦身） $\rightarrow$ 恢复 mini cron 自动化飞轮”**。
 
-在本次重构中，我们确立以下三大核心决断：
+在本次重构中，我们确立以下五大核心决断：
 
 ### 决断 1：模板代码统一与 6 大标准模板 Schema 落地
 * **代码标识全项目统一**：
@@ -31,20 +32,28 @@
   * **现状**：代码目前为 5 类，地产被作为 `industrial` 的 modifier 挂靠，但强行关闭工商业造血现金流（`showIndustrialCashFlow = false`）、替换估值锚为 `nav_ffo`，导致前端充斥着 `if (financialModel.modifiers.includes("real_estate"))` 等特判补丁。
   * **目标**：在 `src/lib/financial-model.ts` 中正式将 `real_estate` 提升为顶级 `FinancialTemplate`，为持有型 REITs 与项目开发商赋予独立的 Schema 骨架，彻底清除修饰符特判技术债。
 
-### 决断 2：坚守巴菲特式“资本配置框架”，剔除虚假因果判断
-* **保留流向穿透力**：资本配置 Tab（`CapitalAllocationView`）的核心价值是穿透呈现：**企业经营产生的真实自由现金流（FCF = OCF - CapEx），与股东回报（现金分红 + 股票回购）之间的对比关系**。
-* **剔除主观归因断言**：当 $\text{FCF} < \text{回购} + \text{分红}$ 时，只客观陈述“当期自由现金流未能完全覆盖股东回报支出”，**严禁在无证据时直接判定企业是在“举债掏空”**。资金可能来源于历史沉淀的期初现金余额、资产处置现金流或外部筹资。仅当联动分析确认 $\Delta \text{Debt} > 0$ 时，方可提示债务融资参与股东回报。
+### 决断 2：坚守巴菲特式“完整五大资本配置框架”（内生 CapEx + 外延并购 M&A + 回购 + 分红），剔除虚假因果判断
+* **打通完整资本配置拼图**：资本配置 Tab（`CapitalAllocationView`）的核心价值是穿透呈现：**企业经营现金流（OCF）如何分配至内生资本开支（CapEx，形成自由现金流 FCF = OCF - CapEx）、外延并购（`PurchaseSaleOfBusinessNet`）与股东直接回报（现金分红 + 股票回购）**，并联动解释期末股本变动（回购注销 vs 并购增发，如博通 `AVGO` FY24 支付 259.8 亿美元现金并购 VMware 同时增发约 5.5 亿股）。
+* **剔除主观归因断言**：当 $\text{FCF} < \text{并购} + \text{回购} + \text{分红}$ 时，只客观陈述“当期自由现金流未能完全覆盖并购与股东回报支出”，**严禁在无证据时直接判定企业是在“举债掏空”**。资金可能来源于历史沉淀的期初现金余额、资产处置现金流或外部筹资。
 
 ### 决断 3：坚守金融终端级 UI 呈现，坚决杜绝“免责声明”与“张冠李戴”
 * **不输出程序员视角的丑陋免责文案**：禁止在 UI 上出现“该指标提取失败”、“请查阅年报附注”等技术占位符。
 * **不搞虚假替代（严禁张冠李戴）**：**账面“权益/总资产 (`ShareholdersEquity / TotalAssets`)”绝对不是银行的 CET1（核心一级资本充足率）！** 严禁用账面比率冒充监管资本指标。
 * **专业解法**：数据未接入时直接隐藏相关非必要卡片（Graceful Omission）；若为行业核心架构，展示内敛的“未披露”或待更新状态，绝不拿风马牛不相及的指标顶替。
 
+### 决断 4：报告期生命周期契约——“历史年报 (`FY`) 永久锚定，当期季报 YTD 滚动暂存，年报就绪即清理”
+* **拒绝历史季报永久堆积**：长期价值投资聚焦 5–10 年完整会计年度（`FY`）。已完结历史财年的单季/半年度数据（`Q1~Q4`、`H1~H2`）不具长线复利分析价值，且人为用累计值做减法拆单季极易引入重述与摊薄失真。
+* **最新未完结财年滚动窗口**：仅对尚未披露年报的**最新未完结财年**（`periodEnd > 最新 FY periodEnd`）以**原生年初至今累计（YTD：一季报 3M、中报 6M、三季报 9M）**口径导入并暂存季报/中报（用于当期最新进展展示与 LLM 阶段性跟踪）。一旦该财年的正式年报（`FY`）披露入库，自动触发垃圾回收（GC）清理该财年及以前的所有非 `FY` 季报记录。
+
+### 决断 5：场外 ADR 与新近 IPO 次新股的“三级数据源 Waterfall + 独立季报快照通道”
+* **导入端三级 Waterfall**：① 优先提取 SEC 10-K/20-F/40-F 官方 XBRL 年报；② 若遇场外豁免 ADR（HTTP 404）或刚上市尚无 10-K 的次新股，自动 fallback 至标准字典对齐后的 `yfinance` 财报通道补录（强制写入真实记账币种 `financialCurrency` 并对齐 ADR 换股比例）；③ 若仍无 `FY` 年报，自动提取最新 `10-Q` 季报与 `424B4/S-1` 招股书文本。
+* **查询端严格分流（严防单季数据污染年化指标）**：`getCompanyFinancials()` 严格只返回 `FY` 序列（确保 5 年均 ROE 与历史 PE 分位不被单季数据扭曲 4 倍）；新增独立 `getLatestInterimFinancial()` 通道读取最新未完结财年（或无 `FY` 次新股）的最新季报快照，在报表看板最右侧明确标注报告期（如 `2026 Q2`）独立展示。
+
 ---
 
-## 二、数据防污染底线：四大高风险口径勘误与治理契约
+## 二、数据防污染底线：六大高风险口径勘误与治理契约
 
-在数据工程中，**“缺失数据”远比“假数据”危害小**。以下四项是本次审阅定位到的严重数据污染隐患，必须确立硬性防线：
+在数据工程中，**“缺失数据”远比“假数据”危害小**。以下六项是审阅定位到的核心数据污染隐患，确立为硬性防线：
 
 ### 1. 股数的三项分立契约（严禁把加权股数与股本金额当成期末股数）
 * **现状隐患**：
@@ -56,27 +65,40 @@
      * `WeightedAverageSharesDiluted`：稀释加权平均股数（时段指标 Duration，单位：股，专用于与 EPS 联动）。
      * `ShareCapital`：资产负债表注册资本/实收资本金额（金额指标 Money，单位：元，严禁当股数用）。
   2. 立即从采集脚本中彻底删除将“股本/实收资本金额”映射到期末股数的别名；
-  3. $\frac{\text{NetIncome}}{\text{EPS}}$ 仅用于推导或校验“期间加权平均股数”，**严禁直接赋值给期末股数**用于计算估值基准日的市值。
+  3. $\frac{\text{NetIncome}}{\text{EPS}}$ 仅用于同币种下推导或校验“期间加权平均股数”，**严禁直接赋值给期末股数**用于计算估值基准日的市值。
 
-### 2. 分红与回购的“零值 vs 缺失”防污染契约
+### 2. 拆股（Stock Split）两阶段同源复权与同年锚点对齐契约
 * **现状隐患**：
-  曾建议“未发生回购记为 0，拆解现金流量表‘分红或利息合并项’”。这是严重的数据污染源：
-  1. 数据库未采到回购，不等于公司未发生回购；粗暴填 0 会把历史大量低频回购的企业洗成“零回购”假数据；
-  2. A 股/港股现金流量表中“分配股利、利润或偿付利息支付的现金”包含利息与少数股东分红，在没有附注数据源时，任何比例拆借都是虚构数据。
+  SEC 10-K 强制利润表回溯 3 年（$T, T-1, T-2$），而资产负债表仅回溯 2 年（$T, T-1$）。当第 $T$ 年发生 $1:k$ 拆股时，$T-2$ 年的利润表科目（`WeightedAverageSharesDiluted`、`EPSDiluted`）已被第 $T$ 年 10-K 重述为拆股后口径，但 $T-2$ 年的资产负债表期末股数（`CommonStockSharesOutstanding`）仍停留在拆股前旧 10-K 的未复权口径，造成 $T-2$ 年**同年内股数相差 $k$ 倍**；此外，`valuation-metrics.ts` 旁路直查未复权 EPS 会导致拆股前历史 PE 分位算小 $k$ 倍（详见 [fix.md](file:///Users/rafael/R129/buffett-tribe/fix.md)）。
 * **治理契约**：
-  1. **只有财报原始披露明确列示为“0”，或者外部权威分红回购档案核实无发生，数据库才允许存入数值 `0`**；未采到一律保留为 `null`（缺失），保持真实性；
-  2. 现金流量表合并项**绝不私自倒推拆分**；分红金额优先从独立分红派息公告历史（Corporate Actions / Dividend History）获取“实际已实施现金分红总额”，杜绝把利息当分红入库。
+  1. 数据库 `Financial` 表保持 SEC 原始披露值不变（确保对账可追溯）；
+  2. 在统一数据读取出口 `getCompanyFinancials()`、`valuation-metrics.ts` 及 Agent 工具出口执行**两阶段复权**：先在利润表内部用同源的加权股数与同币种 EPS 完成跨年拆股复权（建立全历史 Post-Split 锚点），再用同年复权后的加权股数锚点去对齐同年的 `CommonStockSharesOutstanding`，既消除拆股断崖，又 100% 保留期末真实股本变动。
 
-### 3. 监管指标不可替代契约
+### 3. 分红、回购与外延并购的“零值 vs 缺失”及符号防污染契约
+* **现状隐患**：
+  1. 数据库未采到回购，不等于公司未发生回购；粗暴填 0 会把历史大量低频回购的企业洗成“零回购”假数据；
+  2. A 股/港股现金流量表中“分配股利、利润或偿付利息支付的现金”包含利息与少数股东分红，在没有附注数据源时，任何比例拆借都是虚构数据；
+  3. 外延并购 `PurchaseSaleOfBusinessNet` 在 SEC 中以正数表示并购流出，而在 `yfinance`/港股中以负数表示并购流出、正数表示出售子公司回笼，若无脑取 `Math.abs()` 会把变卖资产回血误判为并购支出。
+* **治理契约**：
+  1. **只有财报原始披露明确列示为“0”，或者该财年已披露 `OperatingCashFlow`（表征现金流量表已入库）时，才允许对可选资本配置项做零值默认**；未采到现金流表时一律保留为 `null`；
+  2. 现金流量表分红合并项**绝不私自倒推拆分**；
+  3. **外延并购符号契约**：入库与读取层统一规定 `PurchaseSaleOfBusinessNet` **正数（`> 0`）= 外延并购净现金支出，负数（`< 0`）= 剥离出售业务净现金回笼**（`yfinance` 入库时对 `Net Business Purchase And Sale` 取反 `-val`）。
+
+### 4. 监管指标不可替代契约
 * **治理契约**：
   1. `ShareholdersEquity / TotalAssets` 严格命名为“账面权益资产比”，反映普通会计杠杆，绝不冠以“资本充足率”或替代 CET1；
   2. 银行的 CET1、不良贷款率（NPL）、拨备覆盖率，保险的综合成本率、内含价值（EV），必须直接来自监管报告或年报附注；未建立结构化解析前，不显示该特定指标，绝不拿其他比率移花接木。
 
-### 4. 派生指标溯源与唯一出口契约
+### 5. 派生指标溯源与唯一出口契约
 * **现状隐患**：
   目前在 A/H 导入代码、快速建档脚本和黄金集测试集中，存在分散的毛利等派生逻辑，口径与溯源格式不一致。
 * **治理契约**：
   全库所有派生指标计算逻辑**唯一收敛至 `scripts/lib/derived-metrics.ts`**，禁止任何导入脚本自行推导。所有派生行统一带 `mappingRule = "derived:<公式>"` 与 `confidence = 0.9` 溯源标记。
+
+### 6. 季报防做差污染与滚动清理契约
+* **治理契约**：
+  1. 严禁在采集脚本中对历史已完结财年的累计流量指标（特别是 `EPS` 等比率/每股指标）人为相减拼凑 `Q2/Q3/Q4`；
+  2. 已完结财年只保留 `FY` 记录；当期未完结财年季报统一以**年初至今累计（YTD）**原生口径暂存，一旦 `FY` 年报入库立即自动清理对应财年的过往季报，并同步由黄金测试集 D5 门禁守护历史财年零冗余季报残留。
 
 ---
 
@@ -144,13 +166,13 @@
 
 ### 5. Tab 5: 资本配置 (Capital Allocation)
 
-* **【现状 Current】**：80%+ 标的显示“资本配置历史数据不足”占位符。
-* **【目标 Target】**：美股展示率达 **75%~85%**，A/H 股分红展示率达 **70%~80%**；无回购标的平滑展示分红总账。
-* **【依赖数据 Dependencies】**：`OperatingCashFlow`、`CapEx`、`ShareRepurchaseAmt`、`DividendsPaid`、`CommonStockSharesOutstanding`、`ShareholdersEquity`。
+* **【现状 Current】**：已上线 OCF、CapEx、FCF、回购、分红与期末股本曲线，尚未将库内已采集的外延并购净现金支出（`PurchaseSaleOfBusinessNet`）接入展示。
+* **【目标 Target】**：美股展示率达 **75%~85%**，A/H 股分红展示率达 **70%~80%**；完整呈现巴菲特五大资本配置去向（内生 CapEx + 外延并购 M&A + 股票回购 + 现金分红 + 股本净变动），并确保拆股标的期末股数 100% 复权平滑。
+* **【依赖数据 Dependencies】**：`OperatingCashFlow`、`CapEx`、`PurchaseSaleOfBusinessNet`（外延并购净现金）、`ShareRepurchaseAmt`、`DividendsPaid`、`CommonStockSharesOutstanding`、`WeightedAverageSharesDiluted`、`ShareholdersEquity`。
 * **【计算逻辑与验收 Formulas & Verification】**：
   * $\text{FCF} = \text{OperatingCashFlow} - |\text{CapEx}|$
-  * $\text{Cash Flow & Shareholder Return Allocation}$：客观展示 FCF 与股东回报总和（$|\text{Repurchase}| + |\text{Dividends}|$）的覆盖对比，不强加虚假资金来源判断。
-  * **验收方式**：抽样波音、苹果、贵州茅台等典型企业，验证分红回购柱状图与差额指示准确无误。
+  * $\text{Capital Allocation Waterfall}$：客观展示 FCF 与外延并购（$\text{Acquisitions}$）及股东回报总和（$|\text{Repurchase}| + |\text{Dividends}|$）的覆盖对比，联动解释股本增减（回购注销 vs 并购增发），不强加虚假资金来源判断。
+  * **验收方式**：抽样博通（`AVGO` 拆股 + 259.8 亿并购 VMware）、英伟达（`NVDA` 多次拆股）、苹果、贵州茅台等典型企业，验证并购列、分红回购瀑布流与复权股本曲线准确无误。
 
 ---
 
@@ -194,7 +216,7 @@ flowchart TD
 
 | 顶级模板代码 (`FinancialTemplate`) | 子模型 (`subModel`) | 适用的 13 行业类型 | 必需与核心专属科目 | 专属估值锚与分析逻辑 |
 | :--- | :--- | :--- | :--- | :--- |
-| **`industrial`** | 通用工商业 | 消费品牌、医药、软件平台、半导体、工业制造、周期能源材料、公用事业、电信 | `Revenue`、`CostOfRevenue`、`GrossProfit`、`OperatingIncome`、`OCF`、`CapEx`、`FCF`、`Short/LongTermDebt` | PE、FCF Yield；以毛利率、净利率、自由现金流和营运资金周转为核心。 |
+| **`industrial`** | 通用工商业 | 消费品牌、医药、软件平台、半导体、工业制造、周期能源材料、公用事业、电信 | `Revenue`、`CostOfRevenue`、`GrossProfit`、`OperatingIncome`、`OCF`、`CapEx`、`FCF`、`PurchaseSaleOfBusinessNet`、`Short/LongTermDebt` | PE、FCF Yield；以毛利率、净利率、自由现金流、资本配置（内生 CapEx vs 外延 M&A）为核心。 |
 | **`bank`** | 商业借贷 | 商业银行、信贷机构 | `NetInterestIncome`、`NonInterestIncome`、`TotalDeposits`、`GrossLoans`、`NetLoans`、`ProvisionForCreditLosses`、`LoanLossAllowance` | PB-ROE 框架、股息率；核心看存贷差利差、资产负债结构与资产质量。无毛利与工商业 FCF。 |
 | **`insurance`** | 人身险 / 财险 | 人身险、财产险、再保险 | `NetPremiumsEarned`、`PolicyClaimsAndBenefits`、`NetInvestmentIncome`、`InsuranceContractLiabilities`、`ChangeInInsuranceReserves` | 内含价值 P/EV、PB；承保端与投资端双轮驱动。**严格限定财险展示直接赔付率，寿险展示准备金增量与综合给付**。 |
 | **`financial_services`** | `asset_mgmt` (资管/财富管理) | 基金资管、财富管理机构 | `AUM`、`NetClientFlows`、`InvestmentManagementFeeIncome`、`NetIncome` | Fee-based PE；**平均管理费率必须用 $\frac{\text{管理费收入}}{\text{期间平均 AUM}}$**，消除期末冲量偏差。 |
@@ -207,13 +229,13 @@ flowchart TD
 
 ## 五、全行业公共科目与行业专属科目的严密划定
 
-### 1. 全行业公共科目（14 项统一定义）
+### 1. 全行业公共科目（15 项统一定义）
 所有标准法人财报均定义、用于构建跨行业公共分析与大盘看板的基石科目：
 
 1. **收入基石**：`Revenue`（营业总收入 / 营业额）
 2. **利润基石**：`OperatingIncome`（营业利润）、`TotalProfit`（利润总额）、`IncomeTaxExpense`（所得税费用）、`NetIncome`（归属于母公司净利润）、`EPSDiluted`（稀释每股收益）、`EPSBasic`（基本每股收益）
-3. **资产负债基石**：`TotalAssets`（总资产）、`TotalLiabilities`（总负债）、`ShareholdersEquity`（归母股东权益 / 净资产）、`CommonStockSharesOutstanding`（期末已发行总股本）
-4. **股东回报与流动性基石**：`DividendsPaid`（现金分红总额）、`ShareRepurchaseAmt`（股票回购总额）、`CashAndCashEquivalents`（期末现金及现金等价物）
+3. **资产负债基石**：`TotalAssets`（总资产）、`TotalLiabilities`（总负债）、`ShareholdersEquity`（归母股东权益 / 净资产）、`CommonStockSharesOutstanding`（期末已发行总股本）、`WeightedAverageSharesDiluted`（稀释加权平均股数）
+4. **资本配置、股东回报与流动性基石**：`DividendsPaid`（现金分红总额）、`ShareRepurchaseAmt`（股票回购总额）、`PurchaseSaleOfBusinessNet`（外延并购与处置业务净现金）、`CashAndCashEquivalents`（期末现金及现金等价物）
 
 ---
 

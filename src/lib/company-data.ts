@@ -11,6 +11,7 @@ import {
 } from "@/lib/financial-period";
 import { normalizeCik, unpadCik, getCikLookupVariants } from "@/lib/cik";
 import { applyOptionalCashFlowZeroDefaults } from "@/lib/financial-normalization";
+import { normalizeFinancialYearsStockSplits } from "@/lib/financial-math";
 import {
   buildMasterHolderTrends,
   type MasterHolderTrendGroup,
@@ -481,7 +482,106 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
       itemUnits: data.itemUnits,
     }));
 
-  return applyOptionalCashFlowZeroDefaults(financialYears);
+  const normalizedYears = normalizeFinancialYearsStockSplits(financialYears);
+  return applyOptionalCashFlowZeroDefaults(normalizedYears);
+}
+
+export type InterimFinancialSnapshot = {
+  periodType: string;
+  periodEnd: Date;
+  disclosedAt: Date | null;
+  items: Record<string, string>;
+  itemUnits: Record<string, string>;
+};
+
+/**
+ * Returns the single latest interim financial statement snapshot (e.g. Q1, Q2, Q3)
+ * if it occurred strictly after the most recent FY filing (or if no FY filings exist).
+ * Preserves the purity of getCompanyFinancials (which only returns FY).
+ */
+export async function getLatestInterimFinancial(
+  entityId: string,
+): Promise<InterimFinancialSnapshot | null> {
+  const familyIds = await getEntityFamilyIds(entityId);
+
+  // Find max periodEnd of FY
+  const latestFY = await retryOnce(async () =>
+    db.financial.findFirst({
+      where: {
+        entityId: { in: familyIds },
+        periodType: "FY",
+      },
+      orderBy: { periodEnd: "desc" },
+      select: { periodEnd: true },
+    }),
+  );
+
+  const maxFyDate = latestFY?.periodEnd;
+
+  // Find latest interim row (periodType != "FY")
+  // where periodEnd > maxFyDate (or any periodEnd if no FY exists)
+  const latestInterimRow = await retryOnce(async () =>
+    db.financial.findFirst({
+      where: {
+        entityId: { in: familyIds },
+        periodType: { not: "FY" },
+        ...(maxFyDate ? { periodEnd: { gt: maxFyDate } } : {}),
+      },
+      orderBy: { periodEnd: "desc" },
+      select: { periodEnd: true, periodType: true },
+    }),
+  );
+
+  if (!latestInterimRow) return null;
+
+  const targetPeriodEnd = latestInterimRow.periodEnd;
+  const targetPeriodType = latestInterimRow.periodType;
+
+  const rows = await retryOnce(async () =>
+    db.financial.findMany({
+      where: {
+        entityId: { in: familyIds },
+        periodType: targetPeriodType,
+        periodEnd: targetPeriodEnd,
+      },
+      orderBy: { lineItem: "asc" },
+      select: {
+        id: true,
+        periodEnd: true,
+        lineItem: true,
+        value: true,
+        unit: true,
+        source: { select: { filedAt: true } },
+      },
+      take: 200,
+    }),
+  );
+
+  if (rows.length === 0) return null;
+
+  const items: Record<string, string> = {};
+  const itemUnits: Record<string, string> = {};
+  let disclosedAt: Date | null = null;
+
+  for (const row of rows) {
+    if (row.value != null && !(row.lineItem in items)) {
+      items[row.lineItem] = row.value.toString();
+      if (row.unit) {
+        itemUnits[row.lineItem] = row.unit;
+      }
+    }
+    if (!disclosedAt && row.source.filedAt) {
+      disclosedAt = row.source.filedAt;
+    }
+  }
+
+  return {
+    periodType: targetPeriodType,
+    periodEnd: targetPeriodEnd,
+    disclosedAt,
+    items,
+    itemUnits,
+  };
 }
 
 /**

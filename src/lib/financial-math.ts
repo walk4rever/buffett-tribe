@@ -24,7 +24,7 @@ export interface AnnualSharesAndEps {
   netIncome?: number | null;
 }
 
-const SPLIT_FACTOR_CANDIDATES = [
+export const SPLIT_FACTOR_CANDIDATES = [
   1.5, 2, 2.5, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25, 30, 50, 100,
   1 / 2, 1 / 3, 1 / 4, 1 / 5, 1 / 6, 1 / 7, 1 / 8, 1 / 10, 1 / 12, 1 / 15, 1 / 20, 1 / 25, 1 / 30, 1 / 50, 1 / 100,
 ];
@@ -40,29 +40,207 @@ export function detectSplitFactor(
   nextShares: number,
   currEps?: number | null,
   nextEps?: number | null,
-  currNet?: number | null,
-  nextNet?: number | null,
 ): number | null {
   if (!currShares || !nextShares || currShares <= 0 || nextShares <= 0) return null;
   const ratio = nextShares / currShares;
   // Natural non-split share variance (typically under ±25% within a single year)
   if (ratio >= 0.78 && ratio <= 1.28) return null;
 
+  let bestCandidate: number | null = null;
+  let minError = Infinity;
+
   for (const c of SPLIT_FACTOR_CANDIDATES) {
-    if (Math.abs(ratio - c) / c < 0.14) {
-      // If EPS & Net are available and positive, verify that EPS drop corresponds to the split
-      if (currEps && nextEps && currNet && nextNet && currEps > 0 && nextEps > 0 && currNet > 0 && nextNet > 0) {
-        const expectedNextEps = currEps * (nextNet / currNet);
-        const epsRatio = expectedNextEps / nextEps;
-        if (Math.abs(epsRatio - c) / c > 0.20) {
-          // EPS does not confirm split (e.g. M&A share issuance)
-          continue;
-        }
-      }
-      return c;
+    const err = Math.abs(ratio - c) / c;
+    if (err < 0.14 && err < minError) {
+      bestCandidate = c;
+      minError = err;
     }
   }
+
+  if (bestCandidate != null) {
+    // If EPS is available, check that EPS direction is consistent with split
+    if (currEps != null && nextEps != null && currEps !== 0 && nextEps !== 0) {
+      const epsRatio = currEps / nextEps;
+      // In forward split (c > 1.4), currEps should generally be higher than nextEps (or not > 3x lower)
+      if (bestCandidate > 1.4 && epsRatio < 0.3) {
+        return null;
+      }
+      // In reverse split (c < 0.7), currEps should generally be lower than nextEps (or not > 3x higher)
+      if (bestCandidate < 0.7 && epsRatio > 3.0) {
+        return null;
+      }
+    }
+    return bestCandidate;
+  }
   return null;
+}
+
+/**
+ * Two-stage stock split normalizer for financial years:
+ * Stage 1: Cross-year income statement retrospective normalization (WeightedShares & EPS).
+ * Stage 2: Intra-year balance sheet period-end shares alignment with Post-Split anchors.
+ */
+export function normalizeFinancialYearsStockSplits<
+  T extends {
+    year: number;
+    items: Record<string, string>;
+    itemUnits?: Record<string, string>;
+  },
+>(years: T[]): T[] {
+  if (years.length < 2) return years;
+
+  // Clone years so we don't mutate input in place
+  const res = years.map((y) => ({
+    ...y,
+    items: { ...y.items },
+  }));
+
+  // Sort ascending by year for time-series analysis
+  const sortedIndices = res
+    .map((item, idx) => ({ year: item.year, idx }))
+    .sort((a, b) => a.year - b.year);
+
+  const parseNum = (items: Record<string, string>, key: string): number | null => {
+    const v = items[key];
+    if (v == null || v === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const getRefWeightedShares = (
+    items: Record<string, string>,
+    itemUnits?: Record<string, string>,
+  ): number | null => {
+    const diluted = parseNum(items, "WeightedAverageSharesDiluted");
+    if (diluted != null && diluted > 0) return diluted;
+    const basic = parseNum(items, "WeightedAverageShares");
+    if (basic != null && basic > 0) return basic;
+
+    // Fallback: implied from NetIncome / EPSDiluted (only if same currency and both available)
+    const net = parseNum(items, "NetIncome");
+    const eps = parseNum(items, "EPSDiluted") ?? parseNum(items, "EPSBasic");
+    if (net != null && eps != null && net !== 0 && eps !== 0 && (net > 0 === eps > 0)) {
+      const netUnit = itemUnits?.NetIncome?.toUpperCase();
+      const epsUnit = (itemUnits?.EPSDiluted ?? itemUnits?.EPSBasic)?.toUpperCase();
+      if (!netUnit || !epsUnit || netUnit === epsUnit || epsUnit.includes(netUnit)) {
+        const implied = Math.abs(net / eps);
+        if (Number.isFinite(implied) && implied > 0) return Math.round(implied);
+      }
+    }
+    return null;
+  };
+
+  const confirmedSplitFactors = new Set<number>();
+
+  const timeline = sortedIndices.map(({ idx }) => {
+    const item = res[idx];
+    return {
+      idx,
+      year: item.year,
+      refShares: getRefWeightedShares(item.items, item.itemUnits),
+      eps: parseNum(item.items, "EPSDiluted") ?? parseNum(item.items, "EPSBasic"),
+      netIncome: parseNum(item.items, "NetIncome"),
+    };
+  });
+
+  // Stage 1: Income statement cross-year retrospective split detection (going backwards)
+  for (let i = timeline.length - 2; i >= 0; i--) {
+    const curr = timeline[i];
+    const next = timeline[i + 1];
+
+    if (curr.refShares && next.refShares) {
+      const factor = detectSplitFactor(
+        curr.refShares,
+        next.refShares,
+        curr.eps,
+        next.eps,
+      );
+
+      if (factor != null && factor !== 1) {
+        confirmedSplitFactors.add(factor);
+        // Apply factor to all historical years <= i
+        for (let j = 0; j <= i; j++) {
+          const target = res[timeline[j].idx];
+
+          for (const key of ["WeightedAverageSharesDiluted", "WeightedAverageShares"] as const) {
+            const v = parseNum(target.items, key);
+            if (v != null) {
+              target.items[key] = String(Math.round(v * factor));
+            }
+          }
+
+          for (const key of ["EPSDiluted", "EPSBasic", "DividendPerShare"] as const) {
+            const v = parseNum(target.items, key);
+            if (v != null) {
+              target.items[key] = String(Number((v / factor).toFixed(4)));
+            }
+          }
+
+          if (timeline[j].refShares != null) {
+            timeline[j].refShares = Math.round(timeline[j].refShares! * factor);
+          }
+          if (timeline[j].eps != null) {
+            timeline[j].eps = Number((timeline[j].eps! / factor).toFixed(4));
+          }
+        }
+      }
+    }
+  }
+
+  // Generate cumulative confirmed factors (e.g., if 4 and 10 confirmed, 40 is also valid)
+  const allValidFactors = new Set<number>(confirmedSplitFactors);
+  const factorList = [...confirmedSplitFactors];
+  for (let a = 0; a < factorList.length; a++) {
+    for (let b = 0; b < factorList.length; b++) {
+      allValidFactors.add(factorList[a] * factorList[b]);
+    }
+  }
+
+  // Stage 2: Balance Sheet Period-End Shares (CommonStockSharesOutstanding) Intra-Year Alignment
+  for (let k = 0; k < timeline.length; k++) {
+    const { idx } = timeline[k];
+    const target = res[idx];
+    const periodEndShares = parseNum(target.items, "CommonStockSharesOutstanding");
+    const anchorShares = timeline[k].refShares ?? getRefWeightedShares(target.items, target.itemUnits);
+
+    if (periodEndShares != null && periodEndShares > 0 && anchorShares != null && anchorShares > 0) {
+      const ratio = anchorShares / periodEndShares;
+      if (ratio >= 0.82 && ratio <= 1.22) {
+        continue;
+      }
+
+      let matchedFactor: number | null = null;
+      let minErr = Infinity;
+
+      for (const f of allValidFactors) {
+        const err = Math.abs(ratio - f) / f;
+        if (err < 0.16 && err < minErr) {
+          matchedFactor = f;
+          minErr = err;
+        }
+      }
+
+      // If no confirmed factor matched, allow integer factor >= 2.0 or reverse <= 0.5
+      // (Strict financial guard: DO NOT match 1.5x here to protect real 20-30% share issuances/M&A)
+      if (matchedFactor == null) {
+        for (const candidate of SPLIT_FACTOR_CANDIDATES) {
+          if (candidate >= 2.0 || candidate <= 0.5) {
+            const err = Math.abs(ratio - candidate) / candidate;
+            if (err < 0.14 && err < minErr) {
+              matchedFactor = candidate;
+              minErr = err;
+            }
+          }
+        }
+      }
+
+      if (matchedFactor != null && matchedFactor !== 1) {
+        target.items["CommonStockSharesOutstanding"] = String(Math.round(periodEndShares * matchedFactor));
+      }
+    }
+  }
+
+  return res;
 }
 
 /**
@@ -79,7 +257,7 @@ export function normalizeAnnualsStockSplits<T extends AnnualSharesAndEps>(annual
     const curr = res[i];
     const next = res[i + 1];
     if (curr.shares && next.shares) {
-      const factor = detectSplitFactor(curr.shares, next.shares, curr.eps, next.eps, curr.netIncome, next.netIncome);
+      const factor = detectSplitFactor(curr.shares, next.shares, curr.eps, next.eps);
       if (factor != null && factor !== 1) {
         for (let j = 0; j <= i; j++) {
           if (res[j].shares != null) {

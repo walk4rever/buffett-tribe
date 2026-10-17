@@ -38,6 +38,7 @@ import { upsertFinancialRows } from "./lib/upsert-financial-rows";
 import { normalizeCurrencyCode } from "../src/lib/fx-rates-core";
 import { persistReportingCurrency } from "../src/lib/reporting-currency";
 import { withShortWriteTransaction } from "../src/lib/db-short-write";
+import { importUsFinancialsFromYfinance } from "./import-us-financials-yf";
 
 function getArg(flag: string): string | undefined {
   const idx = process.argv.indexOf(flag);
@@ -168,32 +169,66 @@ export async function backfillCompanyFinancialsFast(params: {
   const paddedCik = params.cik.replace(/^CIK/i, "").padStart(10, "0");
 
   // 1. Fetch SEC submissions & profile in parallel with company facts
-  const [subData, facts] = await Promise.all([
-    fetchSecSubmissions(paddedCik),
-    getCompanyFacts(paddedCik),
-  ]);
+  let subData: Awaited<ReturnType<typeof fetchSecSubmissions>> | null = null;
+  let facts: Awaited<ReturnType<typeof getCompanyFacts>> | null = null;
+  let secError: string | null = null;
 
-  const profile = pickCompanyProfile(subData);
+  try {
+    const results = await Promise.all([
+      fetchSecSubmissions(paddedCik),
+      getCompanyFacts(paddedCik),
+    ]);
+    subData = results[0];
+    facts = results[1];
+  } catch (err: unknown) {
+    secError = err instanceof Error ? err.message : String(err);
+  }
 
   // 2. Fetch annual filings (10-K, 20-F) within range
-  const allAnnuals = await fetchTargetAnnualFilings(paddedCik, fromYear);
-  const targetFilings = allAnnuals.filter((f) => {
-    const y = new Date(f.reportDate).getUTCFullYear();
-    return y >= fromYear && y <= toYear;
-  });
+  let targetFilings: SecRecentFiling[] = [];
+  if (subData && facts) {
+    const allAnnuals = await fetchTargetAnnualFilings(paddedCik, fromYear);
+    targetFilings = allAnnuals.filter((f) => {
+      const y = new Date(f.reportDate).getUTCFullYear();
+      return y >= fromYear && y <= toYear;
+    });
+  }
 
-  if (!targetFilings.length) {
+  if (!targetFilings.length || !facts || !subData) {
+    // Tier-2 Fallback to yfinance
+    if (params.ticker && !params.dryRun) {
+      console.log(`[Tier-2 Fallback] SEC filings unavailable for ${params.ticker} (${secError ?? "0 annual filings"}). Invoking yfinance...`);
+      try {
+        const rowsCount = await importUsFinancialsFromYfinance(params.ticker);
+        if (rowsCount > 0) {
+          return {
+            ticker: params.ticker,
+            cik: paddedCik,
+            name: params.ticker,
+            filingsCount: 1,
+            financialRowsUpserted: rowsCount,
+            years: [],
+            durationMs: Date.now() - start,
+          };
+        }
+      } catch (yfErr) {
+        console.warn(`[Tier-2 Fallback] yfinance fallback also failed for ${params.ticker}:`, yfErr);
+      }
+    }
+
     return {
       ticker: params.ticker,
       cik: paddedCik,
-      name: profile.name ?? params.ticker,
+      name: subData ? pickCompanyProfile(subData).name ?? params.ticker : params.ticker,
       filingsCount: 0,
       financialRowsUpserted: 0,
       years: [],
       durationMs: Date.now() - start,
-      error: `No annual filings found in range ${fromYear}-${toYear}`,
+      error: secError ?? `No annual filings found in range ${fromYear}-${toYear}`,
     };
   }
+
+  const profile = pickCompanyProfile(subData);
 
   if (params.dryRun) {
     return {

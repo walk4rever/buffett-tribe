@@ -109,6 +109,8 @@ export function computeFcf(ocf: number | null, capex: number | null): number | n
   return ocf - Math.abs(capex);
 }
 
+import { normalizeFinancialYearsStockSplits } from "@/lib/financial-math";
+
 export async function fetchAnnualFundamentals(entityId: string): Promise<AnnualFundamentals[]> {
   const rows = await prisma.financial.findMany({
     where: {
@@ -116,31 +118,42 @@ export async function fetchAnnualFundamentals(entityId: string): Promise<AnnualF
       periodType: "FY",
       periodEnd: { gte: new Date(Date.UTC(FINANCIAL_DATA_START_YEAR, 0, 1)) },
     },
-    select: { periodEnd: true, lineItem: true, value: true },
+    select: { periodEnd: true, lineItem: true, value: true, unit: true },
     orderBy: { periodEnd: "asc" },
   });
 
-  const byYear = new Map<number, Record<string, number | null>>();
+  const byYear = new Map<number, { items: Record<string, string>; itemUnits: Record<string, string> }>();
   for (const row of rows) {
     const year = row.periodEnd.getUTCFullYear();
-    if (!byYear.has(year)) byYear.set(year, {});
+    if (!byYear.has(year)) byYear.set(year, { items: {}, itemUnits: {} });
     const bucket = byYear.get(year)!;
-    if (!(row.lineItem in bucket)) bucket[row.lineItem] = toNum(row.value);
+    if (!(row.lineItem in bucket.items) && row.value != null) {
+      bucket.items[row.lineItem] = row.value.toString();
+      if (row.unit) bucket.itemUnits[row.lineItem] = row.unit;
+    }
   }
 
-  return [...byYear.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([year, items]) => {
-      const netIncome = items.NetIncome ?? null;
-      const equity = items.ShareholdersEquity ?? null;
-      const revenue = items.Revenue ?? null;
-      const ocf = items.OperatingCashFlow ?? null;
-      const capex = items.CapEx ?? null;
+  const rawYears = [...byYear.entries()].map(([year, data]) => ({
+    year,
+    items: data.items,
+    itemUnits: data.itemUnits,
+  }));
+
+  const normalizedYears = normalizeFinancialYearsStockSplits(rawYears);
+
+  return normalizedYears
+    .sort((a, b) => a.year - b.year)
+    .map(({ year, items }) => {
+      const netIncome = toNum(items.NetIncome);
+      const equity = toNum(items.ShareholdersEquity);
+      const revenue = toNum(items.Revenue);
+      const ocf = toNum(items.OperatingCashFlow);
+      const capex = toNum(items.CapEx);
       return {
         year,
         revenue,
         netIncome,
-        epsDiluted: items.EPSDiluted ?? null,
+        epsDiluted: toNum(items.EPSDiluted) ?? toNum(items.EPSBasic),
         operatingCashFlow: ocf,
         capex,
         freeCashFlow: computeFcf(ocf, capex),

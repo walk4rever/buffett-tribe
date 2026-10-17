@@ -27,7 +27,7 @@ describe("upsertFinancialRows", () => {
 
     expect(written).toBe(1);
     expect(transaction).toHaveBeenCalledTimes(1);
-    expect(executeRaw).toHaveBeenCalledTimes(3);
+    expect(executeRaw).toHaveBeenCalledTimes(4); // 3 from chunk transaction + 1 from interim GC
     const operations = transaction.mock.calls[0][0];
     expect(operations).toHaveLength(3);
     expect(operations[0]).toEqual(["SET LOCAL lock_timeout = '5s'"]);
@@ -60,7 +60,7 @@ describe("upsertFinancialRows", () => {
 
     expect(transaction).toHaveBeenCalledTimes(3);
     expect(transaction.mock.calls.map(([operations]) => operations.length)).toEqual([3, 3, 3]);
-    expect(executeRaw).toHaveBeenCalledTimes(9);
+    expect(executeRaw).toHaveBeenCalledTimes(10); // 9 from 3 chunk transactions + 1 from interim GC
     expect(transaction.mock.calls.map(([operations]) =>
       (operations[2] as { values: unknown[] }).values.length,
     )).toEqual([550, 550, 11]);

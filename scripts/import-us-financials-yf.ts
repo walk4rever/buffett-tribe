@@ -106,6 +106,14 @@ export async function importUsFinancialsFromYfinance(ticker: string): Promise<nu
     },
   });
 
+  // Clean up legacy non-standard keys if present
+  await db.financial.deleteMany({
+    where: {
+      entityId: entity.id,
+      lineItem: { in: ["DilutedEPS", "BasicEPS", "StockholdersEquity"] },
+    },
+  });
+
   // Deduplicate records by (periodEnd, periodType, lineItem)
   const uniqueRecords = new Map<string, FinancialRecord>();
   for (const r of parsed.records) {
@@ -120,6 +128,11 @@ export async function importUsFinancialsFromYfinance(ticker: string): Promise<nu
   for (const record of recordList) {
     const periodEndDate = new Date(record.periodEnd);
     if (Number.isNaN(periodEndDate.getTime())) continue;
+
+    const unitToPersist =
+      record.unit === "shares" || record.unit?.includes("/shares") || record.unit?.includes("/share")
+        ? record.unit
+        : (normalizeCurrencyCode(record.unit) ?? reportingCurrency);
 
     await db.financial.upsert({
       where: {
@@ -137,12 +150,12 @@ export async function importUsFinancialsFromYfinance(ticker: string): Promise<nu
         periodType: record.periodType,
         lineItem: record.lineItem,
         value: new Prisma.Decimal(record.value),
-        unit: normalizeCurrencyCode(record.unit) ?? reportingCurrency,
+        unit: unitToPersist,
         confidence: 1,
       },
       update: {
         value: new Prisma.Decimal(record.value),
-        unit: normalizeCurrencyCode(record.unit) ?? reportingCurrency,
+        unit: unitToPersist,
       },
     });
     written++;

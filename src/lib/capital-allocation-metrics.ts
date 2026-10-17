@@ -10,6 +10,7 @@ export type CapitalAllocationAnnualInput = {
   capEx: number | null;
   repurchaseAmt: number | null;
   dividendsPaid: number | null;
+  acquisitionsAmt?: number | null;
   shares: number | null;
   sharesSource?: "disclosed" | "disclosed_period_end" | "weighted_average" | "derived" | null;
   roe: number | null;
@@ -26,6 +27,9 @@ export type CapitalAllocationStats = {
   cumOcf: number | null;
   cumCapEx: number | null;
   cumFcf: number | null;
+  cumAcquisitions: number | null;
+  acquisitionsCoverage: number;
+  acquisitionsPct: number | null;
   cumNetIncome: number | null;
   netIncomeCoverage: number;
   retainedEarnings: number | null;
@@ -98,6 +102,16 @@ export function computeCapitalAllocationStats(
   const cumDividends = knownDividends.length
     ? sum(knownDividends.map((annual) => Math.abs(annual.dividendsPaid!)))
     : null;
+  const knownAcquisitions = annuals.filter((annual) => annual.acquisitionsAmt != null);
+  const cumAcquisitions = knownAcquisitions.length
+    ? sum(knownAcquisitions.map((annual) => annual.acquisitionsAmt!))
+    : null;
+  const acquisitionsCoverage = knownAcquisitions.length;
+  const acquisitionsPct =
+    cumFcf != null && cumAcquisitions != null && cumAcquisitions > 0 && cumFcf > 0
+      ? Number(((cumAcquisitions / cumFcf) * 100).toFixed(1))
+      : null;
+
   const hasCompleteFlowBuybacks =
     flowCoverage > 0 && flowAnnuals.every((annual) => annual.repurchaseAmt != null);
   const hasCompleteFlowDividends =
@@ -121,17 +135,20 @@ export function computeCapitalAllocationStats(
 
   let distributionScope: "both" | "buyback_only" | "dividend_only" | "none" = "none";
   let fcfAfterDistributions: number | null = null;
+  const acqDeduction = cumAcquisitions != null && cumAcquisitions > 0 ? cumAcquisitions : 0;
 
   if (cumFcf != null) {
     if (completeFlowBuybacks != null && completeFlowDividends != null) {
       distributionScope = "both";
-      fcfAfterDistributions = cumFcf - completeFlowBuybacks - completeFlowDividends;
+      fcfAfterDistributions = cumFcf - acqDeduction - completeFlowBuybacks - completeFlowDividends;
     } else if (completeFlowDividends != null && knownBuybacks.length === 0) {
       distributionScope = "dividend_only";
-      fcfAfterDistributions = cumFcf - completeFlowDividends;
+      fcfAfterDistributions = cumFcf - acqDeduction - completeFlowDividends;
     } else if (completeFlowBuybacks != null && knownDividends.length === 0) {
       distributionScope = "buyback_only";
-      fcfAfterDistributions = cumFcf - completeFlowBuybacks;
+      fcfAfterDistributions = cumFcf - acqDeduction - completeFlowBuybacks;
+    } else if (acqDeduction > 0) {
+      fcfAfterDistributions = cumFcf - acqDeduction;
     }
   }
 
@@ -226,6 +243,9 @@ export function computeCapitalAllocationStats(
     netIncomeBuybackPayoutPct,
     cumBuybacks,
     cumDividends,
+    cumAcquisitions,
+    acquisitionsCoverage,
+    acquisitionsPct,
     buybackCoverage: knownBuybacks.length,
     dividendCoverage: knownDividends.length,
     flowBuybackCoverage,
