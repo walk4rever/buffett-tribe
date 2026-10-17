@@ -536,13 +536,13 @@ ssh mini "cd /Users/rafael/buffett-tribe && nohup npm run backfill:phase12-finan
 
 ---
 
-## 十、全库回填后四大系统性问题收官治理计划（详见 [fix.md](file:///Users/rafael/R129/buffett-tribe/fix.md)）
+## 十、全库回填后四大系统性问题收官治理（已全部 100% 落地并推送到 main）
 
-在完成全库 3,678 家公司（Phase 1 + Phase 2）全量回填后，针对生产数据库 `Financial` 表（共 3,135,710 行）与前端消费链路的全局复盘及 Reviewer 代码穿透审查，确立以下 4 步收官治理任务（完整根因分析、6 大防坑补丁与实施细节见 [fix.md](file:///Users/rafael/R129/buffett-tribe/fix.md)）：
+在完成全库 3,678 家公司（Phase 1 + Phase 2）全量回填后，针对生产数据库 `Financial` 表（共 3,135,710 行）与前端消费链路的全局复盘及 Reviewer/金融投资专家多视角穿透审查，确立并全面落地了以下 4 项核心收官治理工程（完整根因分析、6 大防坑补丁与实施细节见 [fix.md](file:///Users/rafael/R129/buffett-tribe/fix.md)）：
 
-| 步骤 | 专项任务 | 核心痛点与生产库实证 | 解决方案与工程动作（含 Reviewer 修正） |
-| :--- | :--- | :--- | :--- |
-| **Step 1** | **拆股历史股数与 EPS 口径撕裂根治** | SEC 10-K 利润表回溯 3 年（$T, T-1, T-2$），资产负债表仅回溯 2 年（$T, T-1$），导致 `AVGO`、`NVDA`、`AMZN`、`DECK` 等拆股标的第 $T-2$ 年必现“同年期末股数未复权、加权股数与 EPS 已复权”的 10x/20x 断崖；且 `valuation-metrics.ts` 直查未复权 EPS 导致历史 PE 分位算小 10 倍。 | 在 `getCompanyFinancials`、`valuation-metrics.ts` 与 Agent 工具出口实施**「两阶段同源复权（含逆向合股） + 同年受控锚点对齐（严禁阶段 2 独立触发 1.5x 小因子，防误伤真实增发稀释）」**，并移除 `value-line-data.ts` 重复实现。 |
-| **Step 2** | **外延并购 (M&A) 纳入资本配置框架** | 库内已成功入库 **1,658 家公司共 6,630 行** `PurchaseSaleOfBusinessNet`（如博通 `AVGO` FY24 收购 VMware 支付净现金 259.8 亿美元），但前端未提取展示，且 SEC 与 `yfinance` 并购正负号方向相反。 | 统一符号契约（**正数 = 外延并购净现金支出，负数 = 处置业务净现金回笼**，`yfinance` 入库取反，未披露保持 `null` 不强填 `0`），接入 `value-line-data.ts`、`capital-allocation-metrics.ts`（纳入 FCF 瀑布流扣减）与 `CapitalAllocationView.tsx`。 |
-| **Step 3** | **17 家 ADR 与新近 IPO 次新股三级兜底** | ① 10 家场外 ADR（`BMWKY`、`GALDY` 等）`fetch-us-financials-yf.py` 字段名未对齐标准字典，且存在母国币种/ADR 份额比例错配；<br>② 7 家 2026 新 IPO（`SPCX`、`CBRS` 等）尚无 `FY`，仅有招股书与 `10-Q` (`Q1/Q2`)。 | ① 升级 `fetch-us-financials-yf.py`（标准字段映射 + `financialCurrency` 真实币种 + 标准 ADR Ratio 集合吸附）并重跑 17 家公司；<br>② **保持 `getCompanyFinancials` 仅返回 `FY` 的契约纯粹性**（防单季数据扭曲 4 倍 PE / ROE），新增 `getLatestInterimFinancial()` 独立承载次新股与当年最新季报快照。 |
-| **Step 4** | **季报滚动窗口生命周期与数据库瘦身** | 全库 `Financial` 表中 `Q1~Q4 / H1~H2` 高达 **2,048,868 行（占全库 65.4%）**，生产环境 0 处消费历史季报（`ttm-metrics.ts` 为死代码），但 `eval-golden-18.ts` 规则 D5 仍硬性校验历史 `Q1~Q4`。 | 确立**「历史年报 (`FY`) 永久保留 + 最新未完结财年季报 YTD 滚动暂存 + 年报入库自动 GC」**机制：同步升级 `eval-golden-18.ts` (D5) 与 `golden-benchmark-18.test.ts`，移除 `ttm-metrics.ts` 及其单测，改造采集脚本与自动 GC，清理存量 ~190 万+ 行历史冗余季报。 |
+| 步骤 | 专项任务 | 核心痛点与生产库实证 | 落地与工程动作（含 Reviewer & 金融专家修正） | 状态 |
+| :--- | :--- | :--- | :--- | :---: |
+| **Step 1** | **拆股历史股数与 EPS 口径撕裂根治** | SEC 10-K 利润表回溯 3 年（$T, T-1, T-2$），资产负债表仅回溯 2 年（$T, T-1$），导致 `AVGO`、`NVDA`、`AMZN`、`DECK` 等拆股标的第 $T-2$ 年必现“同年期末股数未复权、加权股数与 EPS 已复权”的 10x/20x 断崖；且 `valuation-metrics.ts` 直查未复权 EPS 导致历史 PE 分位算小 10 倍。 | 在 `src/lib/financial-math.ts` 实现两阶段同源复权（含逆向合股候选集与加权最小相对误差匹配），并在阶段 2 增加严格金融风控护栏（仅允许已证实拆股因子及 $\ge 2\text{x}$ 整数因子，防误伤年内 30% 真实增发稀释）；下沉至 `getCompanyFinancials`、`fetchAnnualFundamentals`，修正 `value-line-data.ts` 字段名。新增 16 项单测全部通过。 | ✅ **已完成** |
+| **Step 2** | **外延并购 (M&A) 纳入资本配置框架** | 库内已成功入库 **1,658 家公司共 6,630 行** `PurchaseSaleOfBusinessNet`（如博通 `AVGO` FY24 收购 VMware 支付净现金 259.8 亿美元），但前端未提取展示，且 SEC 与 `yfinance` 并购正负号方向相反。 | 统一符号契约（**正数 = 外延并购净现金支出，负数 = 处置业务净现金回笼**，`yfinance` 入库取反，未披露保持 `null` 不强填 `0`）；接入 `value-line-data.ts`、`capital-allocation-metrics.ts`（纳入 FCF 瀑布流扣减），更新 `CapitalAllocationView.tsx`（新增 M&A 扣减卡与纵向明细表列）。新增单测全部通过。 | ✅ **已完成** |
+| **Step 3** | **17 家 ADR 与新近 IPO 次新股三级兜底** | ① 10 家场外 ADR（`BMWKY`、`GALDY` 等）`fetch-us-financials-yf.py` 字段名未对齐标准字典，且存在母国币种/ADR 份额比例错配；<br>② 7 家 2026 新 IPO（`SPCX`、`CBRS` 等）尚无 `FY`，仅有招股书与 `10-Q` (`Q1/Q2`)。 | ① 升级 `fetch-us-financials-yf.py`（对齐标准字段名 + 抽取 `financialCurrency` 真实记账币种 + 向金融市场标准 ADR Ratio 集合吸附），在 `import-us-financials-yf.ts` 中清理历史非标 key；<br>② 在 `backfill-company-financials-fast.ts` 接入 Tier-2 自动 Fallback；<br>③ **保持 `getCompanyFinancials` 仅返回 `FY` 的纯粹性**，新增 `getLatestInterimFinancial()` 独立快照通道承载最新季报。 | ✅ **已完成** |
+| **Step 4** | **季报滚动窗口生命周期与数据库瘦身** | 全库 `Financial` 表中 `Q1~Q4 / H1~H2` 高达 **2,048,868 行（占全库 65.4%）**，生产环境 0 处消费历史季报（`ttm-metrics.ts` 为死代码），但 `eval-golden-18.ts` 规则 D5 仍硬性校验历史 `Q1~Q4`。 | ① 剥离 `fetch-cn-hk-financials-ak.py` 差分造季度逻辑，仅保留未完结年份原生单季/累计报告期；<br>② 在 `upsert-financial-rows.ts` 中植入自动 GC：当插入 `FY` 时自动物理清理已完结年份的所有非 FY 记录（`periodEnd <= max(FY.periodEnd)`）；<br>③ 彻底删除死代码 `src/lib/ttm-metrics.ts` 及其单测；<br>④ 升级 `eval-golden-18.ts` (D5) 与 `golden-benchmark-18.test.ts`，验证已完结财年 0 残留季度冗余。 | ✅ **已完成** |
