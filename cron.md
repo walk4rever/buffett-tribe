@@ -245,6 +245,7 @@ PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
 - 汇率脚本在 `env -i` 最小环境下执行成功，输出 `END status=0`。
 - 日志轮转在临时目录测试通过：大文件被压缩归档、当前文件被截断、`rotate-logs.log` 自身不被轮转。
 - 行情和 worker 脚本用假 `npm` 做了集成测试：获取维护锁、执行命令、释放锁、输出 `END status=0` 均正常。
+- mini 上用 `hourly-priority-worker.sh 1 all --dry-run` 做了真实集成验证：获取维护锁、完成候选预览、输出 `END status=0`，锁目录已自动清理。
 - 生产 `priority-worker.log` 已实际轮转：26,069,069 字节压缩为 3.3 MB 归档，当前日志重置为 0 字节。
 - crontab 已回读确认，共 6 条任务；日志轮转任务已安装。
 - 两个完整行情任务没有在本次部署中重跑；耗时和错误样本来自 10/17～10/18 的实际日志。
