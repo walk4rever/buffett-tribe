@@ -241,9 +241,11 @@ PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
 - `npm run typecheck:scripts` 通过。
 - `vitest` 的 worker/process-group 相关 11 项测试通过。
 - 维护锁测试：首次获取成功、第二个进程失败、释放后可重新获取、死 PID 锁会被清理、`cron_finish` 能记录 `status=2`。
-- mini 已 fast-forward 到 `f39a6918`；worker 在维护锁被占用时输出 `Deferred` 并返回 `status=2`。
+- mini 已 fast-forward 到 `fae627f3`；worker 在维护锁被占用时输出 `Deferred` 并返回 `status=2`。
 - 汇率脚本在 `env -i` 最小环境下执行成功，输出 `END status=0`。
 - 日志轮转在临时目录测试通过：大文件被压缩归档、当前文件被截断、`rotate-logs.log` 自身不被轮转。
+- 行情和 worker 脚本用假 `npm` 做了集成测试：获取维护锁、执行命令、释放锁、输出 `END status=0` 均正常。
+- 生产 `priority-worker.log` 已实际轮转：26,069,069 字节压缩为 3.3 MB 归档，当前日志重置为 0 字节。
 - crontab 已回读确认，共 6 条任务；日志轮转任务已安装。
 - 两个完整行情任务没有在本次部署中重跑；耗时和错误样本来自 10/17～10/18 的实际日志。
 
