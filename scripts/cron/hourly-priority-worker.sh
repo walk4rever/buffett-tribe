@@ -22,7 +22,7 @@ export PATH="/Users/rafael/node/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/b
 
 mkdir -p logs .cache
 
-if maintenance_lock_live; then
+if ! acquire_maintenance_lock 0; then
   echo "[$(date -Iseconds)] Deferred: data-maintenance is running."
   exit 2
 fi

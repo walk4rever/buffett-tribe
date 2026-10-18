@@ -42,7 +42,7 @@ PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
 | 美股周度行情 | 周日 01:00 | `update-stock-prices.sh us` | 约 1 小时 21 分（10/18 01:00→02:21） | `update-stock-prices-us.log` | `StockPrice` | `data-maintenance` 锁 |
 | 最新汇率刷新 | 周一 03:00 | `update-fx-rates.sh` | 7～8 秒（两次实测，21 个币种） | `update-fx-rates.log`（首次 cron 触发时创建） | `FxRate` 最新值 | PID 锁 |
 | 日志轮转 | 周日 04:00 | `rotate-logs.sh` | 通常小于 1 秒；有 10 MB 以上日志时多几秒 | `rotate-logs.log` | 只读日志、写归档 | 自身 PID 锁 |
-| 每小时增量飞轮 | 每小时第 15 分 | `hourly-priority-worker.sh 15 all` | 20 分 30 秒～22 分 54 秒（10/18 连续 10 次） | `priority-worker.log` | `Entity`、`Financial`、`FilingSection`、`StockPrice` 等 | 维护锁检查 + PID 锁 |
+| 每小时增量飞轮 | 每小时第 15 分 | `hourly-priority-worker.sh 15 all` | 20 分 30 秒～22 分 54 秒（10/18 连续 10 次） | `priority-worker.log` | `Entity`、`Financial`、`FilingSection`、`StockPrice` 等 | 维护锁 + PID 锁 |
 
 ## 3. 逐项可行性分析
 
@@ -88,8 +88,8 @@ PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
 **已处理的并发风险**
 
 - 行情脚本现在获取 `data-maintenance` 锁；手工重跑会等待最多 5 分钟，仍拿不到锁就以 `status=2` 退出。
-- worker 在启动前检查同一把锁；行情任务运行期间，12:15 和 13:15 的批次会记录 `Deferred` 并跳过，不再同时请求 yfinance 或写 `StockPrice`。
-- 所有 StockPrice 写入都通过 `update-stock-prices.sh` 或 worker。worker 在维护锁存在时不启动，因此同一 ticker 不会被两个生产任务并发写入。
+- worker 在启动时获取同一把锁；行情任务运行期间，12:15 和 13:15 的批次会记录 `Deferred` 并跳过，不再同时请求 yfinance 或写 `StockPrice`。
+- 所有 StockPrice 写入都通过 `update-stock-prices.sh` 或 worker。两者互斥持锁，因此同一 ticker 不会被两个生产任务并发写入。
 - 直接运行 `scripts/fetch-stock-prices-yf.py` 会绕过 shell 锁，属于不支持的操作；手工回补也必须使用 `update-stock-prices.sh`。
 
 **剩余风险**
@@ -115,7 +115,7 @@ PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
 **已处理**
 
 - 与 3.2 共用 `data-maintenance` 锁和 `END status` 日志。
-- 01:15 和 02:15 的 worker 批次会在检测到维护锁后跳过。
+- 01:15 和 02:15 的 worker 批次会在获取维护锁失败后跳过。
 - 若后续调整时间，优先保持“距收盘至少 20 小时”这个条件；worker 重叠已由锁处理，不再依赖启动时间错开。
 
 ### 3.4 最新汇率刷新（周一 03:00，本次新增）
@@ -161,7 +161,7 @@ PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
 **已处理的并发风险**
 
-- worker 启动前检查 `data-maintenance` 锁；行情任务运行期间会记录 `Deferred: data-maintenance is running` 并以 `status=2` 退出，不进入候选队列。
+- worker 启动时获取 `data-maintenance` 锁；行情任务运行期间会记录 `Deferred: data-maintenance is running` 并以 `status=2` 退出，不进入候选队列。
 - worker 自身仍保留 PID 锁和僵尸 PID 自愈，防止上一批未结束时重复启动。
 - 公司间有 1 秒基础延迟，降低 SEC/东财/Yahoo 的瞬时压力。
 
@@ -196,7 +196,7 @@ PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
 - 用 `mkdir` 原子创建 `.cache/cron-locks/data-maintenance.lock`。
 - 锁内保存 PID；PID 不存在时自动清理僵尸锁。
 - 行情和新股同步最多等待 5 分钟；拿不到锁时输出 `Deferred` 并以 `status=2` 退出。
-- worker 启动前检查同一把锁；维护任务运行期间直接跳过，不进入候选队列。
+- worker 启动时获取同一把锁；维护任务运行期间直接跳过，不进入候选队列。
 - 直接运行 Python 脚本不属于受支持入口；所有手工回补也必须走 `update-stock-prices.sh`。
 
 ### 5.2 统一退出状态

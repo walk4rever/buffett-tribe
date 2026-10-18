@@ -9,27 +9,6 @@ _cron_lock_pid() {
   cat "${CRON_DATA_LOCK_DIR}/pid" 2>/dev/null || true
 }
 
-maintenance_lock_live() {
-  if [ ! -d "$CRON_DATA_LOCK_DIR" ]; then
-    return 1
-  fi
-
-  local pid
-  pid="$(_cron_lock_pid)"
-  # A lock directory can exist for a few milliseconds before pid is written.
-  if [ -z "$pid" ]; then
-    sleep 1
-    pid="$(_cron_lock_pid)"
-  fi
-
-  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-    return 0
-  fi
-
-  rm -rf "$CRON_DATA_LOCK_DIR"
-  return 1
-}
-
 acquire_maintenance_lock() {
   local wait_seconds="${1:-0}"
   local waited=0
