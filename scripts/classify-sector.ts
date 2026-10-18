@@ -19,7 +19,7 @@
  *   --market us|hk|cn            限定市场（配合 --all）
  *   --limit N                    限制条数（配合 --all，调试用）
  *   --dry-run                    不写库，结果落 --out
- *   --out <file>                 结果落盘路径（默认 tmp-sector-classify.json）
+ *   --out <file>                 结果落盘路径（默认 .cache/sector-classify.json）
  *   --force                      忽略 inputsHash，强制重算
  *   --concurrency N              LLM 并发数（默认 4）
  *
@@ -30,7 +30,8 @@
  */
 
 import { createHash } from "node:crypto";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import prisma from "../src/lib/prisma";
 import { callJsonLLM, findCompanies, getArg, hasFlag } from "./lib/company-generation";
 import {
@@ -397,7 +398,7 @@ async function main(): Promise<boolean> {
   const market = getArg("--market") ?? null;
   const limit = getArg("--limit") ? Number(getArg("--limit")) : null;
   const concurrency = Number(getArg("--concurrency") ?? 4);
-  const outFile = getArg("--out") ?? "tmp-sector-classify.json";
+  const outFile = getArg("--out") ?? ".cache/sector-classify.json";
   const companyArg = getArg("--company");
 
   const startedAt = Date.now();
@@ -514,6 +515,7 @@ async function main(): Promise<boolean> {
   const reviewQueue = records.filter((record) => record.needsReview);
   const errors = records.filter((record) => record.outcome === "error");
 
+  mkdirSync(dirname(outFile), { recursive: true });
   writeFileSync(
     outFile,
     JSON.stringify(
