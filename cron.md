@@ -1,10 +1,302 @@
-# 每小时增量飞轮 (Hourly Cron Job) 与 Onboard 脚本重构执行方案 (cron.md)
+# Buffett Tribe Cron 任务台账与调度分析
 
-> **版本**：v2026-10-17  
-> **定位**：结合四大财务收官治理与全库 3,678 家公司（Phase 1 + Phase 2）30 小时回填实战经验（详见 [GOLDEN.md](file:///Users/rafael/R129/buffett-tribe/GOLDEN.md)），在重启远程主机 `mini` 上的每小时定时任务（`hourly-priority-worker.sh`）前，对 `onboard-company.ts`、`pipeline-priority-worker.ts` 及子脚本进行防回退、防孤儿进程与防死锁的系统性改造方案。  
-> **关联文档**：[GOLDEN.md](file:///Users/rafael/R129/buffett-tribe/GOLDEN.md)（黄金测试集与全链路治理总纲） ｜ [DATA.md](file:///Users/rafael/R129/buffett-tribe/DATA.md)（顶层数据与模型字典宪章）
+> **版本**：v2026-10-18<br>
+> **主机**：`mini`（`MINI.local`），项目目录 `/Users/rafael/buffett-tribe`<br>
+> **时区**：`Asia/Shanghai`（crontab 按 mini 本地时间执行）<br>
+> **口径**：以 2026-10-18 20:00 左右 `rafael` 用户实际执行的 `crontab -l`、脚本内容和近期日志为准；`root` crontab 因无免密 sudo 权限未读取，`launchd` 未发现本项目条目。<br>
+> **结论**：当前有 6 个任务：4 个原有任务、1 个本次补上的每周汇率任务、1 个日志轮转任务。周末行情与 worker 的重叠已通过 `data-maintenance` 锁规避，脚本退出状态和日志轮转也已补齐；剩余重点是观察跳过批次对 onboarding 进度的影响，以及最新汇率与历史汇率口径混用的问题。
 
 ---
+
+## 1. 当前 crontab 快照
+
+以下是 mini 上当前实际生效的内容。本次修改前的备份在 `mini:~/crontab-backups/buffett-tribe-20261018-200300.cron`。
+
+```cron
+PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
+
+# buffett-tribe: weekly sync of new listings across CN, HK, and US (Saturday 10:00 CST)
+0 10 * * 6 /Users/rafael/buffett-tribe/scripts/cron/weekly-sync-new-listings.sh >> /Users/rafael/logs/buffett-tribe/sync-new-listings.log 2>&1
+
+# buffett-tribe: weekly StockPrice update for onboardPhase >= 1 companies (mini clock is Beijing time)
+0 12 * * 6 /Users/rafael/buffett-tribe/scripts/cron/update-stock-prices.sh cn,hk >> /Users/rafael/logs/buffett-tribe/update-stock-prices-cn-hk.log 2>&1
+0 1 * * 0 /Users/rafael/buffett-tribe/scripts/cron/update-stock-prices.sh us >> /Users/rafael/logs/buffett-tribe/update-stock-prices-us.log 2>&1
+# buffett-tribe: weekly FX refresh after Sunday US stock update (Monday 03:00 CST)
+0 3 * * 1 /Users/rafael/buffett-tribe/scripts/cron/update-fx-rates.sh >> /Users/rafael/logs/buffett-tribe/update-fx-rates.log 2>&1
+
+# buffett-tribe: weekly log rotation (Sunday 04:00 CST)
+0 4 * * 0 /Users/rafael/buffett-tribe/scripts/cron/rotate-logs.sh >> /Users/rafael/logs/buffett-tribe/rotate-logs.log 2>&1
+
+# buffett-tribe: hourly dual-drive worker (fast-track priority first, then standard pool 10 P0->P1 & 5 P1->P2, batch=15)
+15 * * * * /Users/rafael/buffett-tribe/scripts/cron/hourly-priority-worker.sh 15 all >> /Users/rafael/logs/buffett-tribe/priority-worker.log 2>&1
+```
+
+`hourly-phase1-worker.sh` 仍保留在仓库里，但已废弃，只是 `hourly-priority-worker.sh` 的兼容包装，不在当前 crontab 中。`update-fx-rates.sh` 此前存在但未注册，本次已补上并测试；`rotate-logs.sh` 是本次新增的日志轮转任务。
+
+## 2. 任务总览
+
+| 任务 | 调度 | 入口 | 近期实际耗时 | 日志 | 写库范围 | 锁 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 新股/新上市公司同步 | 周六 10:00 | `weekly-sync-new-listings.sh` | 26～28 秒（10/03、10/10、10/17） | `sync-new-listings.log` | `Entity`（新标的 `onboardPhase=0`） | `data-maintenance` 锁 |
+| A股/港股周度行情 | 周六 12:00 | `update-stock-prices.sh cn,hk` | 约 1 小时 39 分（10/17 12:00→13:39） | `update-stock-prices-cn-hk.log` | `StockPrice` | `data-maintenance` 锁 |
+| 美股周度行情 | 周日 01:00 | `update-stock-prices.sh us` | 约 1 小时 21 分（10/18 01:00→02:21） | `update-stock-prices-us.log` | `StockPrice` | `data-maintenance` 锁 |
+| 最新汇率刷新 | 周一 03:00 | `update-fx-rates.sh` | 7～8 秒（两次实测，21 个币种） | `update-fx-rates.log`（首次 cron 触发时创建） | `FxRate` 最新值 | PID 锁 |
+| 日志轮转 | 周日 04:00 | `rotate-logs.sh` | 通常小于 1 秒；有 10 MB 以上日志时多几秒 | `rotate-logs.log` | 只读日志、写归档 | 自身 PID 锁 |
+| 每小时增量飞轮 | 每小时第 15 分 | `hourly-priority-worker.sh 15 all` | 20 分 30 秒～22 分 54 秒（10/18 连续 10 次） | `priority-worker.log` | `Entity`、`Financial`、`FilingSection`、`StockPrice` 等 | 维护锁检查 + PID 锁 |
+
+## 3. 逐项可行性分析
+
+### 3.1 新股/新上市公司同步（周六 10:00）
+
+**运行事实**
+
+- 连续三次在 26～28 秒内完成：10/03 10:00:01→10:00:25，10/10 10:00:01→10:00:28，10/17 10:00:00→10:00:26。
+- 10/17 实际新增 A 股 4 家、港股 11 家、美股 30 家，均以 `onboardPhase=0` 写入。
+- 脚本先拉取 A 股、港股目录，再调用 `seed:master-universe` 拉取 SEC 美股目录并做差异插入。
+
+**可行性判断：高**
+
+- 运行时间远小于到 10:15 的 15 分钟间隔，正常情况下不会与每小时 worker 重叠。
+- 任务只插入新 `Entity`，不改已有公司的财务事实；与后续 worker 的分工清晰。
+
+**主要风险**
+
+- 没有 PID 锁。手工重跑、或上一次 akshare/SEC 请求卡住超过 15 分钟时，可能与 worker 的 10:15 批次并行。
+- 没有单步重试。akshare、SEC 或数据库任一步失败，整次周更失败；下一次要等一周。
+- 没有显式退出码记录。cron 只保存 stdout/stderr，若脚本中途失败，日志里不一定有醒目结论。
+
+**建议**
+
+- 增加与 worker 同款的 PID 锁，至少防止手工重跑与 cron 重入。
+- 对目录拉取失败做 2～3 次重试；失败时保留上一版 `data/all-*-stocks.json`，不要让空文件或半成品覆盖。
+- 日志末尾固定输出 `COMPLETE` 或 `FAILED`，便于巡检。
+
+### 3.2 A股/港股周度行情（周六 12:00）
+
+**运行事实**
+
+- 10/17 12:00:00 启动，日志最后写入时间为 13:39:17，单次约 1 小时 39 分。
+- 12:00 的排期是 2026-09-11 调整后的结果，用来避开周五亚洲收盘后 Yahoo 尚未结算完当日日线、最后一根 bar 为 `NaN` 的问题。
+- 日志中存在部分北交所标的 `No data returned`，脚本会继续跑完其他标的，最终以非零状态结束。
+
+**可行性判断：中高**
+
+- 周六中午运行，离周五收盘约 21 小时，能拿到完整日线。
+- 与周日美股行情相隔约 11 小时，两个行情任务本身不冲突。
+- 任务会持续到 13:39，期间会跨过 12:15 和 13:15 两个 worker 批次。
+
+**已处理的并发风险**
+
+- 行情脚本现在获取 `data-maintenance` 锁；手工重跑会等待最多 5 分钟，仍拿不到锁就以 `status=2` 退出。
+- worker 在启动前检查同一把锁；行情任务运行期间，12:15 和 13:15 的批次会记录 `Deferred` 并跳过，不再同时请求 yfinance 或写 `StockPrice`。
+- 所有 StockPrice 写入都通过 `update-stock-prices.sh` 或 worker。worker 在维护锁存在时不启动，因此同一 ticker 不会被两个生产任务并发写入。
+- 直接运行 `scripts/fetch-stock-prices-yf.py` 会绕过 shell 锁，属于不支持的操作；手工回补也必须使用 `update-stock-prices.sh`。
+
+**剩余风险**
+
+- Python 脚本按 ticker 逐个调用 Node 子进程写库，进程和数据库连接创建频繁；维护锁只保证不和其他长任务并行，不能降低单任务自身的开销。
+- 日志末尾现在有 `END ... status=...`，但部分 ticker 的 404/退市仍会让整批以非零状态结束；需要继续用 `mark:delisted-tickers` 清理。
+- 每次行情任务会跳过两个 worker 批次，一周约四个批次；如果 onboarding 积压明显，再评估是否把行情任务拆得更短。
+
+### 3.3 美股周度行情（周日 01:00）
+
+**运行事实**
+
+- 10/18 01:00:00 启动，日志最后写入时间为 02:21:31，单次约 1 小时 21 分。
+- 周日 01:00 距周五美股收盘约 21 小时，结算余量充足。
+- 日志中存在 `CEIX`、`ARCH`、`BK-PK` 等 `No data returned`，属于已退市或代码失效的候选。
+
+**可行性判断：中高**
+
+- 与周六 A股/港股任务相隔约 11 小时，互不重叠。
+- 与周一 03:00 的汇率任务相隔约 24 小时，不会冲突。
+- 但在 01:15 和 02:15 会与 worker 批次重叠，风险与 3.2 相同。
+
+**已处理**
+
+- 与 3.2 共用 `data-maintenance` 锁和 `END status` 日志。
+- 01:15 和 02:15 的 worker 批次会在检测到维护锁后跳过。
+- 若后续调整时间，优先保持“距收盘至少 20 小时”这个条件；worker 重叠已由锁处理，不再依赖启动时间错开。
+
+### 3.4 最新汇率刷新（周一 03:00，本次新增）
+
+**运行事实**
+
+- 两次执行（普通 shell 与模拟 cron 的空环境）分别耗时 8 秒和 7 秒，均刷新 21 个币种并全部成功。
+- Frankfurter 对 KZT、TWD、CLP、PEN、ARS、COP、VND 返回 404，自动回退 Yahoo Chart；其余币种走 Frankfurter/ECB。
+- 执行后 `FxRate.asOfDate` 为 2026-10-16 或 2026-10-17，`updatedAt` 为 2026-10-18 12:03～12:05 UTC（北京 20:03～20:05）。
+- 脚本退出后 `.cache/update-fx-rates.pid` 已自动清理。
+
+**可行性判断：高**
+
+- 只更新 `FxRate` 最新值，不写历史汇率，不改公司财务事实。
+- 21 个请求并发执行，实测 8 秒；周一 03:00 到 03:15 worker 启动之间有 15 分钟余量。
+- 排在周日美股行情之后，避免与行情任务争用外部 API。
+
+**边界**
+
+- 这个任务解决的是“最新汇率长期不更新”，不解决历史 PE/PB 使用最新汇率折算全部历史财务数据的问题；后者仍属于 BUG-16 的历史汇率口径问题。
+- 失败币种会让脚本以非零状态结束，已成功币种仍会更新；cron 目前只把结果写日志，没有告警。
+- 日志文件要等第一次 cron 触发后才会创建；本次手工运行是直接输出到终端。
+
+**调度理由**
+
+- 周六 10:00 的新股同步负责发现新公司，周日的行情任务负责价格，周一 03:00 再刷新汇率，顺序符合“实体 → 价格 → 折算”的依赖关系。
+- 不放在周六 12:00 或周日 01:00，避免与耗时约 1.5 小时的行情任务重叠。
+
+### 3.5 每小时增量飞轮（每小时第 15 分）
+
+**运行事实**
+
+- 10/18 连续 10 次运行，单次 20 分 30 秒～22 分 54 秒；总计 150 个公司槽位，成功 141 个、失败 9 个。
+- 失败主要来自港股年报 `ExtSource` 创建、部分 `edgartools` HTML 下载和招股书导入；worker 会在下一个小时重新尝试。
+- 脚本有 PID 锁和 `kill -0` 僵尸 PID 自愈；`--timeout-mins 48`，小于 60 分钟。
+- 公司间有 1 秒基础延迟，降低 SEC/东财/Yahoo 的瞬时压力。
+
+**可行性判断：高**
+
+- 20～23 分钟的批次长度与每小时节奏匹配，48 分钟硬超时留有足够余量。
+- PID 锁能防止上一批未结束时下一批重复启动。
+- 单批 1～2 家失败不会阻塞整批，下一小时可继续。
+
+**已处理的并发风险**
+
+- worker 启动前检查 `data-maintenance` 锁；行情任务运行期间会记录 `Deferred: data-maintenance is running` 并以 `status=2` 退出，不进入候选队列。
+- worker 自身仍保留 PID 锁和僵尸 PID 自愈，防止上一批未结束时重复启动。
+- 公司间有 1 秒基础延迟，降低 SEC/东财/Yahoo 的瞬时压力。
+
+**日志与剩余风险**
+
+- Node 日志时间统一带 `Z`，shell 日志带 `+08:00`，不再出现无法判断时区的时间。
+- `priority-worker.log` 由周日 04:00 的 `rotate-logs.sh` 轮转，单文件超过 10 MB 时压缩归档。
+- worker 不再额外写一份 `logs/pipeline-priority.log`，避免同一批日志双写和双倍增长。
+- 没有失败告警；连续多批失败仍需人工看日志，但 `END status` 已经能直接区分成功、失败和跳过。
+
+## 4. 潜在冲突矩阵
+
+| 组合 | 时间关系 | 冲突类型 | 判断 |
+| :--- | :--- | :--- | :--- |
+| 新股同步 × 每小时 worker | 周六 10:00:00～10:00:26，worker 10:15 启动 | 共享维护锁 | 已规避；同步运行期间 worker 会跳过 |
+| A股/港股行情 × 每小时 worker | 周六 12:00～13:39，worker 12:15、13:15 启动 | 共享维护锁；worker 主动跳过 | 已规避；不再并发请求 yfinance 或写 StockPrice |
+| 美股行情 × 每小时 worker | 周日 01:00～02:21，worker 01:15、02:15 启动 | 同上 | 已规避 |
+| A股/港股行情 × 美股行情 | 周六 12:00 与周日 01:00 | 相隔约 11 小时 | 无冲突 |
+| 汇率刷新 × 每小时 worker | 周一 03:00～03:00:08，worker 03:15 启动 | 约 15 分钟缓冲 | 低风险 |
+| 汇率刷新 × 行情任务 | 周一 03:00 与周末行情 | 相隔 24 小时以上 | 无冲突 |
+| 所有任务 × 数据库 | 共享同一个 PostgreSQL | 连接池、行锁、写入事务 | 长任务已串行；FX 仍可与 worker 短时并行 |
+| 所有任务 × 日志目录 | 同一个 `~/logs/buffett-tribe` | 磁盘增长 | 周日 04:00 轮转，保留 28 天 |
+
+**关于同一 ticker 的写入冲突**：`replaceStockPriceWindow` 在一个事务里删除并插入某个日期窗口；`StockPrice` 有 `(ticker, date)` 唯一约束。所有生产路径现在都受 `data-maintenance` 锁约束：行情任务持锁时 worker 不启动，worker 持锁时行情任务等待或退出。因此不会出现两个生产任务并发写同一 ticker。直接运行 Python 脚本会绕过 shell 锁，不再作为支持的操作。
+
+## 5. 本次已完成的变更
+
+### 5.1 统一维护锁
+
+新增 [`scripts/cron/lib/cron-common.sh`](/Users/rafael/R129/buffett-tribe/scripts/cron/lib/cron-common.sh)：
+
+- 用 `mkdir` 原子创建 `.cache/cron-locks/data-maintenance.lock`。
+- 锁内保存 PID；PID 不存在时自动清理僵尸锁。
+- 行情和新股同步最多等待 5 分钟；拿不到锁时输出 `Deferred` 并以 `status=2` 退出。
+- worker 启动前检查同一把锁；维护任务运行期间直接跳过，不进入候选队列。
+- 直接运行 Python 脚本不属于受支持入口；所有手工回补也必须走 `update-stock-prices.sh`。
+
+### 5.2 统一退出状态
+
+- 行情、新股同步和 worker 通过 `cron_finish` 在退出时输出 `=== END <时间> status=<退出码> ===`。
+- 汇率脚本使用自己的 `fx_finish`，同时清理 PID 文件并输出 `END status`。
+- 日志轮转脚本使用 `rotate_finish`，输出自己的 `END status`。
+- 退出码约定：`0` 成功；`1` 失败；`2` 因维护锁或已有进程而主动跳过。
+
+### 5.3 日志轮转
+
+新增 [`scripts/cron/rotate-logs.sh`](/Users/rafael/R129/buffett-tribe/scripts/cron/rotate-logs.sh)：
+
+- 每周日 04:00 执行。
+- 单文件超过 10 MB 才轮转。
+- 压缩到 `~/logs/buffett-tribe/archive/`，保留 28 天。
+- 原地截断当前日志，保持正在写入的进程文件描述符有效。
+- 排除 `rotate-logs.log` 自身，避免轮转脚本截断自己的输出。
+
+同时移除了 worker 对 `logs/pipeline-priority.log` 的重复写盘；生产日志只保留 cron 重定向的 `priority-worker.log`，避免同一批内容双写。
+
+### 5.4 时间格式
+
+- shell 脚本使用 `date -Iseconds`，日志带 `+08:00`。
+- Node worker 使用 UTC ISO 时间并补 `Z`，例如 `2026-10-18 12:15:00Z`。
+- 两种时间都带明确时区，不再出现相差 8 小时但无法判断来源的时间。
+
+### 5.5 汇率任务
+
+- 已在 mini crontab 中加入周一 03:00 的 `update-fx-rates.sh`。
+- 包装脚本显式设置 `PATH`，直接执行 `node --env-file=.env.local ./node_modules/.bin/tsx`。
+- 保留 `.cache/update-fx-rates.pid` 锁和僵尸 PID 自愈。
+- 两次执行分别 8 秒和 7 秒完成，21 个币种全部更新；第二次使用 `env -i` 模拟 cron 的最小环境。
+- `FxRate.asOfDate` 已推进到 2026-10-16/17。
+
+### 5.6 验证
+
+- `bash -n` 通过全部 cron shell 脚本。
+- `npm run typecheck:scripts` 通过。
+- 维护锁测试：首次获取成功、第二个进程失败、释放后可重新获取、死 PID 锁会被清理、`cron_finish` 能记录 `status=2`。
+- crontab 已回读确认；日志轮转任务在本次部署时一并安装。
+
+## 6. 建议的运维检查
+
+### 6.1 每周检查
+
+```bash
+ssh mini 'crontab -l'
+ssh mini 'ls -lh ~/logs/buffett-tribe'
+ssh mini 'tail -n 80 ~/logs/buffett-tribe/sync-new-listings.log'
+ssh mini 'tail -n 80 ~/logs/buffett-tribe/update-stock-prices-cn-hk.log'
+ssh mini 'tail -n 80 ~/logs/buffett-tribe/update-stock-prices-us.log'
+ssh mini 'tail -n 40 ~/logs/buffett-tribe/update-fx-rates.log'
+ssh mini 'tail -n 20 ~/logs/buffett-tribe/rotate-logs.log'
+ssh mini 'ls -lh ~/logs/buffett-tribe/archive | tail'
+```
+
+### 6.2 关键健康信号
+
+- 新股同步：日志出现 `Weekly New Listings Sync Complete`；三家市场的新增数量合理。
+- 行情任务：日志末尾有 `END ... status=0`；`status=2` 表示因维护锁跳过；`status=1` 才需要排查。
+- 汇率任务：日志列出 `Updated <currency> -> USD`；`FxRate.asOfDate` 不早于上一个交易日。
+- 每小时 worker：`BATCH SUMMARY` 的成功/失败数；`Deferred` 行表示行情任务正在运行。
+- 锁文件：`.cache/pipeline-priority-worker.pid` 和 `.cache/update-fx-rates.pid` 不应长期残留。
+- 日志轮转：`rotate-logs.log` 有 `END status=0`，归档目录按周增长且保留 28 天。
+
+### 6.3 后续改进
+
+- 如果出现必须直接从 Python 脚本回补的场景，再考虑给 StockPrice 写入增加 PostgreSQL 按 ticker advisory lock；当前生产入口已由维护锁串行化。
+- 若需要更精确的估值折算，可把汇率任务从每周提高到每日；当前实现只保存最新值，不保存历史日序列。
+- 如果 onboarding 积压明显，再评估行情任务期间跳过 worker 的吞吐损失；目前每周约少跑 4 个批次。
+
+## 7. 最终的 crontab
+
+当前 crontab 已按以下内容安装：
+
+```cron
+PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
+
+0 10 * * 6 /Users/rafael/buffett-tribe/scripts/cron/weekly-sync-new-listings.sh >> /Users/rafael/logs/buffett-tribe/sync-new-listings.log 2>&1
+
+0 12 * * 6 /Users/rafael/buffett-tribe/scripts/cron/update-stock-prices.sh cn,hk >> /Users/rafael/logs/buffett-tribe/update-stock-prices-cn-hk.log 2>&1
+0 1 * * 0 /Users/rafael/buffett-tribe/scripts/cron/update-stock-prices.sh us >> /Users/rafael/logs/buffett-tribe/update-stock-prices-us.log 2>&1
+
+0 3 * * 1 /Users/rafael/buffett-tribe/scripts/cron/update-fx-rates.sh >> /Users/rafael/logs/buffett-tribe/update-fx-rates.log 2>&1
+
+0 4 * * 0 /Users/rafael/buffett-tribe/scripts/cron/rotate-logs.sh >> /Users/rafael/logs/buffett-tribe/rotate-logs.log 2>&1
+
+15 * * * * /Users/rafael/buffett-tribe/scripts/cron/hourly-priority-worker.sh 15 all >> /Users/rafael/logs/buffett-tribe/priority-worker.log 2>&1
+```
+
+恢复旧版本（仅需要时）：
+
+```bash
+ssh mini 'crontab ~/crontab-backups/buffett-tribe-20261018-200300.cron'
+```
+
+---
+
+# 附录：2026-10-17 每小时飞轮改造方案（历史）
 
 ## 目录
 

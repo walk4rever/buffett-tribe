@@ -15,23 +15,31 @@ MARKET="${2:-all}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_DIR"
 
+source "$REPO_DIR/scripts/cron/lib/cron-common.sh"
+trap cron_finish EXIT
+
 export PATH="/Users/rafael/node/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
 mkdir -p logs .cache
+
+if maintenance_lock_live; then
+  echo "[$(date -Iseconds)] Deferred: data-maintenance is running."
+  exit 2
+fi
 
 PID_FILE=".cache/pipeline-priority-worker.pid"
 if [ -f "$PID_FILE" ]; then
   OLD_PID=$(cat "$PID_FILE" 2>/dev/null || true)
   if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Worker is already running with PID ${OLD_PID}. Exiting to prevent overlap."
-    exit 0
+    echo "[$(date -Iseconds)] Worker is already running with PID ${OLD_PID}. Exiting to prevent overlap."
+    exit 2
   else
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Found stale PID file (${OLD_PID:-empty} is dead). Removing ${PID_FILE}."
+    echo "[$(date -Iseconds)] Found stale PID file (${OLD_PID:-empty} is dead). Removing ${PID_FILE}."
     rm -f "$PID_FILE"
   fi
 fi
 
-echo "=== $(date '+%Y-%m-%d %H:%M:%S') : Starting Hourly Priority Worker (batch=${BATCH_SIZE}, market=${MARKET}) ==="
+echo "=== $(date -Iseconds) : Starting Hourly Priority Worker (batch=${BATCH_SIZE}, market=${MARKET}) ==="
 
 npm run worker:priority -- --batch-size "$BATCH_SIZE" --market "$MARKET" --delay 1000 --timeout-mins 48 "${@:3}"
 

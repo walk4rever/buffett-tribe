@@ -27,7 +27,7 @@
  *   npm run worker:priority -- --priority-only
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, appendFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -50,7 +50,6 @@ interface CandidateCompany {
 }
 
 const PID_FILE = path.join(process.cwd(), ".cache", "pipeline-priority-worker.pid");
-const LOG_FILE = path.join(process.cwd(), "logs", "pipeline-priority.log");
 export const DEAD_LETTER_BACKOFF_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // Core HK tickers for initial priority seeding
@@ -81,15 +80,9 @@ function hasFlag(flag: string): boolean {
 }
 
 function logMessage(msg: string) {
-  const ts = new Date().toISOString().slice(0, 19).replace("T", " ");
+  const ts = new Date().toISOString().slice(0, 19).replace("T", " ") + "Z";
   const line = `[${ts}] ${msg}`;
   console.log(line);
-  try {
-    mkdirSync(path.dirname(LOG_FILE), { recursive: true });
-    appendFileSync(LOG_FILE, line + "\n", "utf8");
-  } catch {
-    // Ignore logging write errors
-  }
 }
 
 let lockAcquired = false;

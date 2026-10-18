@@ -23,13 +23,21 @@ export PATH="/Users/rafael/node/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/b
 
 mkdir -p logs data
 
+source "$REPO_DIR/scripts/cron/lib/cron-common.sh"
+trap cron_finish EXIT
+
+if ! acquire_maintenance_lock 300; then
+  echo "Deferred: data-maintenance lock is busy."
+  exit 2
+fi
+
 PY="python3"
 if [ -x ".venv/bin/python" ]; then
   PY=".venv/bin/python"
 fi
 
 echo "======================================================="
-echo "=== $(date '+%Y-%m-%d %H:%M:%S') : Starting Weekly New Listings Sync ==="
+echo "=== $(date -Iseconds) : Starting Weekly New Listings Sync ==="
 echo "======================================================="
 
 # Step 1: Fetch latest CN A-shares catalog
@@ -48,5 +56,5 @@ echo "[3/3] Syncing new listings into database (Entity onboardPhase: 0)..."
 npm run seed:master-universe -- "$@"
 
 echo ""
-echo "=== $(date '+%Y-%m-%d %H:%M:%S') : Weekly New Listings Sync Complete ==="
+echo "=== $(date -Iseconds) : Weekly New Listings Sync Complete ==="
 echo "======================================================="
