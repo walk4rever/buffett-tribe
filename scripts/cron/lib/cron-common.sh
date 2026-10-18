@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Shared cron helpers. Source this file after REPO_DIR is set.
 
+: "${REPO_DIR:?REPO_DIR must be set before sourcing cron-common.sh}"
+
 CRON_LOCK_ROOT="${REPO_DIR}/.cache/cron-locks"
 CRON_DATA_LOCK_DIR="${CRON_LOCK_ROOT}/data-maintenance.lock"
 CRON_LOCK_OWNED=0

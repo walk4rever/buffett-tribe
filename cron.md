@@ -24,8 +24,8 @@ PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
 # buffett-tribe: weekly FX refresh after Sunday US stock update (Monday 03:00 CST)
 0 3 * * 1 /Users/rafael/buffett-tribe/scripts/cron/update-fx-rates.sh >> /Users/rafael/logs/buffett-tribe/update-fx-rates.log 2>&1
 
-# buffett-tribe: weekly log rotation (Sunday 04:00 CST)
-0 4 * * 0 /Users/rafael/buffett-tribe/scripts/cron/rotate-logs.sh >> /Users/rafael/logs/buffett-tribe/rotate-logs.log 2>&1
+# buffett-tribe: weekly log rotation (Sunday 05:00 CST)
+0 5 * * 0 /Users/rafael/buffett-tribe/scripts/cron/rotate-logs.sh >> /Users/rafael/logs/buffett-tribe/rotate-logs.log 2>&1
 
 # buffett-tribe: hourly dual-drive worker (fast-track priority first, then standard pool 10 P0->P1 & 5 P1->P2, batch=15)
 15 * * * * /Users/rafael/buffett-tribe/scripts/cron/hourly-priority-worker.sh 15 all >> /Users/rafael/logs/buffett-tribe/priority-worker.log 2>&1
@@ -41,7 +41,7 @@ PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
 | A股/港股周度行情 | 周六 12:00 | `update-stock-prices.sh cn,hk` | 约 1 小时 39 分（10/17 12:00→13:39） | `update-stock-prices-cn-hk.log` | `StockPrice` | `data-maintenance` 锁 |
 | 美股周度行情 | 周日 01:00 | `update-stock-prices.sh us` | 约 1 小时 21 分（10/18 01:00→02:21） | `update-stock-prices-us.log` | `StockPrice` | `data-maintenance` 锁 |
 | 最新汇率刷新 | 周一 03:00 | `update-fx-rates.sh` | 7～8 秒（两次实测，21 个币种） | `update-fx-rates.log`（首次 cron 触发时创建） | `FxRate` 最新值 | PID 锁 |
-| 日志轮转 | 周日 04:00 | `rotate-logs.sh` | 通常小于 1 秒；有 10 MB 以上日志时多几秒 | `rotate-logs.log` | 只读日志、写归档 | 自身 PID 锁 |
+| 日志轮转 | 周日 05:00 | `rotate-logs.sh` | 通常小于 1 秒；有 10 MB 以上日志时多几秒 | `rotate-logs.log` | 只读日志、写归档 | 自身 PID 锁 |
 | 每小时增量飞轮 | 每小时第 15 分 | `hourly-priority-worker.sh 15 all` | 20 分 30 秒～22 分 54 秒（10/18 连续 10 次） | `priority-worker.log` | `Entity`、`Financial`、`FilingSection`、`StockPrice` 等 | 维护锁 + PID 锁 |
 
 ## 3. 逐项可行性分析
@@ -171,7 +171,7 @@ PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
 **日志与剩余风险**
 
 - Node 日志时间统一带 `Z`，shell 日志带 `+08:00`，不再出现无法判断时区的时间。
-- `priority-worker.log` 由周日 04:00 的 `rotate-logs.sh` 轮转，单文件超过 10 MB 时压缩归档。
+- `priority-worker.log` 由周日 05:00 的 `rotate-logs.sh` 轮转，单文件超过 10 MB 时压缩归档。
 - worker 不再额外写一份 `logs/pipeline-priority.log`，避免同一批日志双写和双倍增长。
 - 没有失败告警；连续多批失败仍需人工看日志，但 `END status` 已经能直接区分成功、失败和跳过。
 
@@ -186,7 +186,7 @@ PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
 | 汇率刷新 × 每小时 worker | 周一 03:00～03:00:08，worker 03:15 启动 | 约 15 分钟缓冲 | 低风险 |
 | 汇率刷新 × 行情任务 | 周一 03:00 与周末行情 | 相隔 24 小时以上 | 无冲突 |
 | 所有任务 × 数据库 | 共享同一个 PostgreSQL | 连接池、行锁、写入事务 | 长任务已串行；FX 仍可与 worker 短时并行 |
-| 所有任务 × 日志目录 | 同一个 `~/logs/buffett-tribe` | 磁盘增长 | 周日 04:00 轮转，保留 28 天 |
+| 所有任务 × 日志目录 | 同一个 `~/logs/buffett-tribe` | 磁盘增长 | 周日 05:00 轮转，保留 28 天 |
 
 **关于同一 ticker 的写入冲突**：`replaceStockPriceWindow` 在一个事务里删除并插入某个日期窗口；`StockPrice` 有 `(ticker, date)` 唯一约束。所有生产路径现在都受 `data-maintenance` 锁约束：行情任务持锁时 worker 不启动，worker 持锁时行情任务等待或退出。因此不会出现两个生产任务并发写同一 ticker。直接运行 Python 脚本会绕过 shell 锁，不再作为支持的操作。
 
@@ -213,7 +213,7 @@ PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
 新增 [`scripts/cron/rotate-logs.sh`](/Users/rafael/R129/buffett-tribe/scripts/cron/rotate-logs.sh)：
 
-- 每周日 04:00 执行。
+- 每周日 05:00 执行。
 - 单文件超过 10 MB 才轮转。
 - 压缩到 `~/logs/buffett-tribe/archive/`，保留 28 天。
 - 原地截断当前日志，保持正在写入的进程文件描述符有效。
@@ -291,7 +291,7 @@ PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
 0 3 * * 1 /Users/rafael/buffett-tribe/scripts/cron/update-fx-rates.sh >> /Users/rafael/logs/buffett-tribe/update-fx-rates.log 2>&1
 
-0 4 * * 0 /Users/rafael/buffett-tribe/scripts/cron/rotate-logs.sh >> /Users/rafael/logs/buffett-tribe/rotate-logs.log 2>&1
+0 5 * * 0 /Users/rafael/buffett-tribe/scripts/cron/rotate-logs.sh >> /Users/rafael/logs/buffett-tribe/rotate-logs.log 2>&1
 
 15 * * * * /Users/rafael/buffett-tribe/scripts/cron/hourly-priority-worker.sh 15 all >> /Users/rafael/logs/buffett-tribe/priority-worker.log 2>&1
 ```
