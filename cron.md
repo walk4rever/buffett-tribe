@@ -59,17 +59,20 @@ PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
 - 运行时间远小于到 10:15 的 15 分钟间隔，正常情况下不会与每小时 worker 重叠。
 - 任务只插入新 `Entity`，不改已有公司的财务事实；与后续 worker 的分工清晰。
 
-**主要风险**
+**已处理**
 
-- 没有 PID 锁。手工重跑、或上一次 akshare/SEC 请求卡住超过 15 分钟时，可能与 worker 的 10:15 批次并行。
+- 与行情任务共用 `data-maintenance` 锁；手工重跑会等待最多 5 分钟，仍拿不到锁就以 `status=2` 退出。
+- worker 在同步运行期间不会启动，10:15 批次会自动跳过。
+- 日志末尾有 `END ... status=...`，不再需要靠最后一行猜测是否成功。
+
+**剩余风险**
+
 - 没有单步重试。akshare、SEC 或数据库任一步失败，整次周更失败；下一次要等一周。
-- 没有显式退出码记录。cron 只保存 stdout/stderr，若脚本中途失败，日志里不一定有醒目结论。
+- 没有失败告警，失败只能通过日志巡检发现。
 
-**建议**
+**后续可选**
 
-- 增加与 worker 同款的 PID 锁，至少防止手工重跑与 cron 重入。
 - 对目录拉取失败做 2～3 次重试；失败时保留上一版 `data/all-*-stocks.json`，不要让空文件或半成品覆盖。
-- 日志末尾固定输出 `COMPLETE` 或 `FAILED`，便于巡检。
 
 ### 3.2 A股/港股周度行情（周六 12:00）
 
@@ -236,8 +239,13 @@ PATH=/Users/rafael/node/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
 - `bash -n` 通过全部 cron shell 脚本。
 - `npm run typecheck:scripts` 通过。
+- `vitest` 的 worker/process-group 相关 11 项测试通过。
 - 维护锁测试：首次获取成功、第二个进程失败、释放后可重新获取、死 PID 锁会被清理、`cron_finish` 能记录 `status=2`。
-- crontab 已回读确认；日志轮转任务在本次部署时一并安装。
+- mini 已 fast-forward 到 `f39a6918`；worker 在维护锁被占用时输出 `Deferred` 并返回 `status=2`。
+- 汇率脚本在 `env -i` 最小环境下执行成功，输出 `END status=0`。
+- 日志轮转在临时目录测试通过：大文件被压缩归档、当前文件被截断、`rotate-logs.log` 自身不被轮转。
+- crontab 已回读确认，共 6 条任务；日志轮转任务已安装。
+- 两个完整行情任务没有在本次部署中重跑；耗时和错误样本来自 10/17～10/18 的实际日志。
 
 ## 6. 建议的运维检查
 
