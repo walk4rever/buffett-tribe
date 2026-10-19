@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.47.12] - 2026-10-19
+
 ### Added
 - **Agent 公司研究工具按数据边界重组**：新增 `get_company_overview`、`get_company_business_model`、`get_company_moat`、`get_company_capital_allocation`、`get_company_valuation` 五个专用工具；资本配置和估值通过内部 `/api/internal/company-metrics` 复用公司页的 ValueLine 计算，确保 agent 与页面同源。
 
