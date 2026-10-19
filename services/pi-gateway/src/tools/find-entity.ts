@@ -8,7 +8,8 @@ export type EntityMatch = {
 };
 
 /**
- * Shared entity lookup across pi-gateway tools (get_company_analysis, search_filings).
+ * Shared entity lookup across pi-gateway company tools (overview, business
+ * model, moat) and search_filings.
  *
  * Resolves a company ticker, Chinese/English name, or common alias (e.g. SpaceX -> SPACE EXPLORATION TECHNOLOGIES CORP).
  *

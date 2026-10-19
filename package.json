@@ -129,8 +129,6 @@
     "generate:business-model:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-business-model.ts --dry-run",
     "generate:value-analysis": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-value-analysis.ts",
     "generate:value-analysis:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-value-analysis.ts --dry-run",
-    "generate:management-analysis": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-management-analysis.ts",
-    "generate:management-analysis:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-management-analysis.ts --dry-run",
     "regenerate:hk-analyses": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/regenerate-hk-analyses.ts",
     "generate:home-signals": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-home-signals.ts",
     "generate:home-signals:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/generate-home-signals.ts --dry-run",

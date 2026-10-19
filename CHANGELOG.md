@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Agent 公司研究工具按数据边界重组**：新增 `get_company_overview`、`get_company_business_model`、`get_company_moat`、`get_company_capital_allocation`、`get_company_valuation` 五个专用工具；资本配置和估值通过内部 `/api/internal/company-metrics` 复用公司页的 ValueLine 计算，确保 agent 与页面同源。
+
+### Changed
+- **Agent 工具路由与展示统一**：更新 `AGENTS.md`、工具白名单、前端中文工具名和参数摘要；段永平 `duan` / `duanyongping` 别名、网页搜索结果数、52 周价格窗口和 filing/财务说明同步对齐。
+- **公司指标接口性能**：`getValueLineData()` 支持跳过 holder/AUM 查询，agent 指标接口单次 AAPL 请求从约 12 秒降至约 6 秒。
+
+### Removed
+- **移除聚合公司分析工具**：`get_company_analysis` 退出 LLM 工具列表，避免继续读取已废弃的 `CompanyAnalysis.management` / `valuation`；旧管理分析生成入口从 onboarding/update/regenerate 和 npm scripts 中移除。
+
 ## [v0.47.11] - 2026-10-18
 
 ### Fixed

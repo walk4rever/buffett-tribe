@@ -479,7 +479,7 @@ export const getCompanyFinancialsTool = defineTool({
   name: "get_company_financials",
   label: "Get Company Financials (Three Statements & Metrics)",
   description:
-    "Fetch normalized multi-year financial statements (Income Statement, Balance Sheet, Cash Flow) and calculated metrics (Free Cash Flow, FCF ex-SBC, ROE, Margins) for a company. Supports querying specific line items like R&D expense, SBC, OCF, CapEx, FCF, Revenue, or Net Income across FY2020-2025. Use this whenever the user asks for exact financial figures, historical financial trends, capital expenditure, R&D spending, or cash flow decomposition.",
+    "Fetch normalized multi-year financial statements (Income Statement, Balance Sheet, Cash Flow), the latest interim snapshot when available, and calculated metrics (Free Cash Flow, FCF ex-SBC, ROE, Margins) for a company. Supports querying specific line items like R&D expense, SBC, OCF, CapEx, FCF, Revenue, or Net Income from the available fiscal years starting in 2020. Use this whenever the user asks for exact financial figures, historical financial trends, capital expenditure, R&D spending, or cash flow decomposition.",
   promptSnippet: "get_company_financials(company, years?, statement?, lineItems?) → multi-year financial statement tables and key metrics",
   parameters: Type.Object({
     company: Type.String({

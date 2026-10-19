@@ -273,10 +273,18 @@ export type ValueLineData = {
   businessSegments: string | null;
 };
 
+export type GetValueLineDataOptions = {
+  /** Agent metric endpoints only need fundamentals, prices, and valuation.
+   *  Skipping the holder/AUM queries cuts several seconds from cold calls. */
+  includeHolders?: boolean;
+};
+
 export async function getValueLineData(
   identifier: string,
   preferredTicker?: string,
+  options: GetValueLineDataOptions = {},
 ): Promise<ValueLineData | null> {
+  const includeHolders = options.includeHolders !== false;
   const trimmed = identifier.trim();
   const parsed = parseCompanyIdentifier(trimmed);
 
@@ -1218,6 +1226,8 @@ export async function getValueLineData(
   }
 
   // 3. Tribe Superinvestor Holders (aggregated with multi-ticker class breakdown)
+  let topHolders: ValueLineHolder[] = [];
+  if (includeHolders) {
   const [holdersRes, tribeMembers] = await Promise.all([
     getRecentHolders(entity.id, 1000),
     getTribeMembers(),
@@ -1389,7 +1399,7 @@ export async function getValueLineData(
     ),
   ]);
   const aumMap = new Map(aumEntries);
-  const topHolders: ValueLineHolder[] = rankedHolders.map((rankedHolder) => {
+  topHolders = rankedHolders.map((rankedHolder) => {
     const { groupKey, holderIds, ...holder } = rankedHolder;
     void holderIds;
     return {
@@ -1398,6 +1408,7 @@ export async function getValueLineData(
       trend: holderTrends.get(groupKey) ?? [],
     };
   });
+  }
 
   // 4. AI Business Essence, Moat & Risk Insights
   const analysis = entity.analyses[0] ?? null;

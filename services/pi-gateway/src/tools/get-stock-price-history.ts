@@ -18,6 +18,25 @@ async function queryStockPrices(ticker: string): Promise<PriceRow[]> {
   const baseTicker = cleanTicker.replace(/\.(US|SS|SH|SZ|HK)$/i, "");
 
   const sql = `
+    WITH matched AS (
+      SELECT
+        ticker,
+        date,
+        close,
+        high,
+        low,
+        volume
+      FROM "StockPrice"
+      WHERE (
+        UPPER(ticker) = $1
+        OR UPPER(ticker) = $2
+        OR UPPER(ticker) LIKE $2 || '.%'
+        OR UPPER(ticker) LIKE '%' || $2
+      )
+    ),
+    latest AS (
+      SELECT MAX(date) AS latest_date FROM matched
+    )
     SELECT
       ticker,
       to_char(date, 'YYYY-MM-DD') AS date,
@@ -25,15 +44,10 @@ async function queryStockPrices(ticker: string): Promise<PriceRow[]> {
       high::text,
       low::text,
       volume::text
-    FROM "StockPrice"
-    WHERE (
-      UPPER(ticker) = $1
-      OR UPPER(ticker) = $2
-      OR UPPER(ticker) LIKE $2 || '.%'
-      OR UPPER(ticker) LIKE '%' || $2
-    )
+    FROM matched, latest
+    WHERE date >= latest.latest_date - INTERVAL '1 year'
     ORDER BY date DESC
-    LIMIT 365
+    LIMIT 366
   `;
 
   const result = await pool.query<PriceRow>(sql, [cleanTicker, baseTicker]);
@@ -121,8 +135,8 @@ export const getStockPriceHistoryTool = defineTool({
   name: "get_stock_price_history",
   label: "Get Stock Price History",
   description:
-    "Fetch recent stock price levels, 52-week high/low range, and 1-month/3-month/1-year performance trends for a company. Use this whenever the user asks about recent price movement, current valuation context, 52-week position, or historical price trajectory.",
-  promptSnippet: "get_stock_price_history(company) → latest price, 52-week high/low, and recent trend",
+    "Fetch the latest available daily close, 52-week high/low range, and 1-month/3-month/1-year performance trends for a company. This is a database snapshot, not intraday or real-time market data. Use this whenever the user asks about recent price movement, current valuation context, 52-week position, or historical price trajectory.",
+  promptSnippet: "get_stock_price_history(company) → latest available daily close, 52-week high/low, and recent trend",
   parameters: Type.Object({
     company: Type.String({
       description: "Company ticker (e.g. AAPL, 600519, 00700) or name in Chinese/English (e.g. 苹果, 贵州茅台, 腾讯控股)",

@@ -4,6 +4,7 @@ import { getSession, getExistingSession, type SessionContext } from "./session-m
 import { streamPrompt } from "./stream.js";
 import { validateImageAttachments } from "./image-attachment.js";
 import { validateHistory } from "./history.js";
+import { fetchChartData, normalizeChartRange, normalizeChartTicker } from "./chart.js";
 
 function buildContextPrefix(context: SessionContext | undefined): string | undefined {
   if (context?.masterName) {
@@ -15,89 +16,54 @@ function buildContextPrefix(context: SessionContext | undefined): string | undef
     const situation = context.periodYear
       ? `当前用户正在阅读${label} ${context.periodYear} 年的年报原文。`
       : `当前用户正在浏览${label}的公司主页。`;
-    return `[${situation}除非用户明确提到其他公司，围绕这家公司展开分析。业务/产品/护城河/估值情景/管理层资本配置这类问题，先调用 get_company_analysis("${companyParam}") 看网站已生成的分析，不要重新从原文推导；只有需要原文具体表述、某一年具体数字，或 get_company_analysis 没覆盖的内容时才调用 search_filings，用 "${companyParam}" 作为 company 参数${context.periodYear ? `，year 参数用 ${context.periodYear}` : ""}。]`;
+    return `[${situation}除非用户明确提到其他公司，围绕这家公司展开分析。公司概览用 get_company_overview("${companyParam}")，商业模式用 get_company_business_model("${companyParam}")，护城河用 get_company_moat("${companyParam}")；资本配置用 get_company_capital_allocation("${companyParam}")，估值用 get_company_valuation("${companyParam}")。只有需要原文具体表述、某一年具体数字或披露原文时才调用 search_filings，用 "${companyParam}" 作为 company 参数${context.periodYear ? `，year 参数用 ${context.periodYear}` : ""}。]`;
   }
   if (context?.insightSlug) {
     const titleLabel = context.insightTitle ? `《${context.insightTitle}》` : "";
-    return `[当前用户正在阅读洞见文章${titleLabel}（slug: ${context.insightSlug}）。需要原文中的具体表述、数据或段落细节时，调用 get_insight_content("${context.insightSlug}") 获取全文；仅凭标题回答不确定的问题前，先取原文核实。]`;
+    return `[当前用户正在阅读洞见文章${titleLabel}（slug: ${context.insightSlug}）。需要原文中的具体表述、数据或段落细节时，调用 get_insight_content(slug="${context.insightSlug}") 获取全文；仅凭标题回答不确定的问题前，先取原文核实。]`;
   }
   return undefined;
 }
 
 const PORT = Number(process.env.PORT ?? 3456);
 const app = express();
-// Default 100kb is too small for a request carrying downscaled image attachments.
-app.use(express.json({ limit: "10mb" }));
+// Parse after authentication, and keep the large limit scoped to /chat. The
+// default 100kb is too small for a request carrying downscaled images.
+const chatJson = express.json({ limit: "10mb" });
+const smallJson = express.json({ limit: "100kb" });
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
 
-const PYTHON_CHART_SCRIPT = `
-import sys, json, yfinance as yf
-ticker = sys.argv[1]
-range_val = sys.argv[2] if len(sys.argv) > 2 else "10d"
-t = yf.Ticker(ticker)
-df = t.history(period=range_val, interval="1d", auto_adjust=False)
-if df.empty:
-    print(json.dumps({"error": "empty"}))
-    sys.exit(0)
-res = {
-    "chart": {
-        "result": [{
-            "meta": {
-                "regularMarketPrice": float(df["Close"].iloc[-1]) if not df.empty else None,
-                "symbol": ticker,
-            },
-            "timestamp": [int(d.timestamp()) for d in df.index],
-            "indicators": {
-                "quote": [{
-                    "open": [float(x) if x == x else None for x in df["Open"]],
-                    "high": [float(x) if x == x else None for x in df["High"]],
-                    "low": [float(x) if x == x else None for x in df["Low"]],
-                    "close": [float(x) if x == x else None for x in df["Close"]],
-                    "volume": [int(x) if x == x else None for x in df["Volume"]],
-                }],
-                "adjclose": [{
-                    "adjclose": [float(x) if x == x else None for x in df.get("Adj Close", df["Close"])],
-                }]
-            }
-        }]
-    }
-}
-print(json.dumps(res))
-`;
-
-app.get("/chart/:ticker", async (req, res) => {
-  const { ticker } = req.params;
-  const range = (req.query.range as string) || "10d";
-  if (!ticker || typeof ticker !== "string") {
+app.get("/chart/:ticker", requireSecret, async (req, res) => {
+  const ticker = normalizeChartTicker(req.params.ticker);
+  const range = normalizeChartRange(req.query.range);
+  if (!ticker) {
     res.status(400).json({ error: "ticker is required" });
     return;
   }
+  if (!range) {
+    res.status(400).json({ error: "unsupported range" });
+    return;
+  }
   try {
-    const { spawnSync } = await import("node:child_process");
-    const cp = spawnSync("python3", ["-c", PYTHON_CHART_SCRIPT, ticker.trim().toUpperCase(), range], {
-      encoding: "utf-8",
-      timeout: 10000,
-    });
-    if (cp.status !== 0 || !cp.stdout) {
-      res.status(502).json({ error: "python chart fetch failed", stderr: cp.stderr?.slice(0, 200) });
-      return;
-    }
-    const data = JSON.parse(cp.stdout);
+    const data = await fetchChartData(ticker, range) as {
+      chart?: { result?: unknown[] };
+    };
     if (!data?.chart?.result) {
       res.status(404).json({ error: "no data found", data });
       return;
     }
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : "Fetch failed" });
+    const status = (err as { statusCode?: number }).statusCode ?? 502;
+    res.status(status).json({ error: err instanceof Error ? err.message : "Fetch failed" });
   }
 });
 
 
-app.post("/chat", requireSecret, async (req, res) => {
+app.post("/chat", requireSecret, chatJson, async (req, res) => {
   const { message, userId, context, images: rawImages, history: rawHistory } = req.body as {
     message?: string;
     userId?: string;
@@ -168,7 +134,7 @@ app.post("/chat", requireSecret, async (req, res) => {
 // before that lets a client that immediately sends its next message reach /chat
 // while the session still looks busy, which is exactly the 409 this endpoint exists
 // to prevent.
-app.post("/cancel", requireSecret, async (req, res) => {
+app.post("/cancel", requireSecret, smallJson, async (req, res) => {
   const { userId, context } = req.body as { userId?: string; context?: SessionContext };
   const session = getExistingSession(userId, context);
   if (session?.isStreaming) await session.abort();

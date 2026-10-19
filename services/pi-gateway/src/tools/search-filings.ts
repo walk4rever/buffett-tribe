@@ -158,16 +158,16 @@ async function fetchFullSectionContent(
 
 export const searchFilingsTool = defineTool({
   name: "search_filings",
-  label: "Search Annual Reports",
+  label: "Search Company Filings",
   description:
-    "Search annual report sections for any public company — SEC 10-K/20-F filings for US-listed companies, HKEXnews annual reports for HK-listed companies (e.g. 9992.HK / 泡泡玛特), or cninfo annual reports for A-share companies (e.g. 600519.SS / 贵州茅台). Returns relevant content from business description, MD&A, risk factors, financial statements, and more. Data covers ~120 companies from 2020–2025.",
-  promptSnippet: "search_filings(company, section?, year?, keyword?) → annual report content",
+    "Search annual-report sections for covered public companies — SEC 10-K/20-F/40-F filings for US-listed companies, HKEXnews annual reports for HK-listed companies (e.g. 9992.HK / 泡泡玛特), or cninfo annual reports for A-share companies (e.g. 600519.SS / 贵州茅台). Returns an excerpt from business description, MD&A, risk factors, financial statements, and more. Coverage is roughly 120 companies from 2020–2025, not every public company.",
+  promptSnippet: "search_filings(company, section?, year?, keyword?) → filing section excerpt",
   parameters: Type.Object({
     company: Type.String({
       description: "Company ticker (e.g. AAPL, 9992.HK, or 600519.SS) or partial name in English or Chinese (e.g. Apple, 泡泡玛特, 贵州茅台)",
     }),
     section: Type.Optional(Type.String({
-      description: "Section to retrieve: business | mda | risk | financial | notes | cybersecurity | market_risk | compensation | governance | properties | legal | prospectus — or an exact section key like item_7_mda or us_prospectus_1. Omit to see available sections.",
+      description: "Section to retrieve: business | mda | risk | financial | notes | cybersecurity | market_risk | compensation | governance | properties | legal | management | ownership | prospectus — or an exact section key like item_7_mda or us_prospectus_1. Omit to see available sections.",
     })),
     year: Type.Optional(Type.Number({
       description: "Fiscal year of the filing (e.g. 2024). Omit for most recent.",

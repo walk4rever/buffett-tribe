@@ -907,8 +907,6 @@ export async function getCompanyAnalysis(entityId: string) {
       profile: true,
       business: true,
       moat: true,
-      management: true,
-      valuation: true,
       source: true,
       version: true,
       updatedAt: true,

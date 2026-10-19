@@ -1,16 +1,16 @@
 /**
  * Refresh an already-onboarded company: check SEC for a newer 10-K/20-F/40-F,
- * refresh stock prices, and regenerate the 5 LLM artifacts when triggered.
+ * refresh stock prices, and regenerate the remaining qualitative LLM artifacts when triggered.
  *
  * Two independent regeneration triggers:
- *   1. New filing detected -> underlying facts changed, force-overwrite all
- *      5 artifacts (existing content is now stale).
+ *   1. New filing detected -> underlying facts changed, force-overwrite the
+ *      remaining qualitative artifacts (existing content is now stale).
  *   2. No new filing, but at least one artifact has never been generated
  *      (company page is still falling back to generic mock narrative /
  *      "构建中" placeholders) -> backfill run without --force, so each
  *      generate:* script's own skip-if-exists check leaves already-real
  *      content untouched and only fills the actual gaps.
- * --force-regenerate always forces all 5, regardless of either signal.
+ * --force-regenerate always forces all remaining qualitative artifacts, regardless of either signal.
  *
  * Mirrors PRODUCT.md's "动静分离" principle — numbers (price, financials)
  * refresh cheaply and often; LLM narrative only regenerates when triggered
@@ -36,7 +36,6 @@ const GENERATE_STEPS = [
   { script: "generate:company-profile", artifactType: "company_profile", label: "公司概览" },
   { script: "generate:business-model", artifactType: "business_overview", label: "业务概览/商业画布" },
   { script: "generate:value-analysis", artifactType: "value_analysis", label: "价值分析" },
-  { script: "generate:management-analysis", artifactType: "management_analysis", label: "管理分析" },
 ] as const;
 
 function getArg(flag: string): string | undefined {

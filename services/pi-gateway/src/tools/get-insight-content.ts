@@ -10,6 +10,8 @@ type InsightRow = {
   published_at: string | null;
 };
 
+const MAX_ARTICLE_CHARS = 40_000;
+
 function htmlToReadableText(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
@@ -33,20 +35,31 @@ type InsightSearchRow = {
   published_at: string | null;
 };
 
-export const getInsightContentTool = defineTool({
+const getInsightContentParameters = Type.Object({
+  query: Type.Optional(Type.String({
+    description: "Topic, company, or keyword to search across insight articles (e.g. 比亚迪, 巴菲特, 科技, 医疗)",
+  })),
+  slug: Type.Optional(Type.String({
+    description: "Exact insight article slug if known, e.g. buffett-2025-letter-notes",
+  })),
+});
+
+type GetInsightContentDetails = {
+  slug?: string;
+  count?: number;
+  truncated?: boolean;
+} | null;
+
+export const getInsightContentTool = defineTool<
+  typeof getInsightContentParameters,
+  GetInsightContentDetails
+>({
   name: "get_insight_content",
   label: `Search and Get ${BRAND_EN} Insight Articles`,
   description:
-    `Search or fetch published ${BRAND_EN} insight articles (/insights). Provide 'query' to search by topic/company/keyword (e.g. 比亚迪, 巴菲特股东信, 消费), or 'slug' to get an exact article's full text.`,
+    `Search or fetch published ${BRAND_EN} insight articles (/insights). Provide 'query' to search by topic/company/keyword (e.g. 比亚迪, 巴菲特股东信, 消费), or 'slug' to get an exact article's full text. At least one of query or slug is required.`,
   promptSnippet: "get_insight_content(query?, slug?) → published insight article or search results",
-  parameters: Type.Object({
-    query: Type.Optional(Type.String({
-      description: "Topic, company, or keyword to search across insight articles (e.g. 比亚迪, 巴菲特, 科技, 医疗)",
-    })),
-    slug: Type.Optional(Type.String({
-      description: "Exact insight article slug if known, e.g. buffett-2025-letter-notes",
-    })),
-  }),
+  parameters: getInsightContentParameters,
   async execute(_id, params, signal) {
     const { slug, query } = params;
 
@@ -80,13 +93,17 @@ export const getInsightContentTool = defineTool({
 
       if (row) {
         const body = row.format === "html" ? htmlToReadableText(row.content_raw) : row.content_raw;
+        const truncated = body.length > MAX_ARTICLE_CHARS;
+        const visibleBody = truncated
+          ? `${body.slice(0, MAX_ARTICLE_CHARS)}\n\n[Article truncated at ${MAX_ARTICLE_CHARS.toLocaleString()} characters]`
+          : body;
         const text = [
           `**${row.title}**`,
           row.published_at ? `Published: ${row.published_at}` : "",
           "",
-          body,
+          visibleBody,
         ].filter(Boolean).join("\n");
-        return { content: [{ type: "text" as const, text }], details: { slug } };
+        return { content: [{ type: "text" as const, text }], details: { slug, truncated } };
       }
     }
 
@@ -121,13 +138,20 @@ export const getInsightContentTool = defineTool({
       if (rows.length === 1) {
         const single = rows[0];
         const body = single.format === "html" ? htmlToReadableText(single.content_raw) : single.content_raw;
+        const truncated = body.length > MAX_ARTICLE_CHARS;
+        const visibleBody = truncated
+          ? `${body.slice(0, MAX_ARTICLE_CHARS)}\n\n[Article truncated at ${MAX_ARTICLE_CHARS.toLocaleString()} characters]`
+          : body;
         const text = [
           `**${single.title}** (Slug: ${single.slug})`,
           single.published_at ? `Published: ${single.published_at}` : "",
           "",
-          body,
+          visibleBody,
         ].filter(Boolean).join("\n");
-        return { content: [{ type: "text" as const, text }], details: { count: 1, slug: single.slug } };
+        return {
+          content: [{ type: "text" as const, text }],
+          details: { count: 1, slug: single.slug, truncated },
+        };
       }
 
       // If multiple matches, return summary list with excerpts

@@ -20,6 +20,13 @@ type HoldingRow = {
   holder_tribe_id?: string | null;
 };
 
+type HoldingsDetails = {
+  count: number;
+  mode?: string;
+  company?: string;
+  master?: string;
+} | null;
+
 async function queryHoldings(
   tribeId: string,
   company: string | null,
@@ -280,29 +287,31 @@ export async function createSearchHoldingsTool() {
   const rosterNames = [...filerLabels.values()].join(", ");
   const rosterIds = [...filerLabels.keys()].join(" | ");
 
-  return defineTool({
+  const parameters = Type.Object({
+    master: Type.Optional(Type.String({
+      description: `Which investor to inspect: ${rosterIds}. Omit to search who holds a company across all investors.`,
+    })),
+    company: Type.Optional(Type.String({
+      description: "Filter by company ticker (e.g. AAPL) or partial name. If master is omitted, finds all investors holding this company.",
+    })),
+    year: Type.Optional(Type.Number({
+      description: "Filter by year (e.g. 2023). Omit for most recent.",
+    })),
+    quarter: Type.Optional(Type.Number({
+      description: "Filter by quarter 1–4. Omit for most recent.",
+    })),
+    top_n: Type.Optional(Type.Number({
+      description: "Max positions to return (default 15, max 25).",
+    })),
+  });
+
+  return defineTool<typeof parameters, HoldingsDetails>({
     name: "search_holdings",
     label: "Search 13F Holdings",
     description:
       `Look up 13F portfolio holdings for tracked investors (${rosterNames}), OR find which investors hold a specific company. Returns position size, portfolio weight, and quarter-over-quarter change. If master is omitted, searches across all tracked investors for the specified company.`,
     promptSnippet: "search_holdings(master?, company?, year?, quarter?) → 13F holdings data",
-    parameters: Type.Object({
-      master: Type.Optional(Type.String({
-        description: `Which investor to inspect: ${rosterIds}. Omit to search who holds a company across all investors.`,
-      })),
-      company: Type.Optional(Type.String({
-        description: "Filter by company ticker (e.g. AAPL) or partial name. If master is omitted, finds all investors holding this company.",
-      })),
-      year: Type.Optional(Type.Number({
-        description: "Filter by year (e.g. 2023). Omit for most recent.",
-      })),
-      quarter: Type.Optional(Type.Number({
-        description: "Filter by quarter 1–4. Omit for most recent.",
-      })),
-      top_n: Type.Optional(Type.Number({
-        description: "Max positions to return (default 15, max 25).",
-      })),
-    }),
+    parameters,
     async execute(_toolCallId, params, signal) {
       const { master, company, year, quarter, top_n } = params;
 
@@ -310,13 +319,13 @@ export async function createSearchHoldingsTool() {
         return {
           content: [{
             type: "text" as const,
-            text: "请至少提供 master（投资人，如 buffett / lilu / duanyongping）或 company（公司代码/名称，如 AAPL / 拼多多）之一进行持仓查询。",
+            text: "请至少提供 master（投资人，如 buffett / lilu / duan）或 company（公司代码/名称，如 AAPL / 拼多多）之一进行持仓查询。",
           }],
           details: null,
         };
       }
 
-      const limit = Math.min(top_n ?? 15, 25);
+      const limit = Math.min(Math.max(top_n ?? 15, 1), 25);
 
       if (signal?.aborted) {
         return { content: [{ type: "text" as const, text: "Search cancelled." }], details: null };
@@ -344,7 +353,8 @@ export async function createSearchHoldingsTool() {
       }
 
       // Case 2: Inspect a specific master's portfolio
-      const tribeId = master!.toLowerCase().trim();
+      const requestedTribeId = master!.toLowerCase().trim();
+      const tribeId = requestedTribeId === "duanyongping" ? "duan" : requestedTribeId;
       const liveFilerLabels = await getFilerLabels();
       const masterLabel = liveFilerLabels.get(tribeId);
       if (!masterLabel) {

@@ -626,8 +626,8 @@ model CompanyAnalysis {
   overview   String? // 统一的公司概览（不超过3句话）：公司是什么 + 主打产品 + 主营收入
   canvas     Json? // 业务画布（9 sections）
   moat       Json? // { summary, dimensions, notes } — generate-value-analysis.ts
-  management Json? // capital allocation behavior — generate-management-analysis.ts
-  valuation  Json? // scenarios, multiples — generate-valuation-analysis.ts
+  management Json? // DEPRECATED: page/agent use computed CapitalAllocationView data
+  valuation  Json? // DEPRECATED: page/agent use computed ValuationAnalysisView data
 
   // 旧字段保留用于迁移（TODO: 迁移完成后删除）
   profile    Json? // DEPRECATED: 迁移到 overview

@@ -1,30 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { resolveArtifactType } from "./get-company-analysis.js";
 import { formatPriceHistory } from "./get-stock-price-history.js";
 import { formatHoldingsAcrossMasters } from "./search-holdings.js";
-
-describe("resolveArtifactType", () => {
-  it("resolves primary artifact types directly", () => {
-    expect(resolveArtifactType("overview")).toBe("overview");
-    expect(resolveArtifactType("canvas")).toBe("canvas");
-    expect(resolveArtifactType("moat")).toBe("moat");
-    expect(resolveArtifactType("management")).toBe("management");
-    expect(resolveArtifactType("valuation")).toBe("valuation");
-  });
-
-  it("normalizes case and resolves aliases", () => {
-    expect(resolveArtifactType("company_profile")).toBe("overview");
-    expect(resolveArtifactType("BUSINESS_OVERVIEW")).toBe("canvas");
-    expect(resolveArtifactType("value_analysis")).toBe("moat");
-    expect(resolveArtifactType("management_analysis")).toBe("management");
-    expect(resolveArtifactType("valuation_analysis")).toBe("valuation");
-  });
-
-  it("returns null for unknown artifact types or undefined", () => {
-    expect(resolveArtifactType(undefined)).toBeNull();
-    expect(resolveArtifactType("unknown_type")).toBeNull();
-  });
-});
 
 describe("formatPriceHistory", () => {
   it("returns notice when price rows are empty", () => {
@@ -67,6 +43,8 @@ describe("formatHoldingsAcrossMasters", () => {
         value_usd: "150000000000",
         change_pct: -1.2,
         is_new: false,
+        is_sold: false,
+        as_of_date: "2024-06-30",
         company_name: "Apple Inc.",
         company_ticker: "AAPL",
         period_year: 2024,

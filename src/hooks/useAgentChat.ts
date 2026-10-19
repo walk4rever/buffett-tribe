@@ -40,12 +40,20 @@ export interface Message {
 
 export const TOOL_META: Record<string, { icon: string; label: string }> = {
   search_wisdom:           { icon: "🧠", label: "查询大师资料库" },
-  search_holdings:         { icon: "📊", label: "查询机构持仓明细" },
-  search_filings:          { icon: "📄", label: "检索公司年报原文" },
-  get_company_analysis:    { icon: "🔍", label: "查询公司深度分析" },
-  get_insight_content:     { icon: "📰", label: "查询洞见研报" },
+  search_holdings:         { icon: "📊", label: "查询追踪投资人 13F 持仓" },
+  search_filings:          { icon: "📄", label: "检索公司披露文件" },
+  get_company_overview:    { icon: "🏢", label: "查询公司概览" },
+  get_company_business_model: { icon: "🧩", label: "查询商业模式" },
+  get_company_moat:        { icon: "🏰", label: "查询护城河" },
+  get_insight_content:     { icon: "📰", label: "查询洞见文章" },
   get_stock_price_history: { icon: "📈", label: "查询股价与行情走势" },
   get_company_financials:  { icon: "📑", label: "查询财务报表与指标" },
+  get_company_capital_allocation: { icon: "🏦", label: "查询资本配置" },
+  get_company_valuation:   { icon: "⚖️", label: "查询估值指标" },
+  web_search:              { icon: "🌐", label: "搜索公开信息" },
+  fetch_web_page:          { icon: "🔗", label: "读取网页原文" },
+  // Display-only mapping for historical messages from the retired aggregate tool.
+  get_company_analysis:    { icon: "🔍", label: "查询公司分析（旧）" },
 };
 
 function resolveToolDetail(name: string, args: Record<string, unknown> | undefined): string | undefined {
@@ -64,9 +72,14 @@ function resolveToolDetail(name: string, args: Record<string, unknown> | undefin
     const parts = [str("company"), str("section"), num("year") ? String(num("year")) : undefined, str("keyword") ? `"${str("keyword")}"` : undefined].filter(Boolean);
     return parts.join(" · ") || undefined;
   }
-  if (name === "get_company_analysis") {
-    const parts = [str("company"), str("artifactType")].filter(Boolean);
-    return parts.join(" · ") || undefined;
+  if (
+    name === "get_company_overview"
+    || name === "get_company_business_model"
+    || name === "get_company_moat"
+    || name === "get_company_capital_allocation"
+    || name === "get_company_valuation"
+  ) {
+    return str("company");
   }
   if (name === "get_insight_content") {
     return str("slug") || str("query");
@@ -87,6 +100,12 @@ function resolveToolDetail(name: string, args: Record<string, unknown> | undefin
     const years = num("years") ? `近${num("years")}年` : undefined;
     const parts = [str("company"), stmt, lineItems, years].filter(Boolean);
     return parts.join(" · ") || undefined;
+  }
+  if (name === "web_search") {
+    return str("query");
+  }
+  if (name === "fetch_web_page") {
+    return str("url");
   }
   return str("query");
 }

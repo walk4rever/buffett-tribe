@@ -4,14 +4,15 @@ import { pool } from "../db.js";
 
 // Read lazily (not at module load) so this file stays importable in tests
 // without DASHSCOPE_API_KEY set — see db.ts for the same reasoning re: DIRECT_URL.
-async function getEmbedding(text: string): Promise<number[]> {
+async function getEmbedding(text: string, signal?: AbortSignal): Promise<number[]> {
   const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY;
   if (!DASHSCOPE_API_KEY) throw new Error("DASHSCOPE_API_KEY env var is required");
+  const timeout = AbortSignal.timeout(25000);
   const res = await fetch("https://dashscope-intl.aliyuncs.com/compatible-mode/v1/embeddings", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${DASHSCOPE_API_KEY}` },
     body: JSON.stringify({ model: "text-embedding-v4", input: text.slice(0, 8000), dimensions: 1536 }),
-    signal: AbortSignal.timeout(25000),
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
   });
   if (!res.ok) throw new Error(`DashScope embedding ${res.status}: ${await res.text()}`);
   const data = (await res.json()) as { data: { embedding: number[] }[] };
@@ -27,8 +28,13 @@ export type WisdomRow = {
 };
 
 export async function vectorSearch(embedding: number[], master: string | null, limit: number): Promise<WisdomRow[]> {
+  const normalizedMaster = master?.toLowerCase().trim() ?? null;
   // Munger's wisdom in the database is recorded within Berkshire annual meetings under 'buffett'
-  const effectiveMaster = master === "munger" ? "buffett" : (master ?? null);
+  const effectiveMaster = normalizedMaster === "munger"
+    ? "buffett"
+    : normalizedMaster === "duan"
+      ? "duanyongping"
+      : normalizedMaster;
 
   // Embed as a literal: pg's extended query protocol doesn't support ::vector cast for user-defined types.
   // The embedding comes from DashScope/OpenAI (not user input) so interpolation is safe.
@@ -49,11 +55,11 @@ export async function vectorSearch(embedding: number[], master: string | null, l
     ORDER BY cc.embedding <=> ${embLiteral}
     LIMIT $2
     `,
-    [effectiveMaster, master === "munger" ? limit * 2 : limit],
+    [effectiveMaster, normalizedMaster === "munger" ? limit * 2 : limit],
   );
 
   let rows = result.rows.filter((r) => r.score >= 0.25);
-  if (master === "munger" && rows.length > 0) {
+  if (normalizedMaster === "munger" && rows.length > 0) {
     // When munger is specifically requested, prioritize passages with CM / Charlie / Munger quotes
     rows.sort((a, b) => {
       const aHasMunger = /CM:|Charlie|Munger|芒格/i.test(a.chunk_text);
@@ -92,7 +98,7 @@ export const searchWisdomTool = defineTool({
     query: Type.String({ description: "Topic or question to search for" }),
     master: Type.Optional(
       Type.String({
-        description: "Filter by master: buffett | munger | lilu | duanyongping ('munger' searches co-attended Berkshire meeting archives)",
+        description: "Filter by master: buffett | munger | lilu | duanyongping (duan is accepted as an alias; 'munger' searches co-attended Berkshire meeting archives)",
       }),
     ),
   }),
@@ -101,7 +107,7 @@ export const searchWisdomTool = defineTool({
 
     let embedding: number[];
     try {
-      embedding = await getEmbedding(query);
+      embedding = await getEmbedding(query, signal ?? undefined);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return { content: [{ type: "text" as const, text: `Embedding failed: ${msg}` }], details: null };

@@ -42,7 +42,7 @@
 | 路由 | 功能 |
 |------|------|
 | `/` | 首页：大师仓位动态、热门公司追踪、核心大师卡片、Alpha 部落单行胶囊、最新深度研报与全站搜索 |
-| `/agent` | 投资研究 Agent（主入口，五工具驱动） |
+| `/agent` | 投资研究 Agent（主入口，13 个工具驱动） |
 | `/master` | 追踪投资人的信件、演讲、持仓（3 位核心大师 + 10 位 Alpha 部落） |
 | `/company` | 公司目录与数字价值线研究画布（全量 16,467 家标的极速模糊检索、未建档标的 Apple 风格快速通道优先建档、`/company/[id]` 默认呈现 DVL 旗舰视图） |
 | `/insights` | 投资洞见，按播客/栏目过滤，正文划词支持「AI解读」与「高光分享」 |
@@ -55,10 +55,13 @@
 全站核心体验。与大师思想对话，Agent 自主决定调用哪个工具：
 
 - **`search_wisdom`** 查询资料库 — 大师说过什么（语义搜索）
-- **`search_holdings`** 查询持仓明细 — 大师买了什么（SQL 结构化）
-- **`search_filings`** 查询公司年报 — 公司披露了什么（10-K / 20-F / 40-F 章节，美股+港股+A股）
-- **`get_company_analysis`** 查询公司分析 — 网站已生成的业务/护城河/管理层/估值分析
-- **`get_insight_content`** 查询洞见全文 — `/insights` 文章原文
+- **`search_holdings`** 查询追踪投资人持仓 — 13F 持仓与变动（SQL 结构化）
+- **`search_filings`** 查询公司披露 — 10-K / 20-F / 40-F、港股与 A 股年报章节
+- **`get_company_overview` / `get_company_business_model` / `get_company_moat`** — 公司概览、商业模式与护城河
+- **`get_company_capital_allocation` / `get_company_valuation`** — 数据计算的资本配置与估值指标
+- **`get_company_financials` / `get_stock_price_history`** — 标准化财务数据与日线价格
+- **`get_insight_content`** 查询洞见文章 — `/insights` 原文
+- **`web_search` / `fetch_web_page`** — 公开网页搜索与正文读取
 
 工具调用有实时指示器，显示工具名、参数摘要、返回条数。工具跑完到正文出现之间模型往往还要推理十几到几十秒，这段时间界面会显示「正在思考…」/「正在分析查询结果…」的等待指示，不会看起来像卡死。公司页右下角还有一个直接锚定当前公司的 "AI 解读" 悬浮入口。
 
@@ -152,9 +155,15 @@ services/
       search-wisdom.ts         # 大师知识库语义检索
       search-holdings.ts       # 13F 持仓 SQL 查询
       search-filings.ts        # 年报章节查询
-      get-company-analysis.ts  # 已生成公司分析查询
+      get-company-overview.ts  # 公司概览
+      get-company-business-model.ts # 商业模式画布
+      get-company-moat.ts      # 护城河
+      get-company-capital-allocation.ts # 资本配置（代码计算）
+      get-company-valuation.ts # 估值指标（代码计算）
+      get-company-financials.ts # 标准化财务报表
+      get-stock-price-history.ts # 日线价格趋势
       get-insight-content.ts   # 洞见文章全文查询
-    AGENTS.md      # Agent system prompt（投研定位 + 五工具说明）
+    AGENTS.md      # Agent system prompt（投研定位 + 工具路由与边界）
     deploy.sh      # 部署脚本（rsync → npm install → pm2 restart）
 ```
 
@@ -164,7 +173,7 @@ services/
 
 - Header 全站搜索按「大师 / 公司 / 洞见」分组，支持搜索投资人姓名或机构、公司名称或代码，以及洞见主题。
 - `/dvl/[id]` 数字价值线（Digital Value Line）全新上线，支持多 Ticker 股票类别切换（如 Alphabet GOOG Class C 与 GOOGL Class A 原生交互切换、价格/52周区间/估值通道/Sparkline 无刷新联动更新），13F 大师持仓智能穿透合并（如李录、巴菲特同时持有多类股份时的权重合并显示与明细标签拆解）；全站统一三大市场规范化 URL Slug（`us-{10位CIK}` / `cn-{代码}` / `hk-{5位代码}`），美股直接 Ticker 或旧 CIK 自动 307 重定向。
-- `/agent` 投资研究 Agent，五工具上线，工具调用有实时指示器；**未登录访客也可直接试用**（按 IP 每自然日 5 次额度，用尽后引导登录解锁 1000 次/月）；公司页额外有独立锚定当前公司的 "AI 解读" 入口；所有 AI 解读对话框均支持剪贴板粘贴图片提问（DeepSeek vision）；登录用户对话按页面/投资人/公司维度持久化（含图片），冷启动时 Agent 会回放历史，不会对已聊过的内容"失忆"；页面左侧有个人工作区（笔记本，自动保存），右侧有资产组合 Portfolio 面板（手动录入持仓 ticker/份额/成本，市值/盈亏按站内已同步的价格计算）
+- `/agent` 投资研究 Agent，13 个工具上线，工具调用有实时指示器；**未登录访客也可直接试用**（按 IP 每自然日 5 次额度，用尽后引导登录解锁 1000 次/月）；公司页额外有独立锚定当前公司的 "AI 解读" 入口；所有 AI 解读对话框均支持剪贴板粘贴图片提问（DeepSeek vision）；登录用户对话按页面/投资人/公司维度持久化（含图片），冷启动时 Agent 会回放历史，不会对已聊过的内容"失忆"；页面左侧有个人工作区（笔记本，自动保存），右侧有资产组合 Portfolio 面板（手动录入持仓 ticker/份额/成本，市值/盈亏按站内已同步的价格计算）
 - `/master` 投资人主页、资料阅读、最新持仓 + 季度点评——3 位核心大师（巴菲特 / 李录 / 段永平）+ 10 位 Alpha 部落投资人
 - `/company/[id]` 公司研究画布，覆盖美股 / 港股 / A 股三个市场；576 家公司已完成上线（全库 Phase 1 达成率达 97.6%），目录页严格以 `metadata.onboardPhase >= 1` 为准绳，待完善标的精准收敛至 14 家非经营性特殊标的（破产/SPAC/基金等）；**页面已升级为 8-Tab 统一工作区**（价值线为第一 Tab，常驻 Header 显示股价/市值/PE/PB，原深度投研 7 Tab 依次跟随）；价值线下方 8 项指标按六类财务模板及行业子模型适配，财务表格统一单位、币种与桌面布局；Onboard 自动化接入管线原生支持 SEC 官方挂牌探查与 10-Q 季度财报 / S-1 招股书级联降级
 - 公司页大师持仓统一展示 Top 3；价值线卡片保持紧凑，公司页同步展示季度趋势，可切换持股数、仓位和市值，手机端纵向排列

@@ -1,23 +1,13 @@
 import { createAgentSession, SessionManager } from "@earendil-works/pi-coding-agent";
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
-import { homedir } from "os";
-import { searchWisdomTool } from "./tools/search-wisdom.js";
-import { createSearchHoldingsTool } from "./tools/search-holdings.js";
-import { searchFilingsTool } from "./tools/search-filings.js";
-import { getInsightContentTool } from "./tools/get-insight-content.js";
-import { getCompanyAnalysisTool } from "./tools/get-company-analysis.js";
-import { getStockPriceHistoryTool } from "./tools/get-stock-price-history.js";
-import { getCompanyFinancialsTool } from "./tools/get-company-financials.js";
+import {
+  ALLOWED_TOOL_NAMES,
+  GATEWAY_DIR,
+  PI_AGENT_DIR,
+  buildGatewayResourceLoader,
+} from "./agent-config.js";
+import { buildGatewayTools } from "./tools/index.js";
 import type { HistoryTurn } from "./history.js";
-
-const GATEWAY_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
-
-// PI_AGENT_DIR: points to a directory containing models.json (and optionally auth.json).
-// Local dev default: ~/.pi/agent (reuses existing pi CLI config).
-// Production: set to ~/pi-gateway/.pi-agent after filling in real API keys.
-const PI_AGENT_DIR = process.env.PI_AGENT_DIR ?? join(homedir(), ".pi", "agent");
 
 export interface SessionContext {
   masterId?: string;
@@ -109,27 +99,30 @@ function historyTurnToMessage(turn: HistoryTurn): SessionMessage | null {
 }
 
 async function makeSession(history?: HistoryTurn[]): Promise<AgentSession> {
-  const searchHoldingsTool = await createSearchHoldingsTool();
+  const tools = await buildGatewayTools();
+  const resourceLoader = await buildGatewayResourceLoader();
   const sessionManager = SessionManager.inMemory();
   for (const turn of history ?? []) {
     const message = historyTurnToMessage(turn);
     if (message) sessionManager.appendMessage(message);
   }
   const { session } = await createAgentSession({
-    cwd: GATEWAY_DIR,         // loads AGENTS.md from gateway root
+    cwd: GATEWAY_DIR,
     agentDir: PI_AGENT_DIR,   // loads models.json (custom providers) from here
     sessionManager,
-    noTools: "builtin",       // disable bash/read/write/edit for security
-    customTools: [
-      searchWisdomTool,
-      searchHoldingsTool,
-      searchFilingsTool,
-      getInsightContentTool,
-      getCompanyAnalysisTool,
-      getStockPriceHistoryTool,
-      getCompanyFinancialsTool,
-    ],
+    noTools: "builtin",
+    tools: [...ALLOWED_TOOL_NAMES],
+    customTools: tools,
+    resourceLoader,
   });
+
+  const active = session.getActiveToolNames().slice().sort();
+  const expected = [...ALLOWED_TOOL_NAMES].sort();
+  if (active.join(",") !== expected.join(",")) {
+    session.dispose();
+    throw new Error(`Agent tool allowlist mismatch. Active: ${active.join(", ") || "(none)"}`);
+  }
+
   return session;
 }
 

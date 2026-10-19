@@ -1,5 +1,9 @@
 /**
- * Generate management analysis (资本配置行为分析) for companies.
+ * DEPRECATED: the company page no longer consumes CompanyAnalysis.management.
+ * Capital allocation is computed from normalized financials in
+ * CapitalAllocationView, and the agent uses get_company_capital_allocation.
+ * This script remains only as a historical/manual reference and is not part of
+ * onboarding, update-company, or any scheduled pipeline.
  *
  * Usage:
  *   tsx scripts/generate-management-analysis.ts --company MCO [--dry-run] [--force]

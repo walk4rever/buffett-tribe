@@ -42,13 +42,9 @@ export type ScenarioResult = ScenarioInput & {
 };
 
 /**
- * Sentinel stored in CompanyAnalysis.valuation when a company legitimately
- * cannot be valued (no FY financials / no stock prices / no ticker) — e.g. a
- * recent IPO whose only financials are one prospectus quarter. A stored
- * sentinel means "checked, data insufficient", not "generation failed":
- * onboard-company's field-existence verify passes, and the generator treats a
- * sentinel as absent so every run re-checks — the real analysis fills in
- * automatically once FY data arrives.
+ * Legacy sentinel type retained for old offline valuation artifacts.
+ * Current valuation views and agent tools compute metrics on read from
+ * Financial + StockPrice; do not write new data into CompanyAnalysis.valuation.
  */
 export const VALUATION_INSUFFICIENT_STATUS = "insufficient_data";
 

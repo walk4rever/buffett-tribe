@@ -1905,11 +1905,11 @@ Apple HIG 精简风格：
 | 年报章节 | 主文档 HTML / 40-F 附件 | `FilingSection` | `npm run import:10k` | 抽取器覆盖 10-K/20-F/40-F 目标 section |
 | 年报归档 | SEC EDGAR + R2 | `FilingArtifact`, R2 object key | `npm run import:10k` | 按 object key 复用，避免重复上传 |
 | 股价 | Yahoo Finance | `StockPrice` | `npm run import:company-stock-prices:yf` | 已有脚本，按 ticker 跟踪覆盖范围 |
-| 公司概览（profile） | SEC filings + 元数据 + 财务看板 | `CompanyAnalysis.profile` | `npm run generate:company-profile` | `/company` 页面与 `/agent` 的 `get_company_analysis` 工具都直接读这个权威字段（2026-08-08 起，退休了此前的 `GeneratedContentVersion` 镜像，见下方「LLM 生成内容版本表现状」） |
-| 业务概览与画布（business） | SEC filings + 财务数据 | `CompanyAnalysis.business`（`{ narrative, canvas }`） | `npm run generate:business-model` | 同上；`BusinessCanvas`/`BusinessCanvasVersion` 表已物理删除（见下） |
+| 公司概览（overview） | SEC filings + 元数据 + 财务看板 | `CompanyAnalysis.overview`（旧数据回退 `profile`） | `npm run generate:company-profile` | `/company` 与 `/agent` 的 `get_company_overview` 读取该字段；2026-08-08 起退休 `GeneratedContentVersion` 镜像 |
+| 业务概览与画布（canvas） | SEC filings + 财务数据 | `CompanyAnalysis.canvas`（旧数据回退 `business.canvas`） | `npm run generate:business-model` | `/agent` 使用 `get_company_business_model`；`BusinessCanvas`/`BusinessCanvasVersion` 表已物理删除 |
 | 价值分析（moat） | SEC filings + 财务数据 + 持仓 | `CompanyAnalysis.moat` | `npm run generate:value-analysis` | 同上 |
-| 管理分析（management） | SEC filings + 财务数据 + 大师信件 | `CompanyAnalysis.management` | `npm run generate:management-analysis -- --all` | 2026-08-08 起有专属字段（此前唯一存储是 `GeneratedContentVersion`）。148 家已 onboard 公司里 77 家已生成，71 家是真实生成缺口（非存储问题），重跑有 LLM 成本，待批量补 |
-| 估值分析（valuation） | SEC filings + 财务数据 | `CompanyAnalysis.valuation` | `npm run generate:valuation-analysis -- --all` | 同上，77 家已生成，71 家生成缺口 |
+| 管理/资本配置（management） | 标准化年度财务数据 | `CompanyAnalysis.management`（legacy） | 无（页面与 agent 改为计算） | **DEPRECATED**：公司页 `CapitalAllocationView` 与 `get_company_capital_allocation` 均从 `Financial` 现算；旧 LLM 字段不再消费 |
+| 估值分析（valuation） | 标准化财务数据 + StockPrice | `CompanyAnalysis.valuation`（legacy） | 无（页面与 agent 改为计算） | **DEPRECATED**：公司页 `ValuationAnalysisView` 与 `get_company_valuation` 均现算；v0.47.11 已删除离线估值生成脚本 |
 
 ### 原始文档数据
 

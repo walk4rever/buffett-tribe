@@ -133,25 +133,33 @@ async function fetchAndUpsertRecentPrices(
 ): Promise<{ ticker: string; latestPrice: number | null; priceDate: string | null; refreshed: boolean }> {
   const encoded = encodeURIComponent(ticker.trim().toUpperCase());
 
-  // 1. Try relay gateway (production air7 service, works from Vercel Serverless)
+  // 1. Try relay gateway when its shared secret is configured (production air7
+  //    service, works from Vercel Serverless). Local setups without a secret
+  //    skip straight to the direct Yahoo/local fallbacks.
   const gatewayBase = process.env.PI_GATEWAY_URL || "https://relay.air7.fun/pi";
-  try {
-    const gatewayUrl = `${gatewayBase.replace(/\/+$/, "")}/chart/${encoded}?range=10d`;
-    const gRes = await fetch(gatewayUrl, {
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(6000),
-    });
-    if (gRes.ok) {
-      const gData = await gRes.json();
-      const result = gData?.chart?.result?.[0];
-      if (result) {
-        return parseAndUpsertYahooBars(ticker, result, dryRun);
+  const agentSecret = process.env.PI_AGENT_SECRET;
+  if (agentSecret) {
+    try {
+      const gatewayUrl = `${gatewayBase.replace(/\/+$/, "")}/chart/${encoded}?range=10d`;
+      const gRes = await fetch(gatewayUrl, {
+        headers: {
+          Accept: "application/json",
+          "X-Agent-Secret": agentSecret,
+        },
+        signal: AbortSignal.timeout(6000),
+      });
+      if (gRes.ok) {
+        const gData = await gRes.json();
+        const result = gData?.chart?.result?.[0];
+        if (result) {
+          return parseAndUpsertYahooBars(ticker, result, dryRun);
+        }
+      } else {
+        console.warn(`[phase3-update] Gateway returned ${gRes.status} for ${ticker}`);
       }
-    } else {
-      console.warn(`[phase3-update] Gateway returned ${gRes.status} for ${ticker}`);
+    } catch (err) {
+      console.warn(`[phase3-update] Gateway quote fetch failed for ${ticker}:`, err);
     }
-  } catch (err) {
-    console.warn(`[phase3-update] Gateway quote fetch failed for ${ticker}:`, err);
   }
 
   // 2. Direct Yahoo Finance chart API (fallback if gateway unavailable)

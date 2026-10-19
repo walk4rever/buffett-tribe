@@ -1,7 +1,7 @@
 /**
  * regenerate-hk-analyses.ts
  *
- * Re-runs the 5 dimensions of AI analysis plus company name map sync for
+ * Re-runs the remaining qualitative AI dimensions plus company name map sync for
  * all 7 HK companies using the newly extracted high-fidelity FY2025 MD&A sections.
  *
  * Usage:
@@ -28,7 +28,6 @@ const ANALYSIS_STEPS = [
   { script: "generate:company-profile", name: "公司基本概况 (profile)" },
   { script: "generate:business-model", name: "商业模式画布 (business)" },
   { script: "generate:value-analysis", name: "价值驱动与护城河 (moat)" },
-  { script: "generate:management-analysis", name: "管理层与治理 (management)" },
 ];
 
 function runCommand(cmd: string, args: string[]): Promise<number> {
