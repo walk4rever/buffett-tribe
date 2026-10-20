@@ -124,7 +124,13 @@ export async function getCompanyFacts(cik: string) {
 }
 
 export function selectBestFactCandidate(
-  candidates: Array<{ filed: string; value: number; unit: string }>,
+  candidates: Array<{
+    filed: string;
+    value: number;
+    unit: string;
+    tag?: string;
+    accn?: string;
+  }>,
   unitCandidates: string[],
 ) {
   if (!candidates.length) return null;
@@ -151,7 +157,13 @@ export function selectBestFactCandidate(
   });
 
   const candidate = latestCandidates[0];
-  return { value: candidate.value, unit: candidate.unit };
+  return {
+    value: candidate.value,
+    unit: candidate.unit,
+    tag: candidate.tag,
+    filed: candidate.filed,
+    accn: candidate.accn,
+  };
 }
 
 export function findBestFactValue(
@@ -164,7 +176,13 @@ export function findBestFactValue(
 ) {
   const gaap = facts.facts?.["us-gaap"] ?? {};
   const ifrs = facts.facts?.["ifrs-full"] ?? {};
-  const candidates: Array<{ filed: string; value: number; unit: string }> = [];
+  const candidates: Array<{
+    filed: string;
+    value: number;
+    unit: string;
+    tag?: string;
+    accn?: string;
+  }> = [];
 
   const conceptSets = [
     { concepts: gaap, tags: tagsUsGaap },
@@ -189,6 +207,8 @@ export function findBestFactValue(
             filed: row.filed ?? "0000-00-00",
             value: row.val,
             unit,
+            tag,
+            accn: row.accn,
           });
         }
       }

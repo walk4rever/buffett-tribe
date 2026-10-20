@@ -86,8 +86,16 @@ export function normalizeFinancialYearsStockSplits<
     items: Record<string, string>;
     itemUnits?: Record<string, string>;
   },
->(years: T[]): T[] {
+>(
+  years: T[],
+  options: { allowHeuristic?: boolean } = {},
+): T[] {
   if (years.length < 2) return years;
+  // Production history may only be rewritten from confirmed corporate actions.
+  // The share/EPS heuristic is useful for diagnostics and tests, but it cannot
+  // distinguish a split from a large stock issuance or stock-for-stock merger.
+  // Keep it opt-in so a missing event table cannot silently rewrite the series.
+  if (options.allowHeuristic !== true) return years;
 
   // Clone years so we don't mutate input in place
   const res = years.map((y) => ({
@@ -267,9 +275,16 @@ export function normalizeFinancialYearsStockSplits<
  * Normalizes an array of annual records (sorted ascending by year)
  * backwards from the latest year so that all historical shares and EPS
  * are represented on the latest split basis.
+ *
+ * This is a diagnostic/research helper. Callers must explicitly opt in with
+ * `allowHeuristic: true`; production history is never rewritten by default.
  */
-export function normalizeAnnualsStockSplits<T extends AnnualSharesAndEps>(annuals: T[]): T[] {
+export function normalizeAnnualsStockSplits<T extends AnnualSharesAndEps>(
+  annuals: T[],
+  options: { allowHeuristic?: boolean } = {},
+): T[] {
   if (annuals.length < 2) return annuals;
+  if (options.allowHeuristic !== true) return annuals;
 
   const res = annuals.map((a) => ({ ...a }));
 

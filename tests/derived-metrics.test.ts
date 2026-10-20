@@ -31,6 +31,25 @@ describe("deriveForPeriod", () => {
     expect(bank.derived).toHaveLength(0);
   });
 
+  it("只派生同一口径内的安全恒等式，不倒算负债和所得税", () => {
+    const { derived } = deriveForPeriod([
+      row("Revenue", 1000),
+      row("GrossProfit", 400),
+      row("InterestIncome", 100),
+      row("InterestExpense", 40),
+      row("TotalAssets", 2000),
+      row("ShareholdersEquity", 800),
+      row("TotalProfit", 150),
+      row("NetIncome", 120),
+    ]);
+    const byKey = new Map(derived.map((item) => [item.key, item.value]));
+
+    expect(byKey.get("CostOfRevenue")).toBe(600);
+    expect(byKey.get("NetInterestIncome")).toBe(60);
+    expect(byKey.has("TotalLiabilities")).toBe(false);
+    expect(byKey.has("IncomeTaxExpense")).toBe(false);
+  });
+
   it("单位不一致时拒绝派生", () => {
     const { derived, skipped } = deriveForPeriod([row("Revenue", 1000, "USD"), row("CostOfRevenue", 400, "CNY")]);
     expect(derived).toHaveLength(0);

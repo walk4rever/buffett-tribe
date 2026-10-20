@@ -37,6 +37,7 @@ describe("computeCapitalAllocationStats", () => {
         year: 2024,
         operatingCashFlow: 100,
         capEx: 20,
+        acquisitionsAmt: 0,
         repurchaseAmt: 10,
         dividendsPaid: 15,
         shares: 95,
@@ -46,6 +47,7 @@ describe("computeCapitalAllocationStats", () => {
         year: 2023,
         operatingCashFlow: 100,
         capEx: 20,
+        acquisitionsAmt: 0,
         repurchaseAmt: 0,
         dividendsPaid: -5,
         shares: 100,
@@ -95,6 +97,7 @@ describe("computeCapitalAllocationStats", () => {
         year: 2024,
         operatingCashFlow: 100,
         capEx: 20,
+        acquisitionsAmt: 0,
         repurchaseAmt: 0,
         dividendsPaid: 0,
         shares: 95,
@@ -104,6 +107,7 @@ describe("computeCapitalAllocationStats", () => {
         year: 2023,
         operatingCashFlow: 100,
         capEx: 20,
+        acquisitionsAmt: 0,
         repurchaseAmt: 0,
         dividendsPaid: 0,
         shares: 100,
@@ -140,8 +144,8 @@ describe("computeCapitalAllocationStats", () => {
 
   it("preserves a negative remainder when dividends and buybacks exceed FCF", () => {
     const stats = computeCapitalAllocationStats([
-      { year: 2024, operatingCashFlow: 100, capEx: 80, repurchaseAmt: 30, dividendsPaid: 20, shares: 95, roe: 15 },
-      { year: 2023, operatingCashFlow: 100, capEx: 80, repurchaseAmt: 30, dividendsPaid: 20, shares: 100, roe: 10 },
+      { year: 2024, operatingCashFlow: 100, capEx: 80, acquisitionsAmt: 0, repurchaseAmt: 30, dividendsPaid: 20, shares: 95, roe: 15 },
+      { year: 2023, operatingCashFlow: 100, capEx: 80, acquisitionsAmt: 0, repurchaseAmt: 30, dividendsPaid: 20, shares: 100, roe: 10 },
     ]);
 
     expect(stats?.fcfAfterDistributions).toBe(-60);
@@ -175,7 +179,7 @@ describe("computeCapitalAllocationStats", () => {
     expect(stats?.annuals.map((a) => a.year)).toEqual([2021, 2022, 2023, 2024, 2025]);
   });
 
-  it("includes derived shares and excludes weighted-average shares", () => {
+  it("excludes derived and weighted-average shares from the period-end series", () => {
     const stats = computeCapitalAllocationStats([
       {
         year: 2024,
@@ -201,13 +205,13 @@ describe("computeCapitalAllocationStats", () => {
 
     expect(
       getCapitalAllocationShareSeries(stats!.annuals).map((point) => point.shares),
-    ).toEqual([null, 90]);
+    ).toEqual([null, null]);
     expect(stats?.sharesStart).toBeNull();
     expect(stats?.sharesEnd).toBeNull();
     expect(stats?.shareDeltaPct).toBeNull();
   });
 
-  it("calculates capital allocation share change from derived annual shares", () => {
+  it("does not calculate capital allocation share change from derived annual shares", () => {
     const stats = computeCapitalAllocationStats([
       {
         year: 2024,
@@ -231,9 +235,9 @@ describe("computeCapitalAllocationStats", () => {
       },
     ]);
 
-    expect(stats?.sharesStart).toBe(100);
-    expect(stats?.sharesEnd).toBe(90);
-    expect(stats?.shareDeltaPct).toBe(-10);
+    expect(stats?.sharesStart).toBeNull();
+    expect(stats?.sharesEnd).toBeNull();
+    expect(stats?.shareDeltaPct).toBeNull();
   });
 
   it("calculates financial capital allocation metrics from net income, dividends, and buybacks", () => {
@@ -306,5 +310,101 @@ describe("computeCapitalAllocationStats", () => {
     expect(stats?.completeFlowDividends).toBe(70);
     // Residual = FCF (360) - M&A (80) - Buybacks (50) - Dividends (70) = 160
     expect(stats?.fcfAfterDistributions).toBe(160);
+  });
+
+  it("does not mix acquisitions from a year outside the OCF/CapEx cohort", () => {
+    const stats = computeCapitalAllocationStats([
+      {
+        year: 2023,
+        netIncome: 100,
+        operatingCashFlow: 100,
+        capEx: 20,
+        acquisitionsAmt: 0,
+        repurchaseAmt: 0,
+        dividendsPaid: 0,
+        shares: 100,
+        roe: 10,
+      },
+      {
+        year: 2024,
+        netIncome: 100,
+        operatingCashFlow: null,
+        capEx: null,
+        acquisitionsAmt: 200,
+        repurchaseAmt: null,
+        dividendsPaid: null,
+        shares: 100,
+        roe: 10,
+      },
+    ]);
+
+    expect(stats?.cumFcf).toBe(80);
+    expect(stats?.cumAcquisitions).toBe(0);
+    expect(stats?.flowAcquisitionsCoverage).toBe(1);
+    expect(stats?.flowAcquisitionsComplete).toBe(true);
+    expect(stats?.fcfAfterDistributions).toBe(80);
+    expect(stats?.fcfAfterDistributions).not.toBe(-120);
+  });
+
+  it("does not publish a final FCF balance when a flow year lacks acquisition disclosure", () => {
+    const stats = computeCapitalAllocationStats([
+      {
+        year: 2024,
+        operatingCashFlow: 100,
+        capEx: 20,
+        acquisitionsAmt: 10,
+        repurchaseAmt: 0,
+        dividendsPaid: 0,
+        shares: 100,
+        roe: 10,
+      },
+      {
+        year: 2023,
+        operatingCashFlow: 100,
+        capEx: 20,
+        acquisitionsAmt: null,
+        repurchaseAmt: 0,
+        dividendsPaid: 0,
+        shares: 100,
+        roe: 10,
+      },
+    ]);
+
+    expect(stats?.flowAcquisitionsCoverage).toBe(1);
+    expect(stats?.flowAcquisitionsComplete).toBe(false);
+    expect(stats?.cumAcquisitions).toBe(10);
+    expect(stats?.fcfAfterDistributions).toBeNull();
+  });
+
+  it("does not infer zero buybacks from a missing buyback record", () => {
+    const stats = computeCapitalAllocationStats([
+      {
+        year: 2024,
+        netIncome: 1000,
+        operatingCashFlow: null,
+        capEx: null,
+        repurchaseAmt: null,
+        dividendsPaid: 300,
+        shares: 100,
+        roe: 15,
+      },
+      {
+        year: 2023,
+        netIncome: 1000,
+        operatingCashFlow: null,
+        capEx: null,
+        repurchaseAmt: 100,
+        dividendsPaid: 300,
+        shares: 100,
+        roe: 14,
+      },
+    ]);
+
+    expect(stats?.netIncomeBuybackCoverage).toBe(1);
+    expect(stats?.netIncomeDistributionComplete).toBe(false);
+    expect(stats?.shareholderReturnAmt).toBeNull();
+    expect(stats?.retainedEarnings).toBeNull();
+    expect(stats?.netIncomeDividendPayoutPct).toBe(30);
+    expect(stats?.netIncomeBuybackPayoutPct).toBeNull();
   });
 });

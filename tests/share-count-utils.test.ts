@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   calculatePeriodEndShareChange,
+  getCapitalAllocationShareSeries,
   getLatestPeriodEndShares,
   getPeriodEndShareSeries,
+  getPeriodEndSharesForBps,
 } from "../src/lib/share-count-utils";
 
 describe("period-end share count helpers", () => {
@@ -37,5 +39,21 @@ describe("period-end share count helpers", () => {
       { year: 2022, shares: 100, sharesSource: "disclosed_period_end" as const },
       { year: 2023, shares: 95, sharesSource: "disclosed_period_end" as const },
     ])).toBe(-5);
+  });
+
+  it("uses only confirmed period-end shares for BPS", () => {
+    expect(getPeriodEndSharesForBps(annuals[0])).toBe(100);
+    expect(getPeriodEndSharesForBps(annuals[1])).toBeNull();
+    expect(getPeriodEndSharesForBps(annuals[2])).toBeNull();
+  });
+
+  it("does not use derived or weighted shares for capital allocation changes", () => {
+    const series = getCapitalAllocationShareSeries(annuals);
+    expect(series.map((point) => point.shares)).toEqual([
+      100,
+      null,
+      null,
+      90,
+    ]);
   });
 });

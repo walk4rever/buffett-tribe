@@ -80,14 +80,15 @@ describe("CapitalAllocationView", () => {
     expect(tableMarkup).not.toContain("$");
   });
 
-  it("shows derived share values without marking them as estimates or missing", () => {
+  it("does not present derived shares as period-end share counts", () => {
     const markup = renderCapitalAllocation("insurance", true);
 
-    expect(markup).toContain("股数与回购金额");
     expect(markup).toContain("区间股数变化");
-    expect(markup).toContain("-3.9%");
-    expect(markup).not.toContain("推算");
-    expect(markup).not.toContain("期末披露股数不足");
+    expect(markup).toContain("可比年度股数不足");
+    expect(markup).toContain("推算");
+    expect(markup).toContain("非期末股本");
+    expect(markup).not.toContain("股数与回购金额");
+    expect(markup).not.toContain("-3.9%");
   });
 
   it("provides touch-friendly year selection for the share chart", () => {
@@ -158,7 +159,42 @@ describe("CapitalAllocationView", () => {
     const markup = renderToStaticMarkup(<CapitalAllocationView data={data} />);
     expect(markup).toContain("金融资本分配去向 (净利润总账)");
     expect(markup).toContain("累计归母净利润");
-    expect(markup).toContain("留存扩表 / 充实资本");
+    expect(markup).toContain("分红回购后利润留存");
+    expect(markup).toContain("净利润减分红回购差额");
     expect(markup).toContain("综合股东回报");
+  });
+
+  it("does not show a complete shareholder-return total when buybacks are partially disclosed", () => {
+    const data = {
+      sectorModelType: "insurance",
+      financialModel: resolveFinancialModel("insurance"),
+      tradingCurrency: "USD",
+      annuals: [
+        {
+          year: 2023,
+          netIncome: 1000,
+          operatingCashFlow: null,
+          capEx: null,
+          repurchaseAmt: 200,
+          dividendsPaid: 300,
+          shares: 1000,
+          roe: 12,
+        },
+        {
+          year: 2024,
+          netIncome: 1200,
+          operatingCashFlow: null,
+          capEx: null,
+          repurchaseAmt: null,
+          dividendsPaid: 300,
+          shares: 980,
+          roe: 14,
+        },
+      ],
+    } as unknown as ValueLineData;
+
+    const markup = renderToStaticMarkup(<CapitalAllocationView data={data} />);
+    expect(markup).toContain("分红或回购披露不完整，未计算合计");
+    expect(markup).toContain("分红或回购披露不完整，未计算差额");
   });
 });

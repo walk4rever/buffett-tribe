@@ -662,17 +662,22 @@ const metrics: MetricDef[] = [
     kind: "percent",
     compute: (year, ctx) => {
       const equity =
-        value(ctx, year, "ShareholdersEquity") ??
         value(ctx, year, "TotalEquity") ??
-        value(ctx, year, "TotalStockholdersEquity");
+        value(ctx, year, "TotalStockholdersEquity") ??
+        value(ctx, year, "ShareholdersEquity");
       if (equity == null || equity <= 0) return null;
-      const cash = value(ctx, year, "CashAndCashEquivalents") ?? 0;
-      const shortDebt = value(ctx, year, "ShortTermDebt") ?? 0;
-      const longDebt = value(ctx, year, "LongTermDebt") ?? 0;
-      const totalDebt =
-        value(ctx, year, "TotalDebt") ?? (shortDebt + longDebt > 0 ? shortDebt + longDebt : null);
-      if (totalDebt == null) return null;
-      return (totalDebt - cash) / equity;
+      const cash = value(ctx, year, "CashAndCashEquivalents");
+      if (cash == null) return null;
+      const totalDebt = value(ctx, year, "TotalDebt");
+      const shortDebt = value(ctx, year, "ShortTermDebt");
+      const longDebt = value(ctx, year, "LongTermDebt");
+      const debt =
+        totalDebt ??
+        (shortDebt != null && longDebt != null
+          ? shortDebt + longDebt
+          : null);
+      if (debt == null) return null;
+      return (debt - cash) / equity;
     },
   },
 ];
@@ -929,11 +934,55 @@ function normalizeFinancialYears(
     knownItemCurrencies.add(currencyContext.reportingCurrency);
   }
 
-  const normalizedLineItems = new Set(
-    metrics
-      .filter((metric) => metric.kind === "money" || metric.key === "EPSDiluted")
+  const normalizedLineItems = new Set<string>([
+    ...metrics
+      .filter((metric) => metric.kind === "money")
       .map((metric) => metric.key),
-  );
+    "EPSDiluted",
+    "EPSBasic",
+    // Formula inputs that are not always display rows. Converting them here
+    // keeps net debt, ROIC and other derived metrics in one currency.
+    "TotalDebt",
+    "ShortTermDebt",
+    "LongTermDebt",
+    "TotalEquity",
+    "TotalStockholdersEquity",
+    "ShareholdersEquity",
+    "TotalAssets",
+    "TotalLiabilities",
+    "CashAndCashEquivalents",
+    "OperatingCashFlow",
+    "CapEx",
+    "FreeCashFlow",
+    "Revenue",
+    "NetIncome",
+    "OperatingIncome",
+    "CostOfRevenue",
+    "GrossProfit",
+    "PretaxIncome",
+    "TotalProfit",
+    "IncomeTaxExpense",
+    "InterestIncome",
+    "InterestExpense",
+    "NetInterestIncome",
+    "NonInterestIncome",
+    "ResearchAndDevelopmentExpense",
+    "RnDExpense",
+    "InvestmentIncome",
+    "NetInvestmentIncome",
+    "TotalInvestments",
+    "ProvisionForCreditLosses",
+    "DividendsPaid",
+    "ShareRepurchaseAmt",
+  ]);
+
+  // Also convert any line item that carries an explicit currency unit even if
+  // it is not a display row or a named formula input.
+  for (const financial of financials) {
+    for (const [lineItem, unit] of Object.entries(financial.itemUnits ?? {})) {
+      if (extractCurrencyCode(unit)) normalizedLineItems.add(lineItem);
+    }
+  }
 
   return financials.map((financial) => {
     const values = Object.fromEntries(

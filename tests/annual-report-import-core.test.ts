@@ -34,7 +34,7 @@ describe("findBestFactValue", () => {
         ["USD", "CNY", "HKD"],
         "2025-12-31",
       ),
-    ).toEqual({ value: 1000, unit: "EUR" });
+    ).toMatchObject({ value: 1000, unit: "EUR" });
   });
 
   it("does not guess a reporting currency from generic unit candidate order", () => {
@@ -62,6 +62,42 @@ describe("findBestFactValue", () => {
     ).toBeNull();
   });
 
+  it("returns the selected tag and accession for provenance", () => {
+    const facts = {
+      facts: {
+        "us-gaap": {
+          Revenues: {
+            units: {
+              USD: [{
+                end: "2025-12-31",
+                filed: "2026-02-18",
+                accn: "0000000000-26-000001",
+                form: "10-K",
+                val: 100,
+              }],
+            },
+          },
+        },
+      },
+    };
+
+    expect(
+      findBestFactValue(
+        facts as never,
+        ["Revenues"],
+        [],
+        ["USD"],
+        "2025-12-31",
+      ),
+    ).toMatchObject({
+      value: 100,
+      unit: "USD",
+      tag: "Revenues",
+      accn: "0000000000-26-000001",
+      filed: "2026-02-18",
+    });
+  });
+
   it("uses the latest filed currency when units reflect different filings", () => {
     const facts = {
       facts: {
@@ -78,7 +114,7 @@ describe("findBestFactValue", () => {
 
     expect(
       findBestFactValue(facts as never, ["Revenue"], [], ["USD", "CNY", "HKD"], "2025-12-31"),
-    ).toEqual({ value: 100, unit: "USD" });
+    ).toMatchObject({ value: 100, unit: "USD" });
   });
 
   it("selects full-year duration facts instead of Q4 facts for annual imports", () => {
@@ -118,7 +154,7 @@ describe("findBestFactValue", () => {
         "2025-12-31",
         "duration",
       ),
-    ).toEqual({ value: 1000, unit: "USD" });
+    ).toMatchObject({ value: 1000, unit: "USD" });
   });
 
   it("does not treat a quarterly duration fact as an annual fact", () => {

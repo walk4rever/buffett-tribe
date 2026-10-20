@@ -1,6 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ValueLineBody, ValueLineHeader } from "@/components/ValueLineCard";
+import {
+  ValueLineBody,
+  ValueLineHeader,
+  buildValueLineSparklineGeometry,
+} from "@/components/ValueLineCard";
 import type { ValueLineData } from "@/lib/value-line-data";
 import { resolveFinancialModel } from "@/lib/financial-model";
 import {
@@ -23,6 +27,7 @@ function metricAnnuals(): ValueLineMetricAnnual[] {
       totalLiabilities: growth(150, 0.05),
       eps: growth(2, 0.11),
       shares: 100,
+      sharesSource: "disclosed_period_end" as const,
       dividendsPaid: growth(5, 0.08),
       assetsUnderManagement: growth(800, 0.13),
       netClientFlows: 25,
@@ -102,6 +107,64 @@ function renderValueLine(
 }
 
 describe("ValueLineBody", () => {
+  it("maps value points to the matching price date and keeps highs/lows price-only", () => {
+    const geometry = buildValueLineSparklineGeometry({
+      points: [
+        { date: "2025-01-01", close: 10 },
+        { date: "2025-01-02", close: 20 },
+        { date: "2025-01-03", close: 30 },
+        { date: "2025-01-04", close: 40 },
+        { date: "2025-01-05", close: 50 },
+      ],
+      valuePoints: [
+        { date: "2025-01-01", value: 1000 },
+        { date: "2025-01-03", value: 100 },
+        { date: "2025-01-04", value: 200 },
+      ],
+      width: 620,
+      height: 156,
+      currencySymbol: "$",
+    });
+
+    expect(geometry.valueCoords.map((point) => point.date)).toEqual([
+      "2025-01-01",
+      "2025-01-03",
+      "2025-01-04",
+    ]);
+    expect(geometry.valueCoords[0].x).toBe(geometry.coords[0].x);
+    expect(geometry.valueCoords[1].x).toBe(geometry.coords[2].x);
+    expect(geometry.valueCoords[2].x).toBe(geometry.coords[3].x);
+    expect(geometry.minPrice).toBe(10);
+    expect(geometry.maxPrice).toBe(50);
+  });
+
+  it("drops value points whose dates do not exist on the price timeline", () => {
+    const geometry = buildValueLineSparklineGeometry({
+      points: [{ date: "2025-01-01", close: 10 }],
+      valuePoints: [{ date: "2024-12-31", value: 8 }],
+    });
+
+    expect(geometry.valueCoords).toEqual([]);
+    expect(geometry.valPathD).toBe("");
+  });
+
+  it("does not show a value reference from another date when the latest price has no value point", () => {
+    const markup = renderValueLine("industrial", {
+      pricePoints: [
+        { date: "2025-01-01", close: 100 },
+        { date: "2025-02-01", close: 110 },
+        { date: "2025-03-01", close: 120 },
+      ],
+      valueLinePoints: [
+        { date: "2025-01-01", value: 80 },
+        { date: "2025-02-01", value: 90 },
+      ],
+    });
+
+    expect(markup).toContain("真实股价:");
+    expect(markup).not.toContain("价值参考线:");
+  });
+
   it("does not plot a generic P/E value line or industrial cash conversion for banks", () => {
     const markup = renderValueLine("banks");
 

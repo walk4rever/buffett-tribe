@@ -4,7 +4,10 @@ import { useMemo, useState } from "react";
 import type { ValueLineData } from "@/lib/value-line-data";
 import { currencySymbol, formatUsdInYi } from "@/lib/currency";
 import { computeCapitalAllocationStats } from "@/lib/capital-allocation-metrics";
-import { getCapitalAllocationShareSeries } from "@/lib/share-count-utils";
+import {
+  getCapitalAllocationShareSeries,
+  isPeriodEndShareSource,
+} from "@/lib/share-count-utils";
 import {
   getDefaultFinancialModel,
   resolveFinancialModel,
@@ -444,8 +447,8 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                   <div className="cap-wf-step-name">外延并购 (M&A)</div>
                   <div className="cap-wf-step-sub">
                     {stats.acquisitionsPct != null
-                      ? `占 FCF ${stats.acquisitionsPct}% · 披露 ${stats.acquisitionsCoverage}/${stats.periodCount} 年`
-                      : `披露 ${stats.acquisitionsCoverage}/${stats.periodCount} 年`}
+                      ? `占 FCF ${stats.acquisitionsPct}% · 披露 ${stats.flowAcquisitionsCoverage}/${stats.flowCoverage} 年`
+                      : `披露 ${stats.flowAcquisitionsCoverage}/${stats.flowCoverage} 年`}
                   </div>
                 </div>
               </>
@@ -507,22 +510,27 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                   : `${currencySym}${formatUsdInYi(stats.fcfAfterDistributions)}`}
               </div>
               <div className="cap-wf-step-name">
-                {stats.cumAcquisitions != null && stats.cumAcquisitions > 0
-                  ? "FCF 减并购与股东回报"
-                  : stats.distributionScope === "both"
-                    ? "FCF 减回购与分红"
-                    : stats.distributionScope === "dividend_only"
-                      ? "FCF 减已披露分红"
-                      : stats.distributionScope === "buyback_only"
-                        ? "FCF 减已披露回购"
-                        : "FCF 与股东回报对比"}
+                {stats.fcfAfterDistributions == null
+                  ? "缺项，未计算总结余"
+                  : stats.cumAcquisitions != null && stats.cumAcquisitions > 0
+                    ? "FCF 减并购与股东回报"
+                    : "FCF 减回购与分红"}
               </div>
               <div className="cap-wf-step-sub">
-                {stats.fcfAfterDistributions != null && stats.fcfAfterDistributions < 0
-                  ? "当期 FCF 未覆盖并购与股东回报"
-                  : stats.cumAcquisitions != null && stats.cumAcquisitions > 0
-                    ? "扣除外延并购与股东回报后净结余"
-                    : "仅为 FCF 与已披露回报对比"}
+                {stats.fcfAfterDistributions == null
+                  ? "并购、回购或分红披露不完整；仅展示已披露分项"
+                  : (
+                    <>
+                      {stats.fcfAfterDistributions < 0
+                        ? "当期 FCF 未覆盖并购与股东回报"
+                        : stats.cumAcquisitions != null && stats.cumAcquisitions > 0
+                          ? "扣除外延并购与股东回报后净结余"
+                          : "仅为 FCF 与已披露回报对比"}
+                      {stats.flowCoverage < stats.periodCount
+                        ? ` · 仅按 ${stats.flowCoverage}/${stats.periodCount} 个完整现金流年度`
+                        : ""}
+                    </>
+                  )}
               </div>
             </div>
           </div>
@@ -533,7 +541,7 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
             <div>
               <h4 className="val-block-title">金融资本分配去向 (净利润总账)</h4>
               <span className="val-block-desc">
-                汇总 {stats.periodCount} 个财年累计归母净利润，观察资本留存（充实净资产/扩表）与股东回报（分红/回购）分配结构
+                汇总 {stats.netIncomeCoverage} 个有净利润披露的财年，观察分红回购后的利润留存与股东回报结构
               </span>
             </div>
           </div>
@@ -549,78 +557,65 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                 {formatAmount(stats.cumNetIncome)}
               </div>
               <div className="cap-wf-step-name">累计归母净利润</div>
-              <div className="cap-wf-step-sub">{stats.periodCount} 个财年累计披露</div>
-            </div>
-
-            <div className="cap-wf-connector">−</div>
-
-            {/* Step 2: Retained Earnings / Capital Reinvestment */}
-            <div
-              className="cap-wf-step-card cap-wf-step-card--capex"
-              title="留存收益充实核心一级资本及净资产，用于生息/投资资产扩表"
-            >
-              <div className="cap-wf-step-badge">2. 留存扩表 / 充实资本</div>
-              <div className="cap-wf-step-val cap-wf-step-val--purple">
-                {formatAmount(stats.retainedEarnings)}
-              </div>
-              <div className="cap-wf-step-name">留存收益扩表</div>
               <div className="cap-wf-step-sub">
-                {stats.retainedEarningsPct != null
-                  ? `占净利润 ${stats.retainedEarningsPct}% · 充实净资产`
-                  : "用于充实资本金与业务扩张"}
+                {stats.netIncomeCoverage} 个财年累计披露
               </div>
             </div>
 
             <div className="cap-wf-connector">−</div>
 
-            {/* Step 3: Cash Dividends */}
+            {/* Step 2: Cash Dividends */}
             <div
               className="cap-wf-step-card cap-wf-step-card--dividend"
               title="累计已披露现金分红总额"
             >
-              <div className="cap-wf-step-badge">3. 现金分红</div>
+              <div className="cap-wf-step-badge">2. 现金分红</div>
               <div className="cap-wf-step-val cap-wf-step-val--teal">
-                {stats.cumDividends != null
-                  ? `-${currencySym}${formatUsdInYi(stats.cumDividends)}`
+                {stats.netIncomeDividendTotal != null
+                  ? `-${currencySym}${formatUsdInYi(stats.netIncomeDividendTotal)}`
                   : "—"}
               </div>
               <div className="cap-wf-step-name">已披露现金分红</div>
               <div className="cap-wf-step-sub">
                 {stats.netIncomeDividendPayoutPct != null
                   ? `分红率 ${stats.netIncomeDividendPayoutPct}%`
-                  : `披露 ${stats.dividendCoverage}/${stats.periodCount} 年`}
+                  : `披露 ${stats.netIncomeDividendCoverage}/${stats.netIncomeCoverage} 年`}
               </div>
             </div>
 
             <div className="cap-wf-connector">−</div>
 
-            {/* Step 4: Share Buybacks */}
+            {/* Step 3: Share Buybacks */}
             <div
               className="cap-wf-step-card cap-wf-step-card--buyback"
               title="累计已披露股票回购支出"
             >
-              <div className="cap-wf-step-badge">4. 股东回购</div>
+              <div className="cap-wf-step-badge">3. 股东回购</div>
               <div className="cap-wf-step-val cap-wf-step-val--blue">
-                {stats.cumBuybacks != null && stats.cumBuybacks > 0
-                  ? `-${currencySym}${formatUsdInYi(stats.cumBuybacks)}`
+                {stats.netIncomeBuybackTotal == null
+                  ? "—"
+                  : stats.netIncomeBuybackTotal > 0
+                  ? `-${currencySym}${formatUsdInYi(stats.netIncomeBuybackTotal)}`
                   : "0"}
               </div>
               <div className="cap-wf-step-name">已披露回购</div>
               <div className="cap-wf-step-sub">
-                {stats.cumBuybacks != null && stats.cumBuybacks > 0
+                {stats.netIncomeBuybackTotal != null && stats.netIncomeBuybackTotal > 0
                   ? `回购率 ${stats.netIncomeBuybackPayoutPct}%`
-                  : "未实施回购或以分红为主"}
+                  : stats.netIncomeDistributionComplete
+                    ? "区间未回购"
+                    : `回购披露 ${stats.netIncomeBuybackCoverage}/${stats.netIncomeCoverage} 年`}
               </div>
             </div>
 
             <div className="cap-wf-connector">=</div>
 
-            {/* Step 5: Total Shareholder Return */}
+            {/* Step 4: Total Shareholder Return */}
             <div
               className="cap-wf-step-card cap-wf-step-card--retained"
               title="现金分红与股票回购合计总股东返还"
             >
-              <div className="cap-wf-step-badge">5. 综合股东回报</div>
+              <div className="cap-wf-step-badge">4. 综合股东回报</div>
               <div className="cap-wf-step-val cap-wf-step-val--green">
                 {stats.shareholderReturnAmt != null
                   ? `${currencySym}${formatUsdInYi(stats.shareholderReturnAmt)}`
@@ -630,7 +625,26 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
               <div className="cap-wf-step-sub">
                 {stats.shareholderReturnPct != null
                   ? `综合股东返还率 ${stats.shareholderReturnPct}%`
-                  : "分红与回购合计"}
+                  : "分红或回购披露不完整，未计算合计"}
+              </div>
+            </div>
+
+            <div className="cap-wf-connector">→</div>
+
+            {/* Step 5: Net income less distributions */}
+            <div
+              className="cap-wf-step-card cap-wf-step-card--capex"
+              title="累计净利润减现金分红与回购后的差额，不等于资产负债表留存收益或监管资本"
+            >
+              <div className="cap-wf-step-badge">5. 分红回购后利润留存</div>
+              <div className="cap-wf-step-val cap-wf-step-val--purple">
+                {formatAmount(stats.retainedEarnings)}
+              </div>
+              <div className="cap-wf-step-name">净利润减分红回购差额</div>
+              <div className="cap-wf-step-sub">
+                {stats.retainedEarningsPct != null
+                  ? `占净利润 ${stats.retainedEarningsPct}%`
+                  : "分红或回购披露不完整，未计算差额"}
               </div>
             </div>
           </div>
@@ -1000,14 +1014,19 @@ export function CapitalAllocationView({ data }: CapitalAllocationViewProps) {
                       <td className="cap-td-num">
                         {a.shares != null ? (
                           <div className="cap-cell-shares">
-                            {a.sharesSource === "weighted_average" && (
+                            {!isPeriodEndShareSource(a.sharesSource) &&
+                              a.sharesSource != null && (
                               <span
                                 className="cap-cell-tag"
-                                title="稀释加权平均股数（非期末时点流通股）"
+                                title={
+                                  a.sharesSource === "derived"
+                                    ? "由净利润 / EPS 推导的期间股数，非期末股本"
+                                    : "稀释加权平均股数，非期末时点流通股"
+                                }
                               >
-                                加权
+                                {a.sharesSource === "derived" ? "推算" : "加权"}
                               </span>
-                            )}
+                              )}
                             <span className="cap-num-val">
                               {formatTableYi(a.shares)}
                             </span>

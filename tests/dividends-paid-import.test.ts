@@ -37,7 +37,7 @@ describe("DividendsPaid financial mapping", () => {
       "2024-12-31",
     );
 
-    expect(value).toEqual({
+    expect(value).toMatchObject({
       value: -125000000,
       unit: "USD",
     });

@@ -9,13 +9,26 @@ type ShareCountAnnual = {
   sharesSource?: string | null;
 };
 
+export function isPeriodEndShareSource(
+  source: string | null | undefined,
+): boolean {
+  return source === "disclosed_period_end" || source === "disclosed";
+}
+
 const isPeriodEndShareCount = (
   annual: ShareCountAnnual | undefined,
 ): annual is ShareCountAnnual & { shares: number } =>
-  annual?.sharesSource === "disclosed_period_end" &&
+  annual != null &&
+  isPeriodEndShareSource(annual.sharesSource) &&
   annual.shares != null &&
   Number.isFinite(annual.shares) &&
   annual.shares > 0;
+
+export function getPeriodEndSharesForBps(
+  annual: ShareCountAnnual | undefined,
+): number | null {
+  return isPeriodEndShareCount(annual) ? annual.shares : null;
+}
 
 export function getLatestPeriodEndShares(
   annuals: ShareCountAnnual[],
@@ -51,13 +64,7 @@ export function getPeriodEndShareSeries(
 function isCapitalAllocationShareCount(
   annual: ShareCountAnnual | undefined,
 ): annual is ShareCountAnnual & { shares: number } {
-  return (
-    (annual?.sharesSource === "disclosed_period_end" ||
-      annual?.sharesSource === "derived") &&
-    annual.shares != null &&
-    Number.isFinite(annual.shares) &&
-    annual.shares > 0
-  );
+  return isPeriodEndShareCount(annual);
 }
 
 export function getCapitalAllocationShareSeries(

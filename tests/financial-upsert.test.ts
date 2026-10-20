@@ -36,6 +36,11 @@ describe("upsertFinancialRows", () => {
       sql: expect.stringContaining('ON CONFLICT ("entityId", "periodEnd", "periodType", "lineItem")'),
       values: expect.any(Array),
     });
+    const sql = (operations[2] as { sql: string }).sql;
+    expect(sql).toContain('"rawXbrlTag" = CASE');
+    expect(sql).toContain("IS NOT DISTINCT FROM");
+    expect(sql).toContain('COALESCE(EXCLUDED."rawXbrlTag", "Financial"."rawXbrlTag")');
+    expect(sql).toContain("source-changed:unverified");
     expect((operations[2] as { values: unknown[] }).values).toHaveLength(11);
   });
 

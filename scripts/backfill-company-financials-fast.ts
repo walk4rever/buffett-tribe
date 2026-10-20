@@ -35,6 +35,7 @@ import {
   type SecRecentFiling,
 } from "./lib/sec-company-profile";
 import { upsertFinancialRows } from "./lib/upsert-financial-rows";
+import { deriveForPeriod } from "./lib/derived-metrics";
 import { normalizeCurrencyCode } from "../src/lib/fx-rates-core";
 import { persistReportingCurrency } from "../src/lib/reporting-currency";
 import { withShortWriteTransaction } from "../src/lib/db-short-write";
@@ -66,10 +67,16 @@ function findBestAnnualFactValue(
   unitCandidates: string[],
   reportDate: string,
   periodType: "instant" | "duration",
-): { val: number; unit: string } | null {
+): { val: number; unit: string; tag?: string; filed?: string; accn?: string } | null {
   const gaap = facts.facts?.["us-gaap"] ?? {};
   const ifrs = facts.facts?.["ifrs-full"] ?? {};
-  const candidates: Array<{ filed: string; value: number; unit: string }> = [];
+  const candidates: Array<{
+    filed: string;
+    value: number;
+    unit: string;
+    tag?: string;
+    accn?: string;
+  }> = [];
 
   const conceptSets = [
     { concepts: gaap, tags: tagsUsGaap },
@@ -96,6 +103,8 @@ function findBestAnnualFactValue(
             filed: row.filed ?? "0000-00-00",
             value: row.val,
             unit,
+            tag,
+            accn: row.accn,
           });
         }
       }
@@ -106,7 +115,15 @@ function findBestAnnualFactValue(
   }
 
   const match = selectBestFactCandidate(candidates, unitCandidates);
-  return match ? { val: match.value, unit: match.unit } : null;
+  return match
+    ? {
+        val: match.value,
+        unit: match.unit,
+        tag: match.tag,
+        filed: match.filed,
+        accn: match.accn,
+      }
+    : null;
 }
 
 /**
@@ -356,6 +373,9 @@ export async function backfillCompanyFinancialsFast(params: {
     lineItem: string;
     value: Prisma.Decimal;
     unit: string;
+    rawXbrlTag?: string;
+    mappingRule?: string;
+    confidence?: number;
   }> = [];
 
   const processedYears: number[] = [];
@@ -366,8 +386,16 @@ export async function backfillCompanyFinancialsFast(params: {
     const extSource = sourceByAccession.get(filing.accession);
     if (!extSource) continue;
 
-    const extractedValues = new Map<string, { value: number; unit: string }>();
-
+    type ExtractedFact = {
+      value: number;
+      unit: string;
+      tag?: string;
+      filed?: string;
+      accn?: string;
+      mappingRule?: string;
+      confidence?: number;
+    };
+    const extractedValues = new Map<string, ExtractedFact>();
     for (const item of LINE_ITEMS) {
       const match = findBestAnnualFactValue(
         facts,
@@ -379,84 +407,43 @@ export async function backfillCompanyFinancialsFast(params: {
       );
 
       if (match != null) {
-        extractedValues.set(item.key, { value: match.val, unit: match.unit });
-      }
-    }
-
-    // Standard accounting identities fallback:
-    // 1. TotalLiabilities = TotalAssets - ShareholdersEquity
-    if (!extractedValues.has("TotalLiabilities")) {
-      const ta = extractedValues.get("TotalAssets");
-      const se = extractedValues.get("ShareholdersEquity");
-      if (ta != null && se != null) {
-        extractedValues.set("TotalLiabilities", {
-          value: ta.value - se.value,
-          unit: ta.unit,
+        extractedValues.set(item.key, {
+          value: match.val,
+          unit: match.unit,
+          tag: match.tag,
+          filed: match.filed,
+          accn: match.accn,
+          mappingRule:
+            match.accn && match.accn !== filing.accession
+              ? `sec-xbrl:restated_in_${match.accn}@${match.filed ?? "unknown"}`
+              : `sec-xbrl:${match.tag ?? "unknown"}@${match.filed ?? "unknown"}`,
+          confidence: 1,
         });
       }
     }
 
-    // 2. CostOfRevenue = Revenue - GrossProfit
-    if (!extractedValues.has("CostOfRevenue")) {
-      const rev = extractedValues.get("Revenue");
-      const gp = extractedValues.get("GrossProfit");
-      if (rev != null && gp != null) {
-        extractedValues.set("CostOfRevenue", {
-          value: rev.value - gp.value,
-          unit: rev.unit,
-        });
-      }
+    // All derivations go through the single rule library. TotalLiabilities and
+    // IncomeTaxExpense are deliberately absent: assets minus parent-only equity
+    // folds minority interests into debt, and a profit difference is not tax.
+    const derived = deriveForPeriod(
+      [...extractedValues.entries()].map(([lineItem, fact]) => ({
+        lineItem,
+        value: fact.value,
+        unit: fact.unit,
+        sourceId: extSource.id,
+      })),
+    ).derived;
+    for (const fact of derived) {
+      extractedValues.set(fact.key, {
+        value: fact.value,
+        unit: fact.unit ?? "",
+        mappingRule: `derived:${fact.rule.formula.join(" ")}`,
+        confidence: fact.rule.confidence,
+      });
     }
 
-    // 2.5 GrossProfit = Revenue - CostOfRevenue
-    if (!extractedValues.has("GrossProfit")) {
-      const rev = extractedValues.get("Revenue");
-      const cor = extractedValues.get("CostOfRevenue");
-      if (rev != null && cor != null) {
-        extractedValues.set("GrossProfit", {
-          value: rev.value - cor.value,
-          unit: rev.unit,
-        });
-      }
-    }
-
-    // 3. NetInterestIncome = InterestIncome - InterestExpense (for banks / lenders)
-    if (!extractedValues.has("NetInterestIncome")) {
-      const ii = extractedValues.get("InterestIncome");
-      const ie = extractedValues.get("InterestExpense");
-      if (ii != null && ie != null) {
-        extractedValues.set("NetInterestIncome", {
-          value: ii.value - ie.value,
-          unit: ii.unit,
-        });
-      }
-    }
-
-    // 4. NonInterestIncome = Revenue - NetInterestIncome (for banks)
-    if (!extractedValues.has("NonInterestIncome")) {
-      const rev = extractedValues.get("Revenue");
-      const nii = extractedValues.get("NetInterestIncome");
-      if (rev != null && nii != null && rev.value > nii.value) {
-        extractedValues.set("NonInterestIncome", {
-          value: rev.value - nii.value,
-          unit: rev.unit,
-        });
-      }
-    }
-
-    // 5. IncomeTaxExpense = |TotalProfit - NetIncome|
-    if (!extractedValues.has("IncomeTaxExpense")) {
-      const tp = extractedValues.get("TotalProfit");
-      const ni = extractedValues.get("NetIncome");
-      if (tp != null && ni != null) {
-        extractedValues.set("IncomeTaxExpense", {
-          value: Math.abs(tp.value - ni.value),
-          unit: tp.unit,
-        });
-      }
-    }
-
-    for (const [key, { value, unit }] of extractedValues.entries()) {
+    for (const [key, fact] of extractedValues.entries()) {
+      const { value, unit } = fact;
       const decimalVal = decimalFromNumber(value);
       if (decimalVal == null) continue;
 
@@ -468,6 +455,9 @@ export async function backfillCompanyFinancialsFast(params: {
         lineItem: key,
         value: new Prisma.Decimal(decimalVal),
         unit,
+        rawXbrlTag: fact.tag,
+        mappingRule: fact.mappingRule,
+        confidence: fact.confidence,
       });
     }
   }

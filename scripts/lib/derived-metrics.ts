@@ -31,6 +31,18 @@ export const DERIVED_RULES: DerivedRule[] = [
     confidence: 0.9,
     note: "us-gaap:GrossProfit 是可选披露标签，大量申报方不打。全样本 155/442 个单元格因此为空，而年报里毛利是必述项——缺的是我们的覆盖，不是披露。",
   },
+  {
+    key: "CostOfRevenue",
+    formula: ["Revenue", "-", "GrossProfit"],
+    confidence: 0.9,
+    note: "营业成本可由营业收入减毛利推导；仅在同一报表口径和同一币种下使用。",
+  },
+  {
+    key: "NetInterestIncome",
+    formula: ["InterestIncome", "-", "InterestExpense"],
+    confidence: 0.9,
+    note: "银行与放贷机构的净利息收入可由利息收入减利息支出推导。",
+  },
 ];
 
 export function derivedMappingRule(rule: DerivedRule): string {

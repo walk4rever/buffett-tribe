@@ -57,6 +57,130 @@ function buildSmoothSpline(pts: Array<{ x: number; y: number }>): string {
   return d;
 }
 
+export type ValueLineSparklineGeometry = {
+  pathD: string;
+  areaD: string;
+  valPathD: string;
+  minPrice: number;
+  maxPrice: number;
+  coords: Array<{ x: number; y: number; date: string; close: number }>;
+  valueCoords: Array<{ x: number; y: number; date: string; value: number }>;
+  valueCoordsByDate: Map<
+    string,
+    { x: number; y: number; date: string; value: number }
+  >;
+  yTicks: Array<{ y: number; label: string }>;
+  yearTicks: Array<{ x: number; label: string }>;
+};
+
+export function buildValueLineSparklineGeometry({
+  points,
+  valuePoints = [],
+  width = 620,
+  height = 156,
+  currencySymbol = "$",
+}: {
+  points: Array<{ date: string; close: number }>;
+  valuePoints?: Array<{ date: string; value: number }>;
+  width?: number;
+  height?: number;
+  currencySymbol?: string;
+}): ValueLineSparklineGeometry {
+  if (!points.length) {
+    return {
+      pathD: "",
+      areaD: "",
+      valPathD: "",
+      minPrice: 0,
+      maxPrice: 0,
+      coords: [],
+      valueCoords: [],
+      valueCoordsByDate: new Map(),
+      yTicks: [],
+      yearTicks: [],
+    };
+  }
+
+  const prices = points.map((p) => p.close).filter((c) => Number.isFinite(c) && c > 0);
+  const vals = valuePoints.map((v) => v.value).filter((v) => Number.isFinite(v) && v > 0);
+  const combined = [...prices, ...vals];
+
+  const axisMinRaw = combined.length ? Math.min(...combined) : 0;
+  const axisMaxRaw = combined.length ? Math.max(...combined) : 1;
+  const min = Math.max(0, axisMinRaw * 0.9);
+  const max = axisMaxRaw * 1.1;
+  const range = max - min || 1;
+
+  const paddingLeft = 16;
+  const paddingRight = 44; // Room for Y-axis reference labels
+  const paddingTop = 14;
+  const paddingBottom = 22; // Room for X-axis year ticks
+  const chartW = width - paddingLeft - paddingRight;
+  const chartH = height - paddingTop - paddingBottom;
+
+  const len = points.length;
+
+  // Map price coords
+  const mappedCoords = points.map((p, idx) => {
+    const x = paddingLeft + (idx / (len - 1 || 1)) * chartW;
+    const y = paddingTop + chartH - ((p.close - min) / range) * chartH;
+    return { x, y, date: p.date, close: p.close };
+  });
+
+  const d = buildSmoothSpline(mappedCoords);
+
+  const last = mappedCoords[mappedCoords.length - 1];
+  const first = mappedCoords[0];
+  const baselineY = paddingTop + chartH;
+  const area = `${d} L ${last.x.toFixed(1)} ${baselineY.toFixed(1)} L ${first.x.toFixed(1)} ${baselineY.toFixed(1)} Z`;
+
+  // Value points use the price timeline. Dates without a matching price point
+  // are omitted so a hover can never compare two different dates.
+  const priceXByDate = new Map(mappedCoords.map((point) => [point.date, point.x]));
+  const mappedValCoords = valuePoints.flatMap((valuePoint) => {
+    const x = priceXByDate.get(valuePoint.date);
+    if (x == null) return [];
+    const y = paddingTop + chartH - ((valuePoint.value - min) / range) * chartH;
+    return [{ x, y, date: valuePoint.date, value: valuePoint.value }];
+  });
+  const valueCoordsByDate = new Map(
+    mappedValCoords.map((point) => [point.date, point]),
+  );
+
+  const valD = buildSmoothSpline(mappedValCoords);
+
+  // Calculate 3 horizontal reference lines
+  const yTicks = [0.25, 0.5, 0.75].map((pct) => {
+    const val = min + range * pct;
+    const y = paddingTop + chartH - pct * chartH;
+    return { y, label: `${currencySymbol}${val >= 100 ? val.toFixed(0) : val.toFixed(1)}` };
+  });
+
+  // Calculate X-axis year markers
+  const seenYears = new Set<string>();
+  const yearTicks: Array<{ x: number; label: string }> = [];
+  mappedCoords.forEach((c) => {
+    const yr = c.date.slice(0, 4);
+    if (!seenYears.has(yr)) {
+      seenYears.add(yr);
+      yearTicks.push({ x: c.x, label: yr });
+    }
+  });
+
+  return {
+    pathD: d,
+    areaD: area,
+    valPathD: valD,
+    minPrice: prices.length ? Math.min(...prices) : 0,
+    maxPrice: prices.length ? Math.max(...prices) : 0,
+    coords: mappedCoords,
+    valueCoords: mappedValCoords,
+    valueCoordsByDate,
+    yTicks,
+    yearTicks,
+  };
+}
+
 export function ValueLineSparkline({
   points,
   valuePoints = [],
@@ -79,97 +203,20 @@ export function ValueLineSparkline({
     minPrice,
     maxPrice,
     coords,
-    valueCoords,
+    valueCoordsByDate,
     yTicks,
     yearTicks,
-  } = useMemo(() => {
-    if (!points.length) {
-      return {
-        pathD: "",
-        areaD: "",
-        valPathD: "",
-        minPrice: 0,
-        maxPrice: 0,
-        coords: [],
-        valueCoords: [],
-        yTicks: [],
-        yearTicks: [],
-      };
-    }
-
-    const prices = points.map((p) => p.close).filter((c) => Number.isFinite(c) && c > 0);
-    const vals = valuePoints.map((v) => v.value).filter((v) => Number.isFinite(v) && v > 0);
-    const combined = [...prices, ...vals];
-
-    const rawMin = Math.min(...(combined.length ? combined : prices));
-    const rawMax = Math.max(...(combined.length ? combined : prices));
-
-    const min = Math.max(0, rawMin * 0.9);
-    const max = rawMax * 1.1;
-    const range = max - min || 1;
-
-    const paddingLeft = 16;
-    const paddingRight = 44; // Room for Y-axis reference labels
-    const paddingTop = 14;
-    const paddingBottom = 22; // Room for X-axis year ticks
-    const chartW = width - paddingLeft - paddingRight;
-    const chartH = height - paddingTop - paddingBottom;
-
-    const len = points.length;
-
-    // Map price coords
-    const mappedCoords = points.map((p, idx) => {
-      const x = paddingLeft + (idx / (len - 1 || 1)) * chartW;
-      const y = paddingTop + chartH - ((p.close - min) / range) * chartH;
-      return { x, y, date: p.date, close: p.close };
-    });
-
-    const d = buildSmoothSpline(mappedCoords);
-
-    const last = mappedCoords[mappedCoords.length - 1];
-    const first = mappedCoords[0];
-    const baselineY = paddingTop + chartH;
-    const area = `${d} L ${last.x.toFixed(1)} ${baselineY.toFixed(1)} L ${first.x.toFixed(1)} ${baselineY.toFixed(1)} Z`;
-
-    // Map value line coords
-    const mappedValCoords = valuePoints.map((v, idx) => {
-      const x = paddingLeft + (idx / (valuePoints.length - 1 || 1)) * chartW;
-      const y = paddingTop + chartH - ((v.value - min) / range) * chartH;
-      return { x, y, date: v.date, value: v.value };
-    });
-
-    const valD = buildSmoothSpline(mappedValCoords);
-
-    // Calculate 3 horizontal reference lines
-    const yTicks = [0.25, 0.5, 0.75].map((pct) => {
-      const val = min + range * pct;
-      const y = paddingTop + chartH - pct * chartH;
-      return { y, label: `${currencySymbol}${val >= 100 ? val.toFixed(0) : val.toFixed(1)}` };
-    });
-
-    // Calculate X-axis year markers
-    const seenYears = new Set<string>();
-    const yearTicks: Array<{ x: number; label: string }> = [];
-    mappedCoords.forEach((c) => {
-      const yr = c.date.slice(0, 4);
-      if (!seenYears.has(yr)) {
-        seenYears.add(yr);
-        yearTicks.push({ x: c.x, label: yr });
-      }
-    });
-
-    return {
-      pathD: d,
-      areaD: area,
-      valPathD: valD,
-      minPrice: rawMin,
-      maxPrice: rawMax,
-      coords: mappedCoords,
-      valueCoords: mappedValCoords,
-      yTicks,
-      yearTicks,
-    };
-  }, [points, valuePoints, width, height, currencySymbol]);
+  } = useMemo(
+    () =>
+      buildValueLineSparklineGeometry({
+        points,
+        valuePoints,
+        width,
+        height,
+        currencySymbol,
+      }),
+    [points, valuePoints, width, height, currencySymbol],
+  );
 
   if (!points.length) {
     return (
@@ -181,7 +228,9 @@ export function ValueLineSparkline({
 
   const activePricePoint = hoverIdx != null ? coords[hoverIdx] : coords[coords.length - 1];
   const activeValuePoint =
-    hoverIdx != null ? valueCoords[hoverIdx] : valueCoords[valueCoords.length - 1];
+    activePricePoint != null
+      ? valueCoordsByDate.get(activePricePoint.date) ?? null
+      : null;
 
   let valuationDiffTag: string | null = null;
   let valuationDiffClass = "vl-tag--neutral";
@@ -333,10 +382,10 @@ export function ValueLineSparkline({
                     strokeDasharray="2, 2"
                   />
                   <circle cx={c.x} cy={c.y} r={4.5} fill="#0071e3" stroke="#fff" strokeWidth={2} />
-                  {valueCoords[idx] ? (
+                  {valueCoordsByDate.get(c.date) ? (
                     <circle
-                      cx={valueCoords[idx].x}
-                      cy={valueCoords[idx].y}
+                      cx={valueCoordsByDate.get(c.date)!.x}
+                      cy={valueCoordsByDate.get(c.date)!.y}
                       r={4}
                       fill="#f59e0b"
                       stroke="#fff"

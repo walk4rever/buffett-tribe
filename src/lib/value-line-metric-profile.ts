@@ -1,5 +1,6 @@
 import type { FinancialModelResolution } from "@/lib/financial-model";
 import { buildFinancialServicesMetricCard } from "@/lib/financial-services-metrics";
+import { isPeriodEndShareSource } from "@/lib/share-count-utils";
 
 export type ValueLineMetricAnnual = {
   year: number;
@@ -11,6 +12,7 @@ export type ValueLineMetricAnnual = {
   totalAssets?: number | null;
   eps?: number | null;
   shares?: number | null;
+  sharesSource?: "disclosed" | "disclosed_period_end" | "weighted_average" | "derived" | null;
   dividendsPaid?: number | null;
   assetsUnderManagement?: number | null;
   netClientFlows?: number | null;
@@ -499,6 +501,7 @@ function perShareDividend(annual: ValueLineMetricAnnual) {
   if (
     !finite(annual.dividendsPaid) ||
     !finite(annual.shares) ||
+    !isPeriodEndShareSource(annual.sharesSource) ||
     annual.shares <= 0 ||
     annual.dividendsPaid === 0
   ) {
@@ -576,7 +579,8 @@ function growthMetrics(
     key: "shares",
     title: "期末股数变化",
     subText: "5年复合变化率 · 股本稀释或回购",
-    value: (annual) => annual.shares,
+    value: (annual) =>
+      isPeriodEndShareSource(annual.sharesSource) ? annual.shares : null,
   };
   const totalDistributions: GrowthSeries = {
     key: "total-distributions",

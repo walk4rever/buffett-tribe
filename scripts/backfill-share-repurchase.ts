@@ -142,11 +142,18 @@ async function main() {
             lineItem: "ShareRepurchaseAmt",
             value: decimalFromNumber(fact.value),
             unit: fact.unit,
-            mappingRule: BUYBACK.tagsUsGaap.map((t) => `us-gaap:${t}`).join("|"),
+            rawXbrlTag: fact.tag,
+            mappingRule: fact.tag
+              ? `sec-xbrl:${fact.tag}${fact.accn ? `@${fact.accn}` : ""}`
+              : null,
           },
           update: {
             value: decimalFromNumber(fact.value),
             unit: fact.unit,
+            rawXbrlTag: fact.tag,
+            mappingRule: fact.tag
+              ? `sec-xbrl:${fact.tag}${fact.accn ? `@${fact.accn}` : ""}`
+              : null,
           },
         });
       }

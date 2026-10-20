@@ -2,71 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { calculateFreeCashFlow } from "../src/lib/financial-math";
 import {
-  applyOptionalCashFlowZeroDefaults,
   deriveSharesFromFinancials,
   normalizeFinancialItems,
 } from "../src/lib/financial-normalization";
 
-describe("applyOptionalCashFlowZeroDefaults", () => {
-  it("fills only selected optional cash flows when the year has cash flow data", () => {
-    const financials = [
-      {
-        year: 2025,
-        items: {
-          Revenue: "100",
-          OperatingCashFlow: "40",
-          CapEx: "12",
-        },
-      },
-    ];
-
-    const normalized = applyOptionalCashFlowZeroDefaults(financials);
-
-    expect(normalized[0].items).toMatchObject({
-      Revenue: "100",
-      OperatingCashFlow: "40",
-      CapEx: "12",
-      DividendsPaid: "0",
-      ShareRepurchaseAmt: "0",
-      CashReceivedFromDisposalOfAssets: "0",
-      PurchaseSaleOfBusinessNet: "0",
-    });
-    expect(normalized[0].items).not.toHaveProperty("OtherFinancingCashFlow");
-    expect(financials[0].items).not.toHaveProperty("DividendsPaid");
-  });
-
-  it("leaves optional cash flows missing when the year has no cash flow data", () => {
-    const financials = [{ year: 2025, items: { Revenue: "100" } }];
-
-    const normalized = applyOptionalCashFlowZeroDefaults(financials);
-
-    expect(normalized[0].items).toEqual({ Revenue: "100" });
-  });
-
-  it("preserves disclosed values and recognizes the repurchase fallback item", () => {
-    const financials = [
-      {
-        year: 2025,
-        items: {
-          OperatingCashFlow: "40",
-          DividendsPaid: "7",
-          PaymentsForRepurchaseOfCommonStock: "5",
-          CashReceivedFromDisposalOfAssets: "3",
-        },
-      },
-    ];
-
-    const normalized = applyOptionalCashFlowZeroDefaults(financials);
-
-    expect(normalized[0].items).toEqual({
-      OperatingCashFlow: "40",
-      DividendsPaid: "7",
-      PaymentsForRepurchaseOfCommonStock: "5",
-      CashReceivedFromDisposalOfAssets: "3",
-      PurchaseSaleOfBusinessNet: "0",
-    });
-  });
-
+describe("cash-flow normalization", () => {
   it("does not make a unitless page-side zero disappear during currency normalization", () => {
     const normalized = normalizeFinancialItems(
       { DividendsPaid: 0 },

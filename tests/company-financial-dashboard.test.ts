@@ -464,6 +464,130 @@ describe("buildCompanyFinancialDashboard", () => {
     expect(dashboard.rows.find((row) => row.key === "Revenue")).toBeUndefined();
   });
 
+  it("returns null net debt ratio when cash or debt inputs are missing", () => {
+    const withCompleteInputs = buildCompanyFinancialDashboard(
+      { sector: "Real Estate", metadata: {}, sectorModelType: "real_estate" },
+      [
+        {
+          ...financialYear(2025, {
+            Revenue: "1000",
+            CashAndCashEquivalents: "100",
+            TotalDebt: "300",
+            TotalEquity: "500",
+          }),
+          itemUnits: {
+            Revenue: "USD",
+            CashAndCashEquivalents: "USD",
+            TotalDebt: "USD",
+            TotalEquity: "USD",
+          },
+        },
+      ],
+      "USD",
+      {
+        reportingCurrency: "USD",
+        tradingCurrency: "USD",
+        fxRates: new Map([["USD", 1]]),
+      },
+    );
+    expect(
+      withCompleteInputs.rows.find((row) => row.key === "NetDebtRatio")
+        ?.values[2025],
+    ).toBe("40.0%");
+
+    const missingCash = buildCompanyFinancialDashboard(
+      { sector: "Real Estate", metadata: {}, sectorModelType: "real_estate" },
+      [
+        {
+          ...financialYear(2025, {
+            Revenue: "1000",
+            TotalDebt: "300",
+            TotalEquity: "500",
+          }),
+          itemUnits: {
+            Revenue: "USD",
+            TotalDebt: "USD",
+            TotalEquity: "USD",
+          },
+        },
+      ],
+      "USD",
+      {
+        reportingCurrency: "USD",
+        tradingCurrency: "USD",
+        fxRates: new Map([["USD", 1]]),
+      },
+    );
+    expect(
+      missingCash.rows.find((row) => row.key === "NetDebtRatio"),
+    ).toBeUndefined();
+
+    const onlyShortDebt = buildCompanyFinancialDashboard(
+      { sector: "Real Estate", metadata: {}, sectorModelType: "real_estate" },
+      [
+        {
+          ...financialYear(2025, {
+            Revenue: "1000",
+            CashAndCashEquivalents: "100",
+            ShortTermDebt: "300",
+            TotalEquity: "500",
+          }),
+          itemUnits: {
+            Revenue: "USD",
+            CashAndCashEquivalents: "USD",
+            ShortTermDebt: "USD",
+            TotalEquity: "USD",
+          },
+        },
+      ],
+      "USD",
+      {
+        reportingCurrency: "USD",
+        tradingCurrency: "USD",
+        fxRates: new Map([["USD", 1]]),
+      },
+    );
+    expect(
+      onlyShortDebt.rows.find((row) => row.key === "NetDebtRatio"),
+    ).toBeUndefined();
+  });
+
+  it("normalizes debt, cash, and equity before calculating net debt ratio", () => {
+    const dashboard = buildCompanyFinancialDashboard(
+      { sector: "Real Estate", metadata: {}, sectorModelType: "real_estate" },
+      [
+        {
+          ...financialYear(2025, {
+            Revenue: "1000",
+            CashAndCashEquivalents: "100",
+            TotalDebt: "1000",
+            TotalEquity: "700",
+          }),
+          itemUnits: {
+            Revenue: "CNY",
+            CashAndCashEquivalents: "CNY",
+            TotalDebt: "TWD",
+            TotalEquity: "CNY",
+          },
+        },
+      ],
+      "HKD",
+      {
+        reportingCurrency: "CNY",
+        tradingCurrency: "HKD",
+        fxRates: new Map([
+          ["CNY", 0.14],
+          ["TWD", 0.07],
+          ["HKD", 0.07],
+        ]),
+      },
+    );
+
+    expect(
+      dashboard.rows.find((row) => row.key === "NetDebtRatio")?.values[2025],
+    ).toBe("57.1%");
+  });
+
   it("uses book equity rather than liabilities as the financial-sector balance-sheet ratio", () => {
     const dashboard = buildCompanyFinancialDashboard(
       { sector: "Financials", metadata: {}, sectorModelType: "banks" },

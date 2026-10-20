@@ -30,6 +30,35 @@ describe("financial calculations", () => {
   });
 
   describe("stock split detection and normalization", () => {
+    it("does not rewrite production history without an explicit heuristic opt-in", () => {
+      const years = [
+        {
+          year: 2023,
+          items: {
+            CommonStockSharesOutstanding: "100000000",
+            EPSDiluted: "10",
+            NetIncome: "1000000000",
+          },
+        },
+        {
+          year: 2024,
+          items: {
+            CommonStockSharesOutstanding: "1000000000",
+            EPSDiluted: "20",
+            NetIncome: "20000000000",
+          },
+        },
+      ];
+
+      const res = normalizeFinancialYearsStockSplits(years);
+      expect(Number(res[0].items.CommonStockSharesOutstanding)).toBe(100000000);
+      expect(Number(res[0].items.EPSDiluted)).toBe(10);
+    });
+
+    it("treats a 10x share increase as a candidate, not a confirmed split", () => {
+      expect(detectSplitFactor(100000000, 1000000000, 10, 20)).toBe(10);
+    });
+
     it("detects a 10-for-1 forward split (like NVDA 2024 split)", () => {
       const factor = detectSplitFactor(
         2532987013,
@@ -72,7 +101,9 @@ describe("financial calculations", () => {
         { year: 2026, eps: 4.90, shares: 24503469388, netIncome: 120067000000 },
       ];
 
-      const normalized = normalizeAnnualsStockSplits(unadjustedAnnuals);
+      const normalized = normalizeAnnualsStockSplits(unadjustedAnnuals, {
+        allowHeuristic: true,
+      });
 
       // 2022 and earlier should be multiplied by 10
       expect(normalized.find((a) => a.year === 2022)?.shares).toBe(25329870130);
@@ -150,7 +181,9 @@ describe("financial calculations", () => {
         },
       ];
 
-      const res = normalizeFinancialYearsStockSplits(avgoYears);
+      const res = normalizeFinancialYearsStockSplits(avgoYears, {
+        allowHeuristic: true,
+      });
 
       // FY22 CommonStockSharesOutstanding should be scaled by 10 to ~4.18B, NOT staying at 418M!
       expect(Number(res.find((y) => y.year === 2022)?.items.CommonStockSharesOutstanding)).toBe(4180000000);
@@ -187,7 +220,9 @@ describe("financial calculations", () => {
         },
       ];
 
-      const res = normalizeFinancialYearsStockSplits(dilutionYears);
+      const res = normalizeFinancialYearsStockSplits(dilutionYears, {
+        allowHeuristic: true,
+      });
 
       // Should remain 100M and 130M, NOT multiplied by 1.5
       expect(Number(res.find((y) => y.year === 2023)?.items.CommonStockSharesOutstanding)).toBe(100000000);
@@ -216,7 +251,9 @@ describe("financial calculations", () => {
         },
       ];
 
-      const res = normalizeFinancialYearsStockSplits(reverseSplitYears);
+      const res = normalizeFinancialYearsStockSplits(reverseSplitYears, {
+        allowHeuristic: true,
+      });
 
       // 2020 shares should be divided by 8 (multiplied by 0.125) to ~1.1B
       expect(Number(res.find((y) => y.year === 2020)?.items.CommonStockSharesOutstanding)).toBe(1100000000);
@@ -264,7 +301,9 @@ describe("financial calculations", () => {
         },
       ];
 
-      const res = normalizeFinancialYearsStockSplits(nvdaYears);
+      const res = normalizeFinancialYearsStockSplits(nvdaYears, {
+        allowHeuristic: true,
+      });
 
       // FY2020 CommonStockSharesOutstanding (612M * 40 = 24.48B)
       expect(Number(res.find((y) => y.year === 2020)?.items.CommonStockSharesOutstanding)).toBe(24480000000);
@@ -295,7 +334,9 @@ describe("financial calculations", () => {
           },
         },
       ];
-      const amznRes = normalizeFinancialYearsStockSplits(amznYears);
+      const amznRes = normalizeFinancialYearsStockSplits(amznYears, {
+        allowHeuristic: true,
+      });
       expect(Number(amznRes.find((y) => y.year === 2020)?.items.CommonStockSharesOutstanding)).toBe(10060000000);
 
       const deckYears = [
@@ -318,7 +359,9 @@ describe("financial calculations", () => {
           },
         },
       ];
-      const deckRes = normalizeFinancialYearsStockSplits(deckYears);
+      const deckRes = normalizeFinancialYearsStockSplits(deckYears, {
+        allowHeuristic: true,
+      });
       expect(Number(deckRes.find((y) => y.year === 2023)?.items.CommonStockSharesOutstanding)).toBe(157200000);
     });
 
@@ -339,7 +382,9 @@ describe("financial calculations", () => {
           },
         },
       ];
-      const res = normalizeFinancialYearsStockSplits(noAnchorYears);
+      const res = normalizeFinancialYearsStockSplits(noAnchorYears, {
+        allowHeuristic: true,
+      });
       expect(Number(res.find((y) => y.year === 2022)?.items.CommonStockSharesOutstanding)).toBe(2000000000);
       expect(Number(res.find((y) => y.year === 2022)?.items.EPSDiluted)).toBe(1.2);
     });

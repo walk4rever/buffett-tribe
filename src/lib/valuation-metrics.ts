@@ -135,7 +135,9 @@ export async function fetchAnnualFundamentals(entityId: string): Promise<AnnualF
     itemUnits: data.itemUnits,
   }));
 
-  const normalizedYears = normalizeFinancialYearsStockSplits(rawYears);
+  const normalizedYears = normalizeFinancialYearsStockSplits(rawYears, {
+    allowHeuristic: false,
+  });
 
   return normalizedYears
     .sort((a, b) => a.year - b.year)

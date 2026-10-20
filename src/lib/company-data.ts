@@ -10,7 +10,6 @@ import {
   OFFICIAL_FILINGS_START_DATE,
 } from "@/lib/financial-period";
 import { normalizeCik, unpadCik, getCikLookupVariants } from "@/lib/cik";
-import { applyOptionalCashFlowZeroDefaults } from "@/lib/financial-normalization";
 import { normalizeFinancialYearsStockSplits } from "@/lib/financial-math";
 import {
   buildMasterHolderTrends,
@@ -482,8 +481,9 @@ export async function getCompanyFinancials(entityId: string, limit = 8) {
       itemUnits: data.itemUnits,
     }));
 
-  const normalizedYears = normalizeFinancialYearsStockSplits(financialYears);
-  return applyOptionalCashFlowZeroDefaults(normalizedYears);
+  return normalizeFinancialYearsStockSplits(financialYears, {
+    allowHeuristic: false,
+  });
 }
 
 export type InterimFinancialSnapshot = {

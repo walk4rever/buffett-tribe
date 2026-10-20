@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { ValueLineData } from "@/lib/value-line-data";
 import { currencySymbol as getCurrencySymbol } from "@/lib/currency";
+import { getPeriodEndSharesForBps } from "@/lib/share-count-utils";
 import { computeScenarios } from "@/lib/valuation-metrics";
 import {
   computeAnnualEpsGrowthPct,
@@ -358,11 +359,12 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
   const pbTsrCalculations = useMemo(() => {
     if (!latestPrice || latestPrice <= 0) return null;
     const lastAnnual = data.valuationAnnuals.at(-1);
+    const periodEndShares = getPeriodEndSharesForBps(lastAnnual);
     const bpsFromAnnual =
       lastAnnual?.shareholdersEquity &&
-      lastAnnual.shares &&
-      lastAnnual.shares > 0
-        ? lastAnnual.shareholdersEquity / lastAnnual.shares
+      periodEndShares != null &&
+      periodEndShares > 0
+        ? lastAnnual.shareholdersEquity / periodEndShares
         : null;
     const currentBps =
       bpsFromAnnual ??

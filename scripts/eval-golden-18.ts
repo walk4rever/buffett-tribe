@@ -1642,6 +1642,7 @@ export async function runGoldenAudit(): Promise<{ reports: CompanyAuditReport[];
         roe: roeFrac != null ? Number((roeFrac * 100).toFixed(2)) : null,
         repurchaseAmt: getNumericFact(f, "ShareRepurchaseAmt"),
         dividendsPaid: getNumericFact(f, "DividendsPaid"),
+        acquisitionsAmt: getNumericFact(f, "PurchaseSaleOfBusinessNet"),
       };
     });
 
@@ -1720,6 +1721,7 @@ export async function runGoldenAudit(): Promise<{ reports: CompanyAuditReport[];
       capEx: a.capEx,
       repurchaseAmt: a.repurchaseAmt,
       dividendsPaid: a.dividendsPaid,
+      acquisitionsAmt: a.acquisitionsAmt,
       shares: a.shares,
       sharesSource: a.sharesSource,
       roe: a.roe,
@@ -1745,29 +1747,51 @@ export async function runGoldenAudit(): Promise<{ reports: CompanyAuditReport[];
       }
     } else {
       // 金融与非工商业 (bank, insurance, financial_services, real_estate)：验证 5 步净利润资本分配瀑布流
-      if (
-        capStats.cumNetIncome == null ||
-        capStats.shareholderReturnAmt == null ||
-        capStats.retainedEarnings == null
-      ) {
+      if (capStats.cumNetIncome == null) {
         findings.push({
           layer: "UI",
           severity: "P0",
           code: "FINANCIAL_WATERFALL_BROKEN",
-          message: `Tab 4 金融资本配置 5 步瀑布流断链 (cumNetIncome=${capStats.cumNetIncome}, retained=${capStats.retainedEarnings}, return=${capStats.shareholderReturnAmt})`,
+          message: `Tab 4 金融资本配置缺少累计净利润 (cumNetIncome=${capStats.cumNetIncome})`,
         });
-      } else {
+      } else if (capStats.netIncomeDistributionComplete) {
+        if (
+          capStats.shareholderReturnAmt == null ||
+          capStats.retainedEarnings == null
+        ) {
+          findings.push({
+            layer: "UI",
+            severity: "P0",
+            code: "FINANCIAL_WATERFALL_BROKEN",
+            message: `Tab 4 金融资本配置声明完整但未生成股东回报或留存差额 (retained=${capStats.retainedEarnings}, return=${capStats.shareholderReturnAmt})`,
+          });
+        }
         const waterfallDiff = Math.abs(
-          capStats.cumNetIncome - (capStats.retainedEarnings + capStats.shareholderReturnAmt),
+          capStats.cumNetIncome -
+            ((capStats.retainedEarnings ?? 0) + (capStats.shareholderReturnAmt ?? 0)),
         );
-        if (waterfallDiff > 1) {
+        if (
+          capStats.shareholderReturnAmt != null &&
+          capStats.retainedEarnings != null &&
+          waterfallDiff > 1
+        ) {
           findings.push({
             layer: "UI",
             severity: "P0",
             code: "FINANCIAL_WATERFALL_IDENTITY_ERROR",
-            message: `Tab 4 金融资本分配总账不守恒: 累计净利 (${capStats.cumNetIncome}) != 留存扩表 (${capStats.retainedEarnings}) + 股东回报 (${capStats.shareholderReturnAmt})`,
+            message: `Tab 4 金融资本分配总账不守恒: 累计净利 (${capStats.cumNetIncome}) != 分红回购后利润留存 (${capStats.retainedEarnings}) + 股东回报 (${capStats.shareholderReturnAmt})`,
           });
         }
+      } else if (
+        capStats.shareholderReturnAmt != null ||
+        capStats.retainedEarnings != null
+      ) {
+        findings.push({
+          layer: "UI",
+          severity: "P0",
+          code: "FINANCIAL_WATERFALL_FABRICATED_TOTAL",
+          message: `Tab 4 分红或回购披露不完整，却仍生成了股东回报/留存差额 (retained=${capStats.retainedEarnings}, return=${capStats.shareholderReturnAmt})`,
+        });
       }
     }
 

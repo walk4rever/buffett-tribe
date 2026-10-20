@@ -31,6 +31,7 @@ import {
 import {
   calculatePeriodEndShareChange,
   getLatestPeriodEndShares,
+  getPeriodEndSharesForBps,
 } from "@/lib/share-count-utils";
 import {
   adjustEpsForAdr,
@@ -838,11 +839,19 @@ export async function getValueLineData(
     }
   }
 
-  const totalBuyback5Y =
-    recentAnnuals.reduce((acc, a) => acc + (a.repurchaseAmt ?? 0), 0) || null;
+  const knownBuybackYears = recentAnnuals.filter(
+    (annual) => annual.repurchaseAmt != null,
+  );
+  const totalBuyback5Y = knownBuybackYears.length
+    ? recentAnnuals.reduce((acc, annual) => acc + Math.abs(annual.repurchaseAmt ?? 0), 0)
+    : null;
+  const buybackPeriodComplete =
+    recentAnnuals.length > 0 && knownBuybackYears.length === recentAnnuals.length;
   const buybackAmountLabel =
     tradingCurrency && totalBuyback5Y != null && totalBuyback5Y > 0
-      ? `5年累计回购 ${sym}${formatUsdInYi(totalBuyback5Y)}`
+      ? buybackPeriodComplete
+        ? `5年累计回购 ${sym}${formatUsdInYi(totalBuyback5Y)}`
+        : `已披露回购合计 ${sym}${formatUsdInYi(totalBuyback5Y)}`
       : null;
 
   let revenueCagr5Y: number | null = null;
@@ -1078,7 +1087,7 @@ export async function getValueLineData(
         ? []
         : pricePoints.map((p) => {
       const annual = getAnnualEpsAvailableOnDate(securityAnnuals, p.date);
-      if (!annual?.eps) return null;
+      if (!annual?.eps || annual.eps <= 0) return null;
       const val = Number((annual.eps * valuationBenchmarkPe).toFixed(2));
       return {
         date: p.date,
@@ -1110,12 +1119,13 @@ export async function getValueLineData(
     }
 
     const securityBpsAnnuals = valuationAnnuals.map((annual) => {
+      const periodEndShares = getPeriodEndSharesForBps(annual);
       const annualShares =
-        annual.shares != null && annual.shares > 0
+        periodEndShares != null
           ? shareClassEpsScale !== 1
-            ? Math.round(annual.shares / shareClassEpsScale)
-            : annual.shares
-          : secShares;
+            ? Math.round(periodEndShares / shareClassEpsScale)
+            : periodEndShares
+          : null;
       const bps =
         annual.shareholdersEquity != null && annualShares != null && annualShares > 0
           ? Number((annual.shareholdersEquity / annualShares).toFixed(4))

@@ -20,6 +20,7 @@ function makeAnnuals(): ValueLineMetricAnnual[] {
       totalLiabilities: growth(150, 0.05),
       eps: growth(2, 0.11),
       shares: 100,
+      sharesSource: "disclosed_period_end" as const,
       dividendsPaid: growth(5, 0.08),
       assetsUnderManagement: growth(800, 0.13),
       netClientFlows: 25,

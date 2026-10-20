@@ -153,10 +153,10 @@ async function main() {
             lineItem: "DividendsPaid",
             value: decimalFromNumber(fact.value),
             unit: fact.unit,
-            mappingRule: [
-              ...DIVIDENDS.tagsUsGaap.map((tag) => `us-gaap:${tag}`),
-              ...DIVIDENDS.tagsIfrs.map((tag) => `ifrs-full:${tag}`),
-            ].join("|"),
+            rawXbrlTag: fact.tag,
+            mappingRule: fact.tag
+              ? `sec-xbrl:${fact.tag}${fact.accn ? `@${fact.accn}` : ""}`
+              : null,
           },
         });
       }

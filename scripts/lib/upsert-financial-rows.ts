@@ -64,9 +64,23 @@ function createUpsertStatement(rows: Prisma.FinancialCreateManyInput[]) {
       "sourceId" = EXCLUDED."sourceId",
       "value" = EXCLUDED."value",
       "unit" = EXCLUDED."unit",
-      "rawXbrlTag" = EXCLUDED."rawXbrlTag",
-      "mappingRule" = EXCLUDED."mappingRule",
-      "confidence" = EXCLUDED."confidence"
+      "rawXbrlTag" = CASE
+        WHEN "Financial"."value" IS NOT DISTINCT FROM EXCLUDED."value"
+          THEN COALESCE(EXCLUDED."rawXbrlTag", "Financial"."rawXbrlTag")
+        ELSE EXCLUDED."rawXbrlTag"
+      END,
+      "mappingRule" = CASE
+        WHEN "Financial"."value" IS NOT DISTINCT FROM EXCLUDED."value"
+          THEN COALESCE(EXCLUDED."mappingRule", "Financial"."mappingRule")
+        WHEN EXCLUDED."mappingRule" IS NOT NULL
+          THEN EXCLUDED."mappingRule"
+        ELSE 'source-changed:unverified'
+      END,
+      "confidence" = CASE
+        WHEN "Financial"."value" IS NOT DISTINCT FROM EXCLUDED."value"
+          THEN LEAST("Financial"."confidence", EXCLUDED."confidence")
+        ELSE EXCLUDED."confidence"
+      END
   `;
 }
 
