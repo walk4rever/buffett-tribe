@@ -21,11 +21,12 @@ export function AdminUniverseExplorer({
   const [market, setMarket] = useState("all");
   const [phase, setPhase] = useState("all");
   const [status, setStatus] = useState("all");
+  const [fastTrack, setFastTrack] = useState(false);
   const [items, setItems] = useState<ExplorerItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [, startTransition] = useTransition();
 
-  const fetchResults = async (q: string, m: string, p: string, s: string) => {
+  const fetchResults = async (q: string, m: string, p: string, s: string, f: boolean) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -33,6 +34,7 @@ export function AdminUniverseExplorer({
       if (m !== "all") params.set("market", m);
       if (p !== "all") params.set("phase", p);
       if (s !== "all") params.set("status", s);
+      if (f) params.set("fastTrack", "1");
       params.set("includeAll", "1");
       params.set("limit", "40");
       params.set("fresh", "1"); // admin view: never serve cached results
@@ -49,16 +51,38 @@ export function AdminUniverseExplorer({
     }
   };
 
+  const hasActiveSearch =
+    Boolean(query.trim()) ||
+    market !== "all" ||
+    phase !== "all" ||
+    status !== "all" ||
+    fastTrack;
+
   useEffect(() => {
-    // Initial fetch on mount or when filters change
+    if (!hasActiveSearch) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     const timer = setTimeout(() => {
       startTransition(() => {
-        fetchResults(query, market, phase, status);
+        fetchResults(query, market, phase, status, fastTrack);
       });
     }, 200);
 
     return () => clearTimeout(timer);
-  }, [query, market, phase, status]);
+  }, [query, market, phase, status, fastTrack, hasActiveSearch]);
+
+  const toggleFastTrack = () => {
+    setFastTrack((active) => {
+      const next = !active;
+      if (next) {
+        setPhase("all");
+        setStatus("all");
+      }
+      return next;
+    });
+  };
 
   const marketColor: Record<string, string> = {
     us: "admin-badge--blue",
@@ -120,7 +144,11 @@ export function AdminUniverseExplorer({
           <h2>全市场标的检索与状态探查 ({totalCompanies ? totalCompanies.toLocaleString() : "16,476"} 家)</h2>
         </div>
         <span className="admin-stat-hint">
-          {loading ? "检索中…" : `展示匹配的前 ${items.length} 家`}
+          {!hasActiveSearch
+            ? "等待输入或筛选"
+            : loading
+              ? "检索中…"
+              : `展示匹配的前 ${items.length} 家`}
         </span>
       </div>
 
@@ -140,9 +168,9 @@ export function AdminUniverseExplorer({
         <div className="admin-universe-select-group">
           <button
             type="button"
-            onClick={() => setPhase(phase === "fasttrack" ? "all" : "fasttrack")}
+            onClick={toggleFastTrack}
             className={`admin-fasttrack-quickfilter ${
-              phase === "fasttrack" ? "admin-fasttrack-quickfilter--active" : ""
+              fastTrack ? "admin-fasttrack-quickfilter--active" : ""
             }`}
             title="仅查看快速通道排队中的标的"
           >
@@ -166,12 +194,16 @@ export function AdminUniverseExplorer({
 
           <select
             value={phase}
-            onChange={(e) => setPhase(e.target.value)}
+            onChange={(e) => {
+              setPhase(e.target.value);
+              setStatus("all");
+              setFastTrack(false);
+            }}
             className="admin-universe-select"
             aria-label="筛选建档阶段"
+            disabled={fastTrack}
           >
             <option value="all">全部阶段</option>
-            <option value="fasttrack">⚡ 快速通道排队中</option>
             <option value="2">Phase 2 (深度分析)</option>
             <option value="1">Phase 1 (基础建档)</option>
             <option value="0">Phase 0 (待处理底座)</option>
@@ -179,9 +211,14 @@ export function AdminUniverseExplorer({
 
           <select
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              if (e.target.value !== "all") setPhase("all");
+              setFastTrack(false);
+            }}
             className="admin-universe-select"
             aria-label="筛选处理状态"
+            disabled={fastTrack}
           >
             <option value="all">全部状态</option>
             <option value="retryable">可重试</option>
@@ -192,10 +229,10 @@ export function AdminUniverseExplorer({
 
           <button
             type="button"
-            onClick={() => fetchResults(query, market, phase, status)}
+            onClick={() => fetchResults(query, market, phase, status, fastTrack)}
             className="admin-universe-refresh-btn"
             title="刷新数据"
-            disabled={loading}
+            disabled={loading || !hasActiveSearch}
           >
             <RefreshCw size={14} className={loading ? "admin-spin" : ""} />
           </button>
@@ -219,7 +256,11 @@ export function AdminUniverseExplorer({
             {items.length === 0 ? (
               <tr>
                 <td colSpan={6} className="admin-table-empty">
-                  {loading ? "正在检索全市场数据库…" : "没有找到匹配条件的公司"}
+                  {!hasActiveSearch
+                    ? "输入代码或公司名称，或选择市场、阶段、状态后开始检索"
+                    : loading
+                      ? "正在检索全市场数据库…"
+                      : "没有找到匹配条件的公司"}
                 </td>
               </tr>
             ) : (

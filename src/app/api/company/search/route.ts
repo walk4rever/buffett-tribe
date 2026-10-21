@@ -52,7 +52,14 @@ export async function GET(request: NextRequest) {
   }
 
   const isFastTrackQuery = phaseStr === "fasttrack" || searchParams.get("fastTrack") === "1";
-  if (statusStr === "retry_exhausted") {
+  if (isFastTrackQuery) {
+    // Fast-track is a separate quick filter and takes precedence over phase/status.
+    conditions.push(Prisma.sql`
+      e."onboardPhase" >= 0
+      AND e."retryExhaustedStage" IS NULL
+      AND COALESCE(e.priority, 0) > 0
+    `);
+  } else if (statusStr === "retry_exhausted") {
     conditions.push(Prisma.sql`e."retryExhaustedStage" IS NOT NULL`);
   } else if (statusStr === "excluded") {
     conditions.push(Prisma.sql`e."onboardPhase" = -1`);
@@ -68,22 +75,17 @@ export async function GET(request: NextRequest) {
     `);
   } else if (statusStr === "active") {
     conditions.push(Prisma.sql`e."onboardPhase" >= 0 AND e."retryExhaustedStage" IS NULL`);
-  } else if (isFastTrackQuery) {
-    // Unified priority queue: Phase 0 (→P1), Phase 1 (→P2), and Phase 2 (→P3)
-    // companies can hold a fast-track slot — mirror the worker's
-    // fetchFastTrackCandidates (onboardPhase >= 0 AND priority > 0).
-    conditions.push(Prisma.sql`
-      e."onboardPhase" >= 0
-      AND e."retryExhaustedStage" IS NULL
-      AND COALESCE(e.priority, 0) > 0
-    `);
   } else if (phaseStr && phaseStr !== "all") {
     const phaseNum = parseInt(phaseStr, 10);
     if (!Number.isNaN(phaseNum)) {
       conditions.push(Prisma.sql`e."onboardPhase" = ${phaseNum}`);
     }
-  } else if (!includeAll) {
-    // Default search hides excluded non-operating entities (onboardPhase = -1)
+  } else if (includeAll) {
+    // "All phases" means P0/P1/P2 and excludes P-1. Excluded entities are
+    // selected explicitly through status=excluded.
+    conditions.push(Prisma.sql`e."onboardPhase" >= 0`);
+  } else {
+    // Public/default search also hides retry-exhausted rows.
     conditions.push(Prisma.sql`
       e."onboardPhase" >= 0
       AND e."retryExhaustedStage" IS NULL
