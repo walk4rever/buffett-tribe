@@ -89,6 +89,9 @@ retryExhaustedStage Int?
 - [x] dry-run 结果：58 家变更，Phase 1 25 家，Phase 2 33 家
 - [x] 全量 Vitest：527 通过，14 跳过
 - [x] lint、build 通过
-- [ ] 部署到 mini 并运行正式回补
+- [x] 部署到 mini（`18b89b73`）并重新生成 Prisma Client
+- [x] 正式回补完成：58 家（P1 25、P2 33）
+- [x] 验证：`phase=-1 AND stage!=null = 0`；`stage!=null AND isExcluded=true = 0`
+- [x] `status:universe` 已显示“重试耗尽待人工 58 家”
 
 回补顺序：先提交/推送并让 mini 拉取新代码，再运行正式回补，避免旧 worker 把刚改成 Phase 0 的重试耗尽公司重新捞起。
