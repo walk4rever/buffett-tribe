@@ -29,10 +29,12 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import prisma from "@/lib/prisma";
 import { evaluateOnboardExclusion } from "@/lib/onboard-exclusion";
+import { classifyOnboardError } from "@/lib/onboard-error";
 
 type Market = "us" | "hk" | "cn";
 
@@ -83,6 +85,36 @@ function logMessage(msg: string) {
   const ts = new Date().toISOString().slice(0, 19).replace("T", " ") + "Z";
   const line = `[${ts}] ${msg}`;
   console.log(line);
+}
+
+async function recordOnboardEvent(input: {
+  batchId: string;
+  entityId: string;
+  ticker: string;
+  market: string;
+  phase: number;
+  targetPhase: number;
+  result: "success" | "failure";
+  errorMessage?: string;
+  elapsedMs: number;
+}) {
+  await prisma.onboardEvent.create({
+    data: {
+      batchId: input.batchId,
+      entityId: input.entityId,
+      ticker: input.ticker,
+      market: input.market,
+      phase: input.phase,
+      targetPhase: input.targetPhase,
+      result: input.result,
+      errorCategory:
+        input.result === "failure"
+          ? classifyOnboardError(input.errorMessage)
+          : null,
+      errorMessage: input.errorMessage ?? null,
+      elapsedMs: input.elapsedMs,
+    },
+  }).catch(() => {});
 }
 
 let lockAcquired = false;
@@ -744,6 +776,7 @@ async function main() {
     let succeeded = 0;
     let failed = 0;
     const batchStartTime = Date.now();
+    const batchId = randomUUID();
 
     for (let i = 0; i < candidateList.length; i++) {
       const company = candidateList[i];
@@ -811,10 +844,31 @@ async function main() {
 
         succeeded++;
         const elapsed = formatDuration(Date.now() - startMs);
+        await recordOnboardEvent({
+          batchId,
+          entityId: company.id,
+          ticker: company.ticker,
+          market: company.market,
+          phase: company.currentPhase,
+          targetPhase: company.targetPhase,
+          result: "success",
+          elapsedMs: Date.now() - startMs,
+        });
         logMessage(`✓ [${i + 1}/${candidateList.length}] SUCCESS [${phaseTag}] ${company.ticker} (${elapsed})`);
       } catch (err: unknown) {
         failed++;
         const errMsg = err instanceof Error ? err.message : String(err);
+        await recordOnboardEvent({
+          batchId,
+          entityId: company.id,
+          ticker: company.ticker,
+          market: company.market,
+          phase: company.currentPhase,
+          targetPhase: company.targetPhase,
+          result: "failure",
+          errorMessage: errMsg,
+          elapsedMs: Date.now() - startMs,
+        });
         logMessage(`✗ [${i + 1}/${candidateList.length}] FAILED [${phaseTag}] ${company.ticker}: ${errMsg}`);
 
         // Update entity failure count with retry to guarantee error tracking even under pool contention

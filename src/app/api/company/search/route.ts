@@ -135,6 +135,7 @@ export async function GET(request: NextRequest) {
             : Prisma.empty
         }
         ${isFastTrackQuery ? Prisma.sql`e.priority DESC,` : Prisma.empty}
+        e."updatedAt" DESC,
         e."onboardPhase" DESC,
         e.priority DESC,
         e."canonicalName" ASC

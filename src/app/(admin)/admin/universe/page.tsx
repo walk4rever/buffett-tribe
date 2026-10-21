@@ -4,11 +4,12 @@ import {
   CheckCircle2,
   Clock,
   Building2,
-  ArrowUpRight,
   TrendingUp,
   ShieldAlert,
+  ArrowUpRight,
 } from "lucide-react";
 import prisma from "@/lib/prisma";
+import { classifyOnboardError } from "@/lib/onboard-error";
 import { formatCompanyUrl } from "@/lib/company-data";
 import { AdminUniverseExplorer } from "@/components/admin/AdminUniverseExplorer";
 
@@ -21,8 +22,10 @@ export default async function AdminUniversePage() {
     marketPhaseCounts,
     retryStageCounts,
     retryMarketCounts,
-    recentUpdates,
-    excludedCompanies,
+    recentBatches,
+    recentFailureEvents,
+    retryableCount,
+    retryableCompanies,
     retryExhaustedCompanies,
     fastTrackCount,
   ] =
@@ -56,43 +59,84 @@ export default async function AdminUniversePage() {
           AND "retryExhaustedStage" IS NOT NULL
         GROUP BY market;
       `,
-      prisma.entity.findMany({
-        where: {
-          type: "company",
-          onboardPhase: { in: [1, 2] },
-        },
-        select: {
-          id: true,
-          cik: true,
-          code: true,
-          ticker: true,
-          market: true,
-          canonicalName: true,
-          onboardPhase: true,
-          retryExhaustedStage: true,
-          updatedAt: true,
-          metadata: true,
-        },
-        orderBy: { updatedAt: "desc" },
-        take: 15,
-      }),
-      prisma.entity.findMany({
-        where: {
-          type: "company",
-          onboardPhase: -1,
-        },
-        select: {
-          id: true,
-          ticker: true,
-          code: true,
-          market: true,
-          canonicalName: true,
-          updatedAt: true,
-          metadata: true,
-        },
-        orderBy: { updatedAt: "desc" },
-        take: 6,
-      }),
+      prisma.$queryRaw<Array<{
+        batchId: string;
+        startedAt: Date;
+        completedAt: Date;
+        total: number;
+        succeeded: number;
+        failed: number;
+      }>>`
+        SELECT "batchId",
+               min("createdAt") AS "startedAt",
+               max("createdAt") AS "completedAt",
+               count(*)::int AS total,
+               count(*) FILTER (WHERE result = 'success')::int AS succeeded,
+               count(*) FILTER (WHERE result = 'failure')::int AS failed
+        FROM "OnboardEvent"
+        WHERE "createdAt" >= NOW() - INTERVAL '72 hours'
+        GROUP BY "batchId"
+        ORDER BY max("createdAt") DESC
+        LIMIT 8;
+      `,
+      prisma.$queryRaw<Array<{
+        id: string;
+        ticker: string | null;
+        market: string | null;
+        phase: number;
+        targetPhase: number | null;
+        errorCategory: string | null;
+        errorMessage: string | null;
+        createdAt: Date;
+      }>>`
+        SELECT id, ticker, market, phase, "targetPhase",
+               "errorCategory", "errorMessage", "createdAt"
+        FROM "OnboardEvent"
+        WHERE result = 'failure'
+          AND "createdAt" >= NOW() - INTERVAL '72 hours'
+        ORDER BY "createdAt" DESC
+        LIMIT 8;
+      `,
+      prisma.$queryRaw<Array<{ count: number }>>`
+        SELECT count(*)::int AS count
+        FROM "Entity"
+        WHERE type = 'company'
+          AND "onboardPhase" >= 0
+          AND "retryExhaustedStage" IS NULL
+          AND (
+            CASE WHEN metadata->>'onboardPhase1Attempts' ~ '^[0-9]+$'
+              THEN (metadata->>'onboardPhase1Attempts')::int ELSE 0 END BETWEEN 1 AND 2
+            OR CASE WHEN metadata->>'onboardPhase2Attempts' ~ '^[0-9]+$'
+              THEN (metadata->>'onboardPhase2Attempts')::int ELSE 0 END BETWEEN 1 AND 2
+            OR CASE WHEN metadata->>'phase3Attempts' ~ '^[0-9]+$'
+              THEN (metadata->>'phase3Attempts')::int ELSE 0 END BETWEEN 1 AND 2
+          );
+      `,
+      prisma.$queryRaw<Array<{
+        id: string;
+        cik: string | null;
+        ticker: string | null;
+        market: string | null;
+        canonicalName: string;
+        onboardPhase: number;
+        metadata: unknown;
+      }>>`
+        SELECT id, cik, ticker, market, "canonicalName", "onboardPhase", metadata
+        FROM "Entity"
+        WHERE type = 'company'
+          AND "onboardPhase" >= 0
+          AND "retryExhaustedStage" IS NULL
+          AND (
+            CASE WHEN metadata->>'onboardPhase1Attempts' ~ '^[0-9]+$'
+              THEN (metadata->>'onboardPhase1Attempts')::int ELSE 0 END BETWEEN 1 AND 2
+            OR CASE WHEN metadata->>'onboardPhase2Attempts' ~ '^[0-9]+$'
+              THEN (metadata->>'onboardPhase2Attempts')::int ELSE 0 END BETWEEN 1 AND 2
+            OR CASE WHEN metadata->>'phase3Attempts' ~ '^[0-9]+$'
+              THEN (metadata->>'phase3Attempts')::int ELSE 0 END BETWEEN 1 AND 2
+          )
+        ORDER BY "updatedAt" ASC
+        LIMIT 6;
+      `,
       prisma.entity.findMany({
         where: {
           type: "company",
@@ -100,6 +144,7 @@ export default async function AdminUniversePage() {
         },
         select: {
           id: true,
+          cik: true,
           ticker: true,
           code: true,
           market: true,
@@ -109,7 +154,11 @@ export default async function AdminUniversePage() {
           updatedAt: true,
           metadata: true,
         },
-        orderBy: { updatedAt: "desc" },
+        orderBy: [
+          { priority: "desc" },
+          { retryExhaustedStage: "desc" },
+          { updatedAt: "asc" },
+        ],
         take: 6,
       }),
       prisma.entity.count({
@@ -140,6 +189,7 @@ export default async function AdminUniversePage() {
     (retryStageMap[1] ?? 0) +
     (retryStageMap[2] ?? 0) +
     (retryStageMap[3] ?? 0);
+  const retryableTotal = Number(retryableCount[0]?.count ?? 0);
 
   const p0Pct = ((p0 / (totalCompanies || 1)) * 100).toFixed(1);
   const p1Pct = ((p1 / (totalCompanies || 1)) * 100).toFixed(1);
@@ -354,7 +404,7 @@ export default async function AdminUniversePage() {
                 <h3 className="admin-universe-market-title">{m.label}</h3>
                 <span className="admin-universe-market-sub">
                   总量 {m.total.toLocaleString()} 家 · 运营建档率 {m.rate}%
-                  {m.retryExhausted > 0 ? ` · 重试耗尽 ${m.retryExhausted}` : ""}
+                  {m.retryExhausted > 0 ? ` · 重试 ${m.retryExhausted}` : ""}
                 </span>
               </div>
             </div>
@@ -403,78 +453,104 @@ export default async function AdminUniversePage() {
 
       {/* 2-Column: Recent Live Feeds & Pipeline Health */}
       <div className="admin-activity-grid">
-        {/* Recent Phase 1 Stream */}
+        {/* Recent batch activity */}
         <section className="admin-card">
           <div className="admin-card-header">
             <div className="admin-card-title-group">
               <Clock size={16} className="admin-card-title-icon" />
-              <h2>管线最新更新</h2>
+              <h2>最近批次与活动</h2>
             </div>
-            <span className="admin-stat-hint">最新 {recentUpdates.length} 家</span>
+            <span className="admin-stat-hint">最近 {recentBatches.length} 批</span>
           </div>
 
           <div className="admin-universe-feed-list">
-            {recentUpdates.length === 0 ? (
-              <div className="admin-universe-empty">暂无近期更新</div>
+            {recentBatches.length === 0 ? (
+              <div className="admin-universe-empty">
+                新事件表已启用，等待下一批 worker 写入
+              </div>
             ) : (
-              recentUpdates.map((c) => {
-                const meta = (c.metadata as Record<string, unknown>) || {};
-                const zh = (typeof meta.nameZh === "string" && meta.nameZh) || c.canonicalName;
-                const formattedTime = new Intl.DateTimeFormat("zh-CN", {
+              recentBatches.map((batch) => {
+                const completed = new Intl.DateTimeFormat("zh-CN", {
                   month: "2-digit",
                   day: "2-digit",
                   hour: "2-digit",
                   minute: "2-digit",
                   hour12: false,
                   timeZone: "Asia/Shanghai",
-                }).format(new Date(c.updatedAt));
-                const url = formatCompanyUrl(c);
-                const phaseLabel = c.retryExhaustedStage != null
-                  ? `重试耗尽 P${c.retryExhaustedStage}`
-                  : c.onboardPhase === 1
-                    ? "P1"
-                    : "P2";
-                const phaseBadgeClass = c.retryExhaustedStage != null
-                  ? "admin-badge--red"
-                  : c.onboardPhase === 1
-                    ? "admin-badge--blue"
-                    : "admin-badge--green";
+                }).format(new Date(batch.completedAt));
+                const elapsedMinutes = Math.max(
+                  0,
+                  Math.round(
+                    (new Date(batch.completedAt).getTime() -
+                      new Date(batch.startedAt).getTime()) /
+                      60000,
+                  ),
+                );
 
                 return (
-                  <div key={c.id} className="admin-universe-feed-item">
+                  <div key={batch.batchId} className="admin-universe-feed-item">
                     <div className="admin-universe-feed-main">
-                      <span className={`admin-badge ${phaseBadgeClass}`}>
-                        {phaseLabel}
+                      <span
+                        className={`admin-badge ${
+                          batch.failed > 0 ? "admin-badge--red" : "admin-badge--green"
+                        }`}
+                      >
+                        {batch.failed > 0 ? "部分失败" : "全部成功"}
                       </span>
-                      <span className="admin-badge admin-badge--gray">
-                        {(c.market || "us").toUpperCase()}
+                      <span className="admin-universe-feed-name">
+                        成功 {batch.succeeded} / 失败 {batch.failed}
                       </span>
-                      <span className="admin-universe-feed-ticker">{c.ticker || c.code}</span>
-                      <span className="admin-universe-feed-name">{zh}</span>
                     </div>
 
                     <div className="admin-universe-feed-right">
-                      <time className="admin-user-mini-time">{formattedTime}</time>
-                      {url && (
-                        <Link
-                          href={url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="admin-universe-feed-link"
-                          title="查看公司详情"
-                        >
-                          <ArrowUpRight size={13} />
-                        </Link>
-                      )}
+                      <time className="admin-user-mini-time">
+                        {completed} · {elapsedMinutes} 分钟
+                      </time>
                     </div>
                   </div>
                 );
               })
             )}
+
+            {recentFailureEvents.length > 0 && (
+              <>
+                <div className="admin-stat-hint" style={{ marginTop: "18px" }}>
+                  最近失败
+                </div>
+                {recentFailureEvents.map((event) => (
+                  <div key={event.id} className="admin-universe-feed-item">
+                    <div className="admin-universe-feed-main">
+                      <span className="admin-badge admin-badge--red">
+                        P{event.targetPhase ?? event.phase + 1}
+                      </span>
+                      <span className="admin-badge admin-badge--gray">
+                        {(event.market || "us").toUpperCase()}
+                      </span>
+                      <span className="admin-universe-feed-ticker">{event.ticker}</span>
+                      <span className="admin-universe-feed-name">
+                        {event.errorCategory || "阶段执行失败"}
+                      </span>
+                    </div>
+                    <div className="admin-universe-feed-right">
+                      <time className="admin-user-mini-time">
+                        {new Intl.DateTimeFormat("zh-CN", {
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: false,
+                          timeZone: "Asia/Shanghai",
+                        }).format(new Date(event.createdAt))}
+                      </time>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         </section>
 
-        {/* Pipeline Health: Excluded vs Retry Exhausted */}
+        {/* Action queue */}
         <section className="admin-card">
           <div className="admin-card-header">
             <div className="admin-card-title-group">
@@ -485,48 +561,24 @@ export default async function AdminUniversePage() {
               ) : (
                 <CheckCircle2 size={16} className="admin-card-title-icon admin-card-title-icon--green" />
               )}
-              <h2>豁免标的与重试耗尽</h2>
+              <h2>待处理队列</h2>
             </div>
             <span className="admin-stat-hint">
-              {pErr.toLocaleString()} 豁免 · {retryExhaustedCount.toLocaleString()} 重试耗尽
+              {retryExhaustedCount.toLocaleString()} 重试耗尽 · {retryableTotal.toLocaleString()} 可重试
             </span>
           </div>
 
           <div className="admin-universe-error-box">
-            {excludedCompanies.length === 0 && retryExhaustedCompanies.length === 0 ? (
+            {retryExhaustedCompanies.length === 0 && retryableCompanies.length === 0 ? (
               <div className="admin-universe-healthy">
                 <CheckCircle2 size={32} className="admin-universe-healthy-icon" />
-                <p className="admin-universe-healthy-title">当前无豁免或重试耗尽标的</p>
+                <p className="admin-universe-healthy-title">当前没有待处理失败</p>
                 <span className="admin-universe-healthy-sub">
-                  主动排除与重试耗尽已分开记录，当前无需人工处理。
+                  自动重试与人工处理队列均为空。
                 </span>
               </div>
             ) : (
               <div className="admin-universe-feed-list">
-                <div className="admin-stat-hint">豁免标的</div>
-                {excludedCompanies.length === 0 ? (
-                  <div className="admin-universe-empty">暂无豁免标的</div>
-                ) : (
-                  excludedCompanies.map((c) => {
-                    const meta = (c.metadata as Record<string, unknown>) || {};
-                    const zh = (typeof meta.nameZh === "string" && meta.nameZh) || c.canonicalName;
-                    const reason =
-                      (typeof meta.exclusionLabel === "string" && meta.exclusionLabel) ||
-                      "豁免非运营标的";
-                    return (
-                      <div key={c.id} className="admin-universe-feed-item admin-universe-feed-item--error">
-                        <div className="admin-universe-feed-main">
-                          <span className="admin-badge admin-badge--amber">豁免</span>
-                          <span className="admin-badge admin-badge--gray">{(c.market || "us").toUpperCase()}</span>
-                          <span className="admin-universe-feed-ticker">{c.ticker || c.code}</span>
-                          <span className="admin-universe-feed-name">{zh}</span>
-                        </div>
-                        <div className="admin-universe-error-desc" title={reason}>{reason}</div>
-                      </div>
-                    );
-                  })
-                )}
-
                 <div className="admin-stat-hint" style={{ marginTop: "18px" }}>
                   重试耗尽待人工
                 </div>
@@ -537,9 +589,10 @@ export default async function AdminUniversePage() {
                     const meta = (c.metadata as Record<string, unknown>) || {};
                     const zh = (typeof meta.nameZh === "string" && meta.nameZh) || c.canonicalName;
                     const stage = c.retryExhaustedStage;
+                    const url = formatCompanyUrl(c);
                     const reason =
                       (stage != null && typeof meta[`onboardPhase${stage}LastError`] === "string"
-                        ? String(meta[`onboardPhase${stage}LastError`])
+                        ? classifyOnboardError(String(meta[`onboardPhase${stage}LastError`]))
                         : "多次重试失败");
                     return (
                       <div key={c.id} className="admin-universe-feed-item admin-universe-feed-item--error">
@@ -550,12 +603,59 @@ export default async function AdminUniversePage() {
                           <span className="admin-badge admin-badge--gray">{(c.market || "us").toUpperCase()}</span>
                           <span className="admin-universe-feed-ticker">{c.ticker || c.code}</span>
                           <span className="admin-universe-feed-name">{zh}</span>
+                          {url && (
+                            <Link href={url} target="_blank" rel="noreferrer" className="admin-universe-feed-link" title="查看公司详情">
+                              <ArrowUpRight size={13} />
+                            </Link>
+                          )}
                         </div>
                         <div className="admin-universe-error-desc" title={reason}>{reason}</div>
                       </div>
                     );
                   })
                 )}
+
+                <div className="admin-stat-hint" style={{ marginTop: "18px" }}>
+                  自动重试中
+                </div>
+                {retryableCompanies.length === 0 ? (
+                  <div className="admin-universe-empty">暂无自动重试中的标的</div>
+                ) : (
+                  retryableCompanies.map((c) => {
+                    const meta = (c.metadata as Record<string, unknown>) || {};
+                    const zh = (typeof meta.nameZh === "string" && meta.nameZh) || c.canonicalName;
+                    const stage = c.onboardPhase + 1;
+                    const url = formatCompanyUrl(c);
+                    const reason =
+                      typeof meta[`onboardPhase${stage}LastError`] === "string"
+                        ? classifyOnboardError(String(meta[`onboardPhase${stage}LastError`]))
+                        : "阶段执行失败";
+                    return (
+                      <div key={c.id} className="admin-universe-feed-item">
+                        <div className="admin-universe-feed-main">
+                          <span className="admin-badge admin-badge--amber">
+                            可重试 · P{stage}
+                          </span>
+                          <span className="admin-badge admin-badge--gray">
+                            {(c.market || "us").toUpperCase()}
+                          </span>
+                          <span className="admin-universe-feed-ticker">{c.ticker || c.id}</span>
+                          <span className="admin-universe-feed-name">{zh}</span>
+                          {url && (
+                            <Link href={url} target="_blank" rel="noreferrer" className="admin-universe-feed-link" title="查看公司详情">
+                              <ArrowUpRight size={13} />
+                            </Link>
+                          )}
+                        </div>
+                        <div className="admin-universe-error-desc" title={reason}>{reason}</div>
+                      </div>
+                    );
+                  })
+                )}
+
+                <div className="admin-stat-hint" style={{ marginTop: "18px" }}>
+                  另有 {pErr.toLocaleString()} 家主动豁免标的，不进入重试队列；可在下方全市场检索中按“豁免标的”查看。
+                </div>
               </div>
             )}
           </div>

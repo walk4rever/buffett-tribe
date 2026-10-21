@@ -285,6 +285,7 @@ model Entity {
   punchesAsCompany            Punch[]                 @relation("PunchCompanyEntity")
   notes                       Note[]
   watchlistItems              WatchlistCompany[]
+  onboardEvents               OnboardEvent[]
 
   @@index([type])
   @@index([ticker])
@@ -293,6 +294,26 @@ model Entity {
   @@index([onboardPhase])
   @@index([onboardPhase, priority])
   @@index([retryExhaustedStage])
+}
+
+model OnboardEvent {
+  id            String   @id @default(cuid())
+  batchId       String
+  entityId      String?
+  entity        Entity?  @relation(fields: [entityId], references: [id], onDelete: SetNull)
+  ticker        String?
+  market        String?
+  phase         Int
+  targetPhase   Int?
+  result        String   // success | failure
+  errorCategory String?
+  errorMessage  String?
+  elapsedMs     Int?
+  createdAt     DateTime @default(now())
+
+  @@index([batchId])
+  @@index([createdAt])
+  @@index([result, createdAt])
 }
 
 // Punch ("打孔") = a curated, forward-looking record of a master's proven big-bet

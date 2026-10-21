@@ -86,6 +86,7 @@ retryExhaustedStage Int?
 - [x] `status:universe` 统计拆分
 - [x] 排除脚本写入 `retryExhaustedStage = null`
 - [x] 回补脚本与 dry-run
+- [x] 新增 `OnboardEvent` 批次事件表，最近活动改为批次事件，不再依赖 `Entity.updatedAt`
 - [x] dry-run 结果：58 家变更，Phase 1 25 家，Phase 2 33 家
 - [x] 全量 Vitest：527 通过，14 跳过
 - [x] lint、build 通过
@@ -93,5 +94,6 @@ retryExhaustedStage Int?
 - [x] 正式回补完成：58 家（P1 25、P2 33）
 - [x] 验证：`phase=-1 AND stage!=null = 0`；`stage!=null AND isExcluded=true = 0`
 - [x] `status:universe` 已显示“重试耗尽待人工 58 家”
+- [x] 从现有 worker 日志回填最近 72 小时事件：960 条
 
 回补顺序：先提交/推送并让 mini 拉取新代码，再运行正式回补，避免旧 worker 把刚改成 Phase 0 的重试耗尽公司重新捞起。

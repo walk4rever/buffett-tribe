@@ -175,7 +175,6 @@ export function AdminUniverseExplorer({
             <option value="2">Phase 2 (深度分析)</option>
             <option value="1">Phase 1 (基础建档)</option>
             <option value="0">Phase 0 (待处理底座)</option>
-            <option value="-1">Phase -1 (主动豁免/场外/非公司标的)</option>
           </select>
 
           <select
@@ -211,7 +210,7 @@ export function AdminUniverseExplorer({
               <th style={{ width: "70px" }}>市场</th>
               <th style={{ width: "160px" }}>证券代码</th>
               <th>公司名称</th>
-              <th style={{ width: "180px" }}>当前建档阶段</th>
+              <th style={{ width: "180px" }}>当前状态 / 建档阶段</th>
               <th style={{ width: "120px" }}>更新时间</th>
               <th className="admin-table-right" style={{ width: "110px" }}>操作</th>
             </tr>
