@@ -590,10 +590,17 @@ export default async function AdminUniversePage() {
                     const zh = (typeof meta.nameZh === "string" && meta.nameZh) || c.canonicalName;
                     const stage = c.retryExhaustedStage;
                     const url = formatCompanyUrl(c);
-                    const reason =
-                      (stage != null && typeof meta[`onboardPhase${stage}LastError`] === "string"
-                        ? classifyOnboardError(String(meta[`onboardPhase${stage}LastError`]))
-                        : "多次重试失败");
+                    const rawReason =
+                      stage != null && typeof meta[`onboardPhase${stage}LastError`] === "string"
+                        ? String(meta[`onboardPhase${stage}LastError`])
+                        : "";
+                    const category = classifyOnboardError(rawReason);
+                    const attempts = Number(
+                      meta[stage === 1 ? "onboardPhase1Attempts" : stage === 2 ? "onboardPhase2Attempts" : "phase3Attempts"] ?? 3,
+                    );
+                    const reason = category === "阶段执行失败"
+                      ? `自动重试已耗尽 · 尝试 ${attempts} 次`
+                      : `${category} · 尝试 ${attempts} 次`;
                     return (
                       <div key={c.id} className="admin-universe-feed-item admin-universe-feed-item--error">
                         <div className="admin-universe-feed-main">
@@ -609,7 +616,7 @@ export default async function AdminUniversePage() {
                             </Link>
                           )}
                         </div>
-                        <div className="admin-universe-error-desc" title={reason}>{reason}</div>
+                        <div className="admin-universe-error-desc" title={rawReason || reason}>{reason}</div>
                       </div>
                     );
                   })
@@ -626,10 +633,17 @@ export default async function AdminUniversePage() {
                     const zh = (typeof meta.nameZh === "string" && meta.nameZh) || c.canonicalName;
                     const stage = c.onboardPhase + 1;
                     const url = formatCompanyUrl(c);
-                    const reason =
+                    const rawReason =
                       typeof meta[`onboardPhase${stage}LastError`] === "string"
-                        ? classifyOnboardError(String(meta[`onboardPhase${stage}LastError`]))
-                        : "阶段执行失败";
+                        ? String(meta[`onboardPhase${stage}LastError`])
+                        : "";
+                    const category = classifyOnboardError(rawReason);
+                    const attempts = Number(
+                      meta[stage === 1 ? "onboardPhase1Attempts" : stage === 2 ? "onboardPhase2Attempts" : "phase3Attempts"] ?? 0,
+                    );
+                    const reason = category === "阶段执行失败"
+                      ? `自动重试中 · 已尝试 ${attempts} 次`
+                      : `${category} · 已尝试 ${attempts} 次`;
                     return (
                       <div key={c.id} className="admin-universe-feed-item">
                         <div className="admin-universe-feed-main">
@@ -647,7 +661,7 @@ export default async function AdminUniversePage() {
                             </Link>
                           )}
                         </div>
-                        <div className="admin-universe-error-desc" title={reason}>{reason}</div>
+                        <div className="admin-universe-error-desc" title={rawReason || reason}>{reason}</div>
                       </div>
                     );
                   })
