@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
+- **CI 估值文案断言同步**：`ValueLineHeader` 的“P/E 主模型”测试改为断言新的“接近历史静态估值中位”语义，修复 `v0.47.14` 在 GitHub Actions 中唯一失败的测试。
 - **公司处理重试队列清零与流水线恢复**：
   - `fetchLatestFilingEvidence()` 改为选择最近一份包含非空受支持章节的来源，修复 33 家港股因最新空 ExtSource 无法进入 Phase 2 的问题；
   - 新增 `requeue:retry-exhausted` 运维脚本，支持 `--dry-run` 和批量 ticker；

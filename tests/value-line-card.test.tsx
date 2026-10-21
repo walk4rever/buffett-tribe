@@ -278,6 +278,6 @@ describe("ValueLineHeader", () => {
 
     expect(markup).toContain(">PE</span>");
     expect(markup).toContain("18x");
-    expect(markup).toContain("合理估值中枢");
+    expect(markup).toContain("接近历史静态估值中位");
   });
 });
