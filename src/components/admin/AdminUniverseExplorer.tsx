@@ -172,7 +172,7 @@ export function AdminUniverseExplorer({
             className={`admin-fasttrack-quickfilter ${
               fastTrack ? "admin-fasttrack-quickfilter--active" : ""
             }`}
-            title="仅查看快速通道排队中的标的"
+            title="查看快速通道标的，包含待人工处理的重试耗尽"
           >
             <span>⚡ 快速通道</span>
             {initialFastTrackCount > 0 && (

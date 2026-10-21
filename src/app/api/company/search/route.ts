@@ -56,7 +56,6 @@ export async function GET(request: NextRequest) {
     // Fast-track is a separate quick filter and takes precedence over phase/status.
     conditions.push(Prisma.sql`
       e."onboardPhase" >= 0
-      AND e."retryExhaustedStage" IS NULL
       AND COALESCE(e.priority, 0) > 0
     `);
   } else if (statusStr === "retry_exhausted") {
