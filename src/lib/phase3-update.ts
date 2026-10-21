@@ -367,11 +367,11 @@ function buildSituationalSummary(params: {
   const name = params.nameZh ?? params.canonicalName;
   let valText = "";
   if (params.valuationStatus === "undervalued" && params.valuationDiffPct != null) {
-    valText = `当前市价处于估值走廊折价 ~${Math.abs(params.valuationDiffPct)}% 的价值击球区；`;
+    valText = `当前市价较历史静态估值中枢低 ~${Math.abs(params.valuationDiffPct)}%（历史相对估值参考）；`;
   } else if (params.valuationStatus === "overvalued" && params.valuationDiffPct != null) {
-    valText = `当前市价处于估值偏高溢价区 (溢价 ~${params.valuationDiffPct}%)；`;
+    valText = `当前市价较历史静态估值中枢高 ~${params.valuationDiffPct}%（历史相对估值参考）；`;
   } else if (params.valuationStatus === "fair") {
-    valText = `当前市价处于合理估值中枢区间；`;
+    valText = `当前市价接近历史静态估值中位（历史相对估值参考）；`;
   } else {
     valText = `当前处于历史估值跟踪区间；`;
   }

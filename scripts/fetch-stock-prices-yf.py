@@ -143,6 +143,46 @@ def dataframe_to_chart_json(ticker: str, df: pd.DataFrame) -> dict[str, Any]:
     }
 
 
+def fetch_beijing_prices(ticker: str, start: str, end: str | None) -> pd.DataFrame:
+    import akshare as ak
+
+    code = ticker.split(".", 1)[0]
+    end_inclusive = (
+        (datetime.strptime(end, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y%m%d")
+        if end
+        else datetime.now().strftime("%Y%m%d")
+    )
+    raw = ak.stock_zh_a_daily(
+        symbol=f"bj{code}",
+        start_date=start.replace("-", ""),
+        end_date=end_inclusive,
+    )
+    if raw is None or raw.empty:
+        raise ValueError(f"No Beijing Stock Exchange data returned for {ticker}")
+
+    df = raw.copy()
+    date_column = "date" if "date" in df.columns else "日期"
+    df[date_column] = pd.to_datetime(df[date_column])
+    df = df.set_index(date_column).sort_index()
+    df = df.rename(
+        columns={
+            "open": "Open",
+            "high": "High",
+            "low": "Low",
+            "close": "Close",
+            "volume": "Volume",
+            "开盘": "Open",
+            "最高": "High",
+            "最低": "Low",
+            "收盘": "Close",
+            "成交量": "Volume",
+        },
+    )
+    if "Adj Close" not in df.columns:
+        df["Adj Close"] = df["Close"]
+    return df[["Open", "High", "Low", "Close", "Adj Close", "Volume"]]
+
+
 def write_outputs(out_dir: Path, ticker: str, df: pd.DataFrame, payload: dict[str, Any], download_symbol: str = "") -> tuple[Path, Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     base = out_dir / ticker.upper()
@@ -246,24 +286,29 @@ def main() -> int:
             "SEGRT": "SEG",
         }
         yf_symbol = YF_SYMBOL_ALIAS.get(ticker.upper(), ticker)
-        print(f"Downloading {ticker} from yfinance (symbol: {yf_symbol})...", flush=True)
+        is_beijing = ticker.upper().endswith(".BJ")
+        source = "AKShare Beijing Stock Exchange" if is_beijing else "yfinance"
+        print(f"Downloading {ticker} from {source} (symbol: {yf_symbol})...", flush=True)
         try:
-            df = yf.download(
-                yf_symbol,
-                start=args.start,
-                end=end,
-                interval="1d",
-                auto_adjust=False,
-                actions=False,
-                progress=False,
-                threads=False,
-            )
+            if is_beijing:
+                df = fetch_beijing_prices(ticker, args.start, end)
+            else:
+                df = yf.download(
+                    yf_symbol,
+                    start=args.start,
+                    end=end,
+                    interval="1d",
+                    auto_adjust=False,
+                    actions=False,
+                    progress=False,
+                    threads=False,
+                )
 
             if df.empty:
-                raise ValueError(f"No data returned for {ticker} ({yf_symbol})")
+                raise ValueError(f"No data returned for {ticker} ({source})")
 
-            payload = dataframe_to_chart_json(yf_symbol, df)
-            json_path, csv_path = write_outputs(out_dir, ticker, df, payload, download_symbol=yf_symbol)
+            payload = dataframe_to_chart_json(ticker, df)
+            json_path, csv_path = write_outputs(out_dir, ticker, df, payload, download_symbol=ticker)
             print(f"  wrote {json_path}", flush=True)
             print(f"  wrote {csv_path}", flush=True)
 

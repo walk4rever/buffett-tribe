@@ -57,7 +57,7 @@ async function main() {
     console.log(`最新市价: $${result.latestPrice?.toFixed(2) ?? "—"} (${result.priceDate ?? "—"}) [行情已刷新: ${result.priceRefreshed ? "是" : "否"}]`);
     console.log(`当前 PE:   ${result.currentPe ? `${result.currentPe}x` : "—"}`);
     console.log(`基准 PE:   ${result.benchmarkPe ? `${result.benchmarkPe}x` : "—"}`);
-    console.log(`估值状态: ${result.valuationStatus === "undervalued" ? "🟢 价值击球区" : result.valuationStatus === "overvalued" ? "🔴 估值偏高溢价区" : "🟡 合理估值中枢"} (偏离中枢: ${result.valuationDiffPct != null ? `${result.valuationDiffPct > 0 ? "+" : ""}${result.valuationDiffPct}%` : "—"})`);
+    console.log(`历史相对估值: ${result.valuationStatus === "undervalued" ? "🟢 低于历史静态估值中枢" : result.valuationStatus === "overvalued" ? "🔴 高于历史静态估值中枢" : "🟡 接近历史静态估值中位"} (偏离中枢: ${result.valuationDiffPct != null ? `${result.valuationDiffPct > 0 ? "+" : ""}${result.valuationDiffPct}%` : "—"})`);
     console.log(`基本面体检: ${result.fundamentalHealth === "healthy" ? "🟢 健康" : result.fundamentalHealth === "attention" ? "🟡 需关注" : "🔴 预警"}`);
 
     if (result.redFlags.length > 0) {

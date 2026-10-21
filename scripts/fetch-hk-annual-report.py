@@ -43,8 +43,10 @@ import re
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime
 from pathlib import Path
+from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
@@ -212,12 +214,22 @@ def pick_annual_reports_by_year(records: list[dict], from_year: int) -> dict[int
     recently filed version (a later corrected re-filing wins)."""
     by_year: dict[int, dict] = {}
     for rec in records:
-        if rec.get("FILE_TYPE", "").upper() != "PDF":
-            continue
         title = rec.get("TITLE", "")
         if not ANNUAL_REPORT_TITLE_RE.search(title):
             continue
         if ANNUAL_REPORT_EXCLUDE_RE.search(title):
+            continue
+        file_type = rec.get("FILE_TYPE", "").upper()
+        file_link = rec.get("FILE_LINK", "")
+        normalized_link = file_link.lower().split("?", 1)[0]
+        report_format = (
+            "html"
+            if file_type == "HTML" or normalized_link.endswith((".htm", ".html", "/"))
+            else "pdf"
+            if file_type == "PDF" or normalized_link.endswith(".pdf")
+            else None
+        )
+        if report_format is None:
             continue
         date_time = rec.get("DATE_TIME", "")
         filed_year = None
@@ -230,10 +242,15 @@ def pick_annual_reports_by_year(records: list[dict], from_year: int) -> dict[int
         period_year = (filed_year - 1) if filed_year else None
         if period_year is None or period_year in by_year or period_year < from_year:
             continue
-        link = rec.get("FILE_LINK", "")
+        link = file_link
         if link.startswith("/"):
             link = BASE_URL + link
-        by_year[period_year] = {"periodYear": period_year, "title": title, "url": link}
+        by_year[period_year] = {
+            "periodYear": period_year,
+            "title": title,
+            "url": link,
+            "format": report_format,
+        }
     return by_year
 
 
@@ -262,14 +279,60 @@ def find_annual_reports(session: requests.Session, code: str, from_year: int, la
     return [by_year[year] for year in sorted(by_year, reverse=True)]
 
 
-def download_pdf(session: requests.Session, url: str, dest: Path) -> None:
+def download_document(session: requests.Session, url: str, dest: Path, retries: int = 3) -> None:
     t0 = time.time()
-    resp = session.get(url, timeout=180, stream=True)
-    resp.raise_for_status()
-    with open(dest, "wb") as f:
-        for chunk in resp.iter_content(chunk_size=65536):
-            f.write(chunk)
+    part_path = dest.with_name(f"{dest.name}.part")
+    for attempt in range(1, retries + 1):
+        existing = part_path.stat().st_size if part_path.exists() else 0
+        headers = {"Range": f"bytes={existing}-"} if existing > 0 else {}
+        try:
+            resp = session.get(url, timeout=(30, 180), stream=True, headers=headers)
+            if resp.status_code == 416 and existing > 0:
+                part_path.replace(dest)
+                break
+            resp.raise_for_status()
+            mode = "ab" if existing > 0 and resp.status_code == 206 else "wb"
+            with open(part_path, mode) as f:
+                for chunk in resp.iter_content(chunk_size=65536):
+                    if chunk:
+                        f.write(chunk)
+            if not part_path.exists() or part_path.stat().st_size == 0:
+                raise RuntimeError("download produced an empty file")
+            part_path.replace(dest)
+            break
+        except Exception:
+            if attempt >= retries:
+                raise
+            print(
+                f"  download interrupted (attempt {attempt}/{retries}); resuming from "
+                f"{part_path.stat().st_size if part_path.exists() else 0} bytes...",
+                file=sys.stderr,
+            )
+            time.sleep(attempt * 2)
     print(f"  downloaded {dest.stat().st_size} bytes in {time.time() - t0:.1f}s", file=sys.stderr)
+
+
+def extract_html_text(html_path: Path) -> str:
+    soup = BeautifulSoup(html_path.read_text(encoding="utf-8", errors="replace"), "html.parser")
+    for node in soup(["script", "style", "noscript"]):
+        node.decompose()
+    lines = [line.strip() for line in soup.get_text("\n").splitlines() if line.strip()]
+    return "\n".join(lines)
+
+
+def extract_linked_pdf_urls(html_path: Path, report_url: str) -> list[str]:
+    soup = BeautifulSoup(html_path.read_text(encoding="utf-8", errors="replace"), "html.parser")
+    urls: list[str] = []
+    seen: set[str] = set()
+    for anchor in soup.find_all("a", href=True):
+        href = str(anchor["href"]).strip()
+        if ".pdf" not in href.lower().split("?", 1)[0]:
+            continue
+        url = urljoin(report_url, href)
+        if url not in seen:
+            seen.add(url)
+            urls.append(url)
+    return urls
 
 
 CHAPTER_KEYWORDS = [
@@ -555,18 +618,73 @@ def main() -> int:
         reports = reports[:1]
 
     results = []
-    pdf_paths: list[Path] = []
+    document_paths: list[Path] = []
     for report in reports:
-        pdf_path = out_dir / f"{args.code}_{report['periodYear']}.pdf"
-        pdf_paths.append(pdf_path)
-        if not pdf_path.exists() or pdf_path.stat().st_size == 0:
+        report_format = report.get("format", "pdf")
+        document_path = out_dir / (
+            f"{args.code}_{report['periodYear']}."
+            f"{'html' if report_format == 'html' else 'pdf'}"
+        )
+        document_paths.append(document_path)
+        if not document_path.exists() or document_path.stat().st_size == 0:
             print(f"Downloading FY{report['periodYear']}: {report['url']}")
-            download_pdf(session, report["url"], pdf_path)
+            download_document(session, report["url"], document_path)
         else:
-            print(f"Using cached PDF: {pdf_path} ({pdf_path.stat().st_size} bytes)")
+            print(f"Using cached {report_format.upper()}: {document_path} ({document_path.stat().st_size} bytes)")
 
         print(f"  extracting semantic sections & fallback chunks...")
-        page_texts, toc = extract_page_texts(pdf_path)
+        if report_format == "html":
+            linked_pdfs = extract_linked_pdf_urls(document_path, report["url"])
+            if linked_pdfs:
+                page_texts: list[str] = []
+                chapter_paths: list[tuple[str, Path]] = []
+                for chapter_index, pdf_url in enumerate(linked_pdfs, start=1):
+                    chapter_path = out_dir / f"{args.code}_{report['periodYear']}_{chapter_index:02d}.pdf"
+                    document_paths.append(chapter_path)
+                    chapter_paths.append((pdf_url, chapter_path))
+
+                missing_chapters = [
+                    (url, chapter_path)
+                    for url, chapter_path in chapter_paths
+                    if not chapter_path.exists() or chapter_path.stat().st_size == 0
+                ]
+                if missing_chapters:
+                    print(
+                        f"  downloading {len(missing_chapters)} annual-report chapters with 4 workers...",
+                        file=sys.stderr,
+                    )
+                    with ThreadPoolExecutor(max_workers=4) as executor:
+                        futures = [
+                            executor.submit(download_document, build_session(), url, chapter_path)
+                            for url, chapter_path in missing_chapters
+                        ]
+                        for future in as_completed(futures):
+                            future.result()
+
+                for _, chapter_path in chapter_paths:
+                    chapter_pages, _ = extract_page_texts(chapter_path)
+                    page_texts.extend(chapter_pages)
+                toc = []
+                report["metadata"] = {
+                    **report.get("metadata", {}),
+                    "sourceFormat": "html-index",
+                    "chapterCount": len(linked_pdfs),
+                }
+            else:
+                page_texts = [extract_html_text(document_path)]
+                toc = []
+                report["metadata"] = {
+                    **report.get("metadata", {}),
+                    "sourceFormat": "html",
+                    "chapterCount": 0,
+                }
+        else:
+            page_texts, toc = extract_page_texts(document_path)
+            report["metadata"] = {
+                **report.get("metadata", {}),
+                "sourceFormat": "pdf",
+                "chapterCount": 1,
+            }
         sections, metadata = extract_semantic_sections(page_texts, toc)
         chunks = extract_chunks_from_pages(page_texts, CHUNK_COUNT)
 
@@ -584,7 +702,7 @@ def main() -> int:
             "periodYear": report["periodYear"],
             "url": report["url"],
             "lang": report["lang"],
-            "pdfPath": str(pdf_path),
+            "pdfPath": str(document_path) if report_format == "pdf" else "",
             "chunks": chunks,
             "sections": sections,
             "metadata": metadata,
@@ -607,8 +725,8 @@ def main() -> int:
 
     if not args.keep_file:
         json_path.unlink(missing_ok=True)
-        for pdf_path in pdf_paths:
-            pdf_path.unlink(missing_ok=True)
+        for document_path in document_paths:
+            document_path.unlink(missing_ok=True)
 
     print("Done.")
     return 0

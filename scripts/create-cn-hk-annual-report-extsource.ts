@@ -33,7 +33,7 @@ function runPythonHelper(params: {
   python: string;
   args: string[];
   timeoutMs: number;
-}): Promise<void> {
+}): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     const child = spawn(params.python, params.args, {
       cwd: process.cwd(),
@@ -41,19 +41,31 @@ function runPythonHelper(params: {
       stdio: ["ignore", "pipe", "pipe"],
     });
     let settled = false;
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => {
+      stdout = `${stdout}${chunk.toString()}`.slice(-16_000);
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr = `${stderr}${chunk.toString()}`.slice(-16_000);
+    });
+    const failureDetail = () => {
+      const detail = stderr.trim() || stdout.trim();
+      return detail ? `: ${detail.split("\n").slice(-8).join(" | ")}` : "";
+    };
     const timeout = setTimeout(() => {
       if (settled) return;
       settled = true;
       child.kill("SIGTERM");
-      reject(new Error(`Python helper timeout after ${params.timeoutMs}ms`));
+      reject(new Error(`Python helper timeout after ${params.timeoutMs}ms${failureDetail()}`));
     }, params.timeoutMs);
 
     child.on("close", (code) => {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
-      if (code === 0) resolve();
-      else reject(new Error(`Python helper exited with code ${code}`));
+      if (code === 0) resolve({ stdout, stderr });
+      else reject(new Error(`Python helper exited with code ${code}${failureDetail()}`));
     });
 
     child.on("error", (err) => {
@@ -85,7 +97,7 @@ async function main() {
 
   const entity = await prisma.entity.findFirst({
     where: { type: "company", market, code },
-    select: { id: true, cik: true },
+    select: { id: true, cik: true, metadata: true },
   });
 
   if (!entity) {
@@ -100,19 +112,72 @@ async function main() {
       ? "scripts/helpers/fetch-cn-annual-report-metadata.py"
       : "scripts/helpers/fetch-hk-annual-report-metadata.py";
 
-    await runPythonHelper({
-      python,
-      args: [
-        helperScript,
-        "--code", code,
-        "--from-year", String(fromYear),
-        "--output", outputPath,
-      ],
-      timeoutMs: 60000,
-    });
+    let helperResult: { stdout: string; stderr: string };
+    try {
+      helperResult = await runPythonHelper({
+        python,
+        args: [
+          helperScript,
+          "--code", code,
+          "--from-year", String(fromYear),
+          "--output", outputPath,
+        ],
+        timeoutMs: 60000,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (market === "hk" && message.includes("NO_STOCK_ID:")) {
+        await prisma.entity.update({
+          where: { id: entity.id },
+          data: {
+            metadata: {
+              ...((entity.metadata as Record<string, unknown> | null) ?? {}),
+              onboardingEvidenceState: "annual_source_unavailable",
+              onboardingEvidenceStateUpdatedAt: new Date().toISOString(),
+              onboardingEvidenceDetail: message,
+            } as Prisma.InputJsonValue,
+          },
+        });
+        console.log(
+          `[create-cn-hk-annual-extsource] ${ticker}: HKEX stockId unavailable; marked annual_source_unavailable`,
+        );
+        return;
+      }
+      throw error;
+    }
 
     const raw = await readFile(outputPath, "utf8");
     const reports = JSON.parse(raw) as ReportMetadata[];
+    if (!reports.length && market === "hk") {
+      await prisma.entity.update({
+        where: { id: entity.id },
+        data: {
+          metadata: {
+            ...((entity.metadata as Record<string, unknown> | null) ?? {}),
+            onboardingEvidenceState: "awaiting_first_annual_report",
+            onboardingEvidenceStateUpdatedAt: new Date().toISOString(),
+            onboardingEvidenceDetail:
+              helperResult.stderr.trim() || "HKEX returned no annual report metadata",
+          },
+        },
+      });
+      console.log(
+        `[create-cn-hk-annual-extsource] ${ticker}: no annual report yet; marked awaiting_first_annual_report`,
+      );
+    } else if (reports.length && market === "hk") {
+      const metadata = {
+        ...((entity.metadata as Record<string, unknown> | null) ?? {}),
+      };
+      if ("onboardingEvidenceState" in metadata) {
+        delete metadata.onboardingEvidenceState;
+        delete metadata.onboardingEvidenceStateUpdatedAt;
+        delete metadata.onboardingEvidenceDetail;
+        await prisma.entity.update({
+          where: { id: entity.id },
+          data: { metadata: metadata as Prisma.InputJsonValue },
+        });
+      }
+    }
 
     let created = 0;
     let updated = 0;
@@ -167,7 +232,12 @@ async function main() {
 }
 
 main().catch(async (err) => {
-  console.error("[create-cn-hk-annual-extsource] fatal", err instanceof Error ? err.message : String(err));
+  const message = err instanceof Error ? err.message : String(err);
+  if (message.includes("NO_STOCK_ID:")) {
+    console.error("[create-cn-hk-annual-extsource] no-stock-id:", message);
+  } else {
+    console.error("[create-cn-hk-annual-extsource] fatal", message);
+  }
   await prisma.$disconnect();
   process.exit(1);
 });

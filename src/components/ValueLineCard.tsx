@@ -439,17 +439,17 @@ export function ValueLineHeader({
   ) : curValuationStatus === "undervalued" ? (
       <span className="vl-status-chip vl-status-chip--undervalued">
         <span className="vl-pulse-dot vl-pulse-dot--green" />
-        价值击球区 (折价 ~{Math.abs(curValuationDiffPct ?? 0)}%)
+        历史相对估值低位 (低于历史中枢 ~{Math.abs(curValuationDiffPct ?? 0)}%)
       </span>
     ) : curValuationStatus === "overvalued" ? (
       <span className="vl-status-chip vl-status-chip--overvalued">
         <span className="vl-pulse-dot vl-pulse-dot--red" />
-        溢价高估区 (溢价 ~{curValuationDiffPct ?? 0}%)
+        历史相对估值高位 (高于历史中枢 ~{curValuationDiffPct ?? 0}%)
       </span>
     ) : curValuationStatus === "fair" ? (
       <span className="vl-status-chip vl-status-chip--fair">
         <span className="vl-pulse-dot vl-pulse-dot--amber" />
-        合理估值中枢
+        接近历史静态估值中位
       </span>
     ) : (
       <span className="vl-status-chip vl-status-chip--fair">
@@ -600,11 +600,15 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
         : "vl-badge--neutral";
 
   const roeBadgeLabel =
-    data.roeStability === "stellar"
-      ? "★ 卓越护城河"
+    data.roeStability === "insufficient"
+      ? "数据不足"
+      : data.roeStability === "stellar"
+      ? "ROE 较高"
       : data.roeStability === "solid"
         ? "稳健盈利"
-        : "周期性波动";
+        : data.roeStability === "negative"
+          ? "资本回报为负"
+          : "ROE 波动";
 
   return (
     <div className="vl-body-container">
@@ -651,7 +655,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
         {/* Metric 1: ROE */}
         <div className="vl-triad-box">
           <div className="vl-triad-head">
-            <span className="vl-triad-title">{data.metric1Title ?? "5年 ROE 均值"}</span>
+            <span className="vl-triad-title">{data.metric1Title ?? "ROE 均值"}</span>
             <span className={`vl-triad-badge ${data.metric1BadgeClass ?? roeBadgeClass}`}>
               {data.metric1Badge ?? roeBadgeLabel}
             </span>
@@ -770,7 +774,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
                 <span className="vl-triad-main-num">
                   {data.netIncomeCagrLabel ?? (data.netIncomeCagr5Y != null ? `${data.netIncomeCagr5Y > 0 ? "+" : ""}${data.netIncomeCagr5Y}%` : "—")}
                 </span>
-                <span className="vl-triad-sub-text">5年复合增速 (CAGR)</span>
+                <span className="vl-triad-sub-text">复合增速 (CAGR)</span>
               </div>
             </div>
             ) : (
@@ -785,7 +789,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
                 <span className="vl-triad-main-num">
                   {data.revenueCagrLabel ?? (data.revenueCagr5Y != null ? `${data.revenueCagr5Y > 0 ? "+" : ""}${data.revenueCagr5Y}%` : "—")}
                 </span>
-                <span className="vl-triad-sub-text">5年复合增速 (CAGR)</span>
+                <span className="vl-triad-sub-text">复合增速 (CAGR)</span>
               </div>
             </div>
           )}
@@ -803,7 +807,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
                 <span className="vl-triad-main-num">
                   {data.epsCagrLabel ?? (data.epsCagr5Y != null ? `${data.epsCagr5Y > 0 ? "+" : ""}${data.epsCagr5Y}%` : "—")}
                 </span>
-                <span className="vl-triad-sub-text">5年复合增速 (CAGR)</span>
+                <span className="vl-triad-sub-text">复合增速 (CAGR)</span>
               </div>
             </div>
             ) : !isReit ? (
@@ -818,7 +822,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
                 <span className="vl-triad-main-num">
                   {data.netIncomeCagrLabel ?? (data.netIncomeCagr5Y != null ? `${data.netIncomeCagr5Y > 0 ? "+" : ""}${data.netIncomeCagr5Y}%` : "—")}
                 </span>
-                <span className="vl-triad-sub-text">5年复合增速 (CAGR)</span>
+                <span className="vl-triad-sub-text">复合增速 (CAGR)</span>
               </div>
             </div>
           ) : null}
@@ -838,8 +842,8 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
                 </span>
                 <span className="vl-triad-sub-text">
                   {isRealEstate
-                    ? "5年复合增速 (CAGR) · 物业资产组合扩张"
-                    : "5年复合增速 (CAGR) · 业务规模扩张"}
+                    ? "复合增速 (CAGR) · 物业资产组合扩张"
+                    : "复合增速 (CAGR) · 业务规模扩张"}
                 </span>
               </div>
             </div>
@@ -855,7 +859,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
                 <span className="vl-triad-main-num">
                   {data.freeCashFlowCagrLabel ?? (data.freeCashFlowCagr5Y != null ? `${data.freeCashFlowCagr5Y > 0 ? "+" : ""}${data.freeCashFlowCagr5Y}%` : "—")}
                 </span>
-                <span className="vl-triad-sub-text">5年复合增速 (CAGR) · 真金白银增长</span>
+                <span className="vl-triad-sub-text">复合增速 (CAGR) · 经营自由现金流</span>
               </div>
             </div>
           ) : null}
@@ -872,7 +876,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
               <span className="vl-triad-main-num">
                 {data.equityCagrLabel ?? (data.equityCagr5Y != null ? `${data.equityCagr5Y > 0 ? "+" : ""}${data.equityCagr5Y}%` : "—")}
               </span>
-              <span className="vl-triad-sub-text">5年复合增速 (CAGR) · 内在价值增长</span>
+              <span className="vl-triad-sub-text">复合增速 (CAGR) · 账面股东权益变化</span>
             </div>
           </div>
           </>

@@ -78,6 +78,7 @@ export type CompanyFinancialDashboard = {
   trendYears: number[];
   trends: FinancialDashboardTrend[];
   rows: FinancialDashboardRow[];
+  reportingCurrency: string | null;
   currency: string | null;
   latestInterim?: FinancialDashboardInterimColumn | null;
 };
@@ -1262,6 +1263,7 @@ export function buildCompanyFinancialDashboard(
     trendYears,
     trends,
     rows,
+    reportingCurrency: currencyContext?.reportingCurrency ?? currency,
     currency,
     latestInterim: interimColumn,
   };

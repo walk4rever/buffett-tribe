@@ -11,11 +11,13 @@
  * - metadata: { ...meta, isExcluded: true, exclusionReason, exclusionLabel, excludedAt }
  *
  * Usage:
+ *   node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-excluded-entities.ts --ticker AKRE --reason etf --dry-run
  *   node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-excluded-entities.ts --dry-run
  *   node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-excluded-entities.ts
  */
 import prisma from "@/lib/prisma";
 import {
+  EXCLUSION_REASONS,
   evaluateOnboardExclusion,
   type ExclusionReason,
   EXCLUSION_LABELS,
@@ -35,10 +37,34 @@ function getArg(name: string): string | undefined {
   return undefined;
 }
 
+function valuesForFlag(name: string): string[] {
+  const values: string[] = [];
+  for (let index = 0; index < process.argv.length; index += 1) {
+    if (process.argv[index] !== name) continue;
+    const value = process.argv[index + 1];
+    if (value && !value.startsWith("--")) values.push(value);
+  }
+  return values;
+}
+
 async function main() {
   const dryRun = hasFlag("--dry-run");
   const limitArg = getArg("--limit");
   const maxLimit = limitArg ? parseInt(limitArg, 10) : Infinity;
+  const scopedTickers = new Set(
+    valuesForFlag("--ticker")
+      .flatMap((value) => value.split(","))
+      .map((value) => value.trim().toUpperCase())
+      .filter(Boolean),
+  );
+  const reasonArg = getArg("--reason");
+  if (reasonArg && !EXCLUSION_REASONS.includes(reasonArg as ExclusionReason)) {
+    throw new Error(`Invalid --reason "${reasonArg}". Expected one of: ${EXCLUSION_REASONS.join(", ")}`);
+  }
+  if (reasonArg && scopedTickers.size === 0) {
+    throw new Error("--reason requires at least one --ticker to avoid a global forced exclusion.");
+  }
+  const forcedReason = reasonArg as ExclusionReason | undefined;
 
   console.log(`[backfill-excluded-entities] Starting in ${dryRun ? "DRY-RUN" : "LIVE"} mode...`);
 
@@ -113,6 +139,9 @@ async function main() {
       where: {
         type: "company",
         onboardPhase: 0,
+        ...(scopedTickers.size > 0
+          ? { ticker: { in: [...scopedTickers] } }
+          : {}),
       },
       select: {
         id: true,
@@ -135,17 +164,26 @@ async function main() {
 
     for (const c of chunk) {
       if (totalToExclude >= maxLimit) break;
+      if (scopedTickers.size > 0 && !scopedTickers.has((c.ticker ?? "").toUpperCase())) {
+        continue;
+      }
 
       const attachedSecurities = secByEntity.get(c.id) ?? null;
-      const evalResult = evaluateOnboardExclusion({
-        ticker: c.ticker,
-        code: c.code,
-        canonicalName: c.canonicalName,
-        market: c.market,
-        onboardPhase: c.onboardPhase,
-        metadata: c.metadata as Record<string, unknown> | null,
-        securities: attachedSecurities,
-      });
+      const evalResult = forcedReason
+        ? {
+            isExcluded: true,
+            reason: forcedReason,
+            label: EXCLUSION_LABELS[forcedReason],
+          }
+        : evaluateOnboardExclusion({
+            ticker: c.ticker,
+            code: c.code,
+            canonicalName: c.canonicalName,
+            market: c.market,
+            onboardPhase: c.onboardPhase,
+            metadata: c.metadata as Record<string, unknown> | null,
+            securities: attachedSecurities,
+          });
 
       if (evalResult.isExcluded && evalResult.reason) {
         const reason = evalResult.reason;
@@ -164,6 +202,12 @@ async function main() {
   }
 
   console.log(`\nScan complete. Total evaluated: ${scannedCount} Phase 0 entities.`);
+  if (scopedTickers.size > 0) {
+    console.log(`Scoped tickers: ${[...scopedTickers].join(", ")}`);
+  }
+  if (forcedReason) {
+    console.log(`Forced reason: ${forcedReason}`);
+  }
   console.log("\n=======================================================");
   console.log(`Exclusion Evaluation Summary (Total to Exclude: ${totalToExclude} / ${scannedCount}):`);
   console.log("=======================================================");

@@ -244,10 +244,22 @@ export function truncateText(value: string, max = 1800) {
 }
 
 export async function fetchLatestFilingEvidence(entityId: string): Promise<FilingEvidence | null> {
+  const usableSection = {
+    section: {
+      in: FILING_EVIDENCE_SECTION_KEYS,
+    },
+    content: {
+      not: "",
+    },
+  } satisfies Prisma.FilingSectionWhereInput;
+
   const filing = await prisma.extSource.findFirst({
     where: {
       filerEntityId: entityId,
       kind: { in: ["10k", "20f", "40f", "hk-annual-report", "cn-annual-report", "cn-prospectus", "us-prospectus"] },
+      sections: {
+        some: usableSection,
+      },
     },
     orderBy: [{ periodYear: "desc" }, { periodQuarter: "desc" }, { ts: "desc" }],
     select: {
@@ -264,9 +276,7 @@ export async function fetchLatestFilingEvidence(entityId: string): Promise<Filin
           content: true,
         },
         where: {
-          section: {
-            in: FILING_EVIDENCE_SECTION_KEYS,
-          },
+          ...usableSection,
         },
         orderBy: [{ section: "asc" }],
       },

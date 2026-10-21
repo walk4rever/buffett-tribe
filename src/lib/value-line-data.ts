@@ -251,7 +251,7 @@ export type ValueLineData = {
   buybackLabel: string | null;          // "🔥 5年回购 -14.2%" or "⚠️ 5年稀释 +8.5%"
   totalBuyback5Y: number | null;
   buybackAmountLabel: string | null;    // e.g. "5年累计回购 ¥89.9亿"
-  safetyLabel: string;                  // "手握净现金 / 低负债" | "负债适度受控" | "高杠杆警惕"
+  safetyLabel: string;                  // 基于已披露现金、有息债务和总负债率的中性描述
 
   // 5-Year CAGR (4 Core Growth Metrics)
   revenueCagr5Y: number | null;
@@ -658,7 +658,10 @@ export async function getValueLineData(
 
   // Value Triad & Capital Allocation Metrics
   const recentAnnuals = annuals.slice(-5);
-  const validRoes = recentAnnuals.map((a) => a.roe).filter((r): r is number => r != null);
+  const validRoeAnnuals = recentAnnuals.filter(
+    (annual): annual is typeof annual & { roe: number } => annual.roe != null,
+  );
+  const validRoes = validRoeAnnuals.map((annual) => annual.roe);
   const roeAvg5Y = validRoes.length
     ? Number((validRoes.reduce((sum, v) => sum + v, 0) / validRoes.length).toFixed(1))
     : null;
@@ -716,13 +719,24 @@ export async function getValueLineData(
   });
 
   // ── Metric 1: 5-Year ROE ──
-  const metric1Title = "5年 ROE 均值";
+  const roePeriodYears =
+    validRoeAnnuals.length > 0
+      ? `${validRoeAnnuals[0].year}–${validRoeAnnuals[validRoeAnnuals.length - 1].year}`
+      : null;
+  const metric1Title =
+    validRoeAnnuals.length > 0
+      ? `${validRoeAnnuals.length}个有效年度 ROE 均值`
+      : "ROE 均值";
   let metric1Badge =
-    roeStability === "stellar"
-      ? "★ 卓越护城河"
+    roeStability === "insufficient"
+      ? "数据不足"
+      : roeStability === "stellar"
+      ? "ROE 较高"
       : roeStability === "solid"
         ? "稳健盈利"
-        : "周期性波动";
+        : roeStability === "negative"
+          ? "资本回报为负"
+          : "ROE 波动";
   let metric1BadgeClass =
     roeStability === "stellar"
       ? "vl-badge--stellar"
@@ -730,7 +744,9 @@ export async function getValueLineData(
         ? "vl-badge--solid"
         : "vl-badge--neutral";
   let metric1SubText =
-    roeMin5Y != null ? `5年最低 ${roeMin5Y}%` : "年化资本回报";
+    roeMin5Y != null
+      ? `${roePeriodYears} · ${validRoes.length}个有效年度，最低 ${roeMin5Y}%`
+      : "有效年度不足";
 
   if (sectorModelType === "banks" || sectorModelType === "insurance") {
     if (roeAvg5Y != null && roeAvg5Y >= 11) {
@@ -739,18 +755,20 @@ export async function getValueLineData(
     }
     metric1SubText = "加杠杆资本回报率 · 资产质量第一";
   } else if (sectorModelType === "utilities") {
-    metric1Badge = "特许稳健回报";
-    metric1BadgeClass = "vl-badge--cash";
-    metric1SubText = "受监管核准资产回报 · 刚需抗周期";
+    if (roeAvg5Y != null && validRoes.length >= 3) {
+      metric1Badge = "受监管资产回报";
+      metric1BadgeClass = "vl-badge--cash";
+      metric1SubText = `${roePeriodYears} · ${validRoes.length}个有效年度`;
+    }
   } else if (sectorModelType === "energy_materials") {
-    if (roeAvg5Y != null && roeAvg5Y >= 18) {
+    if (roeAvg5Y != null && validRoes.length >= 3 && roeAvg5Y >= 18) {
       metric1Badge = "景气高点回报";
       metric1BadgeClass = "vl-badge--alert";
       metric1SubText = "处于大宗周期景气高位 · 警惕周期均值回归";
-    } else {
-      metric1Badge = "周期起伏回报";
+    } else if (roeAvg5Y != null && validRoes.length >= 3) {
+      metric1Badge = "ROE 周期波动";
       metric1BadgeClass = "vl-badge--neutral";
-      metric1SubText = "随行业供需景气周期大幅波动";
+      metric1SubText = `${roePeriodYears} · ${validRoes.length}个有效年度`;
     }
   } else if (sectorModelType === "conglomerate") {
     metric1SubText = "长期复合资本回报率 · 多元实体与投资组合";
@@ -786,7 +804,7 @@ export async function getValueLineData(
     metric4Title = "资本结构与项目债";
     metric4Badge = "长期特许项目债";
     metric4BadgeClass = "vl-badge--neutral";
-    metric4SubText = "特许基础设施长期贷款 · 充沛现金流全额覆盖利息支出";
+    metric4SubText = "需结合现金、有息债务、期限结构与利息覆盖判断";
   } else if (sectorModelType === "energy_materials") {
     metric4Title = "资产负债与周期防御";
     metric4Badge = isNetCash
@@ -815,13 +833,13 @@ export async function getValueLineData(
       metric4BadgeClass = "vl-badge--neutral";
       metric4SubText = "总负债 / 总资产；不代表净现金或偿债安全";
     } else if (debtToAssetsRatio > 65) {
-      metric4Badge = "高杠杆警惕";
+      metric4Badge = "总负债率偏高";
       metric4BadgeClass = "vl-badge--alert";
-      metric4SubText = "总负债率偏高，警惕宏观加息周期与再融资偿债压力";
+      metric4SubText = "总负债 / 总资产偏高；偿债安全还需结合现金、有息债务与利息覆盖";
     } else {
       metric4Badge = "适度杠杆";
       metric4BadgeClass = "vl-badge--neutral";
-      metric4SubText = "负债比例稳健适度，经营偿债风险可控";
+      metric4SubText = "负债比例处于中间区间；净现金与偿债能力需结合有息债务判断";
     }
   }
 
@@ -1227,11 +1245,13 @@ export async function getValueLineData(
     peRatio != null &&
     peRatio > 0 &&
     peRatio <= 9 &&
-    ((roeAvg5Y != null && roeAvg5Y >= 18) || (latestAnnual?.netIncome != null && annuals.length >= 3))
+    roeAvg5Y != null &&
+    roeAvg5Y >= 18 &&
+    validRoes.length >= 3
   ) {
     cyclicalWarning = {
       title: "强周期景气高位预警",
-      message: `该公司处于强周期资源/材料行业，当前看似极低的市盈率（${peRatio}x）常由大宗商品历史景气高峰驱动。周期股在盈利爆发期低 PE 往往预示景气见顶，下行期利润可能剧烈滑落，切忌机械当做击球区抄底。`,
+      message: `该公司处于强周期资源/材料行业，当前看似极低的市盈率（${peRatio}x）可能受到大宗商品景气高点影响。低 PE 不能单独作为安全边际依据，还需核对周期位置、利润质量与资产负债表。`,
     };
   }
 

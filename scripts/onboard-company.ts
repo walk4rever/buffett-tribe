@@ -459,7 +459,17 @@ function buildCreateAnnualReportExtSourceStep(ticker: string, market: "cn" | "hk
       const count = await prisma.extSource.count({
         where: { filerEntityId: entityId, kind: { in: kinds } }
       });
-      return count > 0;
+      if (count > 0) return true;
+      if (market !== "hk") return false;
+      const entity = await prisma.entity.findUnique({
+        where: { id: entityId },
+        select: { metadata: true },
+      });
+      const metadata = (entity?.metadata as Record<string, unknown> | null) ?? {};
+      return (
+        metadata.onboardingEvidenceState === "awaiting_first_annual_report" ||
+        metadata.onboardingEvidenceState === "annual_source_unavailable"
+      );
     },
   };
 }
@@ -470,6 +480,29 @@ function buildSliceAnnualReportStep(ticker: string, market: "cn" | "hk", fromYea
     id: "slice_annual_report",
     label: "切片年报原文（下载 PDF → FilingSection，不上传 R2）",
     run: async () => {
+      const existingEntity = await prisma.entity.findFirst({
+        where: { type: "company", market, code },
+        select: { id: true },
+      });
+      if (existingEntity) {
+        const filingKinds = market === "cn"
+          ? ["cn-annual-report", "cn-prospectus"]
+          : ["hk-annual-report"];
+        const usableSourceCount = await prisma.extSource.count({
+          where: {
+            filerEntityId: existingEntity.id,
+            kind: { in: filingKinds },
+            sections: { some: { content: { not: "" } } },
+          },
+        });
+        if (usableSourceCount > 0) {
+          console.log(
+            `[onboard-company] 已有 ${usableSourceCount} 份可用年报切片，跳过重复下载；深度学习将使用最近一份可用证据。`,
+          );
+          return;
+        }
+      }
+
       const scriptName = market === "hk" ? "import:hk-annual-report" : "import:cn-annual-report";
       await runNpmScript(scriptName, [
         "--code", code,

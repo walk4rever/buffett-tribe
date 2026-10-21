@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **公司处理重试队列清零与流水线恢复**：
+  - `fetchLatestFilingEvidence()` 改为选择最近一份包含非空受支持章节的来源，修复 33 家港股因最新空 ExtSource 无法进入 Phase 2 的问题；
+  - 新增 `requeue:retry-exhausted` 运维脚本，支持 `--dry-run` 和批量 ticker；
+  - 香港年报支持 HTML 章节索引与并发 PDF 下载、断点续传和真实 stderr 输出；新上市 H 股进入 `awaiting_first_annual_report`，避免把“尚无首年报告”计为三次失败；
+  - 北交所行情接入 AKShare `bj<code>` 数据源；Phase 1/2 子进程错误保留输出尾部；
+  - 清理错误 CIK、基金、ETF 和退市主体；`ARXS`、`PS`、`002338.SZ`、`920982.BJ` 及全部历史重试标的恢复建档。当前重试耗尽为 0。
+
+### Changed
+- **估值与财务展示语义修正**：
+  - PB-ROE 推演不再在分红缺失时虚构 30% 分红率，取消不可见 70% 封顶，并将 TSR 改为近似推演；
+  - `insufficient` 不再落入“周期性波动”，高 ROE 不再直接解释为护城河，权益增长与负债判词改为事实描述；
+  - 财务看板分别展示报告币种与展示币种，ROE/CAGR 使用实际有效年度；
+  - 价值线状态改为历史相对估值参考，移除“价值击球区”“合理估值中枢”等内在价值式措辞。
+
 ## [v0.47.13] - 2026-10-21
 
 ### Fixed

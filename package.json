@@ -22,6 +22,7 @@
     "eval:golden:model-audit": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/audit-model-coverage.ts",
     "backfill:derived-metrics": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-derived-metrics.ts",
     "backfill:retry-exhausted-stage": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-retry-exhausted-stage.ts",
+    "requeue:retry-exhausted": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/requeue-retry-exhausted.ts",
     "backfill:onboard-events": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-onboard-events-from-log.ts",
     "send:announcement": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/send-announcement.ts",
     "import:insight": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/import-insight.ts",

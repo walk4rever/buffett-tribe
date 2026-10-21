@@ -155,7 +155,12 @@ export function CompanyFinancialDashboardComponent({
               : ""}
           </span>
           {dashboard.currency ? (
-            <span>报告币种：{currencyDisplayName(dashboard.currency)}</span>
+            <span>
+              {dashboard.reportingCurrency &&
+              dashboard.reportingCurrency !== dashboard.currency
+                ? `报告币种：${currencyDisplayName(dashboard.reportingCurrency)} · 展示币种：${currencyDisplayName(dashboard.currency)}`
+                : `币种：${currencyDisplayName(dashboard.currency)}`}
+            </span>
           ) : null}
         </div>
 

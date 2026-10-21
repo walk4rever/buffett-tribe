@@ -369,7 +369,7 @@
   - **③ 修正案文件，0 章节属正常**：BN（40-F/A）、GOLD 2021（10-K/A）、PG 2020 的 10-K/A 副本——本来就只覆盖局部内容，不需要处理。
   - **④ 旧式 SGML 格式，孤例**：INOD 2020，文档根节点是 `<document>`，不是现代 inline-XBRL 渲染，优先级低。
   - `data-integrity-check.yml` 的 `--strict` 巡检目前仍会因为②③④（以及①回填前）持续标红开 issue；①回填后应该能消掉多数噪音，②③④要么修复要么加豁免清单再评估。
-- [ ] **生成脚本 filing evidence 选取行为不一致**（同上排查发现；**与 P0 ③ 的 evidence guard 是同一处代码，建议一并处理**）：`fetchLatestFilingEvidence`（`scripts/lib/company-generation.ts`，company-profile/business-model/value-analysis 三个生成脚本共用）只认最新一年 `ExtSource`，若该年 section 为空，evidence 文本里 Sections 块直接留空、不回退旧年份；`generate-management-analysis.ts` 自己另写的 `fetchBuybackEvidence` 则会往旧年份回退，且诚实标注具体年份（`[10-K FY2021 ...]`）。同一套数据两种不统一的处理方式，值得决定一个统一策略（回退 + 标注年份 vs 不回退但提示证据缺失）。
+- [x] **生成脚本 filing evidence 选取行为不一致**（2026-10-21 修复）：`fetchLatestFilingEvidence` 现在直接选择最近一份包含非空受支持 section 的 `ExtSource`，最新财年只有 URL 或空切片时自动回退到上一可用财年，并在 `filingLabel` 中保留实际使用的年份。该修复已恢复 33 家因空证据卡在 Phase 2 的港股公司。
 
 ## P3 — 长期 / 低优先
 

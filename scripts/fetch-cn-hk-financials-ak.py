@@ -108,10 +108,10 @@ HK_ITEM_NAME_MAP: dict[str, str] = {
 
 HK_STATEMENTS = ["资产负债表", "利润表", "现金流量表"]
 
-# Line items every FY must have; anything else (GrossProfit, CapEx,
-# ShareRepurchaseAmt, EPS*) is legitimately absent for some industries.
+# Line items every FY must have; Revenue, GrossProfit, CapEx,
+# ShareRepurchaseAmt and EPS* can be legitimately absent for pre-revenue,
+# financial and other industry-specific templates.
 REQUIRED_LINE_ITEMS = [
-    "Revenue",
     "NetIncome",
     "TotalAssets",
     "TotalLiabilities",

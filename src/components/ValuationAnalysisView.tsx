@@ -371,16 +371,22 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
       (currentPb && currentPb > 0 ? latestPrice / currentPb : null);
     if (!currentBps || currentBps <= 0) return null;
 
-    const validAnnuals = data.valuationAnnuals.filter(
-      (a) => a.netIncome != null && a.netIncome > 0 && a.dividendsPaid != null,
-    );
-    const totNi = validAnnuals.reduce((s, a) => s + a.netIncome!, 0);
-    const totDiv = validAnnuals.reduce(
+    const incomeAnnuals = data.valuationAnnuals;
+    if (
+      incomeAnnuals.length === 0 ||
+      incomeAnnuals.some(
+        (annual) => annual.netIncome == null || annual.dividendsPaid == null,
+      )
+    ) {
+      return null;
+    }
+    const totNi = incomeAnnuals.reduce((s, a) => s + a.netIncome!, 0);
+    const totDiv = incomeAnnuals.reduce(
       (s, a) => s + Math.abs(a.dividendsPaid!),
       0,
     );
-    const payoutRatio =
-      totNi > 0 && totDiv > 0 ? Math.min(0.7, totDiv / totNi) : 0.3;
+    if (totNi <= 0) return null;
+    const payoutRatio = totDiv / totNi;
 
     const roeDecimal = simRoe / 100;
     const retainedRoe = roeDecimal * (1 - payoutRatio);
@@ -1149,7 +1155,7 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
             <div>
               <h4 className="val-block-title">5年回报推演 (PB-ROE 框架)</h4>
               <p className="val-block-desc">
-                基于未来 ROE 净资产累积与 5 年后退出 P/B 假设测算（含股息回报）
+                基于历史披露分红率和 5 年后退出 P/B 假设测算；结果为近似推演
               </p>
             </div>
             <span className="val-sim-chevron" aria-hidden="true" />
@@ -1251,7 +1257,7 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
               <div className="val-result-card">
                 <div className="val-result-head">
                   <span className="val-result-title">
-                    预期年化综合回报 (TSR，含股息)
+                    预期年化综合回报（近似推演，含股息）
                   </span>
                   <span
                     className={`val-rating-pill ${pbTsrCalculations.ratingClass}`}
@@ -1311,7 +1317,7 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
                 </div>
 
                 <p className="val-formula-note">
-                  BPS(5y) = 当前 BPS × (1 + ROE × (1 − 分红率 {pbTsrCalculations.payoutRatioPct}%))^5；P(5y) = BPS(5y) × 退出 P/B；综合回报含留存净资产复合增长与分红现金流。
+                  BPS(5y) = 当前 BPS × (1 + ROE × (1 − 历史披露分红率 {pbTsrCalculations.payoutRatioPct}%))^5；P(5y) = BPS(5y) × 退出 P/B。综合回报以价格回报加估算股息率近似，并非严格 TSR。
                 </p>
               </div>
             </div>

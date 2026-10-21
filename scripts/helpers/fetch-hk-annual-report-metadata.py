@@ -154,8 +154,6 @@ def pick_annual_reports_by_year(records: list[dict], from_year: int) -> dict[int
     """Filter records down to annual reports, keyed by content year."""
     by_year: dict[int, dict] = {}
     for rec in records:
-        if rec.get("FILE_TYPE", "").upper() != "PDF":
-            continue
         title = rec.get("TITLE", "")
         if not ANNUAL_REPORT_TITLE_RE.search(title):
             continue
@@ -183,11 +181,23 @@ def pick_annual_reports_by_year(records: list[dict], from_year: int) -> dict[int
         file_link = rec.get("FILE_LINK", "")
         if not file_link:
             continue
-        pdf_url = f"{BASE_URL}{file_link}" if file_link.startswith("/") else file_link
+        normalized_link = file_link.lower().split("?", 1)[0]
+        file_type = rec.get("FILE_TYPE", "").upper()
+        report_format = (
+            "html"
+            if file_type == "HTML" or normalized_link.endswith((".htm", ".html", "/"))
+            else "pdf"
+            if file_type == "PDF" or normalized_link.endswith(".pdf")
+            else None
+        )
+        if report_format is None:
+            continue
+
+        report_url = f"{BASE_URL}{file_link}" if file_link.startswith("/") else file_link
 
         by_year[period_year] = {
             "periodYear": period_year,
-            "url": pdf_url,
+            "url": report_url,
             "form": "Annual Report",
             "metadata": {
                 "source": "hkexnews",
@@ -195,6 +205,7 @@ def pick_annual_reports_by_year(records: list[dict], from_year: int) -> dict[int
                 "filingDate": date_str,
                 "newsId": rec.get("NEWS_ID", ""),
                 "fileSize": rec.get("FILE_INFO", ""),
+                "format": report_format,
             },
         }
 
@@ -240,6 +251,17 @@ def main():
             json.dump(reports, f, ensure_ascii=False, indent=2)
 
         print(f"✓ Fetched {len(reports)} annual report metadata records for {args.code}")
+        if not reports:
+            print(
+                f"NO_ANNUAL_REPORT: no annual report metadata matched for code {args.code}",
+                file=sys.stderr,
+            )
+    except RuntimeError as e:
+        if str(e).startswith("No stockId match"):
+            print(f"NO_STOCK_ID: {e}", file=sys.stderr)
+            sys.exit(3)
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

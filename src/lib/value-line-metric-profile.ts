@@ -138,7 +138,7 @@ function makeGrowthCard(
     value: `${value > 0 ? "+" : ""}${value}%`,
     badge: badge.badge,
     badgeClass: badge.badgeClass,
-    subText: series.subText ?? "5年复合增速 (CAGR)",
+    subText: series.subText ?? "复合增速 (CAGR)",
   };
 }
 
@@ -172,7 +172,7 @@ function selectGrowthMetrics(
       value: "—",
       badge: "趋势观察",
       badgeClass: "vl-badge--neutral",
-      subText: primary.subText ?? "5年复合增速 (CAGR)",
+      subText: primary.subText ?? "复合增速 (CAGR)",
     });
   }
   return metrics;
@@ -533,31 +533,31 @@ function growthMetrics(
   const operatingCashFlow: GrowthSeries = {
     key: "operating-cash-flow",
     title: "经营现金流增长",
-    subText: "5年复合增速 (CAGR) · 经营现金创造能力",
+    subText: "复合增速 (CAGR) · 经营现金创造能力",
     value: (annual) => annual.operatingCashFlow,
   };
   const assets: GrowthSeries = {
     key: "assets",
     title: "总资产增长",
-    subText: "5年复合增速 (CAGR) · 业务规模扩张",
+    subText: "复合增速 (CAGR) · 业务规模扩张",
     value: (annual) => annual.totalAssets,
   };
   const equity: GrowthSeries = {
     key: "equity",
     title: "股东权益增长",
-    subText: "5年复合增速 (CAGR) · 内在价值增长",
+    subText: "复合增速 (CAGR) · 账面股东权益变化",
     value: (annual) => annual.shareholdersEquity,
   };
   const fcf: GrowthSeries = {
     key: "free-cash-flow",
     title: "自由现金流增长",
-    subText: "5年复合增速 (CAGR) · 真金白银增长",
+    subText: "复合增速 (CAGR) · 经营自由现金流",
     value: (annual) => annual.freeCashFlow,
   };
   const investmentProperty: GrowthSeries = {
     key: "investment-property",
     title: "投资物业增长",
-    subText: "5年复合增速 (CAGR) · 物业资产组合扩张",
+    subText: "复合增速 (CAGR) · 物业资产组合扩张",
     value: (annual) => annual.investmentProperty,
   };
   const operatingIncome: GrowthSeries = {

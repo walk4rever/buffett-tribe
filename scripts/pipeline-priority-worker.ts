@@ -208,10 +208,10 @@ function runCommandWithTimeout(
   cmd: string,
   args: string[],
   timeoutMs: number
-): Promise<{ exitCode: number; timedOut: boolean }> {
+): Promise<{ exitCode: number; timedOut: boolean; output: string }> {
   return new Promise((resolve) => {
     const child = spawn(cmd, args, {
-      stdio: "inherit",
+      stdio: ["ignore", "pipe", "pipe"],
       env: process.env,
       cwd: process.cwd(),
       detached: true,
@@ -219,6 +219,13 @@ function runCommandWithTimeout(
 
     activeChildPid = child.pid ?? null;
     let timedOut = false;
+    let output = "";
+    const appendOutput = (chunk: Buffer, stream: NodeJS.WriteStream) => {
+      stream.write(chunk);
+      output = `${output}${chunk.toString()}`.slice(-32_000);
+    };
+    child.stdout.on("data", (chunk: Buffer) => appendOutput(chunk, process.stdout));
+    child.stderr.on("data", (chunk: Buffer) => appendOutput(chunk, process.stderr));
 
     const timer = setTimeout(() => {
       timedOut = true;
@@ -230,15 +237,24 @@ function runCommandWithTimeout(
     child.on("close", (code) => {
       clearTimeout(timer);
       activeChildPid = null;
-      resolve({ exitCode: timedOut ? 124 : (code ?? 1), timedOut });
+      resolve({ exitCode: timedOut ? 124 : (code ?? 1), timedOut, output });
     });
 
-    child.on("error", () => {
+    child.on("error", (error) => {
       clearTimeout(timer);
       activeChildPid = null;
-      resolve({ exitCode: 1, timedOut });
+      resolve({ exitCode: 1, timedOut, output: `${output}\n${error.message}`.trim() });
     });
   });
+}
+
+function summarizeCommandOutput(output: string): string {
+  const lines = output
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!lines.length) return "";
+  return ` | ${lines.slice(-8).join(" | ").slice(-3000)}`;
 }
 
 function formatDuration(ms: number): string {
@@ -354,6 +370,14 @@ async function fetchFastTrackCandidates(
       onboardPhase: true,
       createdAt: true,
       metadata: true,
+      securitiesAsCompany: {
+        select: {
+          kind: true,
+          titleOfClass: true,
+          ticker: true,
+          exchange: true,
+        },
+      },
     },
     orderBy: [
       { priority: "desc" },
@@ -367,6 +391,13 @@ async function fetchFastTrackCandidates(
 
   for (const r of rows) {
     const meta = (r.metadata as Record<string, unknown>) || {};
+    if (
+      r.onboardPhase === 1 &&
+      (meta.onboardingEvidenceState === "awaiting_first_annual_report" ||
+        meta.onboardingEvidenceState === "annual_source_unavailable")
+    ) {
+      continue;
+    }
     const attempts = r.onboardPhase === 0
       ? (typeof meta.onboardPhase1Attempts === "number" ? meta.onboardPhase1Attempts : 0)
       : r.onboardPhase === 1
@@ -408,6 +439,7 @@ async function fetchFastTrackCandidates(
       market: m,
       onboardPhase: r.onboardPhase,
       metadata: meta,
+      securities: r.securitiesAsCompany,
     });
     if (exclusion.isExcluded) {
       if (!dryRun) {
@@ -475,6 +507,14 @@ async function fetchCandidatesForMarket(
       code: true,
       canonicalName: true,
       metadata: true,
+      securitiesAsCompany: {
+        select: {
+          kind: true,
+          titleOfClass: true,
+          ticker: true,
+          exchange: true,
+        },
+      },
     },
     take: Math.max(limit * 4, 30), // Fetch extra for smart priority sorting
   });
@@ -485,6 +525,13 @@ async function fetchCandidatesForMarket(
     if (excludeIds.has(r.id)) continue;
 
     const meta = (r.metadata as Record<string, unknown>) || {};
+    if (
+      targetPhase === 2 &&
+      (meta.onboardingEvidenceState === "awaiting_first_annual_report" ||
+        meta.onboardingEvidenceState === "annual_source_unavailable")
+    ) {
+      continue;
+    }
     const attempts = targetPhase === 1
       ? (typeof meta.onboardPhase1Attempts === "number" ? meta.onboardPhase1Attempts : 0)
       : (typeof meta.onboardPhase2Attempts === "number" ? meta.onboardPhase2Attempts : 0);
@@ -522,6 +569,7 @@ async function fetchCandidatesForMarket(
       market,
       onboardPhase: currentPhase,
       metadata: meta,
+      securities: r.securitiesAsCompany,
     });
     if (exclusion.isExcluded) {
       if (!dryRun) {
@@ -808,7 +856,7 @@ async function main() {
         );
         const targetTimeoutMins = Math.round(targetTimeoutMs / 60000);
 
-        const { exitCode, timedOut } = await runCommandWithTimeout(
+        const { exitCode, timedOut, output } = await runCommandWithTimeout(
           cmd,
           args,
           targetTimeoutMs
@@ -819,7 +867,9 @@ async function main() {
         }
 
         if (exitCode !== 0) {
-          throw new Error(`${args.join(" ")} exited with status code ${exitCode}`);
+          throw new Error(
+            `${args.join(" ")} exited with status code ${exitCode}${summarizeCommandOutput(output)}`,
+          );
         }
 
         await prisma.entity.update({
