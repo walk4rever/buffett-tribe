@@ -20,6 +20,14 @@ function durationMs(value: string): number | null {
   return minutes || seconds ? (minutes * 60 + seconds) * 1000 : null;
 }
 
+function marketOf(ticker: string): "us" | "hk" | "cn" {
+  if (ticker.endsWith(".HK")) return "hk";
+  if (ticker.endsWith(".SS") || ticker.endsWith(".SZ") || ticker.endsWith(".BJ")) {
+    return "cn";
+  }
+  return "us";
+}
+
 async function main() {
   const logPath = arg("--log");
   if (!logPath) throw new Error("--log is required");
@@ -40,6 +48,7 @@ async function main() {
     batchId: string;
     entityId: string;
     ticker: string;
+    market: string;
     phase: number;
     targetPhase: number;
     result: string;
@@ -75,6 +84,7 @@ async function main() {
       batchId,
       entityId,
       ticker,
+      market: marketOf(ticker),
       phase,
       targetPhase,
       result: resultValue,
