@@ -3,7 +3,7 @@ import { Type } from "typebox";
 import { pool } from "../db.js";
 import { findEntity } from "./find-entity.js";
 
-type PriceRow = {
+export type PriceRow = {
   ticker: string;
   date: string;
   close: string;
@@ -12,30 +12,64 @@ type PriceRow = {
   volume: string | null;
 };
 
-async function queryStockPrices(ticker: string): Promise<PriceRow[]> {
+export async function queryStockPrices(ticker: string, dbPool = pool): Promise<PriceRow[]> {
   const cleanTicker = ticker.trim().toUpperCase();
   // Strip exchange suffix if provided (e.g. AAPL.US -> AAPL, 600519.SS -> 600519)
   const baseTicker = cleanTicker.replace(/\.(US|SS|SH|SZ|HK)$/i, "");
+  // If pure digits of 1-4 chars (e.g. Hong Kong 700), pad to 5 digits (00700)
+  const paddedTicker = /^\d{1,4}$/.test(baseTicker) ? baseTicker.padStart(5, "0") : baseTicker;
 
+  // Build candidate tickers strictly, with NO arbitrary leading wildcard like '%KO'
+  const candidateTickers = Array.from(
+    new Set([
+      cleanTicker,
+      baseTicker,
+      paddedTicker,
+      `${baseTicker}.SS`,
+      `${baseTicker}.SZ`,
+      `${baseTicker}.SH`,
+      `${baseTicker}.HK`,
+      `${paddedTicker}.HK`,
+    ])
+  );
+
+  // 1. Pick the single best matching ticker present in StockPrice
+  // Priority: exact cleanTicker > exact baseTicker > exact paddedTicker > others
+  const bestTickerSql = `
+    SELECT ticker, COUNT(*) as cnt
+    FROM "StockPrice"
+    WHERE ticker = ANY($1)
+    GROUP BY ticker
+    ORDER BY 
+      CASE 
+        WHEN ticker = $2 THEN 1
+        WHEN ticker = $3 THEN 2
+        WHEN ticker = $4 THEN 3
+        ELSE 4
+      END,
+      cnt DESC
+    LIMIT 1
+  `;
+
+  const bestTickerResult = await dbPool.query<{ ticker: string }>(bestTickerSql, [
+    candidateTickers,
+    cleanTicker,
+    baseTicker,
+    paddedTicker,
+  ]);
+
+  if (bestTickerResult.rows.length === 0) {
+    return [];
+  }
+
+  const targetTicker = bestTickerResult.rows[0].ticker;
+
+  // 2. Query price history strictly for this single resolved targetTicker
   const sql = `
-    WITH matched AS (
-      SELECT
-        ticker,
-        date,
-        close,
-        high,
-        low,
-        volume
+    WITH latest AS (
+      SELECT MAX(date) AS latest_date 
       FROM "StockPrice"
-      WHERE (
-        UPPER(ticker) = $1
-        OR UPPER(ticker) = $2
-        OR UPPER(ticker) LIKE $2 || '.%'
-        OR UPPER(ticker) LIKE '%' || $2
-      )
-    ),
-    latest AS (
-      SELECT MAX(date) AS latest_date FROM matched
+      WHERE ticker = $1
     )
     SELECT
       ticker,
@@ -44,13 +78,14 @@ async function queryStockPrices(ticker: string): Promise<PriceRow[]> {
       high::text,
       low::text,
       volume::text
-    FROM matched, latest
-    WHERE date >= latest.latest_date - INTERVAL '1 year'
+    FROM "StockPrice", latest
+    WHERE ticker = $1
+      AND date >= latest.latest_date - INTERVAL '1 year'
     ORDER BY date DESC
     LIMIT 366
   `;
 
-  const result = await pool.query<PriceRow>(sql, [cleanTicker, baseTicker]);
+  const result = await dbPool.query<PriceRow>(sql, [targetTicker]);
   return result.rows;
 }
 

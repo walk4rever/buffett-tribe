@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.47.13] - 2026-10-21
+
+### Fixed
+- **Agent 历史行情工具标的匹配隔离（解决 KO/TKO 混淆）**：
+  - 修复 `services/pi-gateway/src/tools/get-stock-price-history.ts` 中因 `UPPER(ticker) LIKE '%' || $2` 引起的前置通配符误命中（导致查询 `KO` 时意外拉取以其结尾的 `TKO` 行情，造成 52 周最高点与近期收盘序列在两只股票之间跳变冲突）；
+  - 改为严格的两阶段单一最佳标的解析（Single Best Ticker Resolution）：仅匹配精确代码、去除常见交易所后缀的基准代码、A股后缀及港股 5 位补零代码，先锁定库中唯一存在的目标标的，再执行单标的时间序列拉取，彻底杜绝多股票行情混杂；
+  - 补充自动化单元测试验证代码隔离与统计指标准确性。
+
 ## [v0.47.12] - 2026-10-19
 
 ### Added
