@@ -13,7 +13,15 @@ async function main() {
   console.log("       BUFFETT TRIBE - MASTER UNIVERSE PIPELINE        ");
   console.log("=======================================================\n");
 
-  const [totalCompanies, phaseCounts, marketPhaseCounts, recentPhase1, failedCount] = await Promise.all([
+  const [
+    totalCompanies,
+    phaseCounts,
+    marketPhaseCounts,
+    recentPhase1,
+    excludedCount,
+    retryExhaustedCount,
+    retryStageCounts,
+  ] = await Promise.all([
     prisma.entity.count({ where: { type: "company" } }),
     prisma.$queryRaw<Array<{ onboardPhase: number; count: bigint }>>`
       SELECT "onboardPhase", count(*) as count
@@ -50,6 +58,19 @@ async function main() {
         onboardPhase: -1,
       },
     }),
+    prisma.entity.count({
+      where: {
+        type: "company",
+        retryExhaustedStage: { not: null },
+      },
+    }),
+    prisma.$queryRaw<Array<{ retryExhaustedStage: number; count: bigint }>>`
+      SELECT "retryExhaustedStage", count(*) as count
+      FROM "Entity"
+      WHERE type = 'company' AND "retryExhaustedStage" IS NOT NULL
+      GROUP BY "retryExhaustedStage"
+      ORDER BY "retryExhaustedStage" ASC;
+    `,
   ]);
 
   const phaseMap: Record<number, number> = {};
@@ -60,7 +81,7 @@ async function main() {
   const p0 = phaseMap[0] ?? 0;
   const p1 = phaseMap[1] ?? 0;
   const p2 = phaseMap[2] ?? 0;
-  const pErr = failedCount;
+  const pErr = excludedCount;
 
   const pct = (n: number) => ((n / (totalCompanies || 1)) * 100).toFixed(1) + "%";
 
@@ -69,7 +90,13 @@ async function main() {
   console.log(`  [Phase 1]  已建档 (10-K/财报 + 量价历史):      ${p1.toLocaleString().padStart(6)} (${pct(p1)})`);
   console.log(`  [Phase 2]  深度分析 (完整五维 LLM 研报+画布):  ${p2.toLocaleString().padStart(6)} (${pct(p2)})`);
   if (pErr > 0) {
-    console.log(`  [Phase -1] 异常/死信池 (需人工审计):          ${pErr.toLocaleString().padStart(6)} (${pct(pErr)})`);
+    console.log(`  [Phase -1] 豁免标的 (OTC/ETF/退市):            ${pErr.toLocaleString().padStart(6)} (${pct(pErr)})`);
+  }
+  if (retryExhaustedCount > 0) {
+    const stages = retryStageCounts
+      .map((r) => `P${r.retryExhaustedStage}:${Number(r.count)}`)
+      .join(" ");
+    console.log(`  [Retry]    重试耗尽待人工:                    ${retryExhaustedCount.toLocaleString().padStart(6)} (${stages})`);
   }
 
   console.log("\n--- Market Breakdown ---");

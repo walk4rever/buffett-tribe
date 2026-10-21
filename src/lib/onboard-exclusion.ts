@@ -65,9 +65,10 @@ export interface ExclusionEvaluation {
  */
 export function isExcludedEntity(entity: {
   onboardPhase?: number | null;
+  retryExhaustedStage?: number | null;
   metadata?: unknown;
 }): boolean {
-  if (entity.onboardPhase === -1) return true;
+  if (entity.onboardPhase === -1 && entity.retryExhaustedStage == null) return true;
   const meta = entity.metadata;
   if (meta && typeof meta === "object" && (meta as Record<string, unknown>).isExcluded === true) {
     return true;

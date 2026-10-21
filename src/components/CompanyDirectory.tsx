@@ -16,6 +16,7 @@ export type CompanyDirectoryItem = {
   market: CompanyMarket;
   isComplete: boolean;
   onboardPhase?: number;
+  retryExhaustedStage?: number | null;
   priority?: number;
   isFastTrack?: boolean;
 };

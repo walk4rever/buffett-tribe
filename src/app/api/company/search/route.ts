@@ -21,9 +21,11 @@ export async function GET(request: NextRequest) {
   const q = searchParams.get("q")?.trim() ?? "";
   const market = searchParams.get("market")?.trim().toLowerCase() ?? "";
   const phaseStr = searchParams.get("phase")?.trim() ?? "";
+  const statusStr = searchParams.get("status")?.trim() ?? "";
+  const includeAll = searchParams.get("includeAll") === "1";
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "60", 10)));
 
-  if (!q && !market && !phaseStr) {
+  if (!q && !market && !phaseStr && !statusStr && !includeAll) {
     return NextResponse.json({ items: [] });
   }
 
@@ -50,19 +52,42 @@ export async function GET(request: NextRequest) {
   }
 
   const isFastTrackQuery = phaseStr === "fasttrack" || searchParams.get("fastTrack") === "1";
-  if (isFastTrackQuery) {
+  if (statusStr === "retry_exhausted") {
+    conditions.push(Prisma.sql`e."retryExhaustedStage" IS NOT NULL`);
+  } else if (statusStr === "excluded") {
+    conditions.push(Prisma.sql`e."onboardPhase" = -1`);
+  } else if (statusStr === "retryable") {
+    conditions.push(Prisma.sql`
+      e."onboardPhase" >= 0
+      AND e."retryExhaustedStage" IS NULL
+      AND (
+        COALESCE(NULLIF(e.metadata->>'onboardPhase1Attempts', '')::int, 0) > 0
+        OR COALESCE(NULLIF(e.metadata->>'onboardPhase2Attempts', '')::int, 0) > 0
+        OR COALESCE(NULLIF(e.metadata->>'phase3Attempts', '')::int, 0) > 0
+      )
+    `);
+  } else if (statusStr === "active") {
+    conditions.push(Prisma.sql`e."onboardPhase" >= 0 AND e."retryExhaustedStage" IS NULL`);
+  } else if (isFastTrackQuery) {
     // Unified priority queue: Phase 0 (→P1), Phase 1 (→P2), and Phase 2 (→P3)
     // companies can hold a fast-track slot — mirror the worker's
     // fetchFastTrackCandidates (onboardPhase >= 0 AND priority > 0).
-    conditions.push(Prisma.sql`e."onboardPhase" >= 0 AND COALESCE(e.priority, 0) > 0`);
+    conditions.push(Prisma.sql`
+      e."onboardPhase" >= 0
+      AND e."retryExhaustedStage" IS NULL
+      AND COALESCE(e.priority, 0) > 0
+    `);
   } else if (phaseStr && phaseStr !== "all") {
     const phaseNum = parseInt(phaseStr, 10);
     if (!Number.isNaN(phaseNum)) {
       conditions.push(Prisma.sql`e."onboardPhase" = ${phaseNum}`);
     }
-  } else {
+  } else if (!includeAll) {
     // Default search hides excluded non-operating entities (onboardPhase = -1)
-    conditions.push(Prisma.sql`e."onboardPhase" >= 0`);
+    conditions.push(Prisma.sql`
+      e."onboardPhase" >= 0
+      AND e."retryExhaustedStage" IS NULL
+    `);
   }
 
   const whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
@@ -77,6 +102,7 @@ export async function GET(request: NextRequest) {
         code: string | null;
         ticker: string | null;
         onboardPhase: number;
+        retryExhaustedStage: number | null;
         priority: number | null;
         updatedAt: Date;
         metadata: Record<string, unknown> | null;
@@ -90,6 +116,7 @@ export async function GET(request: NextRequest) {
         e.code, 
         e.ticker, 
         e."onboardPhase", 
+        e."retryExhaustedStage",
         COALESCE(e.priority, 0) as priority,
         e."updatedAt",
         e.metadata
@@ -124,7 +151,10 @@ export async function GET(request: NextRequest) {
       const tickers = uniqueTickers(row.ticker ? [row.ticker] : [row.code]);
       const marketVal: CompanyMarket = (row.market as CompanyMarket) ?? "us";
       const onboardPhase = typeof row.onboardPhase === "number" ? row.onboardPhase : 0;
-      const isPhase1OrHigher = onboardPhase >= 1;
+      const isPhase1OrHigher =
+        onboardPhase >= 1 &&
+        row.retryExhaustedStage == null &&
+        onboardPhase !== -1;
       const priorityVal = typeof row.priority === "number" ? row.priority : 0;
       const isFastTrack = priorityVal > 0 || Boolean(meta?.fastTrack);
 
@@ -138,10 +168,18 @@ export async function GET(request: NextRequest) {
         market: marketVal,
         isComplete: isPhase1OrHigher,
         onboardPhase,
+        retryExhaustedStage: row.retryExhaustedStage,
         priority: priorityVal,
         isFastTrack,
         updatedAt: row.updatedAt?.toISOString(),
-        error: typeof meta?.onboardPhase1LastError === "string" ? meta.onboardPhase1LastError : undefined,
+        error:
+          (row.retryExhaustedStage != null &&
+            typeof meta?.[`onboardPhase${row.retryExhaustedStage}LastError`] === "string"
+            ? String(meta[`onboardPhase${row.retryExhaustedStage}LastError`])
+            : null) ||
+          (typeof meta?.onboardPhase1LastError === "string"
+            ? meta.onboardPhase1LastError
+            : undefined),
       };
     });
 

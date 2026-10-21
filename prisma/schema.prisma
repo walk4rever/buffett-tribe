@@ -263,6 +263,7 @@ model Entity {
   sector        String?
   sectorModelType String? // 13-way classification from SectorModelType13; legacy values are read-only during migration
   onboardPhase        Int       @default(0) // 0: Stub/Phase0, 1: Phase1, 2: Phase2
+  retryExhaustedStage Int?      // 1/2/3 = retry exhausted at that phase; null = active/retryable/excluded
   priority            Int       @default(0) // Fast-track priority score (0 = default, >0 = expedited)
   priorityRequestedAt DateTime? // When fast-track priority was requested
   metadata            Json?
@@ -291,6 +292,7 @@ model Entity {
   @@index([market, onboardPhase])
   @@index([onboardPhase])
   @@index([onboardPhase, priority])
+  @@index([retryExhaustedStage])
 }
 
 // Punch ("打孔") = a curated, forward-looking record of a master's proven big-bet

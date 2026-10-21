@@ -200,6 +200,7 @@ async function main() {
     const affected = await prisma.$executeRawUnsafe(
       `UPDATE "Entity"
        SET "onboardPhase" = -1,
+           "retryExhaustedStage" = NULL,
            "priority" = 0,
            "priorityRequestedAt" = NULL,
            "metadata" = COALESCE("metadata", '{}'::jsonb) || $1::jsonb

@@ -244,10 +244,15 @@ export async function selfHealDeadLetterPriorityCompanies(
   const deadLetters = await dbClient.entity.findMany({
     where: {
       type: "company",
-      onboardPhase: -1,
+      retryExhaustedStage: { not: null },
       priority: { gt: 0 },
     },
-    select: { id: true, ticker: true, metadata: true },
+    select: {
+      id: true,
+      ticker: true,
+      metadata: true,
+      retryExhaustedStage: true,
+    },
     take: 10,
   });
 
@@ -269,11 +274,13 @@ export async function selfHealDeadLetterPriorityCompanies(
     }
 
     const reasonLabel = forceHeal ? "--heal-deadletter 强制触发" : "24h+ 退避窗口已过";
-    logMessage(`[Dead-Letter Self-Healing] 自动自愈重点关注标的 ${dl.ticker ?? dl.id}: 重置 onboardPhase -1 -> 0 (${reasonLabel})`);
+    const resumePhase = Math.max(0, (dl.retryExhaustedStage ?? 1) - 1);
+    logMessage(`[Dead-Letter Self-Healing] 自动自愈重点关注标的 ${dl.ticker ?? dl.id}: 重置 stage ${dl.retryExhaustedStage} -> null，phase ${resumePhase} (${reasonLabel})`);
     await dbClient.entity.update({
       where: { id: dl.id },
       data: {
-        onboardPhase: 0,
+        onboardPhase: resumePhase,
+        retryExhaustedStage: null,
         metadata: {
           ...meta,
           onboardPhase1Attempts: 0,
@@ -300,6 +307,7 @@ async function fetchFastTrackCandidates(
     where: {
       type: "company",
       onboardPhase: { gte: 0 },
+      retryExhaustedStage: null,
       priority: { gt: 0 },
       ...(marketFilter ? { market: marketFilter } : {}),
     },
@@ -334,13 +342,13 @@ async function fetchFastTrackCandidates(
       : (typeof meta.phase3Attempts === "number" ? meta.phase3Attempts : 0);
 
     if (attempts >= 3) {
+      const retryExhaustedStage =
+        r.onboardPhase === 0 ? 1 : r.onboardPhase === 1 ? 2 : 3;
       if (!dryRun && (r.priority ?? 0) > 0) {
         await prisma.entity.update({
           where: { id: r.id },
           data: {
-            onboardPhase: r.onboardPhase === 0 ? -1 : r.onboardPhase,
-            priority: r.onboardPhase === 0 ? r.priority : 0,
-            priorityRequestedAt: r.onboardPhase === 0 ? r.priorityRequestedAt : null,
+            retryExhaustedStage,
           },
         }).catch(() => {});
       }
@@ -375,6 +383,7 @@ async function fetchFastTrackCandidates(
           where: { id: r.id },
           data: {
             onboardPhase: -1,
+            retryExhaustedStage: null,
             priority: 0,
             priorityRequestedAt: null,
             metadata: {
@@ -425,6 +434,7 @@ async function fetchCandidatesForMarket(
       type: "company",
       market,
       onboardPhase: currentPhase,
+      retryExhaustedStage: null,
     },
     select: {
       id: true,
@@ -447,7 +457,19 @@ async function fetchCandidatesForMarket(
       ? (typeof meta.onboardPhase1Attempts === "number" ? meta.onboardPhase1Attempts : 0)
       : (typeof meta.onboardPhase2Attempts === "number" ? meta.onboardPhase2Attempts : 0);
 
-    if (attempts >= 3) continue; // Skip persistent failures
+    if (attempts >= 3) {
+      if (!dryRun) {
+        await prisma.entity.update({
+          where: { id: r.id },
+          data: {
+            retryExhaustedStage: targetPhase === 1 ? 1 : 2,
+            priority: 0,
+            priorityRequestedAt: null,
+          },
+        }).catch(() => {});
+      }
+      continue;
+    }
 
     let ticker = r.ticker?.trim() ?? "";
     if (!ticker) {
@@ -475,6 +497,7 @@ async function fetchCandidatesForMarket(
           where: { id: r.id },
           data: {
             onboardPhase: -1,
+            retryExhaustedStage: null,
             priority: 0,
             priorityRequestedAt: null,
             metadata: {
@@ -766,6 +789,11 @@ async function main() {
           throw new Error(`${args.join(" ")} exited with status code ${exitCode}`);
         }
 
+        await prisma.entity.update({
+          where: { id: company.id },
+          data: { retryExhaustedStage: null },
+        }).catch(() => {});
+
         // Reset priority after completion of the requested phase
         if (company.isFastTrack) {
           try {
@@ -808,6 +836,7 @@ async function main() {
                   data: {
                     priority: attempts >= 3 ? 0 : Math.max(0, company.priorityScore - 1000),
                     priorityRequestedAt: attempts >= 3 ? null : undefined,
+                    retryExhaustedStage: attempts >= 3 ? 3 : null,
                     metadata: {
                       ...meta,
                       phase3Attempts: attempts,
@@ -818,12 +847,13 @@ async function main() {
                 });
               } else if (company.currentPhase === 0) {
                 const attempts = ((meta.onboardPhase1Attempts as number) || 0) + 1;
-                // Preserve priority > 0 when demoting fast-track companies to dead-letter (-1)
-                // so selfHealDeadLetterPriorityCompanies can select them after the 24h backoff window.
+                // Keep phase=0 so -1 remains reserved for excluded entities. A
+                // retry-exhausted row is identified by retryExhaustedStage=1.
                 await prisma.entity.update({
                   where: { id: company.id },
                   data: {
-                    onboardPhase: attempts >= 3 ? -1 : 0,
+                    onboardPhase: 0,
+                    retryExhaustedStage: attempts >= 3 ? 1 : null,
                     priority: company.isFastTrack ? Math.max(1, company.priorityScore - 1000) : undefined,
                     metadata: {
                       ...meta,
@@ -841,6 +871,7 @@ async function main() {
                   data: {
                     priority: attempts >= 3 ? 0 : (company.isFastTrack ? Math.max(0, company.priorityScore - 1000) : undefined),
                     priorityRequestedAt: attempts >= 3 ? null : undefined,
+                    retryExhaustedStage: attempts >= 3 ? 2 : null,
                     metadata: {
                       ...meta,
                       onboardPhase2Attempts: attempts,

@@ -15,7 +15,17 @@ import { AdminUniverseExplorer } from "@/components/admin/AdminUniverseExplorer"
 export const dynamic = "force-dynamic";
 
 export default async function AdminUniversePage() {
-  const [totalCompanies, phaseCounts, marketPhaseCounts, recentUpdates, failedCompanies, fastTrackCount] =
+  const [
+    totalCompanies,
+    phaseCounts,
+    marketPhaseCounts,
+    retryStageCounts,
+    retryMarketCounts,
+    recentUpdates,
+    excludedCompanies,
+    retryExhaustedCompanies,
+    fastTrackCount,
+  ] =
     await Promise.all([
       prisma.entity.count({ where: { type: "company" } }),
       prisma.$queryRaw<Array<{ onboardPhase: number; count: bigint }>>`
@@ -32,6 +42,20 @@ export default async function AdminUniversePage() {
         GROUP BY market, "onboardPhase"
         ORDER BY market ASC, "onboardPhase" ASC;
       `,
+      prisma.$queryRaw<Array<{ retryExhaustedStage: number | null; count: bigint }>>`
+        SELECT "retryExhaustedStage", count(*) as count
+        FROM "Entity"
+        WHERE type = 'company'
+        GROUP BY "retryExhaustedStage"
+        ORDER BY "retryExhaustedStage" ASC NULLS LAST;
+      `,
+      prisma.$queryRaw<Array<{ market: string; count: bigint }>>`
+        SELECT COALESCE(market, 'unknown') as market, count(*) as count
+        FROM "Entity"
+        WHERE type = 'company'
+          AND "retryExhaustedStage" IS NOT NULL
+        GROUP BY market;
+      `,
       prisma.entity.findMany({
         where: {
           type: "company",
@@ -45,6 +69,7 @@ export default async function AdminUniversePage() {
           market: true,
           canonicalName: true,
           onboardPhase: true,
+          retryExhaustedStage: true,
           updatedAt: true,
           metadata: true,
         },
@@ -68,6 +93,25 @@ export default async function AdminUniversePage() {
         orderBy: { updatedAt: "desc" },
         take: 6,
       }),
+      prisma.entity.findMany({
+        where: {
+          type: "company",
+          retryExhaustedStage: { not: null },
+        },
+        select: {
+          id: true,
+          ticker: true,
+          code: true,
+          market: true,
+          canonicalName: true,
+          onboardPhase: true,
+          retryExhaustedStage: true,
+          updatedAt: true,
+          metadata: true,
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 6,
+      }),
       prisma.entity.count({
         where: {
           type: "company",
@@ -81,11 +125,21 @@ export default async function AdminUniversePage() {
   for (const row of phaseCounts) {
     phaseMap[row.onboardPhase] = Number(row.count);
   }
+  const retryStageMap: Record<number, number> = {};
+  for (const row of retryStageCounts) {
+    if (row.retryExhaustedStage != null) {
+      retryStageMap[row.retryExhaustedStage] = Number(row.count);
+    }
+  }
 
   const p0 = phaseMap[0] ?? 0;
   const p1 = phaseMap[1] ?? 0;
   const p2 = phaseMap[2] ?? 0;
   const pErr = phaseMap[-1] ?? 0;
+  const retryExhaustedCount =
+    (retryStageMap[1] ?? 0) +
+    (retryStageMap[2] ?? 0) +
+    (retryStageMap[3] ?? 0);
 
   const p0Pct = ((p0 / (totalCompanies || 1)) * 100).toFixed(1);
   const p1Pct = ((p1 / (totalCompanies || 1)) * 100).toFixed(1);
@@ -105,10 +159,23 @@ export default async function AdminUniversePage() {
     const mP1 = Number(rows.find((r) => r.onboardPhase === 1)?.count ?? 0);
     const mP2 = Number(rows.find((r) => r.onboardPhase === 2)?.count ?? 0);
     const mPErr = Number(rows.find((r) => r.onboardPhase === -1)?.count ?? 0);
+    const mRetry = Number(
+      retryMarketCounts.find((r) => r.market === m.key)?.count ?? 0,
+    );
     const mTotal = mP0 + mP1 + mP2 + mPErr;
     const activeTotal = mTotal - mPErr;
     const rate = activeTotal > 0 ? (((mP1 + mP2) / activeTotal) * 100).toFixed(1) : "0.0";
-    return { ...m, total: mTotal, activeTotal, p0: mP0, p1: mP1, p2: mP2, pErr: mPErr, rate };
+    return {
+      ...m,
+      total: mTotal,
+      activeTotal,
+      p0: mP0,
+      p1: mP1,
+      p2: mP2,
+      pErr: mPErr,
+      retryExhausted: mRetry,
+      rate,
+    };
   });
 
   return (
@@ -119,6 +186,7 @@ export default async function AdminUniversePage() {
           <h1 className="admin-page-title">公司大盘与建档管线</h1>
           <p className="admin-page-desc">
             全市场 {totalCompanies.toLocaleString()} 家上市公司建档阶段监控、三大市场推进与最新数据库入库流水
+            {retryExhaustedCount > 0 ? `；${retryExhaustedCount} 家重试耗尽待人工` : ""}
             {fastTrackCount > 0 ? `（当前 ${fastTrackCount} 家快速通道加急插队中）` : ""}
           </p>
         </div>
@@ -175,7 +243,9 @@ export default async function AdminUniversePage() {
                 {fastTrackCount > 0 ? (
                   <> · <strong style={{ color: "var(--apple-blue, #0071e3)" }}>⚡ {fastTrackCount} 家快速排队</strong></>
                 ) : (
-                  "建档"
+                  retryExhaustedCount > 0
+                    ? `建档 · ${retryExhaustedCount} 家重试耗尽`
+                    : "建档"
                 )}
               </span>
             </div>
@@ -284,6 +354,7 @@ export default async function AdminUniversePage() {
                 <h3 className="admin-universe-market-title">{m.label}</h3>
                 <span className="admin-universe-market-sub">
                   总量 {m.total.toLocaleString()} 家 · 运营建档率 {m.rate}%
+                  {m.retryExhausted > 0 ? ` · 重试耗尽 ${m.retryExhausted}` : ""}
                 </span>
               </div>
             </div>
@@ -358,8 +429,16 @@ export default async function AdminUniversePage() {
                   timeZone: "Asia/Shanghai",
                 }).format(new Date(c.updatedAt));
                 const url = formatCompanyUrl(c);
-                const phaseLabel = c.onboardPhase === 1 ? "P1" : "P2";
-                const phaseBadgeClass = c.onboardPhase === 1 ? "admin-badge--blue" : "admin-badge--green";
+                const phaseLabel = c.retryExhaustedStage != null
+                  ? `重试耗尽 P${c.retryExhaustedStage}`
+                  : c.onboardPhase === 1
+                    ? "P1"
+                    : "P2";
+                const phaseBadgeClass = c.retryExhaustedStage != null
+                  ? "admin-badge--red"
+                  : c.onboardPhase === 1
+                    ? "admin-badge--blue"
+                    : "admin-badge--green";
 
                 return (
                   <div key={c.id} className="admin-universe-feed-item">
@@ -395,57 +474,88 @@ export default async function AdminUniversePage() {
           </div>
         </section>
 
-        {/* Pipeline Health, Excluded Entities & Dead Letter Pool */}
+        {/* Pipeline Health: Excluded vs Retry Exhausted */}
         <section className="admin-card">
           <div className="admin-card-header">
             <div className="admin-card-title-group">
-              {pErr > 0 ? (
+              {retryExhaustedCount > 0 ? (
+                <ShieldAlert size={16} className="admin-card-title-icon admin-card-title-icon--amber" />
+              ) : pErr > 0 ? (
                 <ShieldAlert size={16} className="admin-card-title-icon admin-card-title-icon--amber" />
               ) : (
                 <CheckCircle2 size={16} className="admin-card-title-icon admin-card-title-icon--green" />
               )}
-              <h2>豁免非运营与死信池</h2>
+              <h2>豁免标的与重试耗尽</h2>
             </div>
             <span className="admin-stat-hint">
-              {pErr > 0 ? `${pErr.toLocaleString()} 家豁免/异常标的` : "运行健康"}
+              {pErr.toLocaleString()} 豁免 · {retryExhaustedCount.toLocaleString()} 重试耗尽
             </span>
           </div>
 
           <div className="admin-universe-error-box">
-            {failedCompanies.length === 0 ? (
+            {excludedCompanies.length === 0 && retryExhaustedCompanies.length === 0 ? (
               <div className="admin-universe-healthy">
                 <CheckCircle2 size={32} className="admin-universe-healthy-icon" />
-                <p className="admin-universe-healthy-title">当前无熔断死信标的</p>
+                <p className="admin-universe-healthy-title">当前无豁免或重试耗尽标的</p>
                 <span className="admin-universe-healthy-sub">
-                  定时 Worker 每次运行如遇到网络超时会自动重试最多 3 次，连续失败 3 次将移入死信池并在本栏预警。
+                  主动排除与重试耗尽已分开记录，当前无需人工处理。
                 </span>
               </div>
             ) : (
               <div className="admin-universe-feed-list">
-                {failedCompanies.map((c) => {
-                  const meta = (c.metadata as Record<string, unknown>) || {};
-                  const zh = (typeof meta.nameZh === "string" && meta.nameZh) || c.canonicalName;
-                  const isExcluded = Boolean(meta.isExcluded);
-                  const reason =
-                    (typeof meta.exclusionLabel === "string" && meta.exclusionLabel) ||
-                    (typeof meta.onboardPhase1LastError === "string" && meta.onboardPhase1LastError) ||
-                    (isExcluded ? "豁免非运营标的" : "多次重试失败");
+                <div className="admin-stat-hint">豁免标的</div>
+                {excludedCompanies.length === 0 ? (
+                  <div className="admin-universe-empty">暂无豁免标的</div>
+                ) : (
+                  excludedCompanies.map((c) => {
+                    const meta = (c.metadata as Record<string, unknown>) || {};
+                    const zh = (typeof meta.nameZh === "string" && meta.nameZh) || c.canonicalName;
+                    const reason =
+                      (typeof meta.exclusionLabel === "string" && meta.exclusionLabel) ||
+                      "豁免非运营标的";
+                    return (
+                      <div key={c.id} className="admin-universe-feed-item admin-universe-feed-item--error">
+                        <div className="admin-universe-feed-main">
+                          <span className="admin-badge admin-badge--amber">豁免</span>
+                          <span className="admin-badge admin-badge--gray">{(c.market || "us").toUpperCase()}</span>
+                          <span className="admin-universe-feed-ticker">{c.ticker || c.code}</span>
+                          <span className="admin-universe-feed-name">{zh}</span>
+                        </div>
+                        <div className="admin-universe-error-desc" title={reason}>{reason}</div>
+                      </div>
+                    );
+                  })
+                )}
 
-                  return (
-                    <div key={c.id} className="admin-universe-feed-item admin-universe-feed-item--error">
-                      <div className="admin-universe-feed-main">
-                        <span className={`admin-badge ${isExcluded ? "admin-badge--amber" : "admin-badge--red"}`}>
-                          {isExcluded ? "豁免" : (c.market || "us").toUpperCase()}
-                        </span>
-                        <span className="admin-universe-feed-ticker">{c.ticker || c.code}</span>
-                        <span className="admin-universe-feed-name">{zh}</span>
+                <div className="admin-stat-hint" style={{ marginTop: "18px" }}>
+                  重试耗尽待人工
+                </div>
+                {retryExhaustedCompanies.length === 0 ? (
+                  <div className="admin-universe-empty">暂无重试耗尽标的</div>
+                ) : (
+                  retryExhaustedCompanies.map((c) => {
+                    const meta = (c.metadata as Record<string, unknown>) || {};
+                    const zh = (typeof meta.nameZh === "string" && meta.nameZh) || c.canonicalName;
+                    const stage = c.retryExhaustedStage;
+                    const reason =
+                      (stage != null && typeof meta[`onboardPhase${stage}LastError`] === "string"
+                        ? String(meta[`onboardPhase${stage}LastError`])
+                        : "多次重试失败");
+                    return (
+                      <div key={c.id} className="admin-universe-feed-item admin-universe-feed-item--error">
+                        <div className="admin-universe-feed-main">
+                          <span className="admin-badge admin-badge--red">
+                            重试耗尽 · P{stage}
+                          </span>
+                          <span className="admin-badge admin-badge--gray">{(c.market || "us").toUpperCase()}</span>
+                          <span className="admin-universe-feed-ticker">{c.ticker || c.code}</span>
+                          <span className="admin-universe-feed-name">{zh}</span>
+                        </div>
+                        <div className="admin-universe-error-desc" title={reason}>{reason}</div>
                       </div>
-                      <div className="admin-universe-error-desc" title={reason}>
-                        {reason}
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             )}
           </div>

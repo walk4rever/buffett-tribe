@@ -20,17 +20,20 @@ export function AdminUniverseExplorer({
   const [query, setQuery] = useState("");
   const [market, setMarket] = useState("all");
   const [phase, setPhase] = useState("all");
+  const [status, setStatus] = useState("all");
   const [items, setItems] = useState<ExplorerItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [, startTransition] = useTransition();
 
-  const fetchResults = async (q: string, m: string, p: string) => {
+  const fetchResults = async (q: string, m: string, p: string, s: string) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (q.trim()) params.set("q", q.trim());
       if (m !== "all") params.set("market", m);
       if (p !== "all") params.set("phase", p);
+      if (s !== "all") params.set("status", s);
+      params.set("includeAll", "1");
       params.set("limit", "40");
       params.set("fresh", "1"); // admin view: never serve cached results
 
@@ -50,12 +53,12 @@ export function AdminUniverseExplorer({
     // Initial fetch on mount or when filters change
     const timer = setTimeout(() => {
       startTransition(() => {
-        fetchResults(query, market, phase);
+        fetchResults(query, market, phase, status);
       });
     }, 200);
 
     return () => clearTimeout(timer);
-  }, [query, market, phase]);
+  }, [query, market, phase, status]);
 
   const marketColor: Record<string, string> = {
     us: "admin-badge--blue",
@@ -64,6 +67,13 @@ export function AdminUniverseExplorer({
   };
 
   const phaseBadge = (item: ExplorerItem) => {
+    if (item.retryExhaustedStage != null) {
+      return (
+        <span className="admin-badge admin-badge--red">
+          重试耗尽 · Phase {item.retryExhaustedStage}
+        </span>
+      );
+    }
     const inFastTrack =
       typeof item.onboardPhase === "number" &&
       item.onboardPhase >= 0 &&
@@ -168,9 +178,22 @@ export function AdminUniverseExplorer({
             <option value="-1">Phase -1 (主动豁免/场外/非公司标的)</option>
           </select>
 
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="admin-universe-select"
+            aria-label="筛选处理状态"
+          >
+            <option value="all">全部状态</option>
+            <option value="retryable">可重试</option>
+            <option value="retry_exhausted">重试耗尽</option>
+            <option value="excluded">豁免标的</option>
+            <option value="active">正常处理中</option>
+          </select>
+
           <button
             type="button"
-            onClick={() => fetchResults(query, market, phase)}
+            onClick={() => fetchResults(query, market, phase, status)}
             className="admin-universe-refresh-btn"
             title="刷新数据"
             disabled={loading}

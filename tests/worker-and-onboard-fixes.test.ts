@@ -74,11 +74,13 @@ describe("selfHealDeadLetterPriorityCompanies", () => {
           {
             id: "recent_dl",
             ticker: "RECENT",
+            retryExhaustedStage: 1,
             metadata: { onboardPhase1LastAttemptAt: oneHourAgo, onboardPhase1Attempts: 3 },
           },
           {
             id: "aged_dl",
             ticker: "AGED",
+            retryExhaustedStage: 1,
             metadata: { onboardPhase1LastAttemptAt: twentyFiveHoursAgo, onboardPhase1Attempts: 3 },
           },
         ]),
@@ -98,7 +100,10 @@ describe("selfHealDeadLetterPriorityCompanies", () => {
     expect(mockDb.entity.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "aged_dl" },
-        data: expect.objectContaining({ onboardPhase: 0 }),
+        data: expect.objectContaining({
+          onboardPhase: 0,
+          retryExhaustedStage: null,
+        }),
       }),
     );
 

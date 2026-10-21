@@ -167,4 +167,8 @@ describe("isExcludedEntity", () => {
     expect(isExcludedEntity({ onboardPhase: 0, metadata: { isExcluded: true } })).toBe(true);
     expect(isExcludedEntity({ onboardPhase: 0, metadata: { isExcluded: false } })).toBe(false);
   });
+
+  it("does not treat a retry-exhausted row as excluded", () => {
+    expect(isExcludedEntity({ onboardPhase: -1, retryExhaustedStage: 1 })).toBe(false);
+  });
 });
