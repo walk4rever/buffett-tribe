@@ -5583,19 +5583,26 @@ body.layout-no-header {
 
 /* ── Footer ── */
 .home-footer-v2 {
-  background: var(--apple-black);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  background: var(--apple-white);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .home-footer-v2-in {
   max-width: 980px;
+  min-height: var(--site-nav-height);
   margin: 0 auto;
-  padding: 1.25rem 1.5rem;
+  padding: 0 clamp(5rem, 10vw, 8rem);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
+}
+
+.home-footer-v2-in--single {
+  justify-content: center;
+  text-align: center;
 }
 
 .home-footer-logo {
@@ -5615,10 +5622,44 @@ body.layout-no-header {
 }
 
 .home-footer-note {
-  font-size: 0.6875rem;
-  color: rgba(255, 255, 255, 0.3);
-  line-height: 1.47;
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.58);
+  line-height: 1.5;
   letter-spacing: -0.12px;
+}
+
+.home-footer-note a {
+  color: rgba(0, 0, 0, 0.8);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.home-footer-note a:hover {
+  color: rgba(0, 0, 0, 1);
+}
+
+.home-footer-contact {
+  position: absolute;
+  right: clamp(1rem, 3vw, 3.5rem);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0.4rem 0.78rem;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+  color: rgba(0, 0, 0, 0.72);
+  font-size: 0.75rem;
+  line-height: 1;
+  text-decoration: none;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    background 0.15s;
+}
+
+.home-footer-contact:hover {
+  border-color: rgba(0, 0, 0, 0.34);
+  background: rgba(0, 0, 0, 0.045);
+  color: #000;
 }
 
 /* ── P0 Fix 2/4: Complete mobile breakpoint system per Apple spec ── */
@@ -13368,9 +13409,12 @@ body {
   color: var(--apple-white);
 }
 
-.home-signals,
-.home-footer-v2 {
+.home-signals {
   background: var(--apple-black);
+}
+
+.home-footer-v2 {
+  background: var(--apple-white);
 }
 
 /* Masters section on homepage uses pure black background per Apple alternating rhythm */
@@ -13820,8 +13864,9 @@ body {
 }
 
 .home-footer-v2-in {
-  padding-left: clamp(1rem, 2vw, 1.5rem);
-  padding-right: clamp(1rem, 2vw, 1.5rem);
+  max-width: none;
+  padding-left: clamp(5rem, 10vw, 8rem);
+  padding-right: clamp(5rem, 10vw, 8rem);
 }
 
 .home-v2 {

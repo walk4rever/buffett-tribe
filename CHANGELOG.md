@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v0.47.17] - 2026-10-27
+
+### Changed
+- **首页信息层级调整**：
+  - 将“最新深度研究”移动到导航栏后的首页首位，并限制为最新 3 张卡片；
+  - 新增独立全宽 Footer，展示 `VALUE-TRIBE © 2026 · Powered by Air7.fun`；
+  - 增加指向 `walkklaw@gmail.com` 的“联系”按钮，并把 Footer 高度和字号收敛到与 Header 一致的视觉节奏。
+
 ## [v0.47.16] - 2026-10-27
 
 ### Added

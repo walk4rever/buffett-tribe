@@ -306,6 +306,23 @@ export default async function Home() {
         </section>
       )}
 
+      <footer className="home-footer-v2">
+        <div className="home-footer-v2-in home-footer-v2-in--single">
+          <p className="home-footer-note">
+            VALUE-TRIBE © 2026 <span aria-hidden="true">·</span> Powered by{" "}
+            <a href="https://air7.fun" target="_blank" rel="noreferrer">
+              Air7.fun
+            </a>
+          </p>
+        </div>
+        <a
+          className="home-footer-contact"
+          href="mailto:walkklaw@gmail.com"
+          aria-label="联系 walkklaw@gmail.com"
+        >
+          联系
+        </a>
+      </footer>
     </div>
   );
 }
