@@ -161,6 +161,16 @@ describe("Golden Benchmark Suite (18 Core Orthogonal + 5 Modifier Extension = 23
             setItem(fact, metricSpec.value);
           }
         }
+        // Ground truth predates the income-semantics split. Its no-preferred
+        // sample assumption must be explicit instead of relying on a runtime
+        // fallback from parent to common net income.
+        if (items.NetIncome) {
+          items.NetIncomeTotal ??= items.NetIncome;
+          items.NetIncomeCommon ??= items.NetIncome;
+        }
+        if (items.ShareholdersEquity) {
+          items.ShareholdersCommonEquity ??= items.ShareholdersEquity;
+        }
         for (const reqRow of spec.requiredDashboardRows) {
           if (!(reqRow in items)) {
             setItem(reqRow, 5_000_000_000);

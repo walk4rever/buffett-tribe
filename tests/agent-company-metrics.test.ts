@@ -3,6 +3,7 @@ import {
   buildCapitalAllocationAgentPayload,
   buildValuationAgentPayload,
 } from "@/lib/agent-company-metrics";
+import { resolveFinancialModel } from "@/lib/financial-model";
 import type { ValueLineData } from "@/lib/value-line-data";
 
 const annual = {
@@ -47,7 +48,7 @@ function data(overrides: Partial<ValueLineData> = {}): ValueLineData {
     valuationStatus: "fair",
     valuationDiffPct: 5,
     roeAvg5Y: 20,
-    financialModel: { valuationAnchorLabel: "盈利与自由现金流" },
+    financialModel: resolveFinancialModel("industrial")!,
     ...overrides,
   } as ValueLineData;
 }
@@ -76,6 +77,7 @@ describe("agent company metric payloads", () => {
     expect(payload.available).toBe(true);
     expect(payload.currentPe).toBe(20);
     expect(payload.currentPb).toBe(4);
+    expect(payload.valuationAnchorLabel).toBe("P/E");
     expect(payload.historicalPe.currentPercentile).toBe(100);
     expect(payload.latestAnnual?.year).toBe(2024);
   });
@@ -88,5 +90,13 @@ describe("agent company metric payloads", () => {
     }));
     expect(payload.available).toBe(false);
     expect(payload.missing).toContain("stock_price");
+  });
+
+  it("returns the implemented P/B method for a non-P/E sector", () => {
+    const payload = buildValuationAgentPayload(data({
+      financialModel: resolveFinancialModel("real_estate")!,
+    }));
+
+    expect(payload.valuationAnchorLabel).toBe("P/B");
   });
 });

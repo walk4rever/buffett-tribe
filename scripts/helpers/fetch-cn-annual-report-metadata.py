@@ -11,12 +11,16 @@ import re
 import sys
 import time
 from datetime import datetime
+from pathlib import Path
 
 try:
     import akshare as ak
 except ImportError:
     print("Error: akshare not installed. Run: pip install akshare", file=sys.stderr)
     sys.exit(1)
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+from cn_reit_announcements import find_cn_reit_annual_reports
 
 STATIC_BASE = "https://static.cninfo.com.cn/finalpage"
 TITLE_RE = re.compile(r"^.*?(\d{4})年?年度报告$")
@@ -37,6 +41,31 @@ def fetch_annual_reports_metadata(code: str, from_year: int) -> list[dict]:
         }
     """
     reports = []
+
+    # Exchange-listed REIT units use a fund reporting stack. Check the fund
+    # announcement endpoint first because the ordinary stock endpoint may not
+    # merely return empty: for some codes it raises before yielding a result.
+    try:
+        reit_reports = find_cn_reit_annual_reports(code, from_year)
+        if reit_reports:
+            return [
+                {
+                    "periodYear": report["periodYear"],
+                    "url": report["url"],
+                    "filingKind": "cn-annual-report",
+                    "form": "Annual Report",
+                    "metadata": {
+                        "source": "eastmoney-reit",
+                        "title": report["title"],
+                        "announcementId": report["reportId"],
+                        "announcementTime": report["reportDate"],
+                        "fetchedAt": datetime.now().isoformat(),
+                    },
+                }
+                for report in reit_reports
+            ]
+    except Exception as reit_error:
+        print(f"Warning: Could not check REIT annual reports: {reit_error}", file=sys.stderr)
 
     # Fetch annual reports using akshare
     try:

@@ -10,6 +10,13 @@ import json
 import re
 import sys
 from datetime import datetime
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+try:
+    from lib.hk_annual_report_selection import pick_annual_reports_by_year
+except ModuleNotFoundError:
+    from scripts.lib.hk_annual_report_selection import pick_annual_reports_by_year
 
 try:
     import requests
@@ -22,13 +29,6 @@ BASE_URL = "https://www1.hkexnews.hk"
 SEARCH_PAGE = f"{BASE_URL}/search/titlesearch.xhtml"
 API_ENDPOINT = f"{BASE_URL}/search/titleSearchServlet.do"
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
-ANNUAL_REPORT_TITLE_RE = re.compile(r"年報|年度報告|Annual Report", re.IGNORECASE)
-ANNUAL_REPORT_EXCLUDE_RE = re.compile(
-    r"補充|補遺|澄清|企業年度報告書|ANNOUNCEMENT|半年度|中期|季度|Interim|Quarterly",
-    re.IGNORECASE,
-)
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fetch HK annual report metadata")
     parser.add_argument("--code", required=True, help="Stock code (e.g., 00700)")
@@ -150,68 +150,6 @@ def fetch_all_records(session: requests.Session, stock_id: int, date_from: str, 
     return all_records
 
 
-def pick_annual_reports_by_year(records: list[dict], from_year: int) -> dict[int, dict]:
-    """Filter records down to annual reports, keyed by content year."""
-    by_year: dict[int, dict] = {}
-    for rec in records:
-        title = rec.get("TITLE", "")
-        if not ANNUAL_REPORT_TITLE_RE.search(title):
-            continue
-        if ANNUAL_REPORT_EXCLUDE_RE.search(title):
-            continue
-
-        date_str = rec.get("DATE_TIME", "")
-        filed_year = None
-        try:
-            filed_year = datetime.strptime(date_str.split()[0], "%d/%m/%Y").year
-        except Exception:
-            pass
-
-        # Try title pattern first (e.g. "2023年度報告" -> 2023)
-        year_match = re.search(r"(20\d\d)\s*(?:年|年度)?(?:年報|年度報告|Annual Report)", title, re.IGNORECASE)
-        if year_match:
-            period_year = int(year_match.group(1))
-        else:
-            # Fallback: Annual reports are filed in spring following the fiscal year
-            period_year = (filed_year - 1) if filed_year else None
-
-        if period_year is None or period_year in by_year or period_year < from_year:
-            continue
-
-        file_link = rec.get("FILE_LINK", "")
-        if not file_link:
-            continue
-        normalized_link = file_link.lower().split("?", 1)[0]
-        file_type = rec.get("FILE_TYPE", "").upper()
-        report_format = (
-            "html"
-            if file_type == "HTML" or normalized_link.endswith((".htm", ".html", "/"))
-            else "pdf"
-            if file_type == "PDF" or normalized_link.endswith(".pdf")
-            else None
-        )
-        if report_format is None:
-            continue
-
-        report_url = f"{BASE_URL}{file_link}" if file_link.startswith("/") else file_link
-
-        by_year[period_year] = {
-            "periodYear": period_year,
-            "url": report_url,
-            "form": "Annual Report",
-            "metadata": {
-                "source": "hkexnews",
-                "title": title,
-                "filingDate": date_str,
-                "newsId": rec.get("NEWS_ID", ""),
-                "fileSize": rec.get("FILE_INFO", ""),
-                "format": report_format,
-            },
-        }
-
-    return by_year
-
-
 def fetch_annual_reports_metadata(code: str, from_year: int, lang_pref: str = "zh-first") -> list[dict]:
     """
     Fetch annual report metadata from HKEXnews API with full rowRange pagination.
@@ -229,13 +167,33 @@ def fetch_annual_reports_metadata(code: str, from_year: int, lang_pref: str = "z
 
     for lang in langs:
         records = fetch_all_records(session, stock_id, date_from, date_to, lang)
-        picked = pick_annual_reports_by_year(records, from_year)
+        picked = pick_annual_reports_by_year(records, from_year, BASE_URL)
         lang_code = "zh" if lang == "ZH" else "en"
         for year, report in picked.items():
             if year not in by_year:
-                report["metadata"]["lang"] = lang_code
-                report["metadata"]["fetchedAt"] = datetime.now().isoformat()
-                by_year[year] = report
+                source_record = next(
+                    (
+                        rec
+                        for rec in records
+                        if rec.get("FILE_LINK", "").startswith("/")
+                        and f"{BASE_URL}{rec.get('FILE_LINK', '')}" == report["url"]
+                    ),
+                    {},
+                )
+                by_year[year] = {
+                    **report,
+                    "form": "Annual Report",
+                    "metadata": {
+                        "source": "hkexnews",
+                        "title": report.get("title", ""),
+                        "filingDate": source_record.get("DATE_TIME", ""),
+                        "newsId": source_record.get("NEWS_ID", ""),
+                        "fileSize": source_record.get("FILE_INFO", ""),
+                        "format": report.get("format"),
+                        "lang": lang_code,
+                        "fetchedAt": datetime.now().isoformat(),
+                    },
+                }
 
     reports = [by_year[year] for year in sorted(by_year.keys())]
     return reports

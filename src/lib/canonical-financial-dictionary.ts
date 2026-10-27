@@ -70,6 +70,42 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     "morningstarId": "IFIS001170"
   },
   {
+    "key": "OperatingRevenue",
+    "nameZh": "经营收入",
+    "nameEn": "Operating Revenue",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "经营收入"
+    ],
+    "hkAliases": [
+      "经营收入"
+    ]
+  },
+  {
+    "key": "InvestmentGains",
+    "nameZh": "投资及公允价值变动收益",
+    "nameEn": "Investment and Fair Value Gains",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": [],
+    "hkAliases": []
+  },
+  {
     "key": "CostOfRevenue",
     "nameZh": "营业成本",
     "nameEn": "Cost of Revenue / Goods Sold",
@@ -583,6 +619,34 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     "morningstarId": "IFIS001560"
   },
   {
+    "key": "NetIncomeTotal",
+    "nameZh": "合并净利润 (含少数股东损益)",
+    "nameEn": "Consolidated Net Income",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "ProfitLoss"
+    ],
+    "tagsIfrs": [
+      "ProfitLoss"
+    ],
+    "cnAliases": [
+      "净利润",
+      "合并净利润",
+      "净利润(含少数股东损益)"
+    ],
+    "hkAliases": [
+      "除税后溢利",
+      "本年度溢利",
+      "年度溢利"
+    ]
+  },
+  {
     "key": "NetIncome",
     "nameZh": "净利润 (归母)",
     "nameEn": "Net Income Attributable to Parent",
@@ -594,13 +658,10 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "HKD"
     ],
     "tagsUsGaap": [
-      "NetIncomeLossAvailableToCommonStockholdersBasic",
-      "NetIncomeLoss",
-      "ProfitLoss"
+      "NetIncomeLoss"
     ],
     "tagsIfrs": [
-      "ProfitLossAttributableToOwnersOfParent",
-      "ProfitLoss"
+      "ProfitLossAttributableToOwnersOfParent"
     ],
     "cnAliases": [
       "归属于母公司所有者的净利润",
@@ -613,6 +674,58 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "本公司拥有人应占溢利"
     ],
     "morningstarId": "IFIS001100"
+  },
+  {
+    "key": "NetIncomeCommon",
+    "nameZh": "归属普通股股东净利润",
+    "nameEn": "Net Income Available to Common Shareholders",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "NetIncomeLossAvailableToCommonStockholdersBasic",
+      "NetIncomeLossAvailableToCommonStockholdersDiluted"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "归属于普通股股东的净利润"
+    ],
+    "hkAliases": [
+      "普通股股东应占溢利",
+      "普通股股东应占利润"
+    ]
+  },
+  {
+    "key": "PreferredDividends",
+    "nameZh": "优先股/永久资本证券收益分配",
+    "nameEn": "Preferred and Perpetual Capital Security Distributions",
+    "statement": "income_statement",
+    "periodType": "duration",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "PreferredStockDividendsIncomeStatementImpact",
+      "PreferredStockDividendsAndOtherAdjustments"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "优先股股息",
+      "优先股股利"
+    ],
+    "hkAliases": [
+      "优先股股息",
+      "优先股股利",
+      "永久资本证券持有人应占溢利",
+      "永续资本证券持有人应占溢利",
+      "永久证券持有人应占溢利"
+    ]
   },
   {
     "key": "MinorityInterestIncome",
@@ -1684,12 +1797,10 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "HKD"
     ],
     "tagsUsGaap": [
-      "StockholdersEquity",
-      "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"
+      "StockholdersEquity"
     ],
     "tagsIfrs": [
-      "EquityAttributableToOwnersOfParent",
-      "Equity"
+      "EquityAttributableToOwnersOfParent"
     ],
     "cnAliases": [
       "归属于母公司股东权益合计",
@@ -1702,6 +1813,58 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "归属于母公司股东权益"
     ],
     "morningstarId": "IFBS200140"
+  },
+  {
+    "key": "PreferredStockValue",
+    "nameZh": "优先股及永久资本证券账面值",
+    "nameEn": "Preferred Stock and Perpetual Capital Instruments",
+    "statement": "balance_sheet_equity",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "PreferredStockValue",
+      "PreferredStockValueOutstanding",
+      "RedeemablePreferredStockCarryingAmount",
+      "TemporaryEquityCarryingAmountAttributableToParent"
+    ],
+    "tagsIfrs": [
+      "OtherEquityInstruments"
+    ],
+    "cnAliases": [
+      "优先股",
+      "其他权益工具",
+      "永续债"
+    ],
+    "hkAliases": [
+      "优先股",
+      "可转换可赎回优先股",
+      "永久资本证券",
+      "永续资本证券"
+    ]
+  },
+  {
+    "key": "ShareholdersCommonEquity",
+    "nameZh": "归属普通股股东权益",
+    "nameEn": "Common Shareholders' Equity",
+    "statement": "balance_sheet_equity",
+    "periodType": "instant",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "归属于普通股股东权益"
+    ],
+    "hkAliases": [
+      "普通股股东应占权益"
+    ]
   },
   {
     "key": "MinorityInterest",
@@ -1751,6 +1914,7 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     ],
     "hkAliases": [
       "权益总额",
+      "总权益",
       "所有者权益合计"
     ],
     "morningstarId": "IFBS002220"
@@ -3035,6 +3199,289 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "贷款损失准备"
     ],
     "description": "资产负债表上累计计提的贷款坏账拨备资金池"
+  },
+  {
+    "key": "NonPerformingLoans",
+    "nameZh": "不良贷款余额",
+    "nameEn": "Non-Performing Loans",
+    "statement": "supplementary",
+    "periodType": "instant",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [
+      "FinancingReceivableRecordedInvestmentNonaccrualStatus"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "不良贷款余额"
+    ],
+    "hkAliases": [
+      "減值貸款餘額",
+      "减值贷款余额"
+    ]
+  },
+  {
+    "key": "EarningAssets",
+    "nameZh": "平均生息资产",
+    "nameEn": "Average Interest-Earning Assets",
+    "statement": "supplementary",
+    "periodType": "duration",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "平均生息资产",
+      "总生息资产平均余额"
+    ],
+    "hkAliases": [
+      "平均生息資產"
+    ]
+  },
+  {
+    "key": "NIM",
+    "nameZh": "净息差",
+    "nameEn": "Net Interest Margin",
+    "statement": "supplementary",
+    "periodType": "duration",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": [
+      "ratio"
+    ],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "净利息收益率",
+      "净息差"
+    ],
+    "hkAliases": [
+      "淨息差"
+    ]
+  },
+  {
+    "key": "NonPerformingLoanRatio",
+    "nameZh": "不良贷款率",
+    "nameEn": "Non-Performing Loan Ratio",
+    "statement": "supplementary",
+    "periodType": "instant",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": [
+      "ratio"
+    ],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "不良贷款率"
+    ],
+    "hkAliases": [
+      "減值貸款比率",
+      "减值贷款比率"
+    ]
+  },
+  {
+    "key": "ProvisionCoverage",
+    "nameZh": "拨备覆盖率",
+    "nameEn": "Loan Loss Provision Coverage",
+    "statement": "supplementary",
+    "periodType": "instant",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": [
+      "ratio"
+    ],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "拨备覆盖率"
+    ],
+    "hkAliases": [
+      "撥備覆蓋率"
+    ]
+  },
+  {
+    "key": "CET1Ratio",
+    "nameZh": "核心一级资本充足率",
+    "nameEn": "Common Equity Tier 1 Ratio",
+    "statement": "supplementary",
+    "periodType": "instant",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": [
+      "ratio"
+    ],
+    "tagsUsGaap": [
+      "CommonEquityTierOneRiskBasedCapitalToRiskWeightedAssets"
+    ],
+    "tagsIfrs": [],
+    "cnAliases": [
+      "核心一级资本充足率"
+    ],
+    "hkAliases": [
+      "普通股權一級資本比率",
+      "普通股权一级资本比率"
+    ]
+  },
+  {
+    "key": "NOI",
+    "nameZh": "物业净营业收入",
+    "nameEn": "Net Operating Income",
+    "statement": "supplementary",
+    "periodType": "duration",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": ["USD", "CNY", "HKD"],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": ["物业净营业收入", "运营净收益"],
+    "hkAliases": ["物業收入淨額", "物业收入净额"]
+  },
+  {
+    "key": "FFO",
+    "nameZh": "运营资金",
+    "nameEn": "Funds From Operations",
+    "statement": "supplementary",
+    "periodType": "duration",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": ["USD", "CNY", "HKD"],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": ["运营资金"],
+    "hkAliases": ["營運資金", "营运资金"]
+  },
+  {
+    "key": "AFFO",
+    "nameZh": "调整后运营资金",
+    "nameEn": "Adjusted Funds From Operations",
+    "statement": "supplementary",
+    "periodType": "duration",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": ["USD", "CNY", "HKD"],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": ["调整后运营资金"],
+    "hkAliases": ["調整後營運資金", "调整后营运资金"]
+  },
+  {
+    "key": "SameStoreNOIGrowth",
+    "nameZh": "同店 NOI 增长",
+    "nameEn": "Same-Store NOI Growth",
+    "statement": "supplementary",
+    "periodType": "duration",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": ["ratio"],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": ["同店 NOI 增长"],
+    "hkAliases": ["同店 NOI 增長", "同店 NOI 增长"]
+  },
+  {
+    "key": "Occupancy",
+    "nameZh": "出租率",
+    "nameEn": "Occupancy",
+    "statement": "supplementary",
+    "periodType": "instant",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": ["ratio"],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": ["出租率", "租用率"],
+    "hkAliases": ["租用率", "出租率"]
+  },
+  {
+    "key": "FFOPerShare",
+    "nameZh": "每份 FFO",
+    "nameEn": "FFO per Share",
+    "statement": "supplementary",
+    "periodType": "duration",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": ["USD/share", "CNY/share", "HKD/share"],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": ["每份运营资金", "每份 FFO"],
+    "hkAliases": ["每基金單位營運資金", "每份 FFO"]
+  },
+  {
+    "key": "EV",
+    "nameZh": "内含价值",
+    "nameEn": "Embedded Value",
+    "statement": "supplementary",
+    "periodType": "instant",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": ["USD", "CNY", "HKD"],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": ["集团内含价值", "内含价值"],
+    "hkAliases": ["內涵價值", "内涵价值", "內涵價值權益"]
+  },
+  {
+    "key": "NBV",
+    "nameZh": "新业务价值",
+    "nameEn": "New Business Value",
+    "statement": "supplementary",
+    "periodType": "duration",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": ["USD", "CNY", "HKD"],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": ["新业务价值", "一年新业务价值"],
+    "hkAliases": ["新業務價值", "新业务价值"]
+  },
+  {
+    "key": "NewBusinessValueMargin",
+    "nameZh": "新业务价值率",
+    "nameEn": "New Business Value Margin",
+    "statement": "supplementary",
+    "periodType": "duration",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": ["ratio"],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": ["新业务价值率"],
+    "hkAliases": ["新業務價值率", "新业务价值率"]
+  },
+  {
+    "key": "SolvencyRatio",
+    "nameZh": "偿付能力充足率",
+    "nameEn": "Solvency Ratio",
+    "statement": "supplementary",
+    "periodType": "instant",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": ["ratio"],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": ["综合偿付能力充足率", "偿付能力充足率"],
+    "hkAliases": ["集團償付能力比率", "股东资本比率", "LCSM coverage ratio"]
+  },
+  {
+    "key": "CombinedRatio",
+    "nameZh": "综合成本率",
+    "nameEn": "Combined Ratio",
+    "statement": "supplementary",
+    "periodType": "duration",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": ["ratio"],
+    "tagsUsGaap": ["CombinedRatio"],
+    "tagsIfrs": [],
+    "cnAliases": ["综合成本率"],
+    "hkAliases": ["綜合成本率", "综合成本率"]
+  },
+  {
+    "key": "Float",
+    "nameZh": "浮存金",
+    "nameEn": "Insurance Float",
+    "statement": "supplementary",
+    "periodType": "instant",
+    "modelSource": "buffett_tribe_extension",
+    "unitCandidates": ["USD", "CNY", "HKD"],
+    "tagsUsGaap": [],
+    "tagsIfrs": [],
+    "cnAliases": ["浮存金"],
+    "hkAliases": ["浮存金"]
   },
   {
     "key": "DueToCentralBanks",

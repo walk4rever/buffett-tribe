@@ -44,6 +44,9 @@ import akshare as ak
 import requests
 from pypdf import PdfReader
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+from cn_reit_announcements import find_cn_reit_annual_reports
+
 try:
     import fitz  # PyMuPDF
 except ImportError:
@@ -70,6 +73,17 @@ def parse_args() -> argparse.Namespace:
 
 
 def find_annual_reports(code: str, from_year: int) -> list[dict]:
+    reit_reports = find_cn_reit_annual_reports(code, from_year)
+    if reit_reports:
+        return [
+            {
+                "periodYear": report["periodYear"],
+                "title": report["title"],
+                "url": report["url"],
+            }
+            for report in reit_reports
+        ]
+
     df = ak.stock_zh_a_disclosure_report_cninfo(
         symbol=code,
         market="沪深京",
@@ -100,7 +114,10 @@ def find_annual_reports(code: str, from_year: int) -> list[dict]:
         found.append({"periodYear": period_year, "title": title, "url": pdf_url})
 
     found.sort(key=lambda r: r["periodYear"])
-    return found
+    if found:
+        return found
+
+    return []
 
 
 def find_prospectus(code: str) -> dict | None:

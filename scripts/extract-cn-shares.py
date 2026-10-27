@@ -1,117 +1,106 @@
 #!/usr/bin/env python3
-"""
-Extract CommonStockSharesOutstanding for CN A-share companies from Sina balance sheet.
-Designed for high-speed batch backfilling.
-"""
+"""Extract explicit CN A-share period-end shares from Sina daily trading data."""
 
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
 import akshare as ak
 import pandas as pd
 
-SHARE_COLS = [
-    "实收资本(或股本)",
-    "实收资本（或股本）",
-    "股本",
-    "实收资本",
-    "实收资本净额",
-]
+QUARTER_ENDS = ((3, 31, "Q1"), (6, 30, "Q2"), (9, 30, "Q3"), (12, 31, "Q4"))
 
 
-def to_scalar(val: Any) -> float | None:
-    if val is None or pd.isna(val):
-        return None
-    try:
-        f = float(val)
-        return None if pd.isna(f) else f
-    except (ValueError, TypeError):
-        return None
+def records_from_daily_frame(
+    df: pd.DataFrame,
+    from_year: int,
+) -> list[dict[str, Any]]:
+    """Build period-end share records from an explicit outstanding_share series.
 
-
-def fetch_shares_for_code(code: str, from_year: int = 2015) -> list[dict[str, Any]]:
-    try:
-        df = ak.stock_financial_report_sina(stock=code, symbol="资产负债表")
-    except Exception as e:
-        print(f"  warning: failed to fetch balance sheet for {code}: {e}", file=sys.stderr)
+    Sina's balance-sheet ``实收资本`` is a currency amount, not a share count.
+    This extractor only accepts the ``outstanding_share`` column supplied by
+    ``stock_zh_a_daily``. Missing columns return no records so callers keep an
+    explicit gap instead of writing a unit-mismatched fact.
+    """
+    if df is None or df.empty or "date" not in df.columns:
+        return []
+    if "outstanding_share" not in df.columns:
         return []
 
-    if df is None or df.empty:
+    frame = df[["date", "outstanding_share"]].copy()
+    frame["date"] = pd.to_datetime(frame["date"], errors="coerce")
+    frame["outstanding_share"] = pd.to_numeric(
+        frame["outstanding_share"], errors="coerce"
+    )
+    frame = frame.dropna()
+    frame = frame[frame["outstanding_share"] > 0]
+    frame = frame[frame["date"].dt.year >= from_year]
+    frame = frame.sort_values("date")
+    if frame.empty:
         return []
-
-    target_col = None
-    for c in SHARE_COLS:
-        if c in df.columns:
-            target_col = c
-            break
-
-    if not target_col:
-        print(f"  warning: no shares column found for {code} in {list(df.columns[:10])}", file=sys.stderr)
-        return []
-
-    raw_by_date: dict[str, float] = {}
-    for _, row in df.iterrows():
-        raw_date = row.get("报告日")
-        if pd.isna(raw_date):
-            continue
-        s_date = str(raw_date).strip()
-        m = re.match(r"^(\d{4})(\d{2})(\d{2})", s_date)
-        if not m:
-            continue
-        period_end = f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
-        year = int(m.group(1))
-        if year < from_year:
-            continue
-        val = to_scalar(row.get(target_col))
-        if val is not None and val > 0 and period_end not in raw_by_date:
-            raw_by_date[period_end] = val
 
     records: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
-
-    def add(p_end: str, p_type: str, v: float) -> None:
-        key = (p_end, p_type)
-        if key in seen:
-            return
-        seen.add(key)
-        records.append({
-            "periodEnd": p_end,
-            "periodType": p_type,
-            "lineItem": "CommonStockSharesOutstanding",
-            "value": v,
-        })
-
-    unique_years = sorted({int(d[:4]) for d in raw_by_date.keys()})
-    for yr in unique_years:
-        d_q1 = f"{yr}-03-31"
-        d_q2 = f"{yr}-06-30"
-        d_q3 = f"{yr}-09-30"
-        d_fy = f"{yr}-12-31"
-
-        if d_fy in raw_by_date:
-            add(d_fy, "FY", raw_by_date[d_fy])
-            add(d_fy, "Q4", raw_by_date[d_fy])
-        if d_q1 in raw_by_date:
-            add(d_q1, "Q1", raw_by_date[d_q1])
-        if d_q2 in raw_by_date:
-            add(d_q2, "Q2", raw_by_date[d_q2])
-        if d_q3 in raw_by_date:
-            add(d_q3, "Q3", raw_by_date[d_q3])
+    years = sorted({int(year) for year in frame["date"].dt.year.unique()})
+    today = date.today()
+    for year in years:
+        for month, day, period_type in QUARTER_ENDS:
+            period_end = date(year, month, day)
+            if period_end > today:
+                continue
+            eligible = frame[frame["date"].dt.date <= period_end]
+            if eligible.empty:
+                continue
+            row = eligible.iloc[-1]
+            value = float(row["outstanding_share"])
+            period_end_text = period_end.isoformat()
+            for record_type in (
+                ["FY", "Q4"] if period_type == "Q4" else [period_type]
+            ):
+                key = (period_end_text, record_type)
+                if key in seen:
+                    continue
+                seen.add(key)
+                records.append({
+                    "periodEnd": period_end_text,
+                    "periodType": record_type,
+                    "lineItem": "CommonStockSharesOutstanding",
+                    "value": value,
+                })
 
     return records
+
+
+def market_symbol(code: str) -> str:
+    if code.startswith(("5", "6", "9")):
+        return f"sh{code}"
+    return f"sz{code}"
+
+
+def fetch_shares_for_code(code: str, from_year: int = 2020) -> list[dict[str, Any]]:
+    try:
+        df = ak.stock_zh_a_daily(
+            symbol=market_symbol(code),
+            start_date=f"{from_year}0101",
+            end_date=datetime.now().strftime("%Y%m%d"),
+        )
+    except Exception as e:
+        print(f"  warning: failed to fetch daily shares for {code}: {e}", file=sys.stderr)
+        return []
+
+    return records_from_daily_frame(df, from_year)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Extract CN shares outstanding for multiple codes")
     parser.add_argument("--codes", required=True, help="Comma-separated codes or path to JSON file with code array")
     parser.add_argument("--out", default="/tmp/cn_shares_extracted.json", help="Path to write JSON output")
-    parser.add_argument("--from-year", type=int, default=2015, help="Earliest year")
+    parser.add_argument("--from-year", type=int, default=2020, help="Earliest year")
     args = parser.parse_args()
 
     codes_input = args.codes.strip()

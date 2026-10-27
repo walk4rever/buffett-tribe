@@ -5,6 +5,7 @@ import {
   computeHistoricalPeMetrics,
 } from "@/lib/valuation-analysis-metrics";
 import type { ValueLineAnnualData, ValueLineData } from "@/lib/value-line-data";
+import { getImplementedValuationLabel } from "@/lib/financial-model";
 
 export type AgentCompanyRef = {
   entityId: string;
@@ -155,10 +156,10 @@ export function buildValuationAgentPayload(data: ValueLineData): ValuationAgentP
       ? latestPrice / companyEps
       : null);
   const annualBps =
-    latestAnnual?.shareholdersEquity != null &&
+    latestAnnual?.shareholdersCommonEquity != null &&
     latestAnnual.shares != null &&
     latestAnnual.shares > 0
-      ? latestAnnual.shareholdersEquity / latestAnnual.shares
+      ? latestAnnual.shareholdersCommonEquity / latestAnnual.shares
       : null;
   const currentPb =
     selectedSecurity?.pbRatio ??
@@ -177,8 +178,8 @@ export function buildValuationAgentPayload(data: ValueLineData): ValuationAgentP
       ? latestPrice / currentPb
       : annualBps;
   const shares =
-    latestAnnual?.netIncome != null && eps != null && eps !== 0
-      ? latestAnnual.netIncome / eps
+    latestAnnual?.netIncomeCommon != null && eps != null && eps !== 0
+      ? latestAnnual.netIncomeCommon / eps
       : latestAnnual?.shares ?? null;
   const ocfPerShare =
     shares != null && shares > 0 && latestAnnual?.operatingCashFlow != null
@@ -216,7 +217,9 @@ export function buildValuationAgentPayload(data: ValueLineData): ValuationAgentP
     benchmarkPb: data.benchmarkPb,
     valuationStatus: data.valuationStatus,
     valuationDiffPct: data.valuationDiffPct,
-    valuationAnchorLabel: data.financialModel.valuationAnchorLabel,
+    valuationAnchorLabel: getImplementedValuationLabel(
+      data.financialModel.valuationAnchor,
+    ),
     valuationCurrencyAvailable: data.valuationCurrencyAvailable,
     eps,
     bps: bps != null && Number.isFinite(bps) ? Number(bps.toFixed(2)) : null,

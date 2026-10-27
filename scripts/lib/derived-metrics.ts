@@ -43,6 +43,30 @@ export const DERIVED_RULES: DerivedRule[] = [
     confidence: 0.9,
     note: "银行与放贷机构的净利息收入可由利息收入减利息支出推导。",
   },
+  {
+    key: "NetIncomeTotal",
+    formula: ["NetIncome", "+", "MinorityInterestIncome"],
+    confidence: 0.9,
+    note: "合并净利润可由归母净利润加回少数股东损益推导；仅在同一期间和同一会计口径下使用。",
+  },
+  {
+    key: "NetIncomeCommon",
+    formula: ["NetIncome", "-", "PreferredDividends"],
+    confidence: 0.9,
+    note: "归属普通股股东的净利润仅在公司明确披露优先股股息，且期间、单位一致时由归母净利润扣除优先股股息得到。",
+  },
+  {
+    key: "ShareholdersCommonEquity",
+    formula: ["ShareholdersEquity", "-", "PreferredStockValue"],
+    confidence: 0.9,
+    note: "归属普通股股东权益仅在优先股及永久资本证券账面值明确披露时，由归母权益扣除该工具得到。",
+  },
+  {
+    key: "TotalEquity",
+    formula: ["ShareholdersEquity", "+", "MinorityInterest"],
+    confidence: 0.9,
+    note: "总权益可由归母权益加少数股东权益推导；仅在同一期间、同一币种下使用。",
+  },
 ];
 
 export function derivedMappingRule(rule: DerivedRule): string {

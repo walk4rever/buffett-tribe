@@ -55,6 +55,17 @@ describe("派生回填与精准回滚安全门禁 (Task 4.1 & 4.2)", () => {
       expect(where.OR).toBeDefined();
     });
 
+    it("支持只扫描 45 家指标验证集的 dry-run 范围", () => {
+      const args = parseBackfillArgs(["--metric-suite", "--market", "hk"]);
+      expect(args.useMetricSuite).toBe(true);
+      expect(args.isDryRun).toBe(true);
+
+      const where = buildBackfillWhereClause(args);
+      expect(where.market).toBe("hk");
+      expect(Array.isArray(where.OR)).toBe(true);
+      expect((where.OR as unknown[]).length).toBeGreaterThan(15);
+    });
+
     it("非法 market 或非法 phase 参数时抛出友好错误", () => {
       expect(() => parseBackfillArgs(["--market", "uk"])).toThrow(/非法 market 参数/);
       expect(() => parseBackfillArgs(["--phase", "abc"])).toThrow(/非法 phase 参数/);

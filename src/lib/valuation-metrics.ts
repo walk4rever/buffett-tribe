@@ -1,5 +1,13 @@
 import prisma from "@/lib/prisma";
 import { FINANCIAL_DATA_START_YEAR } from "@/lib/financial-period";
+import {
+  resolveShareholdersCommonEquity,
+  resolveShareholdersEquity,
+} from "@/lib/equity-semantics";
+import {
+  resolveNetIncomeCommon,
+  resolveNetIncomeTotal,
+} from "@/lib/net-income-semantics";
 
 /**
  * Valuation metrics computed from Financial (FY line items) + StockPrice.
@@ -11,11 +19,14 @@ export type AnnualFundamentals = {
   year: number;
   revenue: number | null;
   netIncome: number | null;
+  netIncomeTotal: number | null;
+  netIncomeCommon: number | null;
   epsDiluted: number | null;
   operatingCashFlow: number | null;
   capex: number | null;
   freeCashFlow: number | null;
   shareholdersEquity: number | null;
+  shareholdersCommonEquity: number | null;
   roePct: number | null;
   netMarginPct: number | null;
 };
@@ -141,9 +152,15 @@ export async function fetchAnnualFundamentals(entityId: string): Promise<AnnualF
 
   return normalizedYears
     .sort((a, b) => a.year - b.year)
-    .map(({ year, items }) => {
+    .map(({ year, items, itemUnits }) => {
       const netIncome = toNum(items.NetIncome);
-      const equity = toNum(items.ShareholdersEquity);
+      const netIncomeTotal = resolveNetIncomeTotal(items, itemUnits);
+      const netIncomeCommon = resolveNetIncomeCommon(items, itemUnits);
+      const equity = resolveShareholdersEquity(items, itemUnits);
+      const commonEquity = resolveShareholdersCommonEquity(
+        items,
+        itemUnits,
+      );
       const revenue = toNum(items.Revenue);
       const ocf = toNum(items.OperatingCashFlow);
       const capex = toNum(items.CapEx);
@@ -151,12 +168,18 @@ export async function fetchAnnualFundamentals(entityId: string): Promise<AnnualF
         year,
         revenue,
         netIncome,
+        netIncomeTotal,
+        netIncomeCommon,
         epsDiluted: toNum(items.EPSDiluted) ?? toNum(items.EPSBasic),
         operatingCashFlow: ocf,
         capex,
         freeCashFlow: computeFcf(ocf, capex),
         shareholdersEquity: equity,
-        roePct: netIncome != null && equity ? round((netIncome / equity) * 100) : null,
+        shareholdersCommonEquity: commonEquity,
+        roePct:
+          netIncomeCommon != null && commonEquity
+            ? round((netIncomeCommon / commonEquity) * 100)
+            : null,
         netMarginPct: netIncome != null && revenue ? round((netIncome / revenue) * 100) : null,
       };
     });
@@ -233,9 +256,11 @@ export async function computeValuationMetrics(params: {
   };
 
   const latestFY = fundamentals[fundamentals.length - 1];
-  // Diluted share count proxy: NetIncome / EPSDiluted.
+  // Diluted share count proxy: common net income / diluted EPS.
   const shares =
-    latestFY.netIncome != null && latestFY.epsDiluted ? latestFY.netIncome / latestFY.epsDiluted : null;
+    latestFY.netIncomeCommon != null && latestFY.epsDiluted
+      ? latestFY.netIncomeCommon / latestFY.epsDiluted
+      : null;
   const ocfPerShare =
     shares != null && shares > 0 && latestFY.operatingCashFlow != null
       ? latestFY.operatingCashFlow / shares

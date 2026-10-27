@@ -44,13 +44,25 @@ import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
 from pypdf import PdfReader
+try:
+    from lib.hk_annual_report_selection import (
+        ANNUAL_REPORT_EXCLUDE_RE,
+        ANNUAL_REPORT_TITLE_RE,
+        pick_annual_reports_by_year,
+    )
+except ModuleNotFoundError:
+    from scripts.lib.hk_annual_report_selection import (
+        ANNUAL_REPORT_EXCLUDE_RE,
+        ANNUAL_REPORT_TITLE_RE,
+        pick_annual_reports_by_year,
+    )
 
 try:
     import fitz  # PyMuPDF
@@ -63,15 +75,10 @@ API_ENDPOINT = f"{BASE_URL}/search/titleSearchServlet.do"
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
 # 年報 (Tencent/Pop Mart style) and 年度報告 (Nongfu Spring style) are both
 # used for the same document; 月報表/中期報告 do not match either.
-ANNUAL_REPORT_TITLE_RE = re.compile(r"年報|年度報告|Annual Report", re.IGNORECASE)
 # ...but these do: 企業年度報告書 is a short statutory form filed months later
 # (not the annual report — Nongfu's 2022 one is ~3K chars vs ~460K for the
 # real 2022年度報告), and 補充/補遺/澄清公告 are later corrections to it.
 # Newest-first selection would otherwise pick these over the real report.
-ANNUAL_REPORT_EXCLUDE_RE = re.compile(
-    r"補充|補遺|澄清|企業年度報告書|ANNOUNCEMENT|半年度|中期|季度|Interim|Quarterly",
-    re.IGNORECASE,
-)
 CHUNK_COUNT = 4
 
 
@@ -88,6 +95,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-r2-upload", action="store_true", help="Skip uploading PDF to Cloudflare R2")
     parser.add_argument("--keep-file", action="store_true", help="Keep the generated JSON and PDFs instead of deleting them after import")
     parser.add_argument("--latest-only", action="store_true", help="Only fetch and slice the single most recent annual report")
+    parser.add_argument(
+        "--years",
+        default=None,
+        help="Comma-separated content years to process, e.g. 2021,2022",
+    )
     return parser.parse_args()
 
 
@@ -208,52 +220,6 @@ def fetch_all_records(session: requests.Session, stock_id: int, date_from: str, 
     return all_records
 
 
-def pick_annual_reports_by_year(records: list[dict], from_year: int) -> dict[int, dict]:
-    """Filter a filing list down to annual reports, keyed by content year.
-    Records arrive newest-first, so the first hit per year is the most
-    recently filed version (a later corrected re-filing wins)."""
-    by_year: dict[int, dict] = {}
-    for rec in records:
-        title = rec.get("TITLE", "")
-        if not ANNUAL_REPORT_TITLE_RE.search(title):
-            continue
-        if ANNUAL_REPORT_EXCLUDE_RE.search(title):
-            continue
-        file_type = rec.get("FILE_TYPE", "").upper()
-        file_link = rec.get("FILE_LINK", "")
-        normalized_link = file_link.lower().split("?", 1)[0]
-        report_format = (
-            "html"
-            if file_type == "HTML" or normalized_link.endswith((".htm", ".html", "/"))
-            else "pdf"
-            if file_type == "PDF" or normalized_link.endswith(".pdf")
-            else None
-        )
-        if report_format is None:
-            continue
-        date_time = rec.get("DATE_TIME", "")
-        filed_year = None
-        try:
-            filed_year = datetime.strptime(date_time.split(" ")[0], "%d/%m/%Y").year
-        except ValueError:
-            pass
-        # Annual reports are filed ~3-4 months after fiscal year-end; the
-        # report content year is typically filedYear - 1.
-        period_year = (filed_year - 1) if filed_year else None
-        if period_year is None or period_year in by_year or period_year < from_year:
-            continue
-        link = file_link
-        if link.startswith("/"):
-            link = BASE_URL + link
-        by_year[period_year] = {
-            "periodYear": period_year,
-            "title": title,
-            "url": link,
-            "format": report_format,
-        }
-    return by_year
-
-
 def find_annual_reports(session: requests.Session, code: str, from_year: int, lang_pref: str) -> list[dict]:
     stock_id = resolve_stock_id(session, code)
     print(f"  resolved {code} -> internal stockId {stock_id}", file=sys.stderr)
@@ -269,7 +235,7 @@ def find_annual_reports(session: requests.Session, code: str, from_year: int, la
     by_year: dict[int, dict] = {}
     for lang in langs:
         records = fetch_all_records(session, stock_id, date_from, date_to, lang)
-        picked = pick_annual_reports_by_year(records, from_year)
+        picked = pick_annual_reports_by_year(records, from_year, BASE_URL)
         print(f"  lang={lang}: {len(records)} filings, {len(picked)} annual reports ({sorted(picked, reverse=True)})", file=sys.stderr)
         lang_code = "zh" if lang == "ZH" else "en"
         for year, report in picked.items():
@@ -616,6 +582,26 @@ def main() -> int:
     if args.latest_only and len(reports) > 1:
         print(f"  [--latest-only] Restricting to single most recent annual report: FY{reports[0]['periodYear']}")
         reports = reports[:1]
+    if args.years:
+        try:
+            requested_years = {
+                int(year.strip())
+                for year in args.years.split(",")
+                if year.strip()
+            }
+        except ValueError as exc:
+            raise ValueError(f"Invalid --years value: {args.years}") from exc
+        reports = [
+            report
+            for report in reports
+            if report["periodYear"] in requested_years
+        ]
+        if not reports:
+            print(
+                f"No annual reports found for requested years {sorted(requested_years)}",
+                file=sys.stderr,
+            )
+            return 1
 
     results = []
     document_paths: list[Path] = []

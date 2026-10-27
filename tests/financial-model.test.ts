@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   FINANCIAL_MODEL_TEMPLATES,
+  getImplementedValuationLabel,
+  getImplementedValuationMethod,
   getDefaultFinancialModel,
   isPePrimaryValuationAnchor,
   resolveFinancialModel,
@@ -135,5 +137,36 @@ describe("financial model registry", () => {
     expect(isPePrimaryValuationAnchor(resolveFinancialModel("telecommunications")!.valuationAnchor)).toBe(false);
     expect(isPePrimaryValuationAnchor(resolveFinancialModel("semiconductor_hardware")!.valuationAnchor)).toBe(false);
     expect(isPePrimaryValuationAnchor(resolveFinancialModel("conglomerate")!.valuationAnchor)).toBe(false);
+  });
+
+  it("reports the valuation method currently executed by production", () => {
+    expect(
+      getImplementedValuationMethod(
+        resolveFinancialModel("industrial")!.valuationAnchor,
+      ),
+    ).toBe("pe");
+    expect(
+      getImplementedValuationLabel(
+        resolveFinancialModel("industrial")!.valuationAnchor,
+      ),
+    ).toBe("P/E");
+
+    for (const sector of [
+      "banks",
+      "insurance",
+      "real_estate",
+      "conglomerate",
+    ] as const) {
+      expect(
+        getImplementedValuationMethod(
+          resolveFinancialModel(sector)!.valuationAnchor,
+        ),
+      ).toBe("pb");
+      expect(
+        getImplementedValuationLabel(
+          resolveFinancialModel(sector)!.valuationAnchor,
+        ),
+      ).toBe("P/B");
+    }
   });
 });

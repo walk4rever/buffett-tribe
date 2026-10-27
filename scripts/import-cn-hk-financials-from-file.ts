@@ -4,6 +4,7 @@ import { normalizeCurrencyCode } from "../src/lib/fx-rates-core";
 import { persistReportingCurrency } from "../src/lib/reporting-currency";
 import { withShortWriteTransaction } from "../src/lib/db-short-write";
 import { upsertFinancialRows } from "./lib/upsert-financial-rows";
+import { buildStrictBatchTag } from "./rollback-batch-financials";
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {
@@ -33,10 +34,14 @@ async function main() {
   const market = getArg("--market");
   const currency = getArg("--currency");
   const dataCurrency = getArg("--data-currency");
+  const batchId = getArg("--batch-id")?.trim();
+  if (batchId && !/^[a-zA-Z0-9_-]+$/.test(batchId)) {
+    throw new Error(`Invalid --batch-id: ${batchId}`);
+  }
 
   if (!filePath || !ticker || !code || !market || !currency) {
     console.error(
-      "Usage: tsx import-cn-hk-financials-from-file.ts <json-file> --ticker <T> --code <C> --market cn|hk --currency <reporting ISO-4217> [--data-currency <financial ISO-4217>]",
+      "Usage: tsx import-cn-hk-financials-from-file.ts <json-file> --ticker <T> --code <C> --market cn|hk --currency <reporting ISO-4217> [--data-currency <financial ISO-4217>] [--batch-id <id>]",
     );
     process.exitCode = 1;
     return;
@@ -105,8 +110,11 @@ async function main() {
     lineItem: record.lineItem,
     value: record.value,
     unit: record.unit ?? (record.lineItem === "CommonStockSharesOutstanding" ? "shares" : financialDataCurrency),
-    mappingRule: record.mappingRule,
-    confidence: record.confidence,
+    mappingRule:
+      `${record.mappingRule ?? `akshare:canonical:${record.lineItem}`}${
+        batchId ? buildStrictBatchTag(batchId) : ""
+      }`,
+    confidence: record.confidence ?? 0.9,
   }));
 
   console.time("  db-write");

@@ -43,13 +43,16 @@ describe("ValuationAnalysisView", () => {
     expect(markup).toContain('aria-label="查看 FY2024 数据"');
   });
 
-  it("keeps industrial cash-flow multiples out of financial-sector valuation", () => {
+  it("labels the implemented insurance method as P/B and states the missing specialty inputs", () => {
     const markup = renderValuationAnalysis("insurance");
 
-    expect(markup).toContain("行业特定估值通道");
-    expect(markup).toContain("保险业核心聚焦内含价值变动");
+    expect(markup).toContain("当前估值方法");
+    expect(markup).toContain("P/B 估值");
+    expect(markup).toContain("当前算法：P/B");
+    expect(markup).toContain("EV、NBV、新业务价值率和偿付能力已接入适用寿险样本");
     expect(markup).toContain("市净率 P/B");
     expect(markup).toContain("平均 ROE");
+    expect(markup).not.toContain("内含价值与市净率");
     expect(markup).not.toContain("FCF Yield");
     expect(markup).not.toContain("OCF / 净利润");
   });
@@ -65,8 +68,9 @@ describe("ValuationAnalysisView", () => {
   it("uses the bank valuation anchor instead of presenting P/E as the primary model", () => {
     const markup = renderValuationAnalysis("banks");
 
-    expect(markup).toContain("市净率与 ROE");
-    expect(markup).toContain("银行业核心聚焦信贷资产质量");
+    expect(markup).toContain("P/B 估值");
+    expect(markup).toContain("NIM、不良贷款、拨备覆盖率和 CET1");
+    expect(markup).toContain("当前算法：P/B");
     expect(markup).toContain("市净率 P/B");
     expect(markup).not.toContain("当前 P/E");
     expect(markup).not.toContain("历史 P/E 参考带");
@@ -74,13 +78,17 @@ describe("ValuationAnalysisView", () => {
     expect(markup).not.toContain("FCF Yield");
   });
 
-  it("does not substitute P/E for unavailable insurance or property valuation models", () => {
+  it("does not substitute P/E or claim unavailable specialty models are implemented", () => {
     const insuranceMarkup = renderValuationAnalysis("insurance");
     const propertyMarkup = renderValuationAnalysis("real_estate");
 
-    expect(insuranceMarkup).toContain("内含价值与市净率");
+    expect(insuranceMarkup).not.toContain("内含价值与市净率");
+    expect(insuranceMarkup).toContain("EV、NBV、新业务价值率和偿付能力已接入适用寿险样本");
     expect(insuranceMarkup).not.toContain("当前 P/E");
-    expect(propertyMarkup).toContain("资产净值与 FFO");
+    expect(propertyMarkup).toContain("当前算法：P/B");
+    expect(propertyMarkup).toContain("NOI 和出租率已接入三家代表公司");
+    expect(propertyMarkup).toContain("NAV、FFO/AFFO 专业估值模型尚未完成");
+    expect(propertyMarkup).not.toContain("资产净值与 FFO");
     expect(propertyMarkup).not.toContain("当前 P/E");
     expect(propertyMarkup).not.toContain("历史 P/E 参考带");
   });

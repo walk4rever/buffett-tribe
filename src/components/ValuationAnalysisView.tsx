@@ -14,6 +14,7 @@ import {
 } from "@/lib/valuation-analysis-metrics";
 import {
   getDefaultFinancialModel,
+  getImplementedValuationLabel,
   isPePrimaryValuationAnchor,
   resolveFinancialModel,
 } from "@/lib/financial-model";
@@ -50,6 +51,9 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
     resolveFinancialModel(data.sectorModelType) ??
     getDefaultFinancialModel();
   const usesPeValuation = isPePrimaryValuationAnchor(
+    financialModel.valuationAnchor,
+  );
+  const implementedValuationLabel = getImplementedValuationLabel(
     financialModel.valuationAnchor,
   );
   const priceCurrencySymbol = data.tradingCurrency
@@ -102,14 +106,18 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
   const hasIndustrialCashFlow = financialModel.showIndustrialCashFlow;
   const modelAvailabilityNote =
     financialModel.template === "bank"
-      ? "银行业核心聚焦信贷资产质量、净息差走势与 ROE-PB 估值通道，不套用传统通用 P/E 通道。"
+      ? "当前估值仍使用 P/B；银行页面已展示 NIM、不良贷款、拨备覆盖率和 CET1 等五年专业指标。"
       : financialModel.template === "insurance"
         ? financialModel.subModel === "life_health"
-          ? "人身险核心聚焦新业务价值（NBV）增长、内含价值（EV）变动与长期浮存金投资回报，不套用传统通用 P/E 通道。"
+          ? "当前估值仍使用 P/B；EV、NBV、新业务价值率和偿付能力已接入适用寿险样本，EV/NBV 估值模型尚未完成。"
           : financialModel.subModel === "property_casualty"
-            ? "财产险核心聚焦承保质量、综合成本率与短期赔付风控，不套用传统通用 P/E 通道。"
-            : "保险业核心聚焦内含价值变动、承保质量与长期浮存金投资回报，不套用传统通用 P/E 通道。"
-        : `${financialModel.valuationAnchorLabel}为核心考量基准，以专业资产定价与行业周期中枢为核心估值锚。`;
+            ? "当前估值仍使用 P/B；赔付率、综合成本率和监管偿付能力已接入适用财险样本。"
+            : "当前仅提供 P/B 估值；EV、NBV、新业务价值率和偿付能力已接入适用寿险样本，财险的赔付率和综合成本率已接入适用样本；EV/NBV 估值模型尚未完成。"
+        : financialModel.template === "real_estate"
+          ? "当前估值仍使用 P/B；NOI 和出租率已接入三家代表公司，NAV、FFO/AFFO 专业估值模型尚未完成。"
+          : financialModel.template === "conglomerate"
+            ? "当前仅提供 P/B 估值；SOTP 模型和完整分部事实尚未接入。"
+            : `当前仅提供 ${implementedValuationLabel} 估值；${financialModel.valuationAnchorLabel}等专业模型尚未接入。`;
   // FCF Yield & Additional Multiples
   const fcfYield = useMemo(() => {
     if (
@@ -361,10 +369,10 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
     const lastAnnual = data.valuationAnnuals.at(-1);
     const periodEndShares = getPeriodEndSharesForBps(lastAnnual);
     const bpsFromAnnual =
-      lastAnnual?.shareholdersEquity &&
+      lastAnnual?.shareholdersCommonEquity &&
       periodEndShares != null &&
       periodEndShares > 0
-        ? lastAnnual.shareholdersEquity / periodEndShares
+        ? lastAnnual.shareholdersCommonEquity / periodEndShares
         : null;
     const currentBps =
       bpsFromAnnual ??
@@ -596,9 +604,9 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
           <>
             <div className="val-valuation-main">
               <div className="val-valuation-metric">
-                <span className="val-card-label">主要估值锚</span>
+                <span className="val-card-label">当前估值方法</span>
                 <strong className="val-valuation-value">
-                  {financialModel.valuationAnchorLabel}
+                  {implementedValuationLabel} 估值
                 </strong>
               </div>
               <div className="val-valuation-metric val-valuation-metric--reference">
@@ -613,7 +621,7 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
                 {marginOfSafetyTag}
               </span>
               <span className="val-status-badge val-tag--neutral">
-                行业特定估值通道
+                当前算法：{implementedValuationLabel}
               </span>
             </div>
             <p className="val-valuation-summary-note">

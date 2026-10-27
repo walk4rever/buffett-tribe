@@ -208,7 +208,12 @@ describe("findBestFactValue", () => {
         ["USD"],
         ["NetClientFlows"],
       ),
-    ).toEqual({ unitRank: 0, value: 1_000_000_000, unit: "USD" });
+    ).toEqual({
+      unitRank: 0,
+      value: 1_000_000_000,
+      unit: "USD",
+      tag: "NetClientFlows",
+    });
   });
 
   it("does not use a dimension-only fact as the consolidated value", () => {
@@ -252,7 +257,12 @@ describe("findBestFactValue", () => {
         ["USD"],
         ["AssetsUnderManagement"],
       ),
-    ).toEqual({ unitRank: 0, value: 12_000_000, unit: "USD" });
+    ).toEqual({
+      unitRank: 0,
+      value: 12_000_000,
+      unit: "USD",
+      tag: "AssetsUnderManagement",
+    });
   });
 
   it("registers financial-services operating extensions for report ingestion", () => {

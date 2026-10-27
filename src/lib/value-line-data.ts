@@ -58,6 +58,14 @@ import {
 } from "@/lib/financial-model";
 import { getCikLookupVariants } from "@/lib/cik";
 import {
+  resolveShareholdersCommonEquity,
+  resolveShareholdersEquity,
+} from "@/lib/equity-semantics";
+import {
+  resolveNetIncomeCommon,
+  resolveNetIncomeTotal,
+} from "@/lib/net-income-semantics";
+import {
   buildValueLineMetricProfile,
   type ValueLineMetricCard,
 } from "@/lib/value-line-metric-profile";
@@ -75,10 +83,13 @@ export type ValueLineAnnualData = {
   disclosedAt?: string | null;
   revenue: number | null;
   netIncome: number | null;
+  netIncomeTotal: number | null;
+  netIncomeCommon: number | null;
   operatingCashFlow: number | null;
   capEx: number | null;
   freeCashFlow: number | null;
   shareholdersEquity: number | null;
+  shareholdersCommonEquity: number | null;
   totalAssets: number | null;
   totalLiabilities: number | null;
   cashAndCashEquivalents: number | null;
@@ -417,9 +428,18 @@ export async function getValueLineData(
     .map((f) => {
       const rev = parseNum(f.items, "Revenue");
       const net = parseNum(f.items, "NetIncome");
+      const netTotal = resolveNetIncomeTotal(f.items, f.itemUnits);
+      const netCommon = resolveNetIncomeCommon(f.items, f.itemUnits);
       const ocf = parseNum(f.items, "OperatingCashFlow");
       const capex = parseNum(f.items, "CapEx");
-      const equity = parseNum(f.items, "ShareholdersEquity");
+      const equity = resolveShareholdersEquity(
+        f.items,
+        f.itemUnits,
+      );
+      const commonEquity = resolveShareholdersCommonEquity(
+        f.items,
+        f.itemUnits,
+      );
       const assets = parseNum(f.items, "TotalAssets");
       const liabilities = parseNum(f.items, "TotalLiabilities");
       const cash = parseNum(f.items, "CashAndCashEquivalents") ?? parseNum(f.items, "CashEndOfPeriod");
@@ -464,9 +484,9 @@ export async function getValueLineData(
       const derivedShs =
         periodEndShs == null && weightedAvgShs == null
           ? deriveSharesFromFinancials(
-              net,
+              netCommon,
               epsRaw,
-              f.itemUnits?.NetIncome,
+              f.itemUnits?.NetIncomeCommon,
               epsUnit,
             )
           : null;
@@ -489,10 +509,13 @@ export async function getValueLineData(
         disclosedAt: f.disclosedAt?.toISOString().slice(0, 10) ?? null,
         revenue: rev,
         netIncome: net,
+        netIncomeTotal: netTotal,
+        netIncomeCommon: netCommon,
         operatingCashFlow: ocf,
         capEx: capex,
         freeCashFlow: null,
         shareholdersEquity: equity,
+        shareholdersCommonEquity: commonEquity,
         totalAssets: assets,
         totalLiabilities: liabilities,
         cashAndCashEquivalents: cash,
@@ -553,9 +576,16 @@ export async function getValueLineData(
       {
         Revenue: annual.revenue,
         NetIncome: annual.netIncome,
+        NetIncomeTotal: annual.netIncomeTotal,
+        NetIncomeCommon: annual.netIncomeCommon,
+        PreferredDividends: parseNum(f.items, "PreferredDividends"),
+        MinorityInterestIncome: parseNum(f.items, "MinorityInterestIncome"),
         OperatingCashFlow: annual.operatingCashFlow,
         CapEx: annual.capEx,
         ShareholdersEquity: annual.shareholdersEquity,
+        ShareholdersCommonEquity: annual.shareholdersCommonEquity,
+        PreferredStockValue: parseNum(f.items, "PreferredStockValue"),
+        MinorityInterest: parseNum(f.items, "MinorityInterest"),
         TotalAssets: annual.totalAssets,
         TotalLiabilities: annual.totalLiabilities,
         [cashLine]: annual.cashAndCashEquivalents,
@@ -588,12 +618,20 @@ export async function getValueLineData(
       },
     );
     const priorFinancial = financialsByYear.get(annual.year - 1);
-    const priorEquity = priorFinancial
+    const normalizedPrior = priorFinancial
       ? normalizeFinancialItems(
           {
             ShareholdersEquity: parseNum(
               priorFinancial.items,
               "ShareholdersEquity",
+            ),
+            ShareholdersCommonEquity: parseNum(
+              priorFinancial.items,
+              "ShareholdersCommonEquity",
+            ),
+            PreferredStockValue: parseNum(
+              priorFinancial.items,
+              "PreferredStockValue",
             ),
           },
           priorFinancial.itemUnits ?? {},
@@ -603,30 +641,41 @@ export async function getValueLineData(
             knownItemCurrencies: allItemCurrencies,
             fxRates,
           },
-        ).ShareholdersEquity
+        )
+      : null;
+    const priorCommonEquity = normalizedPrior
+      ? resolveShareholdersCommonEquity(normalizedPrior)
       : null;
     const netIncome = values.NetIncome ?? null;
-    const shareholdersEquity = values.ShareholdersEquity ?? null;
+    const netIncomeTotal = resolveNetIncomeTotal(values);
+    const netIncomeCommon = resolveNetIncomeCommon(values);
+    const shareholdersEquity = resolveShareholdersEquity(values);
+    const shareholdersCommonEquity = resolveShareholdersCommonEquity(
+      values,
+    );
     const roeValue = calculateReturnOnAverageBalance(
-      netIncome,
-      priorEquity,
-      shareholdersEquity,
+      netIncomeCommon,
+      priorCommonEquity,
+      shareholdersCommonEquity,
     );
     const operatingCashFlow = values.OperatingCashFlow ?? null;
     const capEx = values.CapEx ?? null;
     const eps = values[epsLine] ??
-      (netIncome != null && annual.shares != null && annual.shares > 0
-        ? Number((netIncome / annual.shares).toFixed(2))
+      (netIncomeCommon != null && annual.shares != null && annual.shares > 0
+        ? Number((netIncomeCommon / annual.shares).toFixed(2))
         : null);
 
     return {
       ...annual,
       revenue: values.Revenue ?? null,
       netIncome,
+      netIncomeTotal,
+      netIncomeCommon,
       operatingCashFlow,
       capEx,
       freeCashFlow: calculateFreeCashFlow(operatingCashFlow, capEx),
       shareholdersEquity,
+      shareholdersCommonEquity,
       totalAssets: values.TotalAssets ?? null,
       totalLiabilities: values.TotalLiabilities ?? null,
       cashAndCashEquivalents: values[cashLine] ?? null,
@@ -948,8 +997,10 @@ export async function getValueLineData(
 
   const latestValuationAnnual =
     valuationAnnuals[valuationAnnuals.length - 1] ?? null;
-  const latestNetIncome = latestValuationAnnual?.netIncome ?? null;
-  const latestEquity = latestValuationAnnual?.shareholdersEquity ?? null;
+  const latestNetIncomeCommon =
+    latestValuationAnnual?.netIncomeCommon ?? null;
+  const latestEquity =
+    latestValuationAnnual?.shareholdersCommonEquity ?? null;
   const latestEps = latestValuationAnnual?.eps ?? null;
 
     const sharesOutstanding = getLatestPeriodEndShares(annuals);
@@ -1121,8 +1172,13 @@ export async function getValueLineData(
     let peRatio: number | null = null;
     if (valuationCurrencyAvailable && latestPrice != null && secEps != null && secEps > 0) {
       peRatio = Number((latestPrice / secEps).toFixed(1));
-    } else if (valuationCurrencyAvailable && marketCap != null && latestNetIncome != null && latestNetIncome > 0) {
-      peRatio = Number((marketCap / latestNetIncome).toFixed(1));
+    } else if (
+      valuationCurrencyAvailable &&
+      marketCap != null &&
+      latestNetIncomeCommon != null &&
+      latestNetIncomeCommon > 0
+    ) {
+      peRatio = Number((marketCap / latestNetIncomeCommon).toFixed(1));
     }
     if (peRatio != null && (peRatio <= 0 || peRatio > 1000)) {
       peRatio = null;
@@ -1145,8 +1201,10 @@ export async function getValueLineData(
             : periodEndShares
           : null;
       const bps =
-        annual.shareholdersEquity != null && annualShares != null && annualShares > 0
-          ? Number((annual.shareholdersEquity / annualShares).toFixed(4))
+        annual.shareholdersCommonEquity != null &&
+        annualShares != null &&
+        annualShares > 0
+          ? Number((annual.shareholdersCommonEquity / annualShares).toFixed(4))
           : null;
       return {
         year: annual.year,

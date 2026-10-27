@@ -650,6 +650,7 @@ export function pickInlineFactWithUnit(
     annualRank: number;
     value: number;
     unit: string | null;
+    tag: string;
   }> = [];
 
   for (const fact of doc.facts) {
@@ -676,15 +677,15 @@ export function pickInlineFactWithUnit(
     const annualRank = periodType === "duration"
       ? Date.parse(`${context.startDate}T00:00:00Z`)
       : 0;
-    candidates.push({ unitRank, annualRank, value: fact.value, unit: fact.unitRef });
+    candidates.push({ unitRank, annualRank, value: fact.value, unit: fact.unitRef, tag });
   }
 
   if (!candidates.length) return null;
   candidates.sort((a, b) =>
     a.unitRank - b.unitRank || b.annualRank - a.annualRank,
   );
-  const { unitRank, value, unit } = candidates[0];
-  return { unitRank, value, unit };
+  const { unitRank, value, unit, tag } = candidates[0];
+  return { unitRank, value, unit, tag };
 }
 
 export function decimalFromNumber(value: number) {

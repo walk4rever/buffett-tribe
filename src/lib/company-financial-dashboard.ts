@@ -10,6 +10,12 @@ import {
   extractCurrencyCode,
 } from "@/lib/fx-rates-core";
 import { normalizeFinancialItems } from "@/lib/financial-normalization";
+import {
+  resolveShareholdersCommonEquity,
+  resolveShareholdersEquity,
+} from "@/lib/equity-semantics";
+import { resolveNetIncomeCommon } from "@/lib/net-income-semantics";
+import { resolveOperatingRevenue } from "@/lib/revenue-semantics";
 import type { SectorModelType13 } from "@/lib/sector-classification";
 import {
   getDefaultFinancialModel,
@@ -118,6 +124,38 @@ function value(ctx: MetricContext, year: number, key: string) {
   return num(ctx.byYear.get(year)?.items, key);
 }
 
+function resolvedNetIncomeCommon(ctx: MetricContext, year: number) {
+  const financial = ctx.byYear.get(year);
+  return resolveNetIncomeCommon(
+    financial?.items ?? {},
+    financial?.itemUnits,
+  );
+}
+
+function resolvedShareholdersCommonEquity(ctx: MetricContext, year: number) {
+  const financial = ctx.byYear.get(year);
+  return resolveShareholdersCommonEquity(
+    financial?.items ?? {},
+    financial?.itemUnits,
+  );
+}
+
+function resolvedShareholdersEquity(ctx: MetricContext, year: number) {
+  const financial = ctx.byYear.get(year);
+  return resolveShareholdersEquity(
+    financial?.items ?? {},
+    financial?.itemUnits,
+  );
+}
+
+function resolvedOperatingRevenue(ctx: MetricContext, year: number) {
+  const financial = ctx.byYear.get(year);
+  return resolveOperatingRevenue(
+    financial?.items ?? {},
+    financial?.itemUnits,
+  );
+}
+
 function ratio(numerator: number | null, denominator: number | null) {
   if (numerator == null || denominator == null || denominator === 0) return null;
   return numerator / denominator;
@@ -218,7 +256,7 @@ const metrics: MetricDef[] = [
     kind: "percent",
     compute: (year, ctx) => ratioWithPositiveDenominator(
       value(ctx, year, "GrossProfit"),
-      value(ctx, year, "Revenue"),
+      resolvedOperatingRevenue(ctx, year),
     ),
   },
   {
@@ -250,9 +288,9 @@ const metrics: MetricDef[] = [
     hint: "净利润 / 期初期末平均股东权益",
     kind: "percent",
     compute: (year, ctx) => calculateReturnOnAverageBalance(
-      value(ctx, year, "NetIncome"),
-      value(ctx, year - 1, "ShareholdersEquity"),
-      value(ctx, year, "ShareholdersEquity"),
+      resolvedNetIncomeCommon(ctx, year),
+      resolvedShareholdersCommonEquity(ctx, year - 1),
+      resolvedShareholdersCommonEquity(ctx, year),
     ),
   },
   {
@@ -301,7 +339,7 @@ const metrics: MetricDef[] = [
     hint: "自由现金流 / 营收",
     kind: "percent",
     compute: (year, ctx) => {
-      const revenue = value(ctx, year, "Revenue");
+      const revenue = resolvedOperatingRevenue(ctx, year);
       if (revenue == null || revenue <= 0) return null;
       return ratio(freeCashFlow(ctx, year), revenue);
     },
@@ -337,7 +375,7 @@ const metrics: MetricDef[] = [
     hint: "资本支出绝对值 / 营收",
     kind: "percent",
     compute: (year, ctx) => {
-      const revenue = value(ctx, year, "Revenue");
+      const revenue = resolvedOperatingRevenue(ctx, year);
       const capEx = value(ctx, year, "CapEx");
       if (revenue == null || revenue <= 0 || capEx == null) return null;
       return Math.abs(capEx) / revenue;
@@ -389,7 +427,7 @@ const metrics: MetricDef[] = [
     hint: "股东权益 / 总资产；账面比例，不等同于监管资本充足率 (CET1)",
     kind: "percent",
     compute: (year, ctx) => ratioWithPositiveDenominator(
-      value(ctx, year, "ShareholdersEquity"),
+      resolvedShareholdersEquity(ctx, year),
       value(ctx, year, "TotalAssets"),
     ),
   },
@@ -415,7 +453,7 @@ const metrics: MetricDef[] = [
     enLabel: "Shareholders' Equity",
     hint: "财年末股东权益",
     kind: "money",
-    compute: (year, ctx) => value(ctx, year, "ShareholdersEquity"),
+    compute: (year, ctx) => resolvedShareholdersEquity(ctx, year),
   },
   {
     key: "EPSDiluted",
@@ -466,36 +504,60 @@ const metrics: MetricDef[] = [
     compute: (year, ctx) => value(ctx, year, "NetFeeAndCommissionIncome"),
   },
   {
-    key: "InvestmentManagementFeeIncome",
-    zhLabel: "资产管理费收入",
-    enLabel: "Investment Management Fee Income",
-    hint: "财报披露的资产管理业务费收入，不由 AUM 或总营收估算",
-    kind: "money",
-    compute: (year, ctx) => value(ctx, year, "InvestmentManagementFeeIncome"),
-  },
-  {
-    key: "AssetsUnderManagement",
-    zhLabel: "管理资产规模",
-    enLabel: "Assets Under Management",
-    hint: "期末客户管理资产，不包含仅提供投资建议的资产",
-    kind: "money",
-    compute: (year, ctx) => value(ctx, year, "AssetsUnderManagement"),
-  },
-  {
-    key: "NetClientFlows",
-    zhLabel: "客户资产净流量",
-    enLabel: "Net Client Flows",
-    hint: "报告期客户净申购流量，不由 AUM 变动推算",
-    kind: "money",
-    compute: (year, ctx) => value(ctx, year, "NetClientFlows"),
-  },
-  {
     key: "NetLoans",
     zhLabel: "贷款净额",
     enLabel: "Net Loans",
     hint: "发放贷款及垫款净额（扣除减值准备）",
     kind: "money",
     compute: (year, ctx) => value(ctx, year, "NetLoans"),
+  },
+  {
+    key: "NonPerformingLoans",
+    zhLabel: "不良贷款",
+    enLabel: "Non-Performing Loans",
+    hint: "按公司披露信用风险口径计算的不良贷款余额",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "NonPerformingLoans"),
+  },
+  {
+    key: "LoanLossAllowance",
+    zhLabel: "贷款损失准备",
+    enLabel: "Loan Loss Allowance",
+    hint: "期末贷款减值准备余额",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "LoanLossAllowance"),
+  },
+  {
+    key: "NIM",
+    zhLabel: "净息差",
+    enLabel: "Net Interest Margin",
+    hint: "净利息收入 / 平均生息资产；公司披露口径用于交叉校验",
+    kind: "percent",
+    compute: (year, ctx) => value(ctx, year, "NIM"),
+  },
+  {
+    key: "NonPerformingLoanRatio",
+    zhLabel: "不良贷款率",
+    enLabel: "NPL Ratio",
+    hint: "不良贷款余额 / 贷款总额",
+    kind: "percent",
+    compute: (year, ctx) => value(ctx, year, "NonPerformingLoanRatio"),
+  },
+  {
+    key: "ProvisionCoverage",
+    zhLabel: "拨备覆盖率",
+    enLabel: "Provision Coverage",
+    hint: "贷款损失准备 / 不良贷款余额",
+    kind: "percent",
+    compute: (year, ctx) => value(ctx, year, "ProvisionCoverage"),
+  },
+  {
+    key: "CET1Ratio",
+    zhLabel: "CET1 比率",
+    enLabel: "CET1 Ratio",
+    hint: "公司监管资本披露口径的核心一级资本充足率",
+    kind: "percent",
+    compute: (year, ctx) => value(ctx, year, "CET1Ratio"),
   },
   {
     key: "TotalDeposits",
@@ -528,11 +590,53 @@ const metrics: MetricDef[] = [
     hint: "赔付及保单利益绝对值 / 净已赚保费",
     kind: "percent",
     compute: (year, ctx) => {
+      const reportedRatio = value(ctx, year, "ClaimsRatio");
+      if (reportedRatio != null) return reportedRatio;
       const premiums = value(ctx, year, "NetPremiumsEarned");
       const claims = value(ctx, year, "PolicyClaimsAndBenefits");
       if (premiums == null || premiums <= 0 || claims == null) return null;
       return Math.abs(claims) / premiums;
     },
+  },
+  {
+    key: "CombinedRatio",
+    zhLabel: "综合成本率",
+    enLabel: "Combined Ratio",
+    hint: "公司披露口径；财险公司通常为赔付与费用合计 / 已赚保费",
+    kind: "percent",
+    compute: (year, ctx) => value(ctx, year, "CombinedRatio"),
+  },
+  {
+    key: "EV",
+    zhLabel: "内含价值",
+    enLabel: "Embedded Value",
+    hint: "公司披露的调整后净资产加有效业务价值，保留公司精算假设",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "EV"),
+  },
+  {
+    key: "NBV",
+    zhLabel: "新业务价值",
+    enLabel: "New Business Value",
+    hint: "报告期新业务创造的价值，按公司精算口径披露",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "NBV"),
+  },
+  {
+    key: "NewBusinessValueMargin",
+    zhLabel: "新业务价值率",
+    enLabel: "New Business Value Margin",
+    hint: "公司披露口径；通常为新业务价值 / 新业务标准保费",
+    kind: "percent",
+    compute: (year, ctx) => value(ctx, year, "NewBusinessValueMargin"),
+  },
+  {
+    key: "SolvencyRatio",
+    zhLabel: "综合偿付能力充足率",
+    enLabel: "Solvency Ratio",
+    hint: "实际资本 / 最低监管资本；保留辖区和监管制度",
+    kind: "percent",
+    compute: (year, ctx) => value(ctx, year, "SolvencyRatio"),
   },
   {
     key: "ContractLiabilities",
@@ -559,6 +663,38 @@ const metrics: MetricDef[] = [
     compute: (year, ctx) => value(ctx, year, "Inventory"),
   },
   {
+    key: "NOI",
+    zhLabel: "物业净营业收入",
+    enLabel: "Net Operating Income",
+    hint: "公司披露口径；或物业收入减不含折旧摊销的物业运营费用",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "NOI"),
+  },
+  {
+    key: "FFO",
+    zhLabel: "运营资金",
+    enLabel: "Funds From Operations",
+    hint: "公司披露的 NAREIT FFO；不同公司调整项需单独说明",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "FFO"),
+  },
+  {
+    key: "Occupancy",
+    zhLabel: "出租率",
+    enLabel: "Occupancy",
+    hint: "已出租面积 / 可出租面积，按公司期末运营口径",
+    kind: "percent",
+    compute: (year, ctx) => value(ctx, year, "Occupancy"),
+  },
+  {
+    key: "FFOPerShare",
+    zhLabel: "每份 FFO",
+    enLabel: "FFO per Share",
+    hint: "摊薄 FFO / 摊薄股数及单位；按公司资本结构口径",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "FFOPerShare"),
+  },
+  {
     key: "ROIC",
     zhLabel: "ROIC",
     enLabel: "Return on Invested Capital",
@@ -570,14 +706,18 @@ const metrics: MetricDef[] = [
       const ebt = value(ctx, year, "TotalProfit") ?? value(ctx, year, "PretaxIncome");
       const effectiveTaxRate = tax != null && ebt != null && ebt > 0 ? tax / ebt : null;
       const currentIC = calculateInvestedCapital({
-        totalEquity: value(ctx, year, "ShareholdersEquity") ?? value(ctx, year, "TotalEquity"),
+        totalEquity:
+          value(ctx, year, "TotalEquity") ??
+          value(ctx, year, "ShareholdersEquity"),
         totalDebt: value(ctx, year, "TotalDebt"),
         shortTermDebt: value(ctx, year, "ShortTermDebt"),
         longTermDebt: value(ctx, year, "LongTermDebt"),
         cashAndEquivalents: value(ctx, year, "CashAndCashEquivalents"),
       });
       const prevIC = calculateInvestedCapital({
-        totalEquity: value(ctx, year - 1, "ShareholdersEquity") ?? value(ctx, year - 1, "TotalEquity"),
+        totalEquity:
+          value(ctx, year - 1, "TotalEquity") ??
+          value(ctx, year - 1, "ShareholdersEquity"),
         totalDebt: value(ctx, year - 1, "TotalDebt"),
         shortTermDebt: value(ctx, year - 1, "ShortTermDebt"),
         longTermDebt: value(ctx, year - 1, "LongTermDebt"),
@@ -647,7 +787,7 @@ const metrics: MetricDef[] = [
     hint: "研发费用 / 营收",
     kind: "percent",
     compute: (year, ctx) => {
-      const revenue = value(ctx, year, "Revenue");
+      const revenue = resolvedOperatingRevenue(ctx, year);
       const rnd =
         value(ctx, year, "RnDExpense") ??
         value(ctx, year, "ResearchAndDevelopmentExpense");
@@ -740,6 +880,12 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
       "ROE",
       "ROA",
       "NetLoans",
+      "NonPerformingLoans",
+      "LoanLossAllowance",
+      "NIM",
+      "NonPerformingLoanRatio",
+      "ProvisionCoverage",
+      "CET1Ratio",
       "TotalDeposits",
       "TotalAssets",
       "AssetGrowth",
@@ -752,11 +898,16 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
     trendKeys: ["NetIncomeGrowth", "EPSDiluted", "ROE", "ROA", "AssetGrowth", "EquityToAssets"],
   },
   insurance: {
-    note: "ROE/ROA按平均余额计算；净已赚保费反映承保规模；浮存金与投资收益反映投资端运作与资产负债久期匹配。",
+    note: "ROE/ROA按平均余额计算；净已赚保费反映承保规模；保险合同负债与投资收益反映投资端运作和资产负债久期匹配。",
     rowKeys: [
       "NetPremiumsEarned",
       "PolicyClaimsAndBenefits",
       "ClaimsRatio",
+      "CombinedRatio",
+      "EV",
+      "NBV",
+      "NewBusinessValueMargin",
+      "SolvencyRatio",
       "InvestmentIncome",
       "NetIncome",
       "NetIncomeGrowth",
@@ -773,16 +924,13 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
       "DividendsPaid",
       "ShareRepurchaseAmt",
     ],
-    trendKeys: ["ClaimsRatio", "NetIncomeGrowth", "EPSDiluted", "ROE", "ROA", "AssetGrowth", "EquityToAssets"],
+    trendKeys: ["ClaimsRatio", "CombinedRatio", "NetIncomeGrowth", "EPSDiluted", "ROE", "ROA", "AssetGrowth", "EquityToAssets"],
   },
   financial_services: {
     note: "",
     rowKeys: [
       "Revenue",
       "RevenueGrowth",
-      "AssetsUnderManagement",
-      "NetClientFlows",
-      "InvestmentManagementFeeIncome",
       "NetFeeAndCommissionIncome",
       "InvestmentIncome",
       "NetIncome",
@@ -800,9 +948,6 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
     ],
     trendKeys: [
       "RevenueGrowth",
-      "AssetsUnderManagement",
-      "NetClientFlows",
-      "InvestmentManagementFeeIncome",
       "NetFeeAndCommissionIncome",
       "NetIncomeGrowth",
       "NetMargin",
@@ -949,6 +1094,9 @@ function normalizeFinancialYears(
     "TotalEquity",
     "TotalStockholdersEquity",
     "ShareholdersEquity",
+    "ShareholdersCommonEquity",
+    "PreferredStockValue",
+    "MinorityInterest",
     "TotalAssets",
     "TotalLiabilities",
     "CashAndCashEquivalents",
@@ -956,7 +1104,16 @@ function normalizeFinancialYears(
     "CapEx",
     "FreeCashFlow",
     "Revenue",
+    "OperatingRevenue",
+    "InvestmentGains",
+    "InvestmentIncome",
+    "NetInvestmentIncome",
+    "FairValueChangeIncome",
     "NetIncome",
+    "NetIncomeTotal",
+    "NetIncomeCommon",
+    "PreferredDividends",
+    "MinorityInterestIncome",
     "OperatingIncome",
     "CostOfRevenue",
     "GrossProfit",
@@ -973,6 +1130,13 @@ function normalizeFinancialYears(
     "NetInvestmentIncome",
     "TotalInvestments",
     "ProvisionForCreditLosses",
+    "NonPerformingLoans",
+    "LoanLossAllowance",
+    "EarningAssets",
+    "NIM",
+    "NonPerformingLoanRatio",
+    "ProvisionCoverage",
+    "CET1Ratio",
     "DividendsPaid",
     "ShareRepurchaseAmt",
   ]);
@@ -1101,31 +1265,26 @@ export function buildCompanyFinancialDashboard(
 
   if (template === "financial_services") {
     if (financialModel.subModel === "broker_exchange") {
-      rowKeys = rowKeys.filter(
-        (k) =>
-          k !== "AssetsUnderManagement" &&
-          k !== "NetClientFlows" &&
-          k !== "InvestmentManagementFeeIncome",
-      );
-      trendKeys = trendKeys.filter(
-        (k) =>
-          k !== "AssetsUnderManagement" &&
-          k !== "NetClientFlows" &&
-          k !== "InvestmentManagementFeeIncome",
-      );
       baseTemplateNote =
         "券商与交易所聚焦经纪/手续费佣金、自营投资收益与经营杠杆；不适用 AUM 资产管理规模考核。";
     } else if (financialModel.subModel === "asset_mgmt") {
       baseTemplateNote =
-        "资产管理与财富机构关注 AUM 资产规模、客户净流入与费率稳定性；ROE/ROA按平均余额。";
+        "资产管理与财富机构按标准报表展示收入、手续费、投资收益和 ROE；AUM 与客户净流量不纳入确定性财务契约。";
     }
   } else if (template === "insurance") {
     if (financialModel.subModel === "life_health") {
-      rowKeys = rowKeys.filter((k) => k !== "ClaimsRatio");
-      trendKeys = trendKeys.filter((k) => k !== "ClaimsRatio");
+      rowKeys = rowKeys.filter(
+        (k) => k !== "ClaimsRatio" && k !== "CombinedRatio",
+      );
+      trendKeys = trendKeys.filter(
+        (k) => k !== "ClaimsRatio" && k !== "CombinedRatio",
+      );
       baseTemplateNote =
         "人身险核心受准备金计提与长期投资收益驱动；侧重资产负债久期匹配与浮存金长期投资回报，不适用单一财产险赔付率考核。";
     } else if (financialModel.subModel === "property_casualty") {
+      rowKeys = rowKeys.filter(
+        (k) => k !== "EV" && k !== "NBV" && k !== "NewBusinessValueMargin",
+      );
       baseTemplateNote =
         "财产险注重承保质量与赔付率；关注理赔成本控制、承保利润率与短期再保险风控。";
     }
@@ -1158,6 +1317,10 @@ export function buildCompanyFinancialDashboard(
       rowKeys = [
         "Revenue",
         "RevenueGrowth",
+        "NOI",
+        "FFO",
+        "Occupancy",
+        "FFOPerShare",
         "OperatingIncome",
         "OperatingMargin",
         "InvestmentProperty",
@@ -1175,7 +1338,7 @@ export function buildCompanyFinancialDashboard(
       ];
       trendKeys = ["RevenueGrowth", "NetIncomeGrowth", "LiabilitiesToAssets", "ROE"];
       baseTemplateNote =
-        "商业不动产与 REITs 核心关注物业租金回报、可分配现金流与资产净值（NAV）表现。";
+        "商业不动产与 REITs 核心关注物业租金回报、NOI、FFO、出租率与分红；NAV、AFFO 和同店 NOI 不纳入确定性财务契约。";
     }
   }
 

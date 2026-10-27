@@ -131,3 +131,134 @@ describe("share count and capital isolation (anti-pollution)", () => {
   });
 });
 
+describe("net income accounting semantics", () => {
+  it("keeps consolidated, parent, and common net income on separate keys", () => {
+    const total = CANONICAL_FINANCIAL_DICTIONARY.find(
+      (item) => item.key === "NetIncomeTotal",
+    );
+    const parent = CANONICAL_FINANCIAL_DICTIONARY.find(
+      (item) => item.key === "NetIncome",
+    );
+    const common = CANONICAL_FINANCIAL_DICTIONARY.find(
+      (item) => item.key === "NetIncomeCommon",
+    );
+
+    expect(total?.tagsUsGaap).toEqual(["ProfitLoss"]);
+    expect(parent?.tagsUsGaap).toEqual(["NetIncomeLoss"]);
+    expect(parent?.tagsUsGaap).not.toContain("ProfitLoss");
+    expect(common?.tagsUsGaap).toContain(
+      "NetIncomeLossAvailableToCommonStockholdersBasic",
+    );
+  });
+
+  it("keeps the TypeScript and script dictionaries synchronized", () => {
+    for (const key of [
+      "NetIncomeTotal",
+      "NetIncome",
+      "NetIncomeCommon",
+      "PreferredDividends",
+    ]) {
+      expect(dictionary.find((item) => item.key === key)).toEqual(
+        CANONICAL_FINANCIAL_DICTIONARY.find((item) => item.key === key),
+      );
+    }
+  });
+});
+
+describe("equity accounting semantics", () => {
+  it("keeps parent, common, and total equity on separate keys", () => {
+    const parent = CANONICAL_FINANCIAL_DICTIONARY.find(
+      (item) => item.key === "ShareholdersEquity",
+    );
+    const preferred = CANONICAL_FINANCIAL_DICTIONARY.find(
+      (item) => item.key === "PreferredStockValue",
+    );
+    const common = CANONICAL_FINANCIAL_DICTIONARY.find(
+      (item) => item.key === "ShareholdersCommonEquity",
+    );
+    const total = CANONICAL_FINANCIAL_DICTIONARY.find(
+      (item) => item.key === "TotalEquity",
+    );
+
+    expect(parent?.tagsUsGaap).toEqual(["StockholdersEquity"]);
+    expect(parent?.tagsIfrs).toEqual([
+      "EquityAttributableToOwnersOfParent",
+    ]);
+    expect(preferred?.hkAliases).toContain("永久资本证券");
+    expect(common?.cnAliases).toContain("归属于普通股股东权益");
+    expect(total?.tagsIfrs).toContain("TotalEquity");
+  });
+
+  it("keeps the TypeScript and script dictionaries synchronized", () => {
+    for (const key of [
+      "ShareholdersEquity",
+      "PreferredStockValue",
+      "ShareholdersCommonEquity",
+      "MinorityInterest",
+      "TotalEquity",
+    ]) {
+      expect(dictionary.find((item) => item.key === key)).toEqual(
+        CANONICAL_FINANCIAL_DICTIONARY.find((item) => item.key === key),
+      );
+    }
+  });
+});
+
+describe("revenue accounting semantics", () => {
+  it("keeps total revenue separate from operating revenue and investment gains", () => {
+    for (const key of [
+      "Revenue",
+      "OperatingRevenue",
+      "InvestmentGains",
+      "InvestmentIncome",
+      "FairValueChangeIncome",
+    ]) {
+      expect(dictionary.find((item) => item.key === key)).toEqual(
+        CANONICAL_FINANCIAL_DICTIONARY.find((item) => item.key === key),
+      );
+    }
+  });
+});
+
+describe("bank metric contract", () => {
+  it("keeps bank-specific facts and ratios in the canonical dictionaries", () => {
+    for (const key of [
+      "GrossLoans",
+      "LoanLossAllowance",
+      "NonPerformingLoans",
+      "EarningAssets",
+      "NIM",
+      "NonPerformingLoanRatio",
+      "ProvisionCoverage",
+      "CET1Ratio",
+    ]) {
+      expect(dictionary.find((item) => item.key === key)).toEqual(
+        CANONICAL_FINANCIAL_DICTIONARY.find((item) => item.key === key),
+      );
+    }
+  });
+});
+
+describe("industry-specific metric contract", () => {
+  it("keeps insurance and REIT facts in the canonical dictionaries", () => {
+    for (const key of [
+      "NOI",
+      "FFO",
+      "AFFO",
+      "SameStoreNOIGrowth",
+      "Occupancy",
+      "FFOPerShare",
+      "EV",
+      "NBV",
+      "NewBusinessValueMargin",
+      "SolvencyRatio",
+      "CombinedRatio",
+      "Float",
+    ]) {
+      expect(dictionary.find((item) => item.key === key)).toEqual(
+        CANONICAL_FINANCIAL_DICTIONARY.find((item) => item.key === key),
+      );
+    }
+  });
+});
+
