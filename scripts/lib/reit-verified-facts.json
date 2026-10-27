@@ -1,0 +1,230 @@
+{
+  "version": 1,
+  "facts": [
+    {
+      "ticker": "SPG",
+      "periodEnd": "2025-12-31",
+      "sourcePeriodYear": 2025,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1063761/000110465926019419/spg-20251231x10k.htm",
+      "values": {
+        "NOI": 6117188000,
+        "FFO": 4027116000,
+        "Occupancy": 0.964,
+        "FFOPerShare": 12.34,
+        "WeightedAverageSharesDiluted": 326367000
+      },
+      "requiredMetrics": ["NOI", "FFO", "Occupancy", "FFOPerShare"],
+      "evidence": "Simon Property Group 2025 Form 10-K pp. 62, 77-78",
+      "note": "NOI 为 beneficial interest of portfolio NOI；FFO 为 NAREIT FFO；占用率为美国 Mall 与 Premium Outlet 期末总组合出租率。"
+    },
+    {
+      "ticker": "SPG",
+      "periodEnd": "2024-12-31",
+      "sourcePeriodYear": 2024,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1063761/000155837025001271/spg-20241231x10k.htm",
+      "values": {
+        "NOI": 5843881000,
+        "FFO": 4235958000,
+        "Occupancy": 0.965,
+        "FFOPerShare": 12.99,
+        "WeightedAverageSharesDiluted": 326097000
+      },
+      "requiredMetrics": ["NOI", "FFO", "Occupancy", "FFOPerShare"],
+      "evidence": "Simon Property Group 2025 Form 10-K comparative tables",
+      "note": "比较期使用 2025 年 10-K 重列后的公司披露口径。"
+    },
+    {
+      "ticker": "SPG",
+      "periodEnd": "2023-12-31",
+      "sourcePeriodYear": 2023,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1063761/000155837024001532/spg-20231231x10k.htm",
+      "values": {
+        "NOI": 5570930000,
+        "FFO": 4088139000,
+        "Occupancy": 0.958,
+        "FFOPerShare": 12.51,
+        "WeightedAverageSharesDiluted": 326808000
+      },
+      "requiredMetrics": ["NOI", "FFO", "Occupancy", "FFOPerShare"],
+      "evidence": "Simon Property Group 2023 Form 10-K FFO reconciliation and portfolio statistics",
+      "note": "NOI 为 beneficial interest of Portfolio NOI；占用率为美国 Mall 与 Premium Outlet 期末总组合出租率。"
+    },
+    {
+      "ticker": "SPG",
+      "periodEnd": "2022-12-31",
+      "sourcePeriodYear": 2022,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1063761/000155837023001840/spg-20221231x10k.htm",
+      "values": {
+        "NOI": 5312476000,
+        "FFO": 3915793000,
+        "Occupancy": 0.949,
+        "FFOPerShare": 11.95,
+        "WeightedAverageSharesDiluted": 327817000
+      },
+      "requiredMetrics": ["NOI", "FFO", "Occupancy", "FFOPerShare"],
+      "evidence": "Simon Property Group 2023 Form 10-K comparative tables",
+      "note": "比较期使用 2023 年 10-K 的公司披露口径。"
+    },
+    {
+      "ticker": "SPG",
+      "periodEnd": "2021-12-31",
+      "sourcePeriodYear": 2021,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1063761/000155837022001845/spg-20211231x10k.htm",
+      "values": {
+        "NOI": 5084609000,
+        "FFO": 3922557000,
+        "Occupancy": 0.934,
+        "FFOPerShare": 11.94,
+        "WeightedAverageSharesDiluted": 328587000
+      },
+      "requiredMetrics": ["NOI", "FFO", "Occupancy", "FFOPerShare"],
+      "evidence": "Simon Property Group 2021 Form 10-K pp. 61-62, 75-76",
+      "note": "NOI 为 Portfolio NOI；FFO 为 NAREIT FFO；占用率为美国 Mall 与 Premium Outlet 期末总组合出租率。"
+    },
+    {
+      "ticker": "508000.SS",
+      "periodEnd": "2025-12-31",
+      "sourcePeriodYear": 2025,
+      "sourceUrl": "https://pdf.dfcfw.com/pdf/H2_AN202603261820765148_1.pdf",
+      "values": {
+        "PropertyRevenue": 140687370.24,
+        "PropertyOperatingExpenses": 19630006.69,
+        "NOI": 121057363.55,
+        "Occupancy": 0.8738
+      },
+      "derivedFields": ["PropertyOperatingExpenses", "NOI"],
+      "requiredMetrics": ["NOI", "Occupancy"],
+      "evidence": "华安张江产业园 REIT 2025 年年度报告 pp. 14, 18",
+      "note": "NOI 为项目营业收入减不含投资性房地产折旧摊销的物业运营费用；出租率为两个项目期末实际出租面积/可供出租面积。"
+    },
+    {
+      "ticker": "508000.SS",
+      "periodEnd": "2024-12-31",
+      "sourcePeriodYear": 2024,
+      "sourceUrl": "https://pdf.dfcfw.com/pdf/H2_AN202503301649145357_1.pdf",
+      "values": {
+        "PropertyRevenue": 134154131.98,
+        "PropertyOperatingExpenses": 23689498.01,
+        "NOI": 110464633.97,
+        "Occupancy": 0.919
+      },
+      "derivedFields": ["NOI"],
+      "requiredMetrics": ["NOI", "Occupancy"],
+      "evidence": "华安张江产业园 REIT 2024 年年度报告 pp. 15, 19",
+      "note": "NOI 按物业收入减不含投资性房地产折旧摊销的运营费用计算。"
+    },
+    {
+      "ticker": "508000.SS",
+      "periodEnd": "2023-12-31",
+      "sourcePeriodYear": 2023,
+      "sourceUrl": "https://pdf.dfcfw.com/pdf/H2_AN202403291629037655_1.pdf",
+      "values": {
+        "PropertyRevenue": 101952765.5,
+        "PropertyOperatingExpenses": 13853187.58,
+        "NOI": 88099577.92,
+        "Occupancy": 0.72
+      },
+      "derivedFields": ["NOI"],
+      "requiredMetrics": ["NOI", "Occupancy"],
+      "evidence": "华安张江产业园 REIT 2023 年年度报告 pp. 14-16",
+      "note": "2023 年 6 月完成扩募；项目收入包含收购后的张润大厦期间，不能直接视作同店序列。"
+    },
+    {
+      "ticker": "508000.SS",
+      "periodEnd": "2022-12-31",
+      "sourcePeriodYear": 2022,
+      "sourceUrl": "https://pdf.dfcfw.com/pdf/H2_AN202303291584647366_1.pdf",
+      "values": {
+        "PropertyRevenue": 82907519.14,
+        "PropertyOperatingExpenses": 9641883.92,
+        "NOI": 73265635.22,
+        "Occupancy": 0.926
+      },
+      "derivedFields": ["PropertyOperatingExpenses", "NOI"],
+      "requiredMetrics": ["NOI", "Occupancy"],
+      "evidence": "华安张江产业园 REIT 2022 年年度报告 pp. 14-15",
+      "note": "运营费用由项目总成本扣除投资性房地产折旧摊销得到；NOI 再按收入减运营费用计算。"
+    },
+    {
+      "ticker": "508000.SS",
+      "periodEnd": "2021-12-31",
+      "sourcePeriodYear": 2021,
+      "sourceUrl": "https://pdf.dfcfw.com/pdf/H2_AN202203301555959871_1.pdf",
+      "values": {
+        "PropertyRevenue": 50478928.88,
+        "PropertyOperatingExpenses": 7344411.41,
+        "NOI": 43134517.47,
+        "Occupancy": 1
+      },
+      "derivedFields": ["PropertyOperatingExpenses", "NOI"],
+      "requiredMetrics": ["NOI", "Occupancy"],
+      "evidence": "华安张江产业园 REIT 2021 年年度报告 pp. 12-13",
+      "note": "2021 年为基金成立日至年末的不足一年期间；出租率 100% 为首发项目期末值。"
+    },
+    {
+      "ticker": "0823.HK",
+      "periodEnd": "2026-03-31",
+      "sourcePeriodYear": 2025,
+      "sourceUrl": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0611/2026061100409_c.pdf",
+      "values": {
+        "NOI": 10230000000,
+        "Occupancy": 0.978
+      },
+      "requiredMetrics": ["NOI", "Occupancy"],
+      "evidence": "领展房产基金 2025/2026 年报 pp. 227, 230",
+      "note": "NOI 使用公司披露的物业收入净额；出租率使用香港零售物业组合年末租用率，保留组合范围。"
+    },
+    {
+      "ticker": "0823.HK",
+      "periodEnd": "2025-03-31",
+      "sourcePeriodYear": 2025,
+      "sourceUrl": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0611/2026061100409_c.pdf",
+      "values": {
+        "NOI": 10619000000,
+        "Occupancy": 0.978
+      },
+      "requiredMetrics": ["NOI", "Occupancy"],
+      "evidence": "领展房产基金 2025/2026 年报五年表现概要 p. 227-230",
+      "note": "历史比较值来自同一份五年表现概要表。"
+    },
+    {
+      "ticker": "0823.HK",
+      "periodEnd": "2024-03-31",
+      "sourcePeriodYear": 2025,
+      "sourceUrl": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0611/2026061100409_c.pdf",
+      "values": {
+        "NOI": 10070000000,
+        "Occupancy": 0.98
+      },
+      "requiredMetrics": ["NOI", "Occupancy"],
+      "evidence": "领展房产基金 2025/2026 年报五年表现概要 p. 227-230",
+      "note": "历史比较值来自同一份五年表现概要表。"
+    },
+    {
+      "ticker": "0823.HK",
+      "periodEnd": "2023-03-31",
+      "sourcePeriodYear": 2025,
+      "sourceUrl": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0611/2026061100409_c.pdf",
+      "values": {
+        "NOI": 9198000000,
+        "Occupancy": 0.98
+      },
+      "requiredMetrics": ["NOI", "Occupancy"],
+      "evidence": "领展房产基金 2025/2026 年报五年表现概要 p. 227-230",
+      "note": "历史比较值来自同一份五年表现概要表。"
+    },
+    {
+      "ticker": "0823.HK",
+      "periodEnd": "2022-03-31",
+      "sourcePeriodYear": 2025,
+      "sourceUrl": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0611/2026061100409_c.pdf",
+      "values": {
+        "NOI": 8776000000,
+        "Occupancy": 0.977
+      },
+      "requiredMetrics": ["NOI", "Occupancy"],
+      "evidence": "领展房产基金 2025/2026 年报五年表现概要 p. 227-230",
+      "note": "历史比较值来自同一份五年表现概要表。"
+    }
+  ]
+}

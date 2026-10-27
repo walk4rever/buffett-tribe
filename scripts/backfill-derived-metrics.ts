@@ -46,11 +46,13 @@ export const ALLOWED_FLAGS = new Set([
   "--batch-id",
   "--dry-run",
   "--execute",
+  "--metric-suite",
   "--help",
   "-h",
 ]);
 
 const SUITE_PATH = path.join(process.cwd(), "scripts", "lib", "morningstar-benchmark-suite.json");
+const METRIC_SUITE_PATH = path.join(process.cwd(), "scripts", "lib", "metric-validation-suite.json");
 
 export interface BackfillArgs {
   phases?: number[];
@@ -64,6 +66,7 @@ export interface BackfillArgs {
   batchId?: string;
   execute: boolean;
   isDryRun: boolean;
+  useMetricSuite: boolean;
 }
 
 export function parseBackfillArgs(args: string[]): BackfillArgs {
@@ -88,6 +91,7 @@ export function parseBackfillArgs(args: string[]): BackfillArgs {
   const execute = args.includes("--execute");
   const isDryRun = args.includes("--dry-run") || !execute;
   const isAll = args.includes("--all");
+  const useMetricSuite = args.includes("--metric-suite");
   const ticker = getArgVal("--ticker");
   const marketRaw = getArgVal("--market")?.toLowerCase();
   const phaseRaw = getArgVal("--phase");
@@ -172,6 +176,7 @@ export function parseBackfillArgs(args: string[]): BackfillArgs {
     batchId,
     execute,
     isDryRun,
+    useMetricSuite,
   };
 }
 
@@ -188,6 +193,18 @@ export function buildBackfillWhereClause(args: BackfillArgs): Prisma.EntityWhere
       { ticker: bare },
       { ticker: `${bare}.HK` },
     ];
+  } else if (args.useMetricSuite) {
+    const suite = JSON.parse(
+      fs.readFileSync(METRIC_SUITE_PATH, "utf8"),
+    ) as { companies: Array<{ ticker: string }> };
+    where.OR = suite.companies.flatMap(({ ticker }) => {
+      const bare = ticker.replace(/\.(SS|SZ)$/, "");
+      return [
+        { ticker },
+        { code: bare },
+        { ticker: bare },
+      ];
+    });
   } else if (args.phases && args.phases.length > 0) {
     where.onboardPhase = { in: args.phases };
   } else if (!args.isAll) {
@@ -242,6 +259,8 @@ export async function runDerivedBackfill(
 
   const scopeLabel = args.ticker
     ? `指定标的 [${args.ticker}]`
+    : args.useMetricSuite
+      ? `99 项指标验证集${args.market ? ` 市场 [${args.market.toUpperCase()}]` : ""}`
     : args.phases
       ? `Phase [${args.phases.join(",")}]${args.market ? ` 市场 [${args.market.toUpperCase()}]` : ""}`
       : args.isAll
