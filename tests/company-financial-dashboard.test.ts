@@ -6,10 +6,18 @@ import {
 import { buildFinancialDashboardText } from "../scripts/lib/company-generation";
 
 function financialYear(year: number, items: Record<string, string>): FinancialYearItems {
+  const semantics = { ...items };
+  if (semantics.NetIncome) {
+    semantics.NetIncomeTotal ??= semantics.NetIncome;
+    semantics.NetIncomeCommon ??= semantics.NetIncome;
+  }
+  if (semantics.ShareholdersEquity) {
+    semantics.ShareholdersCommonEquity ??= semantics.ShareholdersEquity;
+  }
   return {
     year,
     periodEnd: new Date(`${year}-12-31T00:00:00.000Z`),
-    items,
+    items: semantics,
   };
 }
 
@@ -19,6 +27,8 @@ const generalFinancials = [
     GrossProfit: "600",
     OperatingIncome: "240",
     NetIncome: "180",
+    NetIncomeTotal: "180",
+    NetIncomeCommon: "180",
     TotalAssets: "1500",
     TotalLiabilities: "600",
     ShareholdersEquity: "900",
@@ -29,6 +39,8 @@ const generalFinancials = [
     GrossProfit: "480",
     OperatingIncome: "180",
     NetIncome: "140",
+    NetIncomeTotal: "140",
+    NetIncomeCommon: "140",
     TotalAssets: "1300",
     TotalLiabilities: "520",
     ShareholdersEquity: "780",
@@ -39,6 +51,8 @@ const generalFinancials = [
     GrossProfit: "360",
     OperatingIncome: "120",
     NetIncome: "90",
+    NetIncomeTotal: "90",
+    NetIncomeCommon: "90",
     TotalAssets: "1100",
     TotalLiabilities: "440",
     ShareholdersEquity: "660",
@@ -52,6 +66,8 @@ const professionalFinancials = [
     GrossProfit: "600",
     OperatingIncome: "240",
     NetIncome: "180",
+    NetIncomeTotal: "180",
+    NetIncomeCommon: "180",
     TotalAssets: "1500",
     TotalLiabilities: "600",
     ShareholdersEquity: "900",
@@ -64,6 +80,8 @@ const professionalFinancials = [
     GrossProfit: "450",
     OperatingIncome: "180",
     NetIncome: "150",
+    NetIncomeTotal: "150",
+    NetIncomeCommon: "150",
     TotalAssets: "1200",
     TotalLiabilities: "500",
     ShareholdersEquity: "700",
@@ -123,6 +141,179 @@ describe("buildCompanyFinancialDashboard", () => {
     expect(dashboard.templateNote).toContain("净利息与非利息");
   });
 
+  it("renders bank credit-quality and capital metrics from reported ratios", () => {
+    const dashboard = buildCompanyFinancialDashboard(
+      { sector: "Financials", metadata: { industry: "Commercial Bank" }, sectorModelType: "banks" },
+      [
+        financialYear(2025, {
+          NonPerformingLoans: "1000000000",
+          LoanLossAllowance: "2500000000",
+          NIM: "0.025",
+          NonPerformingLoanRatio: "0.01",
+          ProvisionCoverage: "2.5",
+          CET1Ratio: "0.14",
+        }),
+      ],
+    );
+
+    const value = (key: string) =>
+      dashboard.rows.find((row) => row.key === key)?.values[2025];
+    expect(value("NonPerformingLoans")).toMatch(/10/);
+    expect(value("LoanLossAllowance")).toMatch(/25/);
+    expect(value("NIM")).toBe("2.5%");
+    expect(value("NonPerformingLoanRatio")).toBe("1.0%");
+    expect(value("ProvisionCoverage")).toBe("250.0%");
+    expect(value("CET1Ratio")).toBe("14.0%");
+  });
+
+  it("renders only contract-backed REIT metrics", () => {
+    const dashboard = buildCompanyFinancialDashboard(
+      {
+        sector: "Real Estate",
+        metadata: { industry: "Retail REIT" },
+        sectorModelType: "real_estate",
+      },
+      [
+        financialYear(2025, {
+          NOI: "6117188000",
+          FFO: "4027116000",
+          AFFO: "3500000000",
+          SameStoreNOIGrowth: "0.047",
+          Occupancy: "0.964",
+          FFOPerShare: "12.34",
+        }),
+      ],
+    );
+
+    const rowKeys = dashboard.rows.map((row) => row.key);
+    expect(rowKeys).toContain("NOI");
+    expect(rowKeys).toContain("FFO");
+    expect(rowKeys).not.toContain("AFFO");
+    expect(rowKeys).not.toContain("SameStoreNOIGrowth");
+    expect(rowKeys).toContain("Occupancy");
+    expect(rowKeys).toContain("FFOPerShare");
+
+    const value = (key: string) =>
+      dashboard.rows.find((row) => row.key === key)?.values[2025];
+    expect(value("NOI")).toMatch(/61/);
+    expect(value("Occupancy")).toBe("96.4%");
+  });
+
+  it("renders life and property-casualty insurance metrics by submodel", () => {
+    const life = buildCompanyFinancialDashboard(
+      {
+        sector: "Financials",
+        metadata: { industry: "Life Insurance" },
+        sectorModelType: "insurance",
+      },
+      [
+        financialYear(2025, {
+          EV: "79678000000",
+          NBV: "5516000000",
+          NewBusinessValueMargin: "0.585",
+          SolvencyRatio: "2.33",
+        }),
+      ],
+    );
+    const property = buildCompanyFinancialDashboard(
+      {
+        sector: "Financials",
+        metadata: { industry: "Property Casualty Insurance" },
+        sectorModelType: "insurance",
+      },
+      [
+        financialYear(2025, {
+          ClaimsRatio: "0.6608",
+          CombinedRatio: "0.874",
+          SolvencyRatio: "2.33",
+        }),
+      ],
+    );
+
+    const lifeKeys = life.rows.map((row) => row.key);
+    const propertyKeys = property.rows.map((row) => row.key);
+    expect(lifeKeys).toContain("EV");
+    expect(lifeKeys).toContain("NBV");
+    expect(lifeKeys).toContain("NewBusinessValueMargin");
+    expect(lifeKeys).toContain("SolvencyRatio");
+    expect(lifeKeys).not.toContain("Float");
+    expect(lifeKeys).not.toContain("CombinedRatio");
+    expect(propertyKeys).toContain("ClaimsRatio");
+    expect(propertyKeys).toContain("CombinedRatio");
+    expect(propertyKeys).not.toContain("EV");
+    expect(propertyKeys).not.toContain("NBV");
+  });
+
+  it("does not render metrics excluded from the 99-item contract", () => {
+    const excludedDashboardKeys = new Set([
+      "AssetsUnderManagement",
+      "NetClientFlows",
+      "InvestmentManagementFeeIncome",
+      "AFFO",
+      "SameStoreNOIGrowth",
+      "Float",
+    ]);
+    const cases = [
+      {
+        company: {
+          sector: "Financials",
+          metadata: {},
+          sectorModelType: "capital_markets" as const,
+        },
+        items: {
+          AssetsUnderManagement: "1",
+          NetClientFlows: "1",
+          InvestmentManagementFeeIncome: "1",
+          AFFO: "1",
+          SameStoreNOIGrowth: "0.1",
+          Float: "1",
+        },
+      },
+      {
+        company: {
+          sector: "Real Estate",
+          metadata: { industry: "Retail REIT" },
+          sectorModelType: "real_estate" as const,
+        },
+        items: {
+          AssetsUnderManagement: "1",
+          NetClientFlows: "1",
+          InvestmentManagementFeeIncome: "1",
+          AFFO: "1",
+          SameStoreNOIGrowth: "0.1",
+          Float: "1",
+        },
+      },
+      {
+        company: {
+          sector: "Financials",
+          metadata: { industry: "Life Insurance" },
+          sectorModelType: "insurance" as const,
+        },
+        items: {
+          AssetsUnderManagement: "1",
+          NetClientFlows: "1",
+          InvestmentManagementFeeIncome: "1",
+          AFFO: "1",
+          SameStoreNOIGrowth: "0.1",
+          Float: "1",
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const dashboard = buildCompanyFinancialDashboard(
+        testCase.company,
+        [financialYear(2025, testCase.items)],
+      );
+      expect(
+        dashboard.rows
+          .map((row) => row.key)
+          .filter((key) => excludedDashboardKeys.has(key)),
+      ).toEqual([]);
+    }
+  });
+
   it("maps all dedicated industry models to their financial-analysis templates", () => {
     const cases = [
       ["insurance", "insurance"],
@@ -162,7 +353,7 @@ describe("buildCompanyFinancialDashboard", () => {
     }
   });
 
-  it("shows financial-services operating metrics when annual reports provide them", () => {
+  it("keeps non-contract financial-services operating metrics out of the dashboard", () => {
     const dashboard = buildCompanyFinancialDashboard(
       { sector: "Financials", metadata: {}, sectorModelType: "capital_markets" },
       [
@@ -196,21 +387,20 @@ describe("buildCompanyFinancialDashboard", () => {
 
     expect(rowKeys).toEqual(
       expect.arrayContaining([
-        "AssetsUnderManagement",
-        "NetClientFlows",
-        "InvestmentManagementFeeIncome",
         "NetFeeAndCommissionIncome",
       ]),
     );
+    expect(rowKeys).not.toContain("AssetsUnderManagement");
+    expect(rowKeys).not.toContain("NetClientFlows");
+    expect(rowKeys).not.toContain("InvestmentManagementFeeIncome");
     expect(trendKeys).toEqual(
       expect.arrayContaining([
-        "AssetsUnderManagement",
-        "NetClientFlows",
-        "InvestmentManagementFeeIncome",
         "NetFeeAndCommissionIncome",
       ]),
     );
-    expect(dashboard.templateNote).not.toMatch(/AUM|净流入|手续费|未接入/);
+    expect(trendKeys).not.toContain("AssetsUnderManagement");
+    expect(trendKeys).not.toContain("NetClientFlows");
+    expect(trendKeys).not.toContain("InvestmentManagementFeeIncome");
   });
 
   it("normalizes financial-services metrics using each row's reporting currency", () => {
@@ -245,9 +435,9 @@ describe("buildCompanyFinancialDashboard", () => {
     const latestValue = (key: string) =>
       dashboard.trends.find((trend) => trend.key === key)?.latestPoint?.value;
 
-    expect(latestValue("AssetsUnderManagement")).toBeCloseTo(1_100_000_000_000);
-    expect(latestValue("NetClientFlows")).toBeCloseTo(22_000_000_000);
-    expect(latestValue("InvestmentManagementFeeIncome")).toBeCloseTo(5_500_000_000);
+    expect(latestValue("AssetsUnderManagement")).toBeUndefined();
+    expect(latestValue("NetClientFlows")).toBeUndefined();
+    expect(latestValue("InvestmentManagementFeeIncome")).toBeUndefined();
     expect(latestValue("NetFeeAndCommissionIncome")).toBeCloseTo(3_300_000_000);
   });
 
@@ -361,7 +551,13 @@ describe("buildCompanyFinancialDashboard", () => {
   it("does not estimate ROE without the prior-year equity balance", () => {
     const dashboard = buildCompanyFinancialDashboard(
       { sector: "Technology", metadata: {}, sectorModelType: "industrial" },
-      [financialYear(2025, { NetIncome: "180", ShareholdersEquity: "900" })],
+      [
+        financialYear(2025, {
+          NetIncome: "180",
+          NetIncomeCommon: "180",
+          ShareholdersEquity: "900",
+        }),
+      ],
     );
 
     expect(dashboard.rows.some((row) => row.key === "ROE")).toBe(false);
@@ -375,6 +571,28 @@ describe("buildCompanyFinancialDashboard", () => {
     const roe = dashboard.rows.find((row) => row.key === "ROE");
 
     expect(roe?.values[2025]).toBe("21.4%");
+  });
+
+  it("uses common shareholders equity for ROE", () => {
+    const dashboard = buildCompanyFinancialDashboard(
+      { sector: "Technology", metadata: {}, sectorModelType: "industrial" },
+      [
+        financialYear(2025, {
+          NetIncomeCommon: "100",
+          ShareholdersEquity: "1200",
+          ShareholdersCommonEquity: "1000",
+        }),
+        financialYear(2024, {
+          NetIncomeCommon: "90",
+          ShareholdersEquity: "1100",
+          ShareholdersCommonEquity: "900",
+        }),
+      ],
+    );
+
+    expect(
+      dashboard.rows.find((row) => row.key === "ROE")?.values[2025],
+    ).toBe("10.5%");
   });
 
   it("calculates operating-quality metrics from comparable annual inputs", () => {
@@ -399,6 +617,8 @@ describe("buildCompanyFinancialDashboard", () => {
           ...financialYear(2025, {
             Revenue: "100000000",
             NetIncome: "20000000",
+            NetIncomeTotal: "20000000",
+            NetIncomeCommon: "20000000",
             ShareholdersEquity: "200000000",
             OperatingCashFlow: "140000000",
             CapEx: "-32000000",
@@ -406,7 +626,10 @@ describe("buildCompanyFinancialDashboard", () => {
           itemUnits: {
             Revenue: "CNY",
             NetIncome: "CNY",
+            NetIncomeTotal: "CNY",
+            NetIncomeCommon: "CNY",
             ShareholdersEquity: "CNY",
+            ShareholdersCommonEquity: "CNY",
             OperatingCashFlow: "CNY",
             CapEx: "TWD",
           },
@@ -415,12 +638,17 @@ describe("buildCompanyFinancialDashboard", () => {
           ...financialYear(2024, {
             Revenue: "50000000",
             NetIncome: "10000000",
+            NetIncomeTotal: "10000000",
+            NetIncomeCommon: "10000000",
             ShareholdersEquity: "100000000",
           }),
           itemUnits: {
             Revenue: "CNY",
             NetIncome: "CNY",
+            NetIncomeTotal: "CNY",
+            NetIncomeCommon: "CNY",
             ShareholdersEquity: "CNY",
+            ShareholdersCommonEquity: "CNY",
           },
         },
       ],
@@ -672,6 +900,7 @@ describe("buildCompanyFinancialDashboard", () => {
           Revenue: "350",
           GrossProfit: "210",
           NetIncome: "70",
+          NetIncomeCommon: "70",
           ShareholdersEquity: "950",
         },
       },

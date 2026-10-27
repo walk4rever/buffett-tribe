@@ -434,7 +434,7 @@ export function ValueLineHeader({
   const valuationStatusBadge = !usesPeValuation ? (
     <span className="vl-status-chip vl-status-chip--fair">
       <span className="vl-pulse-dot vl-pulse-dot--amber" />
-      行业特定估值通道
+      当前 P/B 估值
     </span>
   ) : curValuationStatus === "undervalued" ? (
       <span className="vl-status-chip vl-status-chip--undervalued">
@@ -630,7 +630,7 @@ export function ValueLineBody({ data, activeSecurity }: ValueLineBodyProps) {
         />
         {!usesPeValuation ? (
           <p className="val-model-note">
-            估值锚：{financialModel.valuationAnchorLabel}。本行业采用专属估值框架，暂不绘制通用 P/E 参考线。
+            当前仅展示 P/B 估值；行业专业模型尚未接入，暂不绘制通用 P/E 参考线。
           </p>
         ) : null}
         {data.cyclicalWarning ? (

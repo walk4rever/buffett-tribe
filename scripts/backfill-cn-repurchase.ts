@@ -215,7 +215,11 @@ async function main() {
     },
     _count: { id: true },
   });
-  const hasSharesEntityIds = new Set(existingSharesCounts.map((s) => s.entityId));
+  const hasSharesEntityIds = new Set(
+    existingSharesCounts
+      .filter((row) => row._count.id >= 4)
+      .map((row) => row.entityId),
+  );
 
   const missingCompanies = companies.filter((c) => !hasSharesEntityIds.has(c.id));
   console.log(`已有股本公司: ${hasSharesEntityIds.size} 家，本次需补充公司: ${missingCompanies.length} 家`);
@@ -241,6 +245,8 @@ async function main() {
         batchFile,
         "--out",
         outFile,
+        "--from-year",
+        "2020",
       ]);
 
       if (res.code !== 0 || !existsSync(outFile)) {
@@ -273,7 +279,8 @@ async function main() {
           periodType: rec.periodType,
           lineItem: rec.lineItem,
           value: rec.value,
-          unit: "CNY" as const,
+          unit: "shares" as const,
+          mappingRule: "akshare:stock_zh_a_daily:outstanding_share",
         }));
 
         // Retry once on P1017 connection-reset (Prisma idle timeout during long Python fetch)

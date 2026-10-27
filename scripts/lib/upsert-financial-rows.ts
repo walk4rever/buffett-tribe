@@ -87,6 +87,7 @@ function createUpsertStatement(rows: Prisma.FinancialCreateManyInput[]) {
 export async function upsertFinancialRows(
   db: FinancialWriteClient,
   rows: Prisma.FinancialCreateManyInput[],
+  options: { skipInterimGc?: boolean } = {},
 ): Promise<number> {
   if (!rows.length) return 0;
 
@@ -115,7 +116,7 @@ export async function upsertFinancialRows(
     }
   }
 
-  if (maxFyByEntity.size > 0) {
+  if (!options.skipInterimGc && maxFyByEntity.size > 0) {
     for (const [entityId, maxFyDate] of maxFyByEntity.entries()) {
       await db.$executeRaw`
         DELETE FROM "Financial"

@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "policies": [
+    {
+      "ticker": "508000.SS",
+      "fromYear": 2021,
+      "reason": "基金合并利润表仅披露单一基金持有人净利润，无优先股或其他权益工具分配项",
+      "evidence": "508000.SS 2025 annual report p.42",
+      "confidence": 0.8
+    },
+    {
+      "ticker": "0806.HK",
+      "fromYear": 2020,
+      "reason": "完整标准化资产负债表和利润表均无优先股或永久资本证券",
+      "evidence": "HKEX annual reports and akshare standardized statements",
+      "confidence": 0.8
+    },
+    {
+      "ticker": "0388.HK",
+      "fromYear": 2020,
+      "reason": "完整标准化资产负债表和利润表均无优先股或永久资本证券",
+      "evidence": "HKEX annual reports and akshare standardized statements",
+      "confidence": 0.8
+    },
+    {
+      "ticker": "0001.HK",
+      "fromYear": 2020,
+      "reason": "完整标准化资产负债表和利润表均无优先股或永久资本证券",
+      "evidence": "HKEX annual reports and akshare standardized statements",
+      "confidence": 0.8
+    },
+    {
+      "ticker": "0522.HK",
+      "fromYear": 2020,
+      "reason": "综合损益表直接披露本公司持有人应占盈利，无优先股利润分配行",
+      "evidence": "0522.HK 2025 annual report p.65",
+      "confidence": 0.9
+    },
+    {
+      "ticker": "2388.HK",
+      "fromYear": 2024,
+      "reason": "永久资本证券最后出现于 FY2023，FY2024 起资产负债表和利润表均无该工具及分配",
+      "evidence": "2388.HK FY2025 annual report and akshare standardized statements",
+      "confidence": 0.8
+    },
+    {
+      "ticker": "0016.HK",
+      "fromYear": 2022,
+      "reason": "永久资本证券最后出现于 FY2021 利润分配，FY2022 起完整标准化报表无该工具及分配",
+      "evidence": "0016.HK FY2026 annual results and akshare standardized statements",
+      "confidence": 0.8
+    },
+    {
+      "ticker": "600941.SS",
+      "fromYear": 2020,
+      "reason": "完整资产负债表无优先股、永续债或其他权益工具余额",
+      "evidence": "600941.SS annual reports and akshare standardized statements",
+      "confidence": 0.8
+    },
+    {
+      "ticker": "601319.SS",
+      "fromYear": 2020,
+      "reason": "完整资产负债表无优先股、永续债或其他权益工具余额",
+      "evidence": "601319.SS annual reports and akshare standardized statements",
+      "confidence": 0.8
+    },
+    {
+      "ticker": "0002.HK",
+      "fromYear": 2020,
+      "reason": "股东应占权益与少数股东权益、其他权益分别列示，其他权益不属于普通股权益",
+      "evidence": "0002.HK annual reports and akshare standardized statements",
+      "confidence": 0.9
+    }
+  ]
+}

@@ -168,17 +168,18 @@ describe("ValueLineBody", () => {
   it("does not plot a generic P/E value line or industrial cash conversion for banks", () => {
     const markup = renderValueLine("banks");
 
-    expect(markup).toContain("市净率与 ROE");
-    expect(markup).not.toContain("尚未接入");
+    expect(markup).toContain("当前仅展示 P/B 估值");
+    expect(markup).toContain("行业专业模型尚未接入");
     expect(markup).not.toContain("价值参考线:");
     expect(markup).not.toContain("2x");
   });
 
-  it("labels property valuation anchor without showing generic P/E corridor", () => {
+  it("labels the implemented property valuation as P/B without claiming FFO or NAV", () => {
     const markup = renderValueLine("real_estate");
 
-    expect(markup).toContain("资产净值与 FFO");
-    expect(markup).not.toContain("尚未接入");
+    expect(markup).toContain("当前仅展示 P/B 估值");
+    expect(markup).toContain("行业专业模型尚未接入");
+    expect(markup).not.toContain("资产净值与 FFO");
     expect(markup).not.toContain("价值参考线:");
   });
 
@@ -270,7 +271,7 @@ describe("ValueLineHeader", () => {
     expect(markup).toContain("PB");
     expect(markup).not.toContain(">PE</span>");
     expect(markup).not.toContain("合理估值中枢");
-    expect(markup).toContain("行业特定估值通道");
+    expect(markup).toContain("当前 P/B 估值");
   });
 
   it("keeps P/E and its valuation status for P/E-primary models", () => {

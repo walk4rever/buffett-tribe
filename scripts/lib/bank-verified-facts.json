@@ -1,0 +1,285 @@
+{
+  "version": 1,
+  "facts": [
+    {
+      "ticker": "JPM",
+      "periodEnd": "2025-12-31",
+      "sourcePeriodYear": 2025,
+      "values": {
+        "GrossLoans": 1493429000000,
+        "LoanLossAllowance": 25765000000,
+        "NonPerformingLoans": 9857000000,
+        "NetInterestIncome": 95443000000,
+        "NonPerformingLoanRatio": 0.0066,
+        "ProvisionCoverage": 2.613878462,
+        "EarningAssets": 3834359000000,
+        "NIM": 0.025,
+        "CET1Ratio": 0.146
+      },
+      "evidence": "JPMorganChase 2025 Form 10-K pp. 48, 52, 56, 91, 111",
+      "note": "CET1 uses the Standardized approach; NIM uses reported FTE net yield."
+    },
+    {
+      "ticker": "JPM",
+      "periodEnd": "2024-12-31",
+      "sourcePeriodYear": 2024,
+      "values": {
+        "GrossLoans": 1347988000000,
+        "LoanLossAllowance": 24345000000,
+        "NonPerformingLoans": 8837000000,
+        "NetInterestIncome": 93060000000,
+        "NonPerformingLoanRatio": 0.0066,
+        "ProvisionCoverage": 2.754894195,
+        "EarningAssets": 3537567000000,
+        "NIM": 0.0263,
+        "CET1Ratio": 0.157
+      },
+      "evidence": "JPMorganChase 2025 Form 10-K comparative tables",
+      "note": "Comparative period reported in the 2025 Form 10-K; NIM uses managed-basis net interest income."
+    },
+    {
+      "ticker": "JPM",
+      "periodEnd": "2023-12-31",
+      "sourcePeriodYear": 2023,
+      "values": {
+        "GrossLoans": 1323706000000,
+        "LoanLossAllowance": 22420000000,
+        "NonPerformingLoans": 6917000000,
+        "NetInterestIncome": 89747000000,
+        "NonPerformingLoanRatio": 0.0052,
+        "ProvisionCoverage": 3.241289576,
+        "EarningAssets": 3325708000000,
+        "NIM": 0.027,
+        "CET1Ratio": 0.15
+      },
+      "evidence": "JPMorganChase 2024 Form 10-K comparative tables",
+      "note": "Comparative period reported in the 2024 Form 10-K; NIM uses managed-basis net interest income."
+    },
+    {
+      "ticker": "JPM",
+      "periodEnd": "2022-12-31",
+      "sourcePeriodYear": 2022,
+      "values": {
+        "GrossLoans": 1135647000000,
+        "LoanLossAllowance": 19726000000,
+        "NonPerformingLoans": 6720000000,
+        "NetInterestIncome": 67144000000,
+        "NonPerformingLoanRatio": 0.0059,
+        "ProvisionCoverage": 2.935416667,
+        "EarningAssets": 3349079000000,
+        "NIM": 0.02,
+        "CET1Ratio": 0.132
+      },
+      "evidence": "JPMorganChase 2022 Form 10-K Three-Year Summary and selected ratios",
+      "note": "NPL is firmwide nonaccrual loans; NIM uses managed-basis net interest income and average interest-earning assets."
+    },
+    {
+      "ticker": "JPM",
+      "periodEnd": "2021-12-31",
+      "sourcePeriodYear": 2021,
+      "values": {
+        "GrossLoans": 1077714000000,
+        "LoanLossAllowance": 16386000000,
+        "NonPerformingLoans": 7795000000,
+        "NetInterestIncome": 52741000000,
+        "NonPerformingLoanRatio": 0.0072,
+        "ProvisionCoverage": 2.102116742,
+        "EarningAssets": 3215942000000,
+        "NIM": 0.0164,
+        "CET1Ratio": 0.131
+      },
+      "evidence": "JPMorganChase 2021 Form 10-K selected ratios and credit risk tables",
+      "note": "NPL is firmwide nonaccrual loans; NIM uses managed-basis net interest income."
+    },
+    {
+      "ticker": "600036.SS",
+      "periodEnd": "2025-12-31",
+      "sourcePeriodYear": 2025,
+      "values": {
+        "GrossLoans": 7258058000000,
+        "LoanLossAllowance": 267222000000,
+        "NonPerformingLoans": 68206000000,
+        "NetInterestIncome": 215593000000,
+        "NonPerformingLoanRatio": 0.0094,
+        "ProvisionCoverage": 3.917866463,
+        "EarningAssets": 11558068000000,
+        "NIM": 0.0187,
+        "CET1Ratio": 0.1416
+      },
+      "evidence": "招商银行 2025 年度报告 pp. 16, 19, 22, 38",
+      "note": "CET1 uses the Group advanced-approach ratio; earning assets are group average balances."
+    },
+    {
+      "ticker": "600036.SS",
+      "periodEnd": "2024-12-31",
+      "sourcePeriodYear": 2024,
+      "values": {
+        "GrossLoans": 6888315000000,
+        "LoanLossAllowance": 270301000000,
+        "NonPerformingLoans": 65610000000,
+        "NetInterestIncome": 211277000000,
+        "NonPerformingLoanRatio": 0.0095,
+        "ProvisionCoverage": 4.1198,
+        "EarningAssets": 10686141000000,
+        "NIM": 0.0198,
+        "CET1Ratio": 0.1486
+      },
+      "evidence": "招商银行 2025 年度报告 comparative tables",
+      "note": "Comparative period reported in the 2025 annual report."
+    },
+    {
+      "ticker": "600036.SS",
+      "periodEnd": "2023-12-31",
+      "sourcePeriodYear": 2023,
+      "values": {
+        "GrossLoans": 6508865000000,
+        "LoanLossAllowance": 269534000000,
+        "NonPerformingLoans": 61579000000,
+        "NetInterestIncome": 214669000000,
+        "NonPerformingLoanRatio": 0.0095,
+        "ProvisionCoverage": 4.377044122,
+        "EarningAssets": 9987796000000,
+        "NIM": 0.0215,
+        "CET1Ratio": 0.1373
+      },
+      "evidence": "招商银行 2023 年度报告 pp. 16, 17, 23, 37",
+      "note": "集团口径；CET1 使用高级法，净利息收益率使用总生息资产平均余额口径。"
+    },
+    {
+      "ticker": "600036.SS",
+      "periodEnd": "2022-12-31",
+      "sourcePeriodYear": 2022,
+      "values": {
+        "GrossLoans": 6051459000000,
+        "LoanLossAllowance": 261476000000,
+        "NonPerformingLoans": 58004000000,
+        "NetInterestIncome": 218235000000,
+        "NonPerformingLoanRatio": 0.0096,
+        "ProvisionCoverage": 4.507896007,
+        "EarningAssets": 9081822000000,
+        "NIM": 0.024,
+        "CET1Ratio": 0.1368
+      },
+      "evidence": "招商银行 2022 年度报告 pp. 17, 18, 24, 38",
+      "note": "集团口径；CET1 使用高级法，净利息收益率使用总生息资产平均余额口径。"
+    },
+    {
+      "ticker": "600036.SS",
+      "periodEnd": "2021-12-31",
+      "sourcePeriodYear": 2021,
+      "values": {
+        "GrossLoans": 5570034000000,
+        "LoanLossAllowance": 246104000000,
+        "NonPerformingLoans": 50862000000,
+        "NetInterestIncome": 203919000000,
+        "NonPerformingLoanRatio": 0.0091,
+        "ProvisionCoverage": 4.838661476,
+        "EarningAssets": 8219698000000,
+        "NIM": 0.0248,
+        "CET1Ratio": 0.1266
+      },
+      "evidence": "招商银行 2021 年度报告 pp. 17, 18, 23, 38",
+      "note": "集团口径；CET1 使用高级法，净利息收益率使用总生息资产平均余额口径。"
+    },
+    {
+      "ticker": "2388.HK",
+      "periodEnd": "2025-12-31",
+      "sourcePeriodYear": 2025,
+      "sourceUrl": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0423/2026042301358_c.pdf",
+      "values": {
+        "GrossLoans": 1715787000000,
+        "NetLoans": 1705172000000,
+        "LoanLossAllowance": 18759000000,
+        "NonPerformingLoans": 19558000000,
+        "NetInterestIncome": 52911000000,
+        "NonPerformingLoanRatio": 0.0114,
+        "ProvisionCoverage": 0.959147152,
+        "EarningAssets": 3770340000000,
+        "NIM": 0.014,
+        "CET1Ratio": 0.2401
+      },
+      "evidence": "中银香港 2025 年报 pp. 18, 20, 28, 29",
+      "note": "Impaired loans and total impairment allowances use the Group banking disclosure."
+    },
+    {
+      "ticker": "2388.HK",
+      "periodEnd": "2024-12-31",
+      "sourcePeriodYear": 2024,
+      "sourceUrl": "https://www1.hkexnews.hk/listedco/listconews/sehk/2025/0424/2025042400807_c.pdf",
+      "values": {
+        "GrossLoans": 1676886000000,
+        "NetLoans": 1666302000000,
+        "LoanLossAllowance": 14961000000,
+        "NonPerformingLoans": 17652000000,
+        "NetInterestIncome": 52334000000,
+        "NonPerformingLoanRatio": 0.0105,
+        "ProvisionCoverage": 0.847553592,
+        "EarningAssets": 3577886000000,
+        "NIM": 0.0146,
+        "CET1Ratio": 0.2002
+      },
+      "evidence": "中银香港 2025 年报 comparative tables",
+      "note": "Comparative period reported in the 2025 annual report."
+    },
+    {
+      "ticker": "2388.HK",
+      "periodEnd": "2023-12-31",
+      "sourcePeriodYear": 2023,
+      "sourceUrl": "https://www1.hkexnews.hk/listedco/listconews/sehk/2024/0424/2024042400853_c.pdf",
+      "values": {
+        "GrossLoans": 1702302000000,
+        "NetLoans": 1693144000000,
+        "LoanLossAllowance": 14750000000,
+        "NonPerformingLoans": 17797000000,
+        "NetInterestIncome": 51078000000,
+        "NonPerformingLoanRatio": 0.0105,
+        "ProvisionCoverage": 0.82879,
+        "EarningAssets": 3334799000000,
+        "NIM": 0.0153,
+        "CET1Ratio": 0.1902
+      },
+      "evidence": "中银香港 2023 年报 pp. 17, 21, 29, 31, 233",
+      "note": "减值贷款、总减值准备和生息资产均使用集团口径；拨备覆盖率按 14,750 / 17,797 计算。"
+    },
+    {
+      "ticker": "2388.HK",
+      "periodEnd": "2022-12-31",
+      "sourcePeriodYear": 2022,
+      "sourceUrl": "https://www1.hkexnews.hk/listedco/listconews/sehk/2023/0427/2023042702573_c.pdf",
+      "values": {
+        "GrossLoans": 1648269000000,
+        "NetLoans": 1644113000000,
+        "LoanLossAllowance": 11575000000,
+        "NonPerformingLoans": 8724000000,
+        "NetInterestIncome": 38750000000,
+        "NonPerformingLoanRatio": 0.0053,
+        "ProvisionCoverage": 1.326799633,
+        "EarningAssets": 3104952000000,
+        "NIM": 0.0125,
+        "CET1Ratio": 0.1751
+      },
+      "evidence": "中银香港 2023 年报 comparative tables",
+      "note": "比较期使用 2023 年报重列后的集团口径；拨备覆盖率按 11,575 / 8,724 计算。"
+    },
+    {
+      "ticker": "2388.HK",
+      "periodEnd": "2021-12-31",
+      "sourcePeriodYear": 2021,
+      "sourceUrl": "https://www1.hkexnews.hk/listedco/listconews/sehk/2022/0419/2022041900704_c.pdf",
+      "values": {
+        "GrossLoans": 1599084000000,
+        "NetLoans": 1597194000000,
+        "LoanLossAllowance": 9877000000,
+        "NonPerformingLoans": 4321000000,
+        "NetInterestIncome": 31941000000,
+        "NonPerformingLoanRatio": 0.0027,
+        "ProvisionCoverage": 2.285813469,
+        "EarningAssets": 3015219000000,
+        "NIM": 0.0106,
+        "CET1Ratio": 0.173
+      },
+      "evidence": "中银香港 2022 年报 pp. 21, 29, 31, 184",
+      "note": "减值贷款、总减值准备和生息资产均使用集团口径；贷款净额采用资产负债表列报的贷款及其他账项。"
+    }
+  ]
+}

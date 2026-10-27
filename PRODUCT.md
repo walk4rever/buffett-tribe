@@ -2,7 +2,7 @@
 
 # 价值部落 · Value Tribe — 产品设计文档
 
-> 最后更新：2026-10-16（v0.47.8）
+> 最后更新：2026-10-27（v0.47.16）
 
 ---
 
@@ -1155,7 +1155,16 @@ Apple HIG 精简风格：
 - 价值线不再调用旧规则分类或映射。无分类且无足够公司历史 PE 时，不生成估值走廊，估值状态为“数据不足”。
 - 旧字段只通过只读审计识别，需复核后再重新分类；页面不把旧类型映射成新类型。
 
-## 历史版本记录（v0.47.6）
+## 历史版本记录（v0.47.16）
+
+### v0.47.16 变更（2026-10-27）
+
+- **财务语义与指标认证基线**：
+  - 将收入、净利润、普通股权益拆成稳定、可审计的独立口径，并同步收紧 SEC XBRL、AkShare、yfinance 的标签映射、缺失值处理和历史回填规则；
+  - 新建 99 项正式指标契约、22 项排除清单、45 家公司验证集和完整覆盖矩阵；自动验证来源血缘、五年覆盖、业务适用性与证据化豁免；
+  - 银行、保险和 REIT 接通受控的 source-backed 专用抽取，当前 45 家测试集达到 2,666 `PIPELINE_PASS` / 88 `EXEMPT` / 0 `FAIL/PARTIAL/BLOCKED`；
+  - 估值页统一展示实际执行的 P/E 或 P/B 算法，并明确行业专业模型尚未完成的范围。
+- **已知边界**：45 家认证不等于全库自动接入。部分专用抽取器按 ticker 注册并使用人工核验目标值，onboard 主流程尚未自动调用；下一阶段先在 45 家之外做银行、保险、REIT 与工商模板盲测，再开展小比例全库试点。
 
 ### v0.47.6 变更（2026-10-11）
 
@@ -1721,6 +1730,7 @@ Apple HIG 精简风格：
 | /insights 洞见过滤 | ✅ 已上线（v0.38.x，?source= 过滤） |
 | Company Canvas（6 Tab UI） | ✅ 已实现 |
 | 管理分析 / 估值分析 Tab（LLM） | ✅ 已上线（v0.37.5，55 家） |
+| 财务指标契约与 45 家认证 | ✅ 已通过 45 家测试集；🟡 全库盲测与自动编排待完成 |
 | 年度报告 Tab | ✅ 已上线 |
 | 10-K / 20-F / 40-F 标准目录阅读 | 🟡 原文 iframe 阅读可用；侧栏目录靠 h1-h3 启发式抽取常为空、退化为附件列表，改造中（TODOS P0-①） |
 | 价格历史图 | 🟡 已上线 ticker 口径，securityId 与事件 marker 待补 |
@@ -2008,7 +2018,9 @@ CompanyAnalysis {
 - 页面数据来自数据库 `Financial` 表，通过 `src/lib/company-data.ts#getCompanyFinancials()` 读取。
 - 导入链路为 `scripts/pipeline-10k.ts` -> `scripts/import-10k-from-13f.ts` -> `scripts/import-10k-edgartools.ts`，共享入库逻辑在 `scripts/lib/annual-report-import-core.ts`。
 - 数据源优先级：SEC CompanyFacts API -> filing-level inline XBRL fallback。
-- 当前 `Financial.lineItem` 已覆盖通用公司常用项目：`Revenue`、`GrossProfit`、`OperatingIncome`、`NetIncome`、`OperatingCashFlow`、`TotalAssets`、`TotalLiabilities`、`ShareholdersEquity`、`EPSBasic`、`EPSDiluted`。
+- 当前 `Financial.lineItem` 已覆盖通用公司常用项目，并将易混口径拆开：总收入 `Revenue` / 经营收入 `OperatingRevenue` / 投资损益 `InvestmentGains`；归母净利润 `NetIncome` / 普通股股东净利润 `NetIncomeCommon`；归母权益 `ShareholdersEquity` / 普通股权益 `ShareholdersCommonEquity` / 总权益 `TotalEquity`。
+- 正式指标契约由 `METRICS.md` 维护，机器可读版本由 `scripts/sync-metric-contract.ts` 同步；45 家验证集通过 `npm run eval:metrics:matrix` 生成 4,455 格审计矩阵。
+- 当前认证基线为 2,666 个 `PIPELINE_PASS`、88 个证据化 `EXEMPT`、0 个 `FAIL/PARTIAL/BLOCKED`。其中银行、保险和 REIT 专用抽取器只覆盖当前注册样本；部分字段仍用人工核验事实定位原文，全库推广前必须完成 45 家之外的盲测并接入 onboard 自动编排。
 - `—` 不等于全部“没有数据”：可能是导入映射未覆盖、行业不适用、历史不足，或可由已有项目推导但当前尚未推导。
 
 ### 分层原则

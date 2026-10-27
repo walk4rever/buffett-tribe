@@ -55,6 +55,8 @@ export const PE_PRIMARY_VALUATION_ANCHORS: FinancialValuationAnchor[] = [
   "fee_earnings",
 ];
 
+export type ImplementedValuationMethod = "pe" | "pb";
+
 export type CapitalAllocationModel =
   | "operating_cashflow"
   | "financial_returns"
@@ -79,6 +81,8 @@ export type FinancialModelResolution = {
   modifiers: FinancialModelModifier[];
   modifierLabels: string[];
   valuationAnchor: FinancialValuationAnchor;
+  /** Intended sector-specific valuation model for classification and future work.
+   * It is not necessarily the valuation method currently executed by production. */
   valuationAnchorLabel: string;
   capitalAllocationModel: CapitalAllocationModel;
   showIndustrialCashFlow: boolean;
@@ -428,4 +432,16 @@ export function isPePrimaryValuationAnchor(
   anchor: FinancialValuationAnchor,
 ): boolean {
   return PE_PRIMARY_VALUATION_ANCHORS.includes(anchor);
+}
+
+export function getImplementedValuationMethod(
+  anchor: FinancialValuationAnchor,
+): ImplementedValuationMethod {
+  return isPePrimaryValuationAnchor(anchor) ? "pe" : "pb";
+}
+
+export function getImplementedValuationLabel(
+  anchor: FinancialValuationAnchor,
+): "P/E" | "P/B" {
+  return getImplementedValuationMethod(anchor) === "pe" ? "P/E" : "P/B";
 }

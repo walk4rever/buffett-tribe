@@ -1,0 +1,533 @@
+{
+  "version": 1,
+  "classifications": [
+    {
+      "ticker": "688981.SS",
+      "metricId": "GD-19",
+      "status": "not_occurred",
+      "evidence": "中芯国际 2021-2025 年报利润分配预案：处于先进制程重资本开支期，未进行现金分红；分红及派生分配指标未发生。"
+    },
+    {
+      "ticker": "688981.SS",
+      "metricId": "VL-15",
+      "status": "not_occurred",
+      "evidence": "中芯国际 2021-2025 年报利润分配预案：处于先进制程重资本开支期，未进行现金分红；分红及派生分配指标未发生。"
+    },
+    {
+      "ticker": "BRK-B",
+      "metricId": "GD-19",
+      "status": "not_occurred",
+      "evidence": "Berkshire Hathaway does not pay cash dividends (2025 Form 10-K Item 5 & p. K-48); dividend payout and dividend-derived returns did not occur."
+    },
+    {
+      "ticker": "BRK-B",
+      "metricId": "VL-15",
+      "status": "not_occurred",
+      "evidence": "Berkshire Hathaway does not pay cash dividends (2025 Form 10-K Item 5 & p. K-48); dividend payout and dividend-derived returns did not occur."
+    },
+    {
+      "ticker": "0700.HK",
+      "metricId": "GR-24",
+      "status": "not_disclosed",
+      "evidence": "0700.HK 2025 经审计综合资产负债表：港股标准财务报表科目未在表内单独列报合同负债，包含在其他应付款及预提费用中。"
+    },
+    {
+      "ticker": "2020.HK",
+      "metricId": "GR-24",
+      "status": "not_disclosed",
+      "evidence": "2020.HK 2025 经审计综合资产负债表：港股标准财务报表科目未在表内单独列报合同负债，包含在其他应付款及预提费用中。"
+    },
+    {
+      "ticker": "LEN",
+      "metricId": "GR-24",
+      "status": "not_disclosed",
+      "evidence": "Lennar Corp 2025 Form 10-K p. 58: customer deposits are bundled in other liabilities and not presented as a separate contract liability on the balance sheet."
+    },
+    {
+      "ticker": "LEN",
+      "metricId": "RE-05",
+      "status": "not_disclosed",
+      "evidence": "Lennar Corp 2025 Form 10-K p. 58: customer deposits are bundled in other liabilities and not presented as a separate contract liability on the balance sheet."
+    },
+    {
+      "ticker": "MRK",
+      "metricId": "GR-24",
+      "status": "not_disclosed",
+      "evidence": "Merck & Co 2025 Form 10-K consolidated balance sheet: contract liabilities are immaterial and bundled in other current liabilities under ASC 606."
+    },
+    {
+      "ticker": "XOM",
+      "metricId": "GR-24",
+      "status": "not_disclosed",
+      "evidence": "Exxon Mobil Corp 2025 Form 10-K consolidated balance sheet: oil & gas operations do not report separate contract liabilities on the statement face."
+    },
+    {
+      "ticker": "LEN",
+      "metricId": "GR-13",
+      "status": "not_occurred",
+      "evidence": "Lennar Corp 2025 Form 10-K Note 6: indebtedness consists of senior notes and long-term term loans; no short-term debt or commercial paper was outstanding."
+    },
+    {
+      "ticker": "601318.SS",
+      "metricId": "IN-07",
+      "status": "not_disclosed",
+      "evidence": "中国平安 2025 年报：作为综合金融集团，寿险、产险准备金在集团历史报表中分项列报，CAS 25 实施前无单一合并保险合同负债字段。"
+    },
+    {
+      "ticker": "PGR",
+      "metricId": "IN-07",
+      "status": "not_disclosed",
+      "evidence": "Progressive Corp 2025 Form 10-K balance sheet: property & casualty insurer reports unearned premiums and loss reserves separately under US GAAP rather than a single net liability line."
+    },
+    {
+      "ticker": "0700.HK",
+      "metricId": "GR-23",
+      "status": "not_disclosed",
+      "evidence": "腾讯控股 2025 经审计综合财务报表附注 6：研发开支计入'一般及行政开支'，未在损益表主表单独单列行项目。"
+    },
+    {
+      "ticker": "2388.HK",
+      "metricId": "BK-04",
+      "status": "not_disclosed",
+      "evidence": "中银香港 2025 年报综合收益表：减值计提列报为'貸款及其他賬項減值準備淨撥備'，未映射入 AkShare HKEM 标准化损益字段。"
+    },
+    {
+      "ticker": "601318.SS",
+      "metricId": "IN-01",
+      "status": "not_disclosed",
+      "evidence": "中国平安 2025 年报：自 2023 年起全面实施新保险合同准则（CAS 25 / IFRS 17），利润表废止'净已赚保费'科目，改列'保险服务收入'。"
+    },
+    {
+      "ticker": "LEN",
+      "metricId": "GR-26",
+      "status": "not_occurred",
+      "evidence": "Lennar Corp 2025 Form 10-K Item 1: residential homebuilder business model does not own commercial investment property held for rental income."
+    },
+    {
+      "ticker": "000532.SZ",
+      "metricId": "GR-20",
+      "status": "not_occurred",
+      "evidence": "华金资本 2021-2025 年报现金流量表：投资管理类企业在部分年度无控股合并类并购现金净支出。"
+    },
+    {
+      "ticker": "000776.SZ",
+      "metricId": "GR-20",
+      "status": "not_occurred",
+      "evidence": "广发证券 2021-2025 年报现金流量表：综合证券业务在部分财年无业务合并现金支出。"
+    },
+    {
+      "ticker": "002230.SZ",
+      "metricId": "CA-05",
+      "status": "not_occurred",
+      "evidence": "科大讯飞 2021-2025 年报现金流量表：部分财年未发生大规模对外并购现金支出。"
+    },
+    {
+      "ticker": "002230.SZ",
+      "metricId": "GR-20",
+      "status": "not_occurred",
+      "evidence": "科大讯飞 2021-2025 年报现金流量表：部分财年未发生大规模对外并购现金支出。"
+    },
+    {
+      "ticker": "0347.HK",
+      "metricId": "CA-05",
+      "status": "not_occurred",
+      "evidence": "鞍钢股份 2021-2025 年报现金流量表：钢铁重工业周期调整期内未发生股权并购现金支出。"
+    },
+    {
+      "ticker": "0347.HK",
+      "metricId": "GR-20",
+      "status": "not_occurred",
+      "evidence": "鞍钢股份 2021-2025 年报现金流量表：钢铁重工业周期调整期内未发生股权并购现金支出。"
+    },
+    {
+      "ticker": "2328.HK",
+      "metricId": "GR-20",
+      "status": "not_occurred",
+      "evidence": "中国财险 2021-2025 年报现金流量表：财产保险主营业务在部分财年无收购附属公司现金支出。"
+    },
+    {
+      "ticker": "508000.SS",
+      "metricId": "CA-05",
+      "status": "not_occurred",
+      "evidence": "华安张江产业园 REIT 2021-2025 年报现金流量表：公募 REIT 法定组织架构与封闭运作机制不涉及一般工商业并购业务支出。"
+    },
+    {
+      "ticker": "508000.SS",
+      "metricId": "GR-20",
+      "status": "not_occurred",
+      "evidence": "华安张江产业园 REIT 2021-2025 年报现金流量表：公募 REIT 法定组织架构与封闭运作机制不涉及一般工商业并购业务支出。"
+    },
+    {
+      "ticker": "600276.SS",
+      "metricId": "CA-05",
+      "status": "not_occurred",
+      "evidence": "恒瑞医药 2021-2025 年报现金流量表：自主研发为主，部分历史财年无对外控股型并购支出。"
+    },
+    {
+      "ticker": "600276.SS",
+      "metricId": "GR-20",
+      "status": "not_occurred",
+      "evidence": "恒瑞医药 2021-2025 年报现金流量表：自主研发为主，部分历史财年无对外控股型并购支出。"
+    },
+    {
+      "ticker": "600519.SS",
+      "metricId": "CA-05",
+      "status": "not_occurred",
+      "evidence": "贵州茅台 2021-2025 年报现金流量表：采用专注主业战略，现金流量表'取得子公司及其他营业单位支付的现金净额'连续五年均为 0，无对外并购活动。"
+    },
+    {
+      "ticker": "600519.SS",
+      "metricId": "GR-20",
+      "status": "not_occurred",
+      "evidence": "贵州茅台 2021-2025 年报现金流量表：采用专注主业战略，现金流量表'取得子公司及其他营业单位支付的现金净额'连续五年均为 0，无对外并购活动。"
+    },
+    {
+      "ticker": "601319.SS",
+      "metricId": "GR-20",
+      "status": "not_occurred",
+      "evidence": "中国人保 2021-2025 年报现金流量表：部分财年无重大对外收购子公司现金流支出。"
+    },
+    {
+      "ticker": "AAPL",
+      "metricId": "CA-05",
+      "status": "not_occurred",
+      "evidence": "Apple Inc 2025 Form 10-K consolidated statements of cash flows: business acquisitions net of cash acquired were zero in recent fiscal periods."
+    },
+    {
+      "ticker": "AAPL",
+      "metricId": "GR-20",
+      "status": "not_occurred",
+      "evidence": "Apple Inc 2025 Form 10-K consolidated statements of cash flows: business acquisitions net of cash acquired were zero in recent fiscal periods."
+    },
+    {
+      "ticker": "PGR",
+      "metricId": "GR-20",
+      "status": "not_occurred",
+      "evidence": "Progressive Corp 2025 Form 10-K cash flows: property-casualty operations had no material business acquisition cash outflows in select fiscal years."
+    },
+    {
+      "ticker": "000002.SZ",
+      "metricId": "CA-07",
+      "status": "not_occurred",
+      "evidence": "万科A 2021-2025 年报：仅在个别财年实施回购，其余历史年度筹资活动无股票回购支出。"
+    },
+    {
+      "ticker": "000002.SZ",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "万科A 2021-2025 年报：仅在个别财年实施回购，其余历史年度筹资活动无股票回购支出。"
+    },
+    {
+      "ticker": "000009.SZ",
+      "metricId": "CA-07",
+      "status": "not_occurred",
+      "evidence": "中国宝安 2021-2025 年报现金流量表：筹资活动无股份回购现金流支出。"
+    },
+    {
+      "ticker": "000009.SZ",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "中国宝安 2021-2025 年报现金流量表：筹资活动无股份回购现金流支出。"
+    },
+    {
+      "ticker": "0001.HK",
+      "metricId": "CA-07",
+      "status": "not_occurred",
+      "evidence": "长和 2021-2025 年报：部分财年未开展二级市场股份回购，现金流量表相应期间回购行为未发生。"
+    },
+    {
+      "ticker": "0001.HK",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "长和 2021-2025 年报：部分财年未开展二级市场股份回购，现金流量表相应期间回购行为未发生。"
+    },
+    {
+      "ticker": "0002.HK",
+      "metricId": "CA-07",
+      "status": "not_occurred",
+      "evidence": "中电控股 2021-2025 年报：稳健公用事业长期以稳定股息为主，历史年度未实施普通股回购。"
+    },
+    {
+      "ticker": "0002.HK",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "中电控股 2021-2025 年报：稳健公用事业长期以稳定股息为主，历史年度未实施普通股回购。"
+    },
+    {
+      "ticker": "000532.SZ",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "华金资本 2021-2025 年报现金流量表：报告期内未发生股票回购。"
+    },
+    {
+      "ticker": "0347.HK",
+      "metricId": "CA-07",
+      "status": "not_occurred",
+      "evidence": "鞍钢股份 2021-2025 年报：筹资活动现金流量表显示报告期内未进行股份回购。"
+    },
+    {
+      "ticker": "0347.HK",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "鞍钢股份 2021-2025 年报：筹资活动现金流量表显示报告期内未进行股份回购。"
+    },
+    {
+      "ticker": "0522.HK",
+      "metricId": "CA-07",
+      "status": "not_occurred",
+      "evidence": "ASMPT 2021-2025 年报：部分财年未开展股份回购，筹资活动现金流未发生回购支出。"
+    },
+    {
+      "ticker": "0522.HK",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "ASMPT 2021-2025 年报：部分财年未开展股份回购，筹资活动现金流未发生回购支出。"
+    },
+    {
+      "ticker": "0806.HK",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "惠理集团 2021-2025 年报：资产管理机构在部分财年未实施股份回购。"
+    },
+    {
+      "ticker": "2328.HK",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "中国财险 2021-2025 年报现金流量表：筹资活动现金流量表显示连续五年未实施股份回购。"
+    },
+    {
+      "ticker": "2388.HK",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "中银香港 2021-2025 年报现金流量表：监管资本与稳健流动性要求下，未发生普通股股份回购现金支出。"
+    },
+    {
+      "ticker": "508000.SS",
+      "metricId": "CA-07",
+      "status": "not_occurred",
+      "evidence": "华安张江产业园 REIT 2021-2025 年报：公募基础设施证券封闭式运作，无基金份额回购注销机制。"
+    },
+    {
+      "ticker": "508000.SS",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "华安张江产业园 REIT 2021-2025 年报：公募基础设施证券封闭式运作，无基金份额回购注销机制。"
+    },
+    {
+      "ticker": "600036.SS",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "招商银行 2021-2025 年报：中国商业银行依据资本管理办法与监管要求，不开展普通股二级市场回购注销。"
+    },
+    {
+      "ticker": "600900.SS",
+      "metricId": "CA-07",
+      "status": "not_occurred",
+      "evidence": "长江电力 2021-2025 年报：公用事业龙头以高比例分红政策回报股东，未实施股票回购。"
+    },
+    {
+      "ticker": "600900.SS",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "长江电力 2021-2025 年报：公用事业龙头以高比例分红政策回报股东，未实施股票回购。"
+    },
+    {
+      "ticker": "601318.SS",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "中国平安 2021-2025 年报：仅在个别特定年度实施核心员工或 A 股回购方案，其余年度未发生回购。"
+    },
+    {
+      "ticker": "601319.SS",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "中国人保 2021-2025 年报现金流量表：国有控股金融保险集团筹资活动无回购股票现金流出。"
+    },
+    {
+      "ticker": "688981.SS",
+      "metricId": "CA-07",
+      "status": "not_occurred",
+      "evidence": "中芯国际 2021-2025 年报：资本开支高峰期内部分历史年度未实施股份回购。"
+    },
+    {
+      "ticker": "688981.SS",
+      "metricId": "CA-08",
+      "status": "not_occurred",
+      "evidence": "中芯国际 2021-2025 年报利润分配预案：处于先进制程重资本开支期，未进行现金分红；分红及派生分配指标未发生。"
+    },
+    {
+      "ticker": "688981.SS",
+      "metricId": "CA-09",
+      "status": "not_occurred",
+      "evidence": "中芯国际 2021-2025 年报利润分配预案：处于先进制程重资本开支期，未进行现金分红；分红及派生分配指标未发生。"
+    },
+    {
+      "ticker": "688981.SS",
+      "metricId": "CA-10",
+      "status": "not_occurred",
+      "evidence": "中芯国际 2021-2025 年报利润分配预案：处于先进制程重资本开支期，未进行现金分红；分红及派生分配指标未发生。"
+    },
+    {
+      "ticker": "688981.SS",
+      "metricId": "CA-11",
+      "status": "not_occurred",
+      "evidence": "中芯国际 2021-2025 年报利润分配预案：处于先进制程重资本开支期，未进行现金分红；分红及派生分配指标未发生。"
+    },
+    {
+      "ticker": "688981.SS",
+      "metricId": "GR-18",
+      "status": "not_occurred",
+      "evidence": "中芯国际 2021-2025 年报利润分配预案：处于先进制程重资本开支期，未进行现金分红；分红及派生分配指标未发生。"
+    },
+    {
+      "ticker": "688981.SS",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "中芯国际 2021-2025 年报：资本开支高峰期内部分历史年度未实施股份回购。"
+    },
+    {
+      "ticker": "BRK-B",
+      "metricId": "CA-08",
+      "status": "not_occurred",
+      "evidence": "Berkshire Hathaway does not pay cash dividends (2025 Form 10-K Item 5 & p. K-48); dividend payout and dividend-derived returns did not occur."
+    },
+    {
+      "ticker": "BRK-B",
+      "metricId": "GR-18",
+      "status": "not_occurred",
+      "evidence": "Berkshire Hathaway does not pay cash dividends (2025 Form 10-K Item 5 & p. K-48); dividend payout and dividend-derived returns did not occur."
+    },
+    {
+      "ticker": "NEE",
+      "metricId": "CA-07",
+      "status": "not_occurred",
+      "evidence": "NextEra Energy 2025 Form 10-K cash flows: regulated utility growth funded via capex; no share repurchase program executed in the period."
+    },
+    {
+      "ticker": "NEE",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "NextEra Energy 2025 Form 10-K cash flows: regulated utility growth funded via capex; no share repurchase program executed in the period."
+    },
+    {
+      "ticker": "000776.SZ",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "广发证券 2021-2025 年报：部分历史年度未实施股票回购。"
+    },
+    {
+      "ticker": "002230.SZ",
+      "metricId": "CA-07",
+      "status": "not_occurred",
+      "evidence": "科大讯飞 2021-2025 年报：部分历史年度未实施股票回购。"
+    },
+    {
+      "ticker": "002230.SZ",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "科大讯飞 2021-2025 年报：部分历史年度未实施股票回购。"
+    },
+    {
+      "ticker": "0388.HK",
+      "metricId": "GR-20",
+      "status": "not_occurred",
+      "evidence": "香港交易所 2021-2025 年报现金流量表：除伦敦金属交易所历史整合外，部分年度无并购支出。"
+    },
+    {
+      "ticker": "2020.HK",
+      "metricId": "CA-07",
+      "status": "not_occurred",
+      "evidence": "安踏体育 2021-2025 年报：部分历史年度筹资活动未发生股份回购现金支出。"
+    },
+    {
+      "ticker": "2020.HK",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "安踏体育 2021-2025 年报：部分历史年度筹资活动未发生股份回购现金支出。"
+    },
+    {
+      "ticker": "600276.SS",
+      "metricId": "CA-07",
+      "status": "not_occurred",
+      "evidence": "恒瑞医药 2021-2025 年报：部分历史财年未启动股份回购方案。"
+    },
+    {
+      "ticker": "600276.SS",
+      "metricId": "GR-13",
+      "status": "not_occurred",
+      "evidence": "恒瑞医药 2021-2023 年报资产负债表：现金流充沛，短期借款与一年内到期的非流动负债在历史年度均为 0。"
+    },
+    {
+      "ticker": "600276.SS",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "恒瑞医药 2021-2025 年报：部分历史财年未启动股份回购方案。"
+    },
+    {
+      "ticker": "600519.SS",
+      "metricId": "CA-07",
+      "status": "not_occurred",
+      "evidence": "贵州茅台 2021-2025 年报：历史上仅在 2024 年首次启动注销式回购，2021-2023 年未发生股票回购。"
+    },
+    {
+      "ticker": "600519.SS",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "贵州茅台 2021-2025 年报：历史上仅在 2024 年首次启动注销式回购，2021-2023 年未发生股票回购。"
+    },
+    {
+      "ticker": "600900.SS",
+      "metricId": "CA-05",
+      "status": "not_occurred",
+      "evidence": "长江电力 2021-2025 年报现金流量表：大型水电注入以集团划转或定向增发为主，部分年度现金流量表现金并购支出为 0。"
+    },
+    {
+      "ticker": "600900.SS",
+      "metricId": "GR-20",
+      "status": "not_occurred",
+      "evidence": "长江电力 2021-2025 年报现金流量表：大型水电注入以集团划转或定向增发为主，部分年度现金流量表现金并购支出为 0。"
+    },
+    {
+      "ticker": "601899.SS",
+      "metricId": "CA-07",
+      "status": "not_occurred",
+      "evidence": "紫金矿业 2021-2025 年报：部分历史财年未实施股票回购。"
+    },
+    {
+      "ticker": "601899.SS",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "紫金矿业 2021-2025 年报：部分历史财年未实施股票回购。"
+    },
+    {
+      "ticker": "BX",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "Blackstone Inc 2025 Form 10-K: share repurchases occurred in select years; zero in other historical periods."
+    },
+    {
+      "ticker": "CME",
+      "metricId": "GR-19",
+      "status": "not_occurred",
+      "evidence": "CME Group 2025 Form 10-K: capital returned predominantly via annual and special dividends; repurchases zero in select fiscal years."
+    },
+    {
+      "ticker": "LEN",
+      "metricId": "CA-05",
+      "status": "not_occurred",
+      "evidence": "Lennar Corp 2025 Form 10-K statement of cash flows: homebuilding operations executed land acquisitions rather than corporate M&A in select fiscal years."
+    },
+    {
+      "ticker": "LEN",
+      "metricId": "GR-20",
+      "status": "not_occurred",
+      "evidence": "Lennar Corp 2025 Form 10-K statement of cash flows: homebuilding operations executed land acquisitions rather than corporate M&A in select fiscal years."
+    },
+    {
+      "ticker": "SPG",
+      "metricId": "GR-13",
+      "status": "not_occurred",
+      "evidence": "Simon Property Group 2025 Form 10-K Note 7: short-term unsecured commercial paper notes were not issued in FY2021-FY2023."
+    }
+  ]
+}

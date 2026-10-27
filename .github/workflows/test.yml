@@ -14,7 +14,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements-akshare.txt
+            requirements-hkex.txt
       - run: npm ci
+      - run: python -m pip install -r requirements-akshare.txt -r requirements-hkex.txt yfinance==1.4.0
       - run: npm ci
         working-directory: services/pi-gateway
       - run: npm run sync:shared

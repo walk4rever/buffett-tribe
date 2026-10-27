@@ -314,6 +314,10 @@ async function importEdgarToolsAnnualReports(params: {
             item.periodType,
           );
           if (companyFactsFact == null) return { upserted: 0, missing: 1 };
+          const fastMappingRule =
+            companyFactsFact.accn && companyFactsFact.accn !== filing.accession
+              ? `sec-xbrl:restated_in_${companyFactsFact.accn}@${companyFactsFact.filed ?? filing.filedAt}`
+              : `sec-xbrl:${companyFactsFact.tag ?? item.key}@${companyFactsFact.filed ?? filing.filedAt}`;
           await db.financial.upsert({
             where: {
               entityId_periodEnd_periodType_lineItem: {
@@ -331,11 +335,17 @@ async function importEdgarToolsAnnualReports(params: {
               lineItem: item.key,
               value: decimalFromNumber(companyFactsFact.value),
               unit: companyFactsFact.unit,
+              rawXbrlTag: companyFactsFact.tag,
+              mappingRule: fastMappingRule,
+              confidence: 1,
             },
             update: {
               sourceId: extSource.id,
               value: decimalFromNumber(companyFactsFact.value),
               unit: companyFactsFact.unit,
+              rawXbrlTag: companyFactsFact.tag,
+              mappingRule: fastMappingRule,
+              confidence: 1,
             },
           });
           return { upserted: 1, missing: 0 };
@@ -446,6 +456,7 @@ async function importEdgarToolsAnnualReports(params: {
 
           let value = companyFactsFact?.value ?? null;
           let unit = companyFactsFact?.unit ?? null;
+          let resolvedTag = companyFactsFact?.tag ?? undefined;
           let usedFallback = false;
           if (value == null) {
             const inlineFact = pickInlineFactWithUnit(
@@ -460,6 +471,7 @@ async function importEdgarToolsAnnualReports(params: {
             if (inlineFact) {
               value = inlineFact.value;
               unit = inlineFact.unit ? normalizeInlineUnitRef(inlineFact.unit) ?? unit : unit;
+              resolvedTag = inlineFact.tag;
               usedFallback = true;
             }
           }
@@ -471,6 +483,12 @@ async function importEdgarToolsAnnualReports(params: {
               await persistReportingCurrency(companyEntity.id, "us", currency);
             }
           }
+
+          const mappingRule = usedFallback
+            ? `sec-xbrl:inline:${resolvedTag ?? item.key}@${filing.filedAt}`
+            : companyFactsFact?.accn && companyFactsFact.accn !== filing.accession
+              ? `sec-xbrl:restated_in_${companyFactsFact.accn}@${companyFactsFact.filed ?? filing.filedAt}`
+              : `sec-xbrl:${resolvedTag ?? item.key}@${companyFactsFact?.filed ?? filing.filedAt}`;
 
           await db.financial.upsert({
             where: {
@@ -489,11 +507,17 @@ async function importEdgarToolsAnnualReports(params: {
               lineItem: item.key,
               value: decimalFromNumber(value),
               unit,
+              rawXbrlTag: resolvedTag,
+              mappingRule,
+              confidence: 1,
             },
             update: {
               sourceId: extSource.id,
               value: decimalFromNumber(value),
               unit,
+              rawXbrlTag: resolvedTag,
+              mappingRule,
+              confidence: 1,
             },
           });
           return { upserted: 1, missing: 0, fallbackUsed: usedFallback ? 1 : 0 };

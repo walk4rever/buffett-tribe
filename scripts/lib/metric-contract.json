@@ -1,0 +1,3590 @@
+{
+  "version": 1,
+  "source": "METRICS.md",
+  "metrics": [
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "营业收入",
+      "definition": "公司总收入或营业额",
+      "formulaOrRule": "公司总收入或营业额",
+      "source": "SEC XBRL、10-K、HKEX 年报、CNINFO/akshare",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "已与经营收入、投资及公允价值变动收益隔离",
+      "id": "GR-01",
+      "key": "revenue",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "Revenue"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "营业成本",
+      "definition": "与营业收入对应的成本",
+      "formulaOrRule": "与营业收入对应的成本",
+      "source": "利润表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "金融企业通常不适用",
+      "id": "GR-02",
+      "key": "cost_of_revenue",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "developer"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "CostOfRevenue"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "毛利润",
+      "definition": "公司直接披露，或营业收入减营业成本",
+      "formulaOrRule": "公司直接披露，或营业收入减营业成本",
+      "source": "利润表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "金融企业通常不适用",
+      "id": "GR-03",
+      "key": "gross_profit",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "developer"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "GrossProfit"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "营业利润",
+      "definition": "经营性利润",
+      "formulaOrRule": "经营性利润",
+      "source": "利润表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "不同市场口径需在 hint 中说明",
+      "id": "GR-04",
+      "key": "operating_income",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "developer"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingIncome"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "净利润",
+      "definition": "归属于母公司股东的净利润",
+      "formulaOrRule": "归属于母公司股东的净利润",
+      "source": "利润表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "三层语义已拆分；普通股口径 45/45，严格审计通过",
+      "id": "GR-05",
+      "key": "net_income",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NetIncome"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "摊薄 EPS",
+      "definition": "稀释后普通股每股收益",
+      "formulaOrRule": "稀释后普通股每股收益",
+      "source": "利润表/附注",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "多类别股票和拆股口径需保持一致",
+      "id": "GR-06",
+      "key": "eps.diluted",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "EPSDiluted"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "基本 EPS",
+      "definition": "基本普通股每股收益",
+      "formulaOrRule": "基本普通股每股收益",
+      "source": "利润表/附注",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "只在摊薄 EPS 缺失时作为回退",
+      "id": "GR-07",
+      "key": "eps.basic",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "EPSBasic"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "总资产",
+      "definition": "期末合并总资产",
+      "formulaOrRule": "期末合并总资产",
+      "source": "资产负债表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "无",
+      "id": "GR-08",
+      "key": "assets.total",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "TotalAssets"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "总负债",
+      "definition": "期末合并总负债",
+      "formulaOrRule": "期末合并总负债",
+      "source": "资产负债表",
+      "status": "部分",
+      "gap": "数据+口径",
+      "detail": "历史错误派生行仍需清理",
+      "id": "GR-09",
+      "key": "liabilities.total",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "TotalLiabilities"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "股东权益",
+      "definition": "归属于母公司股东的权益",
+      "formulaOrRule": "归属于母公司股东的权益",
+      "source": "资产负债表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "归母权益和普通股权益已隔离；普通股权益 45/45",
+      "id": "GR-10",
+      "key": "equity.shareholders",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "ShareholdersEquity"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "总权益",
+      "definition": "母公司权益加少数股东权益",
+      "formulaOrRule": "母公司权益加少数股东权益",
+      "source": "资产负债表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "不能用于普通股 BPS",
+      "id": "GR-11",
+      "key": "equity.total",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "TotalEquity"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "现金及等价物",
+      "definition": "期末现金和现金等价物",
+      "formulaOrRule": "期末现金和现金等价物",
+      "source": "资产负债表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "限制性现金口径需说明",
+      "id": "GR-12",
+      "key": "cash_and_equivalents",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "CashAndCashEquivalents"
+          ],
+          [
+            "CashEndOfPeriod"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "短期有息债务",
+      "definition": "短期借款等有息负债",
+      "formulaOrRule": "短期借款等有息负债",
+      "source": "资产负债表/附注",
+      "status": "部分",
+      "gap": "覆盖",
+      "detail": "不同公司科目覆盖不一",
+      "id": "GR-13",
+      "key": "debt.short_term",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "ShortTermDebt"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "长期有息债务",
+      "definition": "长期借款、债券等有息负债",
+      "formulaOrRule": "长期借款、债券等有息负债",
+      "source": "资产负债表/附注",
+      "status": "部分",
+      "gap": "覆盖",
+      "detail": "不同公司科目覆盖不一",
+      "id": "GR-14",
+      "key": "debt.long_term",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "LongTermDebt"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "总有息债务",
+      "definition": "短期与长期有息债务合计",
+      "formulaOrRule": "短期与长期有息债务合计",
+      "source": "公司披露或两项相加",
+      "status": "部分",
+      "gap": "覆盖",
+      "detail": "不能用总负债替代",
+      "id": "GR-15",
+      "key": "debt.total",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "TotalDebt"
+          ],
+          [
+            "ShortTermDebt",
+            "LongTermDebt"
+          ],
+          [
+            "LongTermDebt"
+          ],
+          [
+            "ShortTermDebt"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "经营现金流",
+      "definition": "经营活动产生的现金流量净额",
+      "formulaOrRule": "经营活动产生的现金流量净额",
+      "source": "现金流量表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "无",
+      "id": "GR-16",
+      "key": "cash_flow.operating",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingCashFlow"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "资本开支",
+      "definition": "购买或建造长期资产支付的现金",
+      "formulaOrRule": "购买或建造长期资产支付的现金",
+      "source": "现金流量表",
+      "status": "部分",
+      "gap": "覆盖",
+      "detail": "部分公司缺失；REIT 还需区分维护性资本开支",
+      "id": "GR-17",
+      "key": "capex",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "CapEx"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "现金分红",
+      "definition": "本期实际支付的普通股现金分红",
+      "formulaOrRule": "本期实际支付的普通股现金分红",
+      "source": "现金流量表/权益变动表",
+      "status": "部分",
+      "gap": "覆盖",
+      "detail": "不得混用宣派、应付与实际支付",
+      "id": "GR-18",
+      "key": "dividends_paid",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "DividendsPaid"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "股票回购",
+      "definition": "本期实际支付的普通股回购现金",
+      "formulaOrRule": "本期实际支付的普通股回购现金",
+      "source": "现金流量表/权益变动表",
+      "status": "部分",
+      "gap": "覆盖",
+      "detail": "回购金额不等同于注销股数",
+      "id": "GR-19",
+      "key": "share_repurchase",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "ShareRepurchaseAmt"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "并购支出",
+      "definition": "取得业务支付的现金净值",
+      "formulaOrRule": "取得业务支付的现金净值",
+      "source": "现金流量表/附注",
+      "status": "部分",
+      "gap": "覆盖",
+      "detail": "跨年并购和资产处置需要区分",
+      "id": "GR-20",
+      "key": "acquisitions",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "PurchaseSaleOfBusinessNet"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "期末股数",
+      "definition": "财年末已发行普通股数",
+      "formulaOrRule": "财年末已发行普通股数",
+      "source": "年报封面、资产负债表、附注",
+      "status": "部分",
+      "gap": "数据+覆盖",
+      "detail": "BRK-B 等缺失；多股权需折算为同一证券口径",
+      "id": "GR-21",
+      "key": "shares.period_end",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "CommonStockSharesOutstanding"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "加权平均稀释股数",
+      "definition": "EPS 使用的期间加权稀释股数",
+      "formulaOrRule": "EPS 使用的期间加权稀释股数",
+      "source": "利润表/附注",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "不得用于 BPS 或期末股本",
+      "id": "GR-22",
+      "key": "shares.weighted_diluted",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "WeightedAverageSharesDiluted"
+          ],
+          [
+            "WeightedAverageShares"
+          ],
+          [
+            "NetIncomeCommon",
+            "EPSDiluted"
+          ],
+          [
+            "NetIncome",
+            "EPSDiluted"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "研发费用",
+      "definition": "研发投入计入损益的金额",
+      "formulaOrRule": "研发投入计入损益的金额",
+      "source": "利润表/附注",
+      "status": "部分",
+      "gap": "覆盖",
+      "detail": "资本化研发口径需说明；港股部分公司并入行政开支",
+      "id": "GR-23",
+      "key": "rnd_expense",
+      "basis": "reported",
+      "roles": [
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "RnDExpense"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "合同负债/预收款",
+      "definition": "客户预付款和合同负债",
+      "formulaOrRule": "客户预付款和合同负债",
+      "source": "资产负债表/附注",
+      "status": "已实现",
+      "gap": "口径",
+      "detail": "地产预收房款与普通合同负债需分模板",
+      "id": "GR-24",
+      "key": "contract_liabilities",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "developer"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "ContractLiabilities"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "存货/开发成本",
+      "definition": "存货、土地及在建开发成本",
+      "formulaOrRule": "存货、土地及在建开发成本",
+      "source": "资产负债表/附注",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "地产模式建议拆土地、在建和完工",
+      "id": "GR-25",
+      "key": "inventory",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "semiconductor_hardware",
+        "energy_materials",
+        "developer"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "Inventory"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "投资性物业",
+      "definition": "为租金或资本增值持有的物业",
+      "formulaOrRule": "为租金或资本增值持有的物业",
+      "source": "资产负债表/附注",
+      "status": "部分",
+      "gap": "覆盖",
+      "detail": "覆盖不足，账面值不能直接替代 NAV",
+      "id": "GR-26",
+      "key": "investment_property",
+      "basis": "reported",
+      "roles": [
+        "reit_property",
+        "developer"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "InvestmentProperty"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "营收同比",
+      "definition": "`Revenue[t] / Revenue[t-1] - 1`",
+      "formulaOrRule": "`Revenue[t] / Revenue[t-1] - 1`",
+      "source": "inputs:连续两年总收入",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "上年必须为正且为连续财年",
+      "id": "GD-01",
+      "key": "revenue.growth",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "Revenue"
+          ]
+        ],
+        "minYears": 2
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "净利润同比",
+      "definition": "`NetIncome[t] / NetIncome[t-1] - 1`",
+      "formulaOrRule": "`NetIncome[t] / NetIncome[t-1] - 1`",
+      "source": "inputs:连续两年归母净利润",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "亏损时改用趋势描述",
+      "id": "GD-02",
+      "key": "net_income.growth",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NetIncome"
+          ]
+        ],
+        "minYears": 2
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "总资产同比",
+      "definition": "`TotalAssets[t] / TotalAssets[t-1] - 1`",
+      "formulaOrRule": "`TotalAssets[t] / TotalAssets[t-1] - 1`",
+      "source": "inputs:连续两年总资产",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "上年必须为正且连续",
+      "id": "GD-03",
+      "key": "assets.growth",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "TotalAssets"
+          ]
+        ],
+        "minYears": 2
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "毛利率",
+      "definition": "`GrossProfit / OperatingRevenue`",
+      "formulaOrRule": "`GrossProfit / OperatingRevenue`",
+      "source": "inputs:毛利润、经营收入",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "金融企业不适用",
+      "id": "GD-04",
+      "key": "gross_margin",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "developer"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "GrossProfit",
+            "OperatingRevenue"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "营业利润率",
+      "definition": "`OperatingIncome / Revenue`",
+      "formulaOrRule": "`OperatingIncome / Revenue`",
+      "source": "inputs:营业利润、总收入",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "金融企业适用性按模板判断",
+      "id": "GD-05",
+      "key": "operating_margin",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "developer"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingIncome",
+            "Revenue"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "净利率",
+      "definition": "`NetIncome / Revenue`",
+      "formulaOrRule": "`NetIncome / Revenue`",
+      "source": "inputs:归母净利润、总收入",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "亏损时仍保留负值",
+      "id": "GD-06",
+      "key": "net_margin",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NetIncome",
+            "Revenue"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "ROE",
+      "definition": "`NetIncomeCommon / average(opening_common_equity, closing_common_equity)`",
+      "formulaOrRule": "`NetIncomeCommon / average(opening_common_equity, closing_common_equity)`",
+      "source": "inputs:普通股净利润、普通股权益",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "使用期初期末平均普通股权益",
+      "id": "GD-07",
+      "key": "roe",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NetIncomeCommon",
+            "ShareholdersCommonEquity"
+          ],
+          [
+            "NetIncome",
+            "ShareholdersCommonEquity"
+          ],
+          [
+            "NetIncomeCommon",
+            "ShareholdersEquity"
+          ]
+        ],
+        "minYears": 2
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "ROA",
+      "definition": "`NetIncome / average(opening_assets, closing_assets)`",
+      "formulaOrRule": "`NetIncome / average(opening_assets, closing_assets)`",
+      "source": "inputs:归母净利润、总资产",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "资产基数使用合并口径",
+      "id": "GD-08",
+      "key": "roa",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NetIncome",
+            "TotalAssets"
+          ]
+        ],
+        "minYears": 2
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "FCF",
+      "definition": "`OCF - abs(CapEx)`",
+      "formulaOrRule": "`OCF - abs(CapEx)`",
+      "source": "inputs:OCF、CapEx",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "银行和保险不适用",
+      "id": "GD-09",
+      "key": "free_cash_flow",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingCashFlow",
+            "CapEx"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "FCF Margin",
+      "definition": "`FCF / Revenue`",
+      "formulaOrRule": "`FCF / Revenue`",
+      "source": "inputs:FCF、收入",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "REIT 普通 CapEx 口径需谨慎",
+      "id": "GD-10",
+      "key": "fcf_margin",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingCashFlow",
+            "CapEx",
+            "Revenue"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "现金转化率",
+      "definition": "`OCF / NetIncome`，净利润必须为正",
+      "formulaOrRule": "`OCF / NetIncome`，净利润必须为正",
+      "source": "inputs:OCF、归母净利润",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "净利润为负时返回空值",
+      "id": "GD-11",
+      "key": "cash_conversion",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingCashFlow",
+            "NetIncome"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "总资产周转率",
+      "definition": "`Revenue / average(opening_assets, closing_assets)`",
+      "formulaOrRule": "`Revenue / average(opening_assets, closing_assets)`",
+      "source": "inputs:收入、总资产",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "金融业解释力有限",
+      "id": "GD-12",
+      "key": "asset_turnover",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "Revenue",
+            "TotalAssets"
+          ]
+        ],
+        "minYears": 2
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "负债/资产",
+      "definition": "`TotalLiabilities / TotalAssets`",
+      "formulaOrRule": "`TotalLiabilities / TotalAssets`",
+      "source": "inputs:总负债、总资产",
+      "status": "已实现",
+      "gap": "口径",
+      "detail": "依赖总负债清理",
+      "id": "GD-13",
+      "key": "liabilities_to_assets",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "TotalLiabilities",
+            "TotalAssets"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "账面权益/资产",
+      "definition": "`ShareholdersEquity / TotalAssets`",
+      "formulaOrRule": "`ShareholdersEquity / TotalAssets`",
+      "source": "inputs:归母权益、总资产",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "不得称为 CET1",
+      "id": "GD-14",
+      "key": "equity_to_assets",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "ShareholdersEquity",
+            "TotalAssets"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "净负债率",
+      "definition": "`(TotalDebt - Cash) / ShareholdersEquity`",
+      "formulaOrRule": "`(TotalDebt - Cash) / ShareholdersEquity`",
+      "source": "inputs:债务、现金、权益",
+      "status": "已实现",
+      "gap": "数据+口径",
+      "detail": "任一必需项缺失时返回空值",
+      "id": "GD-15",
+      "key": "net_debt_ratio",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "TotalDebt",
+            "CashAndCashEquivalents",
+            "ShareholdersEquity"
+          ],
+          [
+            "ShortTermDebt",
+            "LongTermDebt",
+            "CashAndCashEquivalents",
+            "ShareholdersEquity"
+          ],
+          [
+            "LongTermDebt",
+            "CashAndCashEquivalents",
+            "ShareholdersEquity"
+          ],
+          [
+            "ShortTermDebt",
+            "CashAndCashEquivalents",
+            "ShareholdersEquity"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "ROIC",
+      "definition": "`NOPAT / average(invested_capital)`",
+      "formulaOrRule": "`NOPAT / average(invested_capital)`",
+      "source": "inputs:营业利润、税率、债务、现金、权益",
+      "status": "已实现",
+      "gap": "覆盖",
+      "detail": "投入资本 ≤ 0 时必须返回空值",
+      "id": "GD-16",
+      "key": "roic",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "developer"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingIncome",
+            "ShareholdersEquity",
+            "TotalDebt",
+            "CashAndCashEquivalents"
+          ],
+          [
+            "OperatingIncome",
+            "ShareholdersEquity",
+            "ShortTermDebt",
+            "LongTermDebt",
+            "CashAndCashEquivalents"
+          ],
+          [
+            "OperatingIncome",
+            "ShareholdersEquity",
+            "LongTermDebt",
+            "CashAndCashEquivalents"
+          ],
+          [
+            "OperatingIncome",
+            "ShareholdersEquity",
+            "ShortTermDebt",
+            "CashAndCashEquivalents"
+          ],
+          [
+            "OperatingIncome",
+            "ShareholdersEquity",
+            "CashAndCashEquivalents"
+          ]
+        ],
+        "minYears": 2
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "5 年 CAGR",
+      "definition": "`(last/first)^(1/years)-1`",
+      "formulaOrRule": "`(last/first)^(1/years)-1`",
+      "source": "inputs:同口径序列",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "首末值必须为正",
+      "id": "GD-17",
+      "key": "cagr_5y",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "Revenue"
+          ],
+          [
+            "NetIncome"
+          ],
+          [
+            "FreeCashFlow"
+          ],
+          [
+            "ShareholdersEquity"
+          ],
+          [
+            "EPSDiluted"
+          ]
+        ],
+        "minYears": 5
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "期末股数变化",
+      "definition": "`ending_shares[t] / ending_shares[t-n] - 1`",
+      "formulaOrRule": "`ending_shares[t] / ending_shares[t-n] - 1`",
+      "source": "inputs:期末股数序列",
+      "status": "部分",
+      "gap": "数据+覆盖",
+      "detail": "BRK-B 等缺失期末股数",
+      "id": "GD-18",
+      "key": "shares.change",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "CommonStockSharesOutstanding"
+          ]
+        ],
+        "minYears": 2
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "每股已实施分红",
+      "definition": "`abs(DividendsPaid) / period_end_shares`",
+      "formulaOrRule": "`abs(DividendsPaid) / period_end_shares`",
+      "source": "inputs:分红、期末股数",
+      "status": "部分",
+      "gap": "数据+覆盖",
+      "detail": "只能在股数来源为期末时计算",
+      "id": "GD-19",
+      "key": "dividend_per_share",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "DividendsPaid",
+            "CommonStockSharesOutstanding"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "capital_allocation",
+      "subsection": null,
+      "name": "完整现金流年度",
+      "definition": "同时有 OCF 和 CapEx 的财年",
+      "formulaOrRule": "同时有 OCF 和 CapEx 的财年",
+      "source": "inputs:OCF、CapEx",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "无",
+      "id": "CA-01",
+      "key": "capital.flow_coverage",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingCashFlow",
+            "CapEx"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "capital_allocation",
+      "subsection": null,
+      "name": "累计经营现金流",
+      "definition": "完整年度 OCF 合计",
+      "formulaOrRule": "完整年度 OCF 合计",
+      "source": "inputs:OCF、CapEx",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "必须使用同一 cohort",
+      "id": "CA-02",
+      "key": "capital.cumulative_ocf",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingCashFlow",
+            "CapEx"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "capital_allocation",
+      "subsection": null,
+      "name": "累计资本开支",
+      "definition": "完整年度 `abs(CapEx)` 合计",
+      "formulaOrRule": "完整年度 `abs(CapEx)` 合计",
+      "source": "inputs:OCF、CapEx",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "必须使用同一 cohort",
+      "id": "CA-03",
+      "key": "capital.cumulative_capex",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingCashFlow",
+            "CapEx"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "capital_allocation",
+      "subsection": null,
+      "name": "累计自由现金流",
+      "definition": "累计 OCF 减累计 CapEx",
+      "formulaOrRule": "累计 OCF 减累计 CapEx",
+      "source": "inputs:累计 OCF、累计 CapEx",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "无",
+      "id": "CA-04",
+      "key": "capital.cumulative_fcf",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingCashFlow",
+            "CapEx"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "capital_allocation",
+      "subsection": null,
+      "name": "累计并购",
+      "definition": "完整年度并购现金支出合计",
+      "formulaOrRule": "完整年度并购现金支出合计",
+      "source": "inputs:并购、OCF、CapEx",
+      "status": "部分",
+      "gap": "覆盖",
+      "detail": "并购字段覆盖率不足",
+      "id": "CA-05",
+      "key": "capital.cumulative_acquisitions",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingCashFlow",
+            "CapEx",
+            "PurchaseSaleOfBusinessNet"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "capital_allocation",
+      "subsection": null,
+      "name": "并购覆盖率",
+      "definition": "有并购披露的完整现金流年度 / 完整现金流年度",
+      "formulaOrRule": "有并购披露的完整现金流年度 / 完整现金流年度",
+      "source": "inputs:并购、OCF、CapEx",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "无",
+      "id": "CA-06",
+      "key": "capital.acquisitions_coverage",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingCashFlow",
+            "CapEx"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "capital_allocation",
+      "subsection": null,
+      "name": "累计回购",
+      "definition": "有披露年度 `abs(回购)` 合计",
+      "formulaOrRule": "有披露年度 `abs(回购)` 合计",
+      "source": "inputs:回购",
+      "status": "部分",
+      "gap": "覆盖",
+      "detail": "不能把未披露当 0",
+      "id": "CA-07",
+      "key": "capital.cumulative_buybacks",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingCashFlow",
+            "CapEx",
+            "ShareRepurchaseAmt"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "capital_allocation",
+      "subsection": null,
+      "name": "累计分红",
+      "definition": "有披露年度 `abs(分红)` 合计",
+      "formulaOrRule": "有披露年度 `abs(分红)` 合计",
+      "source": "inputs:分红",
+      "status": "部分",
+      "gap": "覆盖",
+      "detail": "不能把未披露当 0",
+      "id": "CA-08",
+      "key": "capital.cumulative_dividends",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingCashFlow",
+            "CapEx",
+            "DividendsPaid"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "capital_allocation",
+      "subsection": null,
+      "name": "股东回报",
+      "definition": "完整年度回购加分红",
+      "formulaOrRule": "完整年度回购加分红",
+      "source": "inputs:回购、分红",
+      "status": "部分",
+      "gap": "覆盖",
+      "detail": "两项必须同 cohort 完整",
+      "id": "CA-09",
+      "key": "capital.shareholder_return",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingCashFlow",
+            "CapEx",
+            "DividendsPaid"
+          ],
+          [
+            "OperatingCashFlow",
+            "CapEx",
+            "ShareRepurchaseAmt"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "capital_allocation",
+      "subsection": null,
+      "name": "FCF 扣除分配结余",
+      "definition": "`FCF - 并购 - 回购 - 分红`",
+      "formulaOrRule": "`FCF - 并购 - 回购 - 分红`",
+      "source": "inputs:四项完整",
+      "status": "部分",
+      "gap": "覆盖",
+      "detail": "任一项缺失时返回空值",
+      "id": "CA-10",
+      "key": "capital.fcf_after_distributions",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingCashFlow",
+            "CapEx",
+            "DividendsPaid"
+          ],
+          [
+            "OperatingCashFlow",
+            "CapEx",
+            "ShareRepurchaseAmt"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "capital_allocation",
+      "subsection": null,
+      "name": "净利润减分红回购差额",
+      "definition": "`累计净利润 - 回购 - 分红`",
+      "formulaOrRule": "`累计净利润 - 回购 - 分红`",
+      "source": "inputs:净利润、分红、回购",
+      "status": "部分",
+      "gap": "口径",
+      "detail": "不得称为法定留存收益或监管资本",
+      "id": "CA-11",
+      "key": "capital.retained_difference",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NetIncome",
+            "DividendsPaid"
+          ],
+          [
+            "NetIncome",
+            "ShareRepurchaseAmt"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "valuation",
+      "subsection": null,
+      "name": "最新收盘价",
+      "definition": "最新可用的交易币种收盘价",
+      "formulaOrRule": "最新可用的交易币种收盘价",
+      "source": "行情数据",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "必须保留价格日期和市场",
+      "id": "VL-01",
+      "key": "valuation.price_latest",
+      "basis": "reported",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "needsPrice": true
+      }
+    },
+    {
+      "section": "valuation",
+      "subsection": null,
+      "name": "市值",
+      "definition": "`latest_price * period_end_shares * share_class_scale`",
+      "formulaOrRule": "`latest_price * period_end_shares * share_class_scale`",
+      "source": "行情、股数",
+      "status": "部分",
+      "gap": "数据+口径",
+      "detail": "BRK-B 缺股数；多股权需统一",
+      "id": "VL-02",
+      "key": "valuation.market_cap",
+      "basis": "reported_or_derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "CommonStockSharesOutstanding"
+          ]
+        ],
+        "needsPrice": true
+      }
+    },
+    {
+      "section": "valuation",
+      "subsection": null,
+      "name": "当前 PE",
+      "definition": "`latest_price / EPS`",
+      "formulaOrRule": "`latest_price / EPS`",
+      "source": "行情、EPS",
+      "status": "已实现",
+      "gap": "口径",
+      "detail": "EPS 披露时点和股类需对齐",
+      "id": "VL-03",
+      "key": "valuation.pe_current",
+      "basis": "reported_or_derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "EPSDiluted"
+          ]
+        ],
+        "needsPrice": true
+      }
+    },
+    {
+      "section": "valuation",
+      "subsection": null,
+      "name": "当前 PB",
+      "definition": "`market_cap / common_equity`",
+      "formulaOrRule": "`market_cap / common_equity`",
+      "source": "行情、权益",
+      "status": "部分",
+      "gap": "数据+口径",
+      "detail": "权益和股数语义未统一",
+      "id": "VL-04",
+      "key": "valuation.pb_current",
+      "basis": "reported_or_derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "ShareholdersCommonEquity",
+            "CommonStockSharesOutstanding"
+          ]
+        ],
+        "needsPrice": true
+      }
+    },
+    {
+      "section": "valuation",
+      "subsection": null,
+      "name": "BPS",
+      "definition": "`common_equity / period_end_shares`",
+      "formulaOrRule": "`common_equity / period_end_shares`",
+      "source": "权益、期末股数",
+      "status": "部分",
+      "gap": "数据+口径",
+      "detail": "BRK-B 缺股数；A/B 股需折算",
+      "id": "VL-05",
+      "key": "valuation.bps",
+      "basis": "reported_or_derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "ShareholdersCommonEquity",
+            "CommonStockSharesOutstanding"
+          ]
+        ],
+        "needsPrice": true
+      }
+    },
+    {
+      "section": "valuation",
+      "subsection": null,
+      "name": "历史 PE 走廊",
+      "definition": "历史价格 / 当时可得 EPS",
+      "formulaOrRule": "历史价格 / 当时可得 EPS",
+      "source": "价格、EPS、披露日",
+      "status": "部分",
+      "gap": "口径+覆盖",
+      "detail": "当前披露日处理不是完整 Point-in-Time",
+      "id": "VL-06",
+      "key": "valuation.pe_history",
+      "basis": "reported_or_derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "EPSDiluted"
+          ]
+        ],
+        "needsPrice": true,
+        "minYears": 2
+      }
+    },
+    {
+      "section": "valuation",
+      "subsection": null,
+      "name": "历史 PB 走廊",
+      "definition": "历史价格 / 当时可得 BPS",
+      "formulaOrRule": "历史价格 / 当时可得 BPS",
+      "source": "价格、BPS、披露日",
+      "status": "部分",
+      "gap": "数据+覆盖",
+      "detail": "BPS 缺失导致 BRK-B 走廊为空",
+      "id": "VL-07",
+      "key": "valuation.pb_history",
+      "basis": "reported_or_derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "ShareholdersCommonEquity",
+            "CommonStockSharesOutstanding"
+          ]
+        ],
+        "needsPrice": true,
+        "minYears": 2
+      }
+    },
+    {
+      "section": "valuation",
+      "subsection": null,
+      "name": "历史 PE/PB 中位数",
+      "definition": "走廊样本中位数",
+      "formulaOrRule": "走廊样本中位数",
+      "source": "历史走廊",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "样本需过滤异常值",
+      "id": "VL-08",
+      "key": "valuation.multiple_median",
+      "basis": "reported_or_derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "EPSDiluted"
+          ]
+        ],
+        "needsPrice": true,
+        "minYears": 2
+      }
+    },
+    {
+      "section": "valuation",
+      "subsection": null,
+      "name": "历史估值分位",
+      "definition": "当前倍数在历史分布中的位置",
+      "formulaOrRule": "当前倍数在历史分布中的位置",
+      "source": "历史走廊、当前倍数",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "无",
+      "id": "VL-09",
+      "key": "valuation.percentile",
+      "basis": "reported_or_derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "EPSDiluted"
+          ]
+        ],
+        "needsPrice": true,
+        "minYears": 2
+      }
+    },
+    {
+      "section": "valuation",
+      "subsection": null,
+      "name": "参考 PE/PB",
+      "definition": "历史中位数或明确的行业参考值",
+      "formulaOrRule": "历史中位数或明确的行业参考值",
+      "source": "历史走廊、行业配置",
+      "status": "部分",
+      "gap": "来源+覆盖",
+      "detail": "行业参考值来源和版本需固化",
+      "id": "VL-10",
+      "key": "valuation.benchmark_multiple",
+      "basis": "reported_or_derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "EPSDiluted"
+          ]
+        ],
+        "needsPrice": true,
+        "minYears": 2
+      }
+    },
+    {
+      "section": "valuation",
+      "subsection": null,
+      "name": "FCF Yield",
+      "definition": "`FCF / market_cap`",
+      "formulaOrRule": "`FCF / market_cap`",
+      "source": "FCF、市值",
+      "status": "已实现",
+      "gap": "覆盖",
+      "detail": "银行和保险不适用",
+      "id": "VL-11",
+      "key": "valuation.fcf_yield",
+      "basis": "reported_or_derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "OperatingCashFlow",
+            "CapEx",
+            "CommonStockSharesOutstanding"
+          ]
+        ],
+        "needsPrice": true
+      }
+    },
+    {
+      "section": "valuation",
+      "subsection": null,
+      "name": "PE 估值走廊",
+      "definition": "历史 EPS × 参考 PE × 倍数",
+      "formulaOrRule": "历史 EPS × 参考 PE × 倍数",
+      "source": "EPS、参考 PE",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "不代表目标价",
+      "id": "VL-12",
+      "key": "valuation.pe_band",
+      "basis": "reported_or_derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "EPSDiluted"
+          ]
+        ],
+        "needsPrice": true,
+        "minYears": 2
+      }
+    },
+    {
+      "section": "valuation",
+      "subsection": null,
+      "name": "PB 估值走廊",
+      "definition": "历史 BPS × 参考 PB × 倍数",
+      "formulaOrRule": "历史 BPS × 参考 PB × 倍数",
+      "source": "BPS、参考 PB",
+      "status": "部分",
+      "gap": "数据",
+      "detail": "BRK-B 走廊为空",
+      "id": "VL-13",
+      "key": "valuation.pb_band",
+      "basis": "reported_or_derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "ShareholdersCommonEquity",
+            "CommonStockSharesOutstanding"
+          ]
+        ],
+        "needsPrice": true,
+        "minYears": 2
+      }
+    },
+    {
+      "section": "valuation",
+      "subsection": null,
+      "name": "PE 情景回报",
+      "definition": "`latest_eps*(1+growth)^5*exit_pe`",
+      "formulaOrRule": "`latest_eps*(1+growth)^5*exit_pe`",
+      "source": "EPS、价格、增长率、退出 PE",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "这是价格回报，不含股息",
+      "id": "VL-14",
+      "key": "valuation.pe_scenario",
+      "basis": "reported_or_derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "EPSDiluted"
+          ]
+        ],
+        "needsPrice": true,
+        "minYears": 2
+      }
+    },
+    {
+      "section": "valuation",
+      "subsection": null,
+      "name": "PB-ROE 情景回报",
+      "definition": "BPS 按留存收益增长，再乘退出 PB",
+      "formulaOrRule": "BPS 按留存收益增长，再乘退出 PB",
+      "source": "BPS、ROE、派息率、退出 PB",
+      "status": "已实现",
+      "gap": "覆盖",
+      "detail": "缺完整分红数据时不可计算",
+      "id": "VL-15",
+      "key": "valuation.pb_roe_scenario",
+      "basis": "reported_or_derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications",
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "reit_property",
+        "developer",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "ShareholdersCommonEquity",
+            "CommonStockSharesOutstanding",
+            "NetIncome",
+            "DividendsPaid"
+          ]
+        ],
+        "needsPrice": true,
+        "minYears": 2
+      }
+    },
+    {
+      "section": "bank",
+      "subsection": "8.1 银行",
+      "name": "净利息收入",
+      "definition": "利息收入减利息支出",
+      "formulaOrRule": "利息收入减利息支出",
+      "source": "利润表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "不同银行收入总额口径需说明",
+      "id": "BK-01",
+      "key": "bank.net_interest_income",
+      "basis": "reported",
+      "roles": [
+        "bank"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NetInterestIncome"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "bank",
+      "subsection": "8.1 银行",
+      "name": "贷款净额",
+      "definition": "资产负债表列报的贷款及垫款净额；总额与准备的统计范围不同的银行以报表列报值为准",
+      "formulaOrRule": "资产负债表列报的贷款及垫款净额；总额与准备的统计范围不同的银行以报表列报值为准",
+      "source": "资产负债表/附注",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "三家银行 2021–2025 年均已覆盖",
+      "id": "BK-02",
+      "key": "bank.net_loans",
+      "basis": "reported_or_derived",
+      "roles": [
+        "bank"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NetLoans"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "bank",
+      "subsection": "8.1 银行",
+      "name": "客户存款",
+      "definition": "吸收客户存款期末余额",
+      "formulaOrRule": "吸收客户存款期末余额",
+      "source": "资产负债表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "无",
+      "id": "BK-03",
+      "key": "bank.deposits",
+      "basis": "reported",
+      "roles": [
+        "bank"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "TotalDeposits"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "bank",
+      "subsection": "8.1 银行",
+      "name": "信用减值损失",
+      "definition": "本期贷款和金融资产减值计提",
+      "formulaOrRule": "本期贷款和金融资产减值计提",
+      "source": "利润表",
+      "status": "已实现",
+      "gap": "口径",
+      "detail": "非贷款减值需要拆出",
+      "id": "BK-04",
+      "key": "bank.provision",
+      "basis": "reported_or_derived",
+      "roles": [
+        "bank"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "ProvisionForCreditLosses"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "bank",
+      "subsection": "8.1 银行",
+      "name": "NIM",
+      "definition": "公司披露，或净利息收入 / 平均生息资产",
+      "formulaOrRule": "公司披露，或净利息收入 / 平均生息资产",
+      "source": "年报经营表/监管披露",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "三家银行 2021–2025 年均为 5/5；披露值与公式交叉校验通过",
+      "id": "BK-05",
+      "key": "bank.nim",
+      "basis": "reported_or_derived",
+      "roles": [
+        "bank"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NIM"
+          ],
+          [
+            "NetInterestIncome",
+            "EarningAssets"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "bank",
+      "subsection": "8.1 银行",
+      "name": "不良贷款",
+      "definition": "非应计和逾期贷款余额",
+      "formulaOrRule": "非应计和逾期贷款余额",
+      "source": "信用质量附注",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "三家银行 2021–2025 年均为 5/5",
+      "id": "BK-06",
+      "key": "bank.npl",
+      "basis": "reported_or_derived",
+      "roles": [
+        "bank"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NonPerformingLoans"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "bank",
+      "subsection": "8.1 银行",
+      "name": "不良贷款率",
+      "definition": "公司披露，或不良贷款 / 贷款总额",
+      "formulaOrRule": "公司披露，或不良贷款 / 贷款总额",
+      "source": "信用质量附注",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "三家银行五年披露值与公式交叉校验通过",
+      "id": "BK-07",
+      "key": "bank.npl_ratio",
+      "basis": "reported_or_derived",
+      "roles": [
+        "bank"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NonPerformingLoanRatio"
+          ],
+          [
+            "NonPerformingLoans",
+            "GrossLoans"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "bank",
+      "subsection": "8.1 银行",
+      "name": "贷款损失准备",
+      "definition": "贷款组合期末减值准备",
+      "formulaOrRule": "贷款组合期末减值准备",
+      "source": "资产负债表/信用质量附注",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "三家银行 2021–2025 年均为 5/5",
+      "id": "BK-08",
+      "key": "bank.loan_loss_allowance",
+      "basis": "reported_or_derived",
+      "roles": [
+        "bank"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "LoanLossAllowance"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "bank",
+      "subsection": "8.1 银行",
+      "name": "拨备覆盖率",
+      "definition": "贷款损失准备 / 不良贷款",
+      "formulaOrRule": "贷款损失准备 / 不良贷款",
+      "source": "减值准备、不良贷款",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "三家银行五年公式与披露值交叉校验通过",
+      "id": "BK-09",
+      "key": "bank.provision_coverage",
+      "basis": "reported_or_derived",
+      "roles": [
+        "bank"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "ProvisionCoverage"
+          ],
+          [
+            "LoanLossAllowance",
+            "NonPerformingLoans"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "bank",
+      "subsection": "8.1 银行",
+      "name": "CET1 比率",
+      "definition": "公司披露：核心一级资本 / 风险加权资产",
+      "formulaOrRule": "公司披露：核心一级资本 / 风险加权资产",
+      "source": "监管资本表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "三家银行 2021–2025 年均为 5/5；监管口径已记录",
+      "id": "BK-10",
+      "key": "bank.cet1",
+      "basis": "reported_or_derived",
+      "roles": [
+        "bank"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "CET1Ratio"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "insurance",
+      "subsection": "8.2 保险",
+      "name": "净已赚保费",
+      "definition": "已赚保费扣除分出保费",
+      "formulaOrRule": "已赚保费扣除分出保费",
+      "source": "利润表/保险附注",
+      "status": "已实现",
+      "gap": "口径",
+      "detail": "IFRS 17 与旧准则口径需标识",
+      "id": "IN-01",
+      "key": "insurance.net_premiums",
+      "basis": "reported",
+      "roles": [
+        "life_health",
+        "property_casualty"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NetPremiumsEarned"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "insurance",
+      "subsection": "8.2 保险",
+      "name": "赔付与保单利益",
+      "definition": "赔付和保单利益支出",
+      "formulaOrRule": "赔付和保单利益支出",
+      "source": "利润表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "寿险不能直接套财险赔付率",
+      "id": "IN-02",
+      "key": "insurance.claims",
+      "basis": "reported",
+      "roles": [
+        "life_health",
+        "property_casualty"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "PolicyClaimsAndBenefits"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "insurance",
+      "subsection": "8.2 保险",
+      "name": "赔付率",
+      "definition": "`abs(赔付与保单利益) / 净已赚保费`",
+      "formulaOrRule": "`abs(赔付与保单利益) / 净已赚保费`",
+      "source": "利润表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "PGR、601319.SS、2328.HK 均为 5/5；只适用于财险角色",
+      "id": "IN-03",
+      "key": "insurance.claims_ratio",
+      "basis": "reported_or_derived",
+      "roles": [
+        "property_casualty"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "PolicyClaimsAndBenefits",
+            "NetPremiumsEarned"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "insurance",
+      "subsection": "8.2 保险",
+      "name": "综合成本率",
+      "definition": "公司披露，或 `(赔付+费用)/已赚保费`",
+      "formulaOrRule": "公司披露，或 `(赔付+费用)/已赚保费`",
+      "source": "财险经营表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "PGR、601319.SS、2328.HK 均为 5/5，并保留公司计算口径",
+      "id": "IN-04",
+      "key": "insurance.combined_ratio",
+      "basis": "reported_or_derived",
+      "roles": [
+        "property_casualty"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "CombinedRatio"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "insurance",
+      "subsection": "8.2 保险",
+      "name": "投资资产组合",
+      "definition": "保险资金投资资产合计",
+      "formulaOrRule": "保险资金投资资产合计",
+      "source": "资产负债表/附注",
+      "status": "部分",
+      "gap": "覆盖",
+      "detail": "公司覆盖不一致",
+      "id": "IN-05",
+      "key": "insurance.investments",
+      "basis": "reported_or_derived",
+      "roles": [
+        "life_health",
+        "property_casualty"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "TotalInvestments"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "insurance",
+      "subsection": "8.2 保险",
+      "name": "净投资收益",
+      "definition": "利息、股息、租金等净投资收益",
+      "formulaOrRule": "利息、股息、租金等净投资收益",
+      "source": "利润表",
+      "status": "部分",
+      "gap": "口径",
+      "detail": "需与已实现投资损益分开",
+      "id": "IN-06",
+      "key": "insurance.net_investment_income",
+      "basis": "reported_or_derived",
+      "roles": [
+        "life_health",
+        "property_casualty"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NetInvestmentIncome"
+          ],
+          [
+            "InvestmentIncome"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "insurance",
+      "subsection": "8.2 保险",
+      "name": "保险合同负债",
+      "definition": "保险合同准备金和负债",
+      "formulaOrRule": "保险合同准备金和负债",
+      "source": "资产负债表/附注",
+      "status": "已实现",
+      "gap": "口径",
+      "detail": "2328.HK 2021–2025 已核对；作为核心浮存金池表达",
+      "id": "IN-07",
+      "key": "insurance.contract_liabilities",
+      "basis": "reported",
+      "roles": [
+        "life_health",
+        "property_casualty"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "InsuranceContractLiabilities"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "insurance",
+      "subsection": "8.2 保险",
+      "name": "EV",
+      "definition": "公司披露的调整净资产加有效业务价值；若只披露 EV Equity，保存 EV Equity 并明确范围",
+      "formulaOrRule": "公司披露的调整净资产加有效业务价值；若只披露 EV Equity，保存 EV Equity 并明确范围",
+      "source": "公司 EV 披露",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "平安与友邦均为 5/5；MetLife 不披露适用集团 EV",
+      "id": "IN-08",
+      "key": "insurance.ev",
+      "basis": "reported",
+      "roles": [
+        "life_health"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "EV"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "insurance",
+      "subsection": "8.2 保险",
+      "name": "NBV",
+      "definition": "报告期新业务价值",
+      "formulaOrRule": "报告期新业务价值",
+      "source": "公司 EV/NBV 披露",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "平安与友邦均为 5/5；保留公司精算假设",
+      "id": "IN-09",
+      "key": "insurance.nbv",
+      "basis": "reported",
+      "roles": [
+        "life_health"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NBV"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "insurance",
+      "subsection": "8.2 保险",
+      "name": "新业务价值率",
+      "definition": "公司披露的新业务价值率，或 NBV / 新业务保费",
+      "formulaOrRule": "公司披露的新业务价值率，或 NBV / 新业务保费",
+      "source": "EV/NBV 补充表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "平安与友邦均为 5/5；按标准保费或年化首年保费分别标注",
+      "id": "IN-10",
+      "key": "insurance.vnb_margin",
+      "basis": "reported_or_derived",
+      "roles": [
+        "life_health"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NewBusinessValueMargin"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "insurance",
+      "subsection": "8.2 保险",
+      "name": "偿付能力充足率",
+      "definition": "可用资本 / 监管要求资本",
+      "formulaOrRule": "可用资本 / 监管要求资本",
+      "source": "监管偿付能力披露",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "平安、人保、友邦均为 5/5；C-ROSS 与香港 GWS/LCSM 分别保留",
+      "id": "IN-11",
+      "key": "insurance.solvency",
+      "basis": "reported_or_derived",
+      "roles": [
+        "life_health",
+        "property_casualty"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "SolvencyRatio"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "real_estate",
+      "subsection": "8.3 REITs 与地产",
+      "name": "NOI",
+      "definition": "公司披露，或物业收入减不含折旧摊销的物业运营费用",
+      "formulaOrRule": "公司披露，或物业收入减不含折旧摊销的物业运营费用",
+      "source": "物业组合/分部披露",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "三家 REIT 代表公司均为 5/5；SPG 与领展使用公司披露口径，508000.SS 使用确定性公式",
+      "id": "RE-01",
+      "key": "real_estate.noi",
+      "basis": "reported_or_derived",
+      "roles": [
+        "reit_property"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NOI"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "real_estate",
+      "subsection": "8.3 REITs 与地产",
+      "name": "FFO",
+      "definition": "公司披露；标准公式为净利润加房地产折旧摊销并调整处置收益",
+      "formulaOrRule": "公司披露；标准公式为净利润加房地产折旧摊销并调整处置收益",
+      "source": "公司 FFO 表或 NAREIT 公式",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "SPG 按 NAREIT 口径完成 5/5；非 NAREIT 披露的 REIT 按公司适用性标为 N/A",
+      "id": "RE-02",
+      "key": "real_estate.ffo",
+      "basis": "reported",
+      "roles": [
+        "reit_property"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "FFO"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "real_estate",
+      "subsection": "8.3 REITs 与地产",
+      "name": "出租率",
+      "definition": "已出租面积 / 可出租面积",
+      "formulaOrRule": "已出租面积 / 可出租面积",
+      "source": "物业运营补充表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "三家 REIT 代表公司均为 5/5；公司披露的物业组合范围保存在来源说明中",
+      "id": "RE-03",
+      "key": "real_estate.occupancy",
+      "basis": "reported",
+      "roles": [
+        "reit_property"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "Occupancy"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "real_estate",
+      "subsection": "8.3 REITs 与地产",
+      "name": "FFO/股",
+      "definition": "FFO / 摊薄股数及单位",
+      "formulaOrRule": "FFO / 摊薄股数及单位",
+      "source": "FFO、股数与每份披露",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "SPG 2021–2025 均为 5/5，并用摊薄股数交叉校验",
+      "id": "RE-04",
+      "key": "real_estate.ffo_per_share",
+      "basis": "reported_or_derived",
+      "roles": [
+        "reit_property"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "FFOPerShare"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "real_estate",
+      "subsection": "8.3 REITs 与地产",
+      "name": "合同负债",
+      "definition": "开发商预售款及客户合同负债",
+      "formulaOrRule": "开发商预售款及客户合同负债",
+      "source": "资产负债表/附注",
+      "status": "已实现",
+      "gap": "口径",
+      "detail": "需区分地产预售和普通合同负债",
+      "id": "RE-05",
+      "key": "real_estate.contract_liabilities",
+      "basis": "reported_or_derived",
+      "roles": [
+        "developer"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "ContractLiabilities"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "real_estate",
+      "subsection": "8.3 REITs 与地产",
+      "name": "存货/开发成本",
+      "definition": "土地、在建和待售物业",
+      "formulaOrRule": "土地、在建和待售物业",
+      "source": "资产负债表/附注",
+      "status": "已实现",
+      "gap": "覆盖",
+      "detail": "建议拆土地、在建和完工",
+      "id": "RE-06",
+      "key": "real_estate.inventory",
+      "basis": "reported_or_derived",
+      "roles": [
+        "developer"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "Inventory"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "financial_services",
+      "subsection": "8.5 金融服务",
+      "name": "手续费及佣金净收入",
+      "definition": "经纪、承销、咨询等净收入（或以费用为主业的经营收入）",
+      "formulaOrRule": "经纪、承销、咨询等净收入（或以费用为主业的经营收入）",
+      "source": "利润表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "券商/银行取手续费及佣金净收入，交易所/资管取主营经营收入",
+      "id": "FS-01",
+      "key": "financial_services.fee_income",
+      "basis": "reported",
+      "roles": [
+        "asset_mgmt",
+        "broker_exchange"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NetFeeAndCommissionIncome"
+          ],
+          [
+            "OperatingRevenue"
+          ]
+        ]
+      }
+    }
+  ]
+}

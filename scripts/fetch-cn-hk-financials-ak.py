@@ -89,9 +89,10 @@ HK_ITEM_NAME_MAP: dict[str, str] = {
     "指定以公允价值记账之金融资产": "TotalInvestments",
     "可供出售证券": "TotalInvestments",
     "其他投资": "TotalInvestments",
-    "投资物业": "TotalInvestments",
+    "投资物业": "InvestmentProperty",
     "保险合同负债": "InsuranceContractLiabilities",
     "保险准备金": "InsuranceContractLiabilities",
+    "合约负债": "ContractLiabilities",
     "再保险资产": "ReinsuranceAssets",
     "客户贷款及垫款净额": "NetLoans",
     # 现金流量表 (cash flow statement)
@@ -104,6 +105,7 @@ HK_ITEM_NAME_MAP: dict[str, str] = {
     "已付股息": "DividendsPaid",
     "已付股息(融资)": "DividendsPaid",
     "股息支付": "DividendsPaid",
+    "研发开支": "RnDExpense",
 }
 
 HK_STATEMENTS = ["资产负债表", "利润表", "现金流量表"]
@@ -190,6 +192,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out-dir", default="/tmp/cn-hk-financials-ak", help="Directory for the generated JSON fixture")
     parser.add_argument("--import-db", action="store_true", help="Import the generated JSON into the database after fetching")
     parser.add_argument("--keep-file", action="store_true", help="Keep the generated JSON instead of deleting it after import")
+    parser.add_argument(
+        "--line-items",
+        default=None,
+        help="Optional comma-separated canonical line items to import",
+    )
     parser.add_argument(
         "--dividends-only",
         action="store_true",
@@ -605,6 +612,24 @@ def main() -> int:
 
     if not args.dividends_only:
         check_completeness(records, args.code)
+        if args.line_items:
+            requested = {
+                item.strip()
+                for item in args.line_items.split(",")
+                if item.strip()
+            }
+            records = [
+                record
+                for record in records
+                if record.get("lineItem") in requested
+            ]
+            if not records:
+                print(
+                    f"No requested line items returned for {args.code}: "
+                    f"{sorted(requested)}",
+                    file=sys.stderr,
+                )
+                return 1
 
     out_dir = Path(args.out_dir)
     json_path = write_output(out_dir, args.code, records)

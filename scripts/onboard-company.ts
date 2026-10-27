@@ -421,6 +421,14 @@ function buildImportFinancialsStep(ticker: string, market: "cn" | "hk", code: st
         await persistCompanyReportingCurrency(entity.id, currency, prisma);
       }
       const seed = CN_HK_SEEDS[ticker];
+      const usesYfinanceFallback =
+        market === "hk" &&
+        /REIT|房地产投资信托|不動產投資信托|不动产投资信托/i.test(
+          seed?.industry ?? "",
+        );
+      const usesCnReitFinancials =
+        market === "cn" &&
+        /REIT|基础设施不动产投资信托/i.test(seed?.industry ?? "");
       const args = [
         "--code", code,
         "--market", market,
@@ -432,6 +440,28 @@ function buildImportFinancialsStep(ticker: string, market: "cn" | "hk", code: st
         args.push("--data-currency", seed.financialDataCurrency);
       }
       args.push("--import-db");
+      if (usesCnReitFinancials) {
+        console.log(
+          `[onboard-company] ${ticker} is a CN public REIT; using annual-report REIT financial adapter.`,
+        );
+        return runNpmScript("import:cn-reit-financials", [
+          "--code",
+          code,
+          "--ticker",
+          ticker,
+          "--currency",
+          currency,
+          "--from-year",
+          fromYear,
+          "--import-db",
+        ]);
+      }
+      if (usesYfinanceFallback) {
+        console.log(
+          `[onboard-company] ${ticker} is a HK REIT outside akshare's financial template; using yfinance fallback.`,
+        );
+        return runNpmScript("import:us-financials-yf", ["--ticker", ticker]);
+      }
       return runNpmScript("import:cn-hk-financials", args);
     },
     verify: async (entityId) => {
@@ -475,7 +505,13 @@ function buildCreateAnnualReportExtSourceStep(ticker: string, market: "cn" | "hk
 }
 
 // P2: Slice existing ExtSource records (fetch PDFs and create FilingSection)
-function buildSliceAnnualReportStep(ticker: string, market: "cn" | "hk", fromYear: string, code: string): Step {
+function buildSliceAnnualReportStep(
+  ticker: string,
+  market: "cn" | "hk",
+  fromYear: string,
+  code: string,
+  force: boolean,
+): Step {
   return {
     id: "slice_annual_report",
     label: "切片年报原文（下载 PDF → FilingSection，不上传 R2）",
@@ -495,7 +531,7 @@ function buildSliceAnnualReportStep(ticker: string, market: "cn" | "hk", fromYea
             sections: { some: { content: { not: "" } } },
           },
         });
-        if (usableSourceCount > 0) {
+        if (usableSourceCount > 0 && !force) {
           console.log(
             `[onboard-company] 已有 ${usableSourceCount} 份可用年报切片，跳过重复下载；深度学习将使用最近一份可用证据。`,
           );
@@ -882,7 +918,13 @@ async function main() {
     const seedEntityStep = buildSeedEntityStep(ticker, market, code);
     const importFinancialsStep = buildImportFinancialsStep(ticker, market, code, fromYear);
     const createAnnualExtSourceStep = buildCreateAnnualReportExtSourceStep(ticker, market, fromYear, code);
-    const sliceAnnualReportStep = buildSliceAnnualReportStep(ticker, market, fromYear, code);
+    const sliceAnnualReportStep = buildSliceAnnualReportStep(
+      ticker,
+      market,
+      fromYear,
+      code,
+      force,
+    );
 
     const phase1Steps: Step[] = [
       seedEntityStep,

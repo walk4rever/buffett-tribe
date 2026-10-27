@@ -1,3 +1,5 @@
+import { resolveNetIncomeCommon } from "@/lib/net-income-semantics";
+
 export function calculateFreeCashFlow(
   operatingCashFlow: number | null,
   capEx: number | null,
@@ -124,11 +126,11 @@ export function normalizeFinancialYearsStockSplits<
     const basic = parseNum(items, "WeightedAverageShares");
     if (basic != null && basic > 0) return basic;
 
-    // Fallback: implied from NetIncome / EPSDiluted (only if same currency and both available)
-    const net = parseNum(items, "NetIncome");
+    // Fallback: common net income / EPS, with matching units required.
+    const net = resolveNetIncomeCommon(items, itemUnits);
     const eps = parseNum(items, "EPSDiluted") ?? parseNum(items, "EPSBasic");
     if (net != null && eps != null && net !== 0 && eps !== 0 && (net > 0 === eps > 0)) {
-      const netUnit = itemUnits?.NetIncome?.toUpperCase();
+      const netUnit = itemUnits?.NetIncomeCommon?.toUpperCase();
       const epsUnit = (itemUnits?.EPSDiluted ?? itemUnits?.EPSBasic)?.toUpperCase();
       if (!netUnit || !epsUnit || netUnit === epsUnit || epsUnit.includes(netUnit)) {
         const implied = Math.abs(net / eps);

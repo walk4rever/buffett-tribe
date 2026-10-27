@@ -1,0 +1,526 @@
+{
+  "version": 1,
+  "facts": [
+    {
+      "ticker": "601318.SS",
+      "periodEnd": "2025-12-31",
+      "sourcePeriodYear": 2025,
+      "currency": "CNY",
+      "values": {
+        "EV": 1504288000000,
+        "NBV": 36897000000,
+        "NewBusinessValueMargin": 0.285,
+        "SolvencyRatio": 1.933
+      },
+      "requiredMetrics": ["EV", "NBV", "新业务价值率", "偿付能力充足率"],
+      "evidence": "中国平安 2025 年报 pp. 71-74；偿付能力表 p. 26",
+      "note": "EV 使用集团内含价值；NBV 和新业务价值率使用寿险及健康险业务；偿付能力为集团综合偿付能力充足率。"
+    },
+    {
+      "ticker": "601318.SS",
+      "periodEnd": "2024-12-31",
+      "sourcePeriodYear": 2025,
+      "currency": "CNY",
+      "values": {
+        "EV": 1422602000000,
+        "NBV": 28534000000,
+        "NewBusinessValueMargin": 0.227,
+        "SolvencyRatio": 2.041
+      },
+      "requiredMetrics": ["EV", "NBV", "新业务价值率", "偿付能力充足率"],
+      "evidence": "中国平安 2025 年报 comparative tables",
+      "note": "比较期使用 2025 年报披露口径。"
+    },
+    {
+      "ticker": "601318.SS",
+      "periodEnd": "2023-12-31",
+      "sourcePeriodYear": 2023,
+      "currency": "CNY",
+      "values": {
+        "EV": 1390126000000,
+        "NBV": 31080000000,
+        "NewBusinessValueMargin": 0.187,
+        "SolvencyRatio": 2.08
+      },
+      "requiredMetrics": ["EV", "NBV", "新业务价值率", "偿付能力充足率"],
+      "evidence": "中国平安 2023 年报 pp. 43-51",
+      "note": "2023 年起采用下调后的长期投资回报率与风险贴现率假设；保留公司披露原值。"
+    },
+    {
+      "ticker": "601318.SS",
+      "periodEnd": "2022-12-31",
+      "sourcePeriodYear": 2023,
+      "currency": "CNY",
+      "values": {
+        "EV": 1423763000000,
+        "NBV": 28820000000,
+        "NewBusinessValueMargin": 0.241,
+        "SolvencyRatio": 2.176
+      },
+      "requiredMetrics": ["EV", "NBV", "新业务价值率", "偿付能力充足率"],
+      "evidence": "中国平安 2023 年报 comparative tables",
+      "note": "比较期采用 2023 年报重列后的 EV/NBV 可比口径。"
+    },
+    {
+      "ticker": "601318.SS",
+      "periodEnd": "2021-12-31",
+      "sourcePeriodYear": 2021,
+      "currency": "CNY",
+      "values": {
+        "EV": 1395509000000,
+        "NBV": 37898000000,
+        "NewBusinessValueMargin": 0.278,
+        "SolvencyRatio": 2.335
+      },
+      "requiredMetrics": ["EV", "NBV", "新业务价值率", "偿付能力充足率"],
+      "evidence": "中国平安 2021 年报 pp. 2, 72",
+      "note": "2021 年按当时内含价值评估假设披露；后续年度假设变更不回填历史值。"
+    },
+    {
+      "ticker": "601319.SS",
+      "periodEnd": "2025-12-31",
+      "sourcePeriodYear": 2025,
+      "currency": "CNY",
+      "values": {
+        "NetPremiumsEarned": 511594000000,
+        "PolicyClaimsAndBenefits": 378579560000,
+        "UnderwritingExpenses": 120736184000,
+        "ClaimsRatio": 0.74,
+        "CombinedRatio": 0.976,
+        "TotalInvestments": 1901634000000,
+        "InsuranceContractLiabilities": 1239519000000,
+        "SolvencyRatio": 2.499
+      },
+      "derivedFields": ["PolicyClaimsAndBenefits", "UnderwritingExpenses"],
+      "requiredMetrics": ["赔付率", "综合成本率", "偿付能力充足率"],
+      "evidence": "中国人保 2025 年报 pp. 14, 42",
+      "note": "P&C metrics use PICC P&C insurance service revenue and disclosed ratios; claims and expense amounts are deterministically derived from those ratios."
+    },
+    {
+      "ticker": "601319.SS",
+      "periodEnd": "2024-12-31",
+      "sourcePeriodYear": 2024,
+      "currency": "CNY",
+      "values": {
+        "NetPremiumsEarned": 485223000000,
+        "PolicyClaimsAndBenefits": 352757121000,
+        "UnderwritingExpenses": 125187534000,
+        "ClaimsRatio": 0.727,
+        "CombinedRatio": 0.985,
+        "TotalInvestments": 1641756000000,
+        "InsuranceContractLiabilities": 1122797000000,
+        "SolvencyRatio": 2.81
+      },
+      "derivedFields": ["PolicyClaimsAndBenefits", "UnderwritingExpenses"],
+      "requiredMetrics": ["赔付率", "综合成本率", "偿付能力充足率"],
+      "evidence": "中国人保 2024 年报 pp. 14, 41-42",
+      "note": "人保财险口径；赔付与费用金额按披露比率确定性拆分。"
+    },
+    {
+      "ticker": "601319.SS",
+      "periodEnd": "2023-12-31",
+      "sourcePeriodYear": 2024,
+      "currency": "CNY",
+      "values": {
+        "NetPremiumsEarned": 457203000000,
+        "PolicyClaimsAndBenefits": 321870912000,
+        "UnderwritingExpenses": 124359216000,
+        "ClaimsRatio": 0.704,
+        "CombinedRatio": 0.976,
+        "TotalInvestments": 1433131000000,
+        "InsuranceContractLiabilities": 980730000000,
+        "SolvencyRatio": 2.51
+      },
+      "derivedFields": ["PolicyClaimsAndBenefits", "UnderwritingExpenses"],
+      "requiredMetrics": ["赔付率", "综合成本率", "偿付能力充足率"],
+      "evidence": "中国人保 2024 年报 comparative tables; 2023 年报 p. 44",
+      "note": "比较期采用 2024 年报数据；偿付能力采用 2023 年报披露值。"
+    },
+    {
+      "ticker": "601319.SS",
+      "periodEnd": "2022-12-31",
+      "sourcePeriodYear": 2022,
+      "currency": "CNY",
+      "values": {
+        "NetPremiumsEarned": 425314000000,
+        "PolicyClaimsAndBenefits": 305375452000,
+        "UnderwritingExpenses": 109731012000,
+        "ClaimsRatio": 0.718,
+        "CombinedRatio": 0.976,
+        "TotalInvestments": 1292797000000,
+        "SolvencyRatio": 2.5
+      },
+      "derivedFields": ["PolicyClaimsAndBenefits", "UnderwritingExpenses"],
+      "requiredMetrics": ["赔付率", "综合成本率", "偿付能力充足率"],
+      "evidence": "中国人保 2022 年报 pp. 20-22, 36",
+      "note": "人保财险口径；赔付与费用金额按披露比率确定性拆分。"
+    },
+    {
+      "ticker": "601319.SS",
+      "periodEnd": "2021-12-31",
+      "sourcePeriodYear": 2021,
+      "currency": "CNY",
+      "values": {
+        "NetPremiumsEarned": 397122000000,
+        "PolicyClaimsAndBenefits": 292281792000,
+        "UnderwritingExpenses": 102854598000,
+        "ClaimsRatio": 0.736,
+        "CombinedRatio": 0.995,
+        "TotalInvestments": 1196920000000,
+        "SolvencyRatio": 3.01
+      },
+      "derivedFields": ["PolicyClaimsAndBenefits", "UnderwritingExpenses"],
+      "requiredMetrics": ["赔付率", "综合成本率", "偿付能力充足率"],
+      "evidence": "中国人保 2021 年报 pp. 13, 36",
+      "note": "人保财险口径；赔付与费用金额按披露比率确定性拆分。"
+    },
+    {
+      "ticker": "MET",
+      "periodEnd": "2025-12-31",
+      "sourcePeriodYear": 2025,
+      "sourceKind": "10k",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1099219/000109921926000013/met-20251231.htm",
+      "currency": "USD",
+      "values": {
+        "PolicyClaimsAndBenefits": 49718000000
+      },
+      "requiredMetrics": ["赔付与保单利益"],
+      "evidence": "SEC XBRL us-gaap:PolicyholderBenefitsAndClaimsIncurredNet, FY2025 annual context",
+      "note": "US GAAP policyholder benefits and claims incurred, net; not a P&C claims-ratio numerator."
+    },
+    {
+      "ticker": "MET",
+      "periodEnd": "2024-12-31",
+      "sourcePeriodYear": 2025,
+      "sourceKind": "10k",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1099219/000109921926000013/met-20251231.htm",
+      "currency": "USD",
+      "values": {
+        "PolicyClaimsAndBenefits": 44728000000
+      },
+      "requiredMetrics": ["赔付与保单利益"],
+      "evidence": "SEC XBRL us-gaap:PolicyholderBenefitsAndClaimsIncurredNet, FY2024 comparative context in the 2025 10-K",
+      "note": "US GAAP policyholder benefits and claims incurred, net; not a P&C claims-ratio numerator."
+    },
+    {
+      "ticker": "MET",
+      "periodEnd": "2023-12-31",
+      "sourcePeriodYear": 2023,
+      "sourceKind": "10k",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1099219/000109921924000035/met-20231231.htm",
+      "currency": "USD",
+      "values": {
+        "PolicyClaimsAndBenefits": 44590000000
+      },
+      "requiredMetrics": ["赔付与保单利益"],
+      "evidence": "SEC XBRL us-gaap:PolicyholderBenefitsAndClaimsIncurredNet, FY2023 annual context",
+      "note": "US GAAP policyholder benefits and claims incurred, net; not a P&C claims-ratio numerator."
+    },
+    {
+      "ticker": "MET",
+      "periodEnd": "2022-12-31",
+      "sourcePeriodYear": 2024,
+      "sourceKind": "10k",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1099219/000109921925000044/met-20241231.htm",
+      "currency": "USD",
+      "values": {
+        "PolicyClaimsAndBenefits": 49507000000
+      },
+      "requiredMetrics": ["赔付与保单利益"],
+      "evidence": "SEC XBRL us-gaap:PolicyholderBenefitsAndClaimsIncurredNet, FY2022 comparative context in the 2024 10-K",
+      "note": "US GAAP policyholder benefits and claims incurred, net; restated comparative basis."
+    },
+    {
+      "ticker": "MET",
+      "periodEnd": "2021-12-31",
+      "sourcePeriodYear": 2023,
+      "sourceKind": "10k",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1099219/000109921924000035/met-20231231.htm",
+      "currency": "USD",
+      "values": {
+        "PolicyClaimsAndBenefits": 43118000000
+      },
+      "requiredMetrics": ["赔付与保单利益"],
+      "evidence": "SEC XBRL us-gaap:PolicyholderBenefitsAndClaimsIncurredNet, FY2021 comparative context in the 2023 10-K",
+      "note": "US GAAP policyholder benefits and claims incurred, net; restated comparative basis."
+    },
+    {
+      "ticker": "2328.HK",
+      "periodEnd": "2025-12-31",
+      "sourcePeriodYear": 2025,
+      "sourceKind": "hk-annual-report",
+      "currency": "CNY",
+      "values": {
+        "NetPremiumsEarned": 511594000000,
+        "PolicyClaimsAndBenefits": 378067966000,
+        "ClaimsRatio": 0.739,
+        "CombinedRatio": 0.975,
+        "TotalInvestments": 760366000000,
+        "InsuranceContractLiabilities": 434980000000,
+        "SolvencyRatio": 2.324
+      },
+      "derivedFields": ["PolicyClaimsAndBenefits"],
+      "requiredMetrics": ["净已赚保费", "赔付与保单利益", "赔付率", "综合成本率", "投资资产组合", "偿付能力充足率"],
+      "evidence": "PICC P&C 2025 Annual Report pp. 9-12, 19-20, 28 and consolidated statement of financial position",
+      "note": "IFRS 17/CAS 25 annual-report basis. Claims amount is derived from disclosed claims ratio and insurance service revenue; combined ratio uses the company's disclosed IFRS 17 formula."
+    },
+    {
+      "ticker": "2328.HK",
+      "periodEnd": "2024-12-31",
+      "sourcePeriodYear": 2024,
+      "sourceKind": "hk-annual-report",
+      "currency": "CNY",
+      "values": {
+        "NetPremiumsEarned": 485223000000,
+        "PolicyClaimsAndBenefits": 354212790000,
+        "ClaimsRatio": 0.73,
+        "CombinedRatio": 0.988,
+        "TotalInvestments": 676512000000,
+        "InsuranceContractLiabilities": 403627000000,
+        "SolvencyRatio": 2.326
+      },
+      "derivedFields": ["PolicyClaimsAndBenefits"],
+      "requiredMetrics": ["净已赚保费", "赔付与保单利益", "赔付率", "综合成本率", "投资资产组合", "偿付能力充足率"],
+      "evidence": "PICC P&C 2024 Annual Report pp. 8-11, 21-22, 26 and consolidated statement of financial position",
+      "note": "IFRS 17/CAS 25 annual-report basis. Claims amount is derived from disclosed claims ratio and insurance service revenue."
+    },
+    {
+      "ticker": "2328.HK",
+      "periodEnd": "2023-12-31",
+      "sourcePeriodYear": 2024,
+      "sourceKind": "hk-annual-report",
+      "currency": "CNY",
+      "values": {
+        "NetPremiumsEarned": 457203000000,
+        "PolicyClaimsAndBenefits": 322785318000,
+        "ClaimsRatio": 0.706,
+        "CombinedRatio": 0.978,
+        "TotalInvestments": 600711000000,
+        "InsuranceContractLiabilities": 373586000000,
+        "SolvencyRatio": 2.324
+      },
+      "derivedFields": ["PolicyClaimsAndBenefits"],
+      "requiredMetrics": ["净已赚保费", "赔付与保单利益", "赔付率", "综合成本率", "投资资产组合", "偿付能力充足率"],
+      "evidence": "PICC P&C 2024 Annual Report comparative columns pp. 11, 21-22, 26",
+      "note": "IFRS 17/CAS 25 comparative basis. Claims amount is derived from disclosed claims ratio and insurance service revenue."
+    },
+    {
+      "ticker": "2328.HK",
+      "periodEnd": "2022-12-31",
+      "sourcePeriodYear": 2022,
+      "sourceKind": "hk-annual-report",
+      "currency": "CNY",
+      "values": {
+        "NetPremiumsEarned": 425480000000,
+        "PolicyClaimsAndBenefits": 305634000000,
+        "ClaimsRatio": 0.718,
+        "CombinedRatio": 0.976,
+        "TotalInvestments": 570736000000,
+        "InsuranceContractLiabilities": 352995000000,
+        "SolvencyRatio": 2.293
+      },
+      "requiredMetrics": ["净已赚保费", "赔付与保单利益", "赔付率", "综合成本率", "投资资产组合", "偿付能力充足率"],
+      "evidence": "PICC P&C 2022 Annual Report pp. 10-13, 25-26, 31 and consolidated statement of financial position",
+      "note": "As reported under the pre-2023 insurance contract standard. The 2023 annual report restated comparative claims metrics under IFRS 17/CAS 25; historical values are not silently replaced."
+    },
+    {
+      "ticker": "2328.HK",
+      "periodEnd": "2021-12-31",
+      "sourcePeriodYear": 2021,
+      "sourceKind": "hk-annual-report",
+      "currency": "CNY",
+      "values": {
+        "NetPremiumsEarned": 396997000000,
+        "PolicyClaimsAndBenefits": 292588000000,
+        "ClaimsRatio": 0.737,
+        "CombinedRatio": 0.996,
+        "TotalInvestments": 534072000000,
+        "InsuranceContractLiabilities": 338781000000,
+        "SolvencyRatio": 2.84
+      },
+      "requiredMetrics": ["净已赚保费", "赔付与保单利益", "赔付率", "综合成本率", "投资资产组合", "偿付能力充足率"],
+      "evidence": "PICC P&C 2021 Annual Report pp. 13-15, 26-27, 30 and consolidated statement of financial position",
+      "note": "As reported under the pre-2023 insurance contract standard and C-ROSS phase I; not directly comparable with later IFRS 17/CAS 25 periods."
+    },
+    {
+      "ticker": "PGR",
+      "periodEnd": "2025-12-31",
+      "sourcePeriodYear": 2025,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/80661/000008066126000086/pgr-20251231_d2.htm",
+      "currency": "USD",
+      "values": {
+        "NetPremiumsEarned": 81661000000,
+        "PolicyClaimsAndBenefits": 53959000000,
+        "UnderwritingExpenses": 17412714000,
+        "ClaimsRatio": 0.660768298,
+        "CombinedRatio": 0.874
+      },
+      "derivedFields": ["UnderwritingExpenses", "ClaimsRatio"],
+      "requiredMetrics": ["赔付率", "综合成本率"],
+      "evidence": "Progressive 2025 Annual Report to Shareholders pp. 1, 39",
+      "note": "Combined ratio is company-reported; underwriting expense residual is derived from the reported combined ratio."
+    },
+    {
+      "ticker": "PGR",
+      "periodEnd": "2024-12-31",
+      "sourcePeriodYear": 2025,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/80661/000008066126000086/pgr-20251231_d2.htm",
+      "currency": "USD",
+      "values": {
+        "NetPremiumsEarned": 70799000000,
+        "PolicyClaimsAndBenefits": 49060000000,
+        "UnderwritingExpenses": 13809512000,
+        "ClaimsRatio": 0.692947641,
+        "CombinedRatio": 0.888
+      },
+      "derivedFields": ["UnderwritingExpenses", "ClaimsRatio"],
+      "requiredMetrics": ["赔付率", "综合成本率"],
+      "evidence": "Progressive 2025 Annual Report to Shareholders pp. 1, 39",
+      "note": "Comparative period reported in the 2025 annual report."
+    },
+    {
+      "ticker": "PGR",
+      "periodEnd": "2023-12-31",
+      "sourcePeriodYear": 2023,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/80661/000008066124000007/pgr-20231231_d2.htm",
+      "currency": "USD",
+      "values": {
+        "NetPremiumsEarned": 58664400000,
+        "PolicyClaimsAndBenefits": 45654600000,
+        "UnderwritingExpenses": 10017915600,
+        "ClaimsRatio": 0.778233477,
+        "CombinedRatio": 0.949
+      },
+      "derivedFields": ["UnderwritingExpenses", "ClaimsRatio"],
+      "requiredMetrics": ["赔付率", "综合成本率"],
+      "evidence": "Progressive 2023 Annual Report to Shareholders statements and combined-ratio table",
+      "note": "Combined ratio is company-reported; underwriting expense residual is derived from the reported ratio."
+    },
+    {
+      "ticker": "PGR",
+      "periodEnd": "2022-12-31",
+      "sourcePeriodYear": 2023,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/80661/000008066124000007/pgr-20231231_d2.htm",
+      "currency": "USD",
+      "values": {
+        "NetPremiumsEarned": 49241200000,
+        "PolicyClaimsAndBenefits": 38122700000,
+        "UnderwritingExpenses": 9050369600,
+        "ClaimsRatio": 0.774203309,
+        "CombinedRatio": 0.958
+      },
+      "derivedFields": ["UnderwritingExpenses", "ClaimsRatio"],
+      "requiredMetrics": ["赔付率", "综合成本率"],
+      "evidence": "Progressive 2023 annual report comparative income statement and combined ratio",
+      "note": "Comparative period reported in the 2023 annual report."
+    },
+    {
+      "ticker": "PGR",
+      "periodEnd": "2021-12-31",
+      "sourcePeriodYear": 2023,
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/80661/000008066124000007/pgr-20231231_d2.htm",
+      "currency": "USD",
+      "values": {
+        "NetPremiumsEarned": 44368700000,
+        "PolicyClaimsAndBenefits": 33627600000,
+        "UnderwritingExpenses": 8655771100,
+        "ClaimsRatio": 0.757912673,
+        "CombinedRatio": 0.953
+      },
+      "derivedFields": ["UnderwritingExpenses", "ClaimsRatio"],
+      "requiredMetrics": ["赔付率", "综合成本率"],
+      "evidence": "Progressive 2023 annual report comparative income statement and combined ratio",
+      "note": "Comparative period reported in the 2023 annual report."
+    },
+    {
+      "ticker": "1299.HK",
+      "periodEnd": "2025-12-31",
+      "sourcePeriodYear": 2025,
+      "sourceKind": "hk-results",
+      "sourceUrl": "https://www.aia.com/en/media-centre/press-releases/2026/aia-group-press-release-20260319",
+      "annualReportUrl": "https://www1.hkexnews.hk/listedco/listconews/sehk/2026/0415/2026041500898_c.pdf",
+      "currency": "USD",
+      "values": {
+        "EV": 79678000000,
+        "NBV": 5516000000,
+        "NewBusinessValueMargin": 0.585,
+        "SolvencyRatio": 2.33
+      },
+      "requiredMetrics": ["EV", "NBV", "新业务价值率", "偿付能力充足率"],
+      "evidence": "AIA 2025 annual results release; 2025 Annual Report pp. 4, 26, 46",
+      "note": "EV is AIA's disclosed EV Equity; VONB margin is disclosed; solvency is Group LCSM coverage."
+    },
+    {
+      "ticker": "1299.HK",
+      "periodEnd": "2024-12-31",
+      "sourcePeriodYear": 2024,
+      "sourceKind": "hk-results",
+      "sourceUrl": "https://www.aia.com/en/media-centre/press-releases/2025/aia-group-press-release-20250314",
+      "annualReportUrl": "https://www1.hkexnews.hk/listedco/listconews/sehk/2025/0408/2025040800586_c.pdf",
+      "currency": "USD",
+      "values": {
+        "EV": 71626000000,
+        "NBV": 4712000000,
+        "NewBusinessValueMargin": 0.545,
+        "SolvencyRatio": 2.57
+      },
+      "requiredMetrics": ["EV", "NBV", "新业务价值率", "偿付能力充足率"],
+      "evidence": "AIA 2024 annual results release; 2025 Annual Report p. 4",
+      "note": "EV is EV Equity after capital returns; solvency is Group LCSM coverage."
+    },
+    {
+      "ticker": "1299.HK",
+      "periodEnd": "2023-12-31",
+      "sourcePeriodYear": 2023,
+      "sourceKind": "hk-results",
+      "sourceUrl": "https://www.aia.com/en/media-centre/press-releases/2024/aia-group-press-release-20240314",
+      "annualReportUrl": "https://www1.hkexnews.hk/listedco/listconews/sehk/2024/0412/2024041200327_c.pdf",
+      "currency": "USD",
+      "values": {
+        "EV": 70153000000,
+        "NBV": 4034000000,
+        "NewBusinessValueMargin": 0.526,
+        "SolvencyRatio": 2.75
+      },
+      "requiredMetrics": ["EV", "NBV", "新业务价值率", "偿付能力充足率"],
+      "evidence": "AIA 2023 annual results release; 2025 Annual Report p. 4",
+      "note": "EV is EV Equity after capital returns; solvency is Group LCSM coverage."
+    },
+    {
+      "ticker": "1299.HK",
+      "periodEnd": "2022-12-31",
+      "sourcePeriodYear": 2022,
+      "sourceKind": "hk-results",
+      "sourceUrl": "https://www.aia.com/en/media-centre/press-releases/2023/aia-group-press-release-20230310",
+      "annualReportUrl": "https://www1.hkexnews.hk/listedco/listconews/sehk/2023/0411/2023041100588_c.pdf",
+      "currency": "USD",
+      "values": {
+        "EV": 71202000000,
+        "NBV": 3092000000,
+        "NewBusinessValueMargin": 0.572,
+        "SolvencyRatio": 2.83
+      },
+      "requiredMetrics": ["EV", "NBV", "新业务价值率", "偿付能力充足率"],
+      "evidence": "AIA 2022 annual results release; 2025 Annual Report p. 4",
+      "note": "EV is EV Equity after capital returns; solvency is Group LCSM coverage under PCR basis."
+    },
+    {
+      "ticker": "1299.HK",
+      "periodEnd": "2021-12-31",
+      "sourcePeriodYear": 2021,
+      "sourceKind": "hk-results",
+      "sourceUrl": "https://www.aia.com/en/media-centre/press-releases/2022/aia-group-press-release-20220311",
+      "annualReportUrl": "https://www1.hkexnews.hk/listedco/listconews/sehk/2022/0407/2022040700531_c.pdf",
+      "currency": "USD",
+      "values": {
+        "EV": 75001000000,
+        "NBV": 3366000000,
+        "NewBusinessValueMargin": 0.593,
+        "SolvencyRatio": 3.99
+      },
+      "requiredMetrics": ["EV", "NBV", "新业务价值率", "偿付能力充足率"],
+      "evidence": "AIA 2021 annual results release; 2025 Annual Report p. 4",
+      "note": "EV is EV Equity; solvency is Group LCSM coverage under the prior MCR basis."
+    }
+  ]
+}
