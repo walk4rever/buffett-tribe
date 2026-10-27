@@ -76,7 +76,7 @@ async function getLatestInsights() {
         tags: true,
       },
       orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
-      take: 6,
+      take: 3,
     });
   } catch (err) {
     if (process.env.DEBUG_DB_FALLBACK === "1") {
@@ -105,6 +105,61 @@ export default async function Home() {
   return (
     <div className="home-v2">
       <SiteNav />
+
+      {/* Latest Insights Section */}
+      {insights.length > 0 && (
+        <section className="home-section home-insights-section">
+          <div className="home-section-in">
+            <div className="home-section-head">
+              <div className="home-section-head-main">
+                <div className="home-section-badge">深度洞见</div>
+                <h2 className="home-section-title">最新深度研究</h2>
+                <p className="home-section-subtitle">
+                  围绕商业模式、护城河评估、前沿趋势与大师持仓的深度研究
+                </p>
+              </div>
+              <Link href="/insights" className="home-section-more">
+                浏览全部洞见 <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+
+            <div className="home-insights-grid">
+              {insights.map((post) => {
+                const sourceLabel = post.source || BRAND_EN;
+                const formattedDate = formatInsightDate(post.publishedAt);
+
+                return (
+                  <Link
+                    key={post.slug}
+                    href={`/insights/${post.slug}`}
+                    className="home-insight-card"
+                  >
+                    <div className="home-insight-card-head">
+                      <span className="home-insight-source">{sourceLabel}</span>
+                      {formattedDate && (
+                        <span className="home-insight-date">{formattedDate}</span>
+                      )}
+                    </div>
+                    <h3 className="home-insight-title">{post.title}</h3>
+                    {post.description && (
+                      <p className="home-insight-desc">{post.description}</p>
+                    )}
+                    {post.tags && post.tags.length > 0 && (
+                      <div className="home-insight-tags">
+                        {post.tags.slice(0, 3).map((tag) => (
+                          <span key={tag} className="home-insight-tag">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Signals & Popular Companies */}
       <section className="home-signals">
@@ -251,60 +306,6 @@ export default async function Home() {
         </section>
       )}
 
-      {/* Latest Insights Section */}
-      {insights.length > 0 && (
-        <section className="home-section home-insights-section">
-          <div className="home-section-in">
-            <div className="home-section-head">
-              <div className="home-section-head-main">
-                <div className="home-section-badge">深度洞见</div>
-                <h2 className="home-section-title">最新深度研究</h2>
-                <p className="home-section-subtitle">
-                  围绕商业模式、护城河评估、前沿趋势与大师持仓的深度研究
-                </p>
-              </div>
-              <Link href="/insights" className="home-section-more">
-                浏览全部洞见 <span aria-hidden="true">→</span>
-              </Link>
-            </div>
-
-            <div className="home-insights-grid">
-              {insights.map((post) => {
-                const sourceLabel = post.source || BRAND_EN;
-                const formattedDate = formatInsightDate(post.publishedAt);
-
-                return (
-                  <Link
-                    key={post.slug}
-                    href={`/insights/${post.slug}`}
-                    className="home-insight-card"
-                  >
-                    <div className="home-insight-card-head">
-                      <span className="home-insight-source">{sourceLabel}</span>
-                      {formattedDate && (
-                        <span className="home-insight-date">{formattedDate}</span>
-                      )}
-                    </div>
-                    <h3 className="home-insight-title">{post.title}</h3>
-                    {post.description && (
-                      <p className="home-insight-desc">{post.description}</p>
-                    )}
-                    {post.tags && post.tags.length > 0 && (
-                      <div className="home-insight-tags">
-                        {post.tags.slice(0, 3).map((tag) => (
-                          <span key={tag} className="home-insight-tag">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      )}
     </div>
   );
 }
