@@ -1,36 +1,22 @@
-/**
- * Canonical Financial Dictionary (法定三张主表全量一级科目与核心披露字典)
- * Morningstar Standardized Financials v2.0
- */
-
-export type StatementType =
-  | "income_statement"
-  | "balance_sheet_asset"
-  | "balance_sheet_liability"
-  | "balance_sheet_equity"
-  | "cash_flow"
-  | "supplementary";
-
-export type PeriodType = "instant" | "duration";
-
-export interface CanonicalLineItemConfig {
+// Generated canonical dictionary mirror for frontend bundle
+export interface CanonicalDictItem {
   key: string;
   nameZh: string;
   nameEn: string;
-  statement: StatementType;
-  periodType: PeriodType;
+  statement: string;
+  periodType: string;
   morningstarId?: string;
-  modelSource?: "buffett_tribe_extension";
-  unitCandidates: string[];
-  tagsUsGaap: string[];
-  tagsIfrs: string[];
+  modelSource?: string;
+  unitCandidates?: string[];
+  tagsUsGaap?: string[];
   tagsCustom?: string[];
-  cnAliases: string[];
-  hkAliases: string[];
+  tagsIfrs?: string[];
+  cnAliases?: string[];
+  hkAliases?: string[];
   description?: string;
 }
 
-export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
+export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalDictItem[] = [
   {
     "key": "Revenue",
     "nameZh": "营业收入",
@@ -1644,8 +1630,16 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "DebtInstrumentCarryingAmount"
     ],
     "tagsIfrs": [],
-    "cnAliases": [],
-    "hkAliases": []
+    "cnAliases": [
+      "有息负债合计",
+      "有息债务合计",
+      "总有息负债"
+    ],
+    "hkAliases": [
+      "有息负债总额",
+      "总有息借款",
+      "Total interest-bearing debt"
+    ]
   },
   {
     "key": "TotalLiabilities",
@@ -2921,7 +2915,11 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
       "CNY",
       "HKD"
     ],
-    "tagsUsGaap": [],
+    "tagsUsGaap": [
+      "InvestmentManagementFeeRevenue",
+      "AssetManagementFeeRevenue",
+      "ManagementFees"
+    ],
     "tagsCustom": [
       "InvestmentManagementFeeRevenue",
       "AssetManagementFeeRevenue"
@@ -3334,11 +3332,21 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     "statement": "supplementary",
     "periodType": "duration",
     "modelSource": "buffett_tribe_extension",
-    "unitCandidates": ["USD", "CNY", "HKD"],
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
     "tagsUsGaap": [],
     "tagsIfrs": [],
-    "cnAliases": ["物业净营业收入", "运营净收益"],
-    "hkAliases": ["物業收入淨額", "物业收入净额"]
+    "cnAliases": [
+      "物业净营业收入",
+      "运营净收益"
+    ],
+    "hkAliases": [
+      "物業收入淨額",
+      "物业收入净额"
+    ]
   },
   {
     "key": "FFO",
@@ -3347,11 +3355,20 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     "statement": "supplementary",
     "periodType": "duration",
     "modelSource": "buffett_tribe_extension",
-    "unitCandidates": ["USD", "CNY", "HKD"],
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
     "tagsUsGaap": [],
     "tagsIfrs": [],
-    "cnAliases": ["运营资金"],
-    "hkAliases": ["營運資金", "营运资金"]
+    "cnAliases": [
+      "运营资金"
+    ],
+    "hkAliases": [
+      "營運資金",
+      "营运资金"
+    ]
   },
   {
     "key": "AFFO",
@@ -3360,11 +3377,20 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     "statement": "supplementary",
     "periodType": "duration",
     "modelSource": "buffett_tribe_extension",
-    "unitCandidates": ["USD", "CNY", "HKD"],
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
     "tagsUsGaap": [],
     "tagsIfrs": [],
-    "cnAliases": ["调整后运营资金"],
-    "hkAliases": ["調整後營運資金", "调整后营运资金"]
+    "cnAliases": [
+      "调整后运营资金"
+    ],
+    "hkAliases": [
+      "調整後營運資金",
+      "调整后营运资金"
+    ]
   },
   {
     "key": "SameStoreNOIGrowth",
@@ -3373,11 +3399,18 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     "statement": "supplementary",
     "periodType": "duration",
     "modelSource": "buffett_tribe_extension",
-    "unitCandidates": ["ratio"],
+    "unitCandidates": [
+      "ratio"
+    ],
     "tagsUsGaap": [],
     "tagsIfrs": [],
-    "cnAliases": ["同店 NOI 增长"],
-    "hkAliases": ["同店 NOI 增長", "同店 NOI 增长"]
+    "cnAliases": [
+      "同店 NOI 增长"
+    ],
+    "hkAliases": [
+      "同店 NOI 增長",
+      "同店 NOI 增长"
+    ]
   },
   {
     "key": "Occupancy",
@@ -3386,11 +3419,19 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     "statement": "supplementary",
     "periodType": "instant",
     "modelSource": "buffett_tribe_extension",
-    "unitCandidates": ["ratio"],
+    "unitCandidates": [
+      "ratio"
+    ],
     "tagsUsGaap": [],
     "tagsIfrs": [],
-    "cnAliases": ["出租率", "租用率"],
-    "hkAliases": ["租用率", "出租率"]
+    "cnAliases": [
+      "出租率",
+      "租用率"
+    ],
+    "hkAliases": [
+      "租用率",
+      "出租率"
+    ]
   },
   {
     "key": "FFOPerShare",
@@ -3399,11 +3440,21 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     "statement": "supplementary",
     "periodType": "duration",
     "modelSource": "buffett_tribe_extension",
-    "unitCandidates": ["USD/share", "CNY/share", "HKD/share"],
+    "unitCandidates": [
+      "USD/share",
+      "CNY/share",
+      "HKD/share"
+    ],
     "tagsUsGaap": [],
     "tagsIfrs": [],
-    "cnAliases": ["每份运营资金", "每份 FFO"],
-    "hkAliases": ["每基金單位營運資金", "每份 FFO"]
+    "cnAliases": [
+      "每份运营资金",
+      "每份 FFO"
+    ],
+    "hkAliases": [
+      "每基金單位營運資金",
+      "每份 FFO"
+    ]
   },
   {
     "key": "EV",
@@ -3412,11 +3463,22 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     "statement": "supplementary",
     "periodType": "instant",
     "modelSource": "buffett_tribe_extension",
-    "unitCandidates": ["USD", "CNY", "HKD"],
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
     "tagsUsGaap": [],
     "tagsIfrs": [],
-    "cnAliases": ["集团内含价值", "内含价值"],
-    "hkAliases": ["內涵價值", "内涵价值", "內涵價值權益"]
+    "cnAliases": [
+      "集团内含价值",
+      "内含价值"
+    ],
+    "hkAliases": [
+      "內涵價值",
+      "内涵价值",
+      "內涵價值權益"
+    ]
   },
   {
     "key": "NBV",
@@ -3425,11 +3487,21 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     "statement": "supplementary",
     "periodType": "duration",
     "modelSource": "buffett_tribe_extension",
-    "unitCandidates": ["USD", "CNY", "HKD"],
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
     "tagsUsGaap": [],
     "tagsIfrs": [],
-    "cnAliases": ["新业务价值", "一年新业务价值"],
-    "hkAliases": ["新業務價值", "新业务价值"]
+    "cnAliases": [
+      "新业务价值",
+      "一年新业务价值"
+    ],
+    "hkAliases": [
+      "新業務價值",
+      "新业务价值"
+    ]
   },
   {
     "key": "NewBusinessValueMargin",
@@ -3438,11 +3510,18 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     "statement": "supplementary",
     "periodType": "duration",
     "modelSource": "buffett_tribe_extension",
-    "unitCandidates": ["ratio"],
+    "unitCandidates": [
+      "ratio"
+    ],
     "tagsUsGaap": [],
     "tagsIfrs": [],
-    "cnAliases": ["新业务价值率"],
-    "hkAliases": ["新業務價值率", "新业务价值率"]
+    "cnAliases": [
+      "新业务价值率"
+    ],
+    "hkAliases": [
+      "新業務價值率",
+      "新业务价值率"
+    ]
   },
   {
     "key": "SolvencyRatio",
@@ -3451,11 +3530,20 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     "statement": "supplementary",
     "periodType": "instant",
     "modelSource": "buffett_tribe_extension",
-    "unitCandidates": ["ratio"],
+    "unitCandidates": [
+      "ratio"
+    ],
     "tagsUsGaap": [],
     "tagsIfrs": [],
-    "cnAliases": ["综合偿付能力充足率", "偿付能力充足率"],
-    "hkAliases": ["集團償付能力比率", "股东资本比率", "LCSM coverage ratio"]
+    "cnAliases": [
+      "综合偿付能力充足率",
+      "偿付能力充足率"
+    ],
+    "hkAliases": [
+      "集團償付能力比率",
+      "股东资本比率",
+      "LCSM coverage ratio"
+    ]
   },
   {
     "key": "CombinedRatio",
@@ -3464,11 +3552,20 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     "statement": "supplementary",
     "periodType": "duration",
     "modelSource": "buffett_tribe_extension",
-    "unitCandidates": ["ratio"],
-    "tagsUsGaap": ["CombinedRatio"],
+    "unitCandidates": [
+      "ratio"
+    ],
+    "tagsUsGaap": [
+      "CombinedRatio"
+    ],
     "tagsIfrs": [],
-    "cnAliases": ["综合成本率"],
-    "hkAliases": ["綜合成本率", "综合成本率"]
+    "cnAliases": [
+      "综合成本率"
+    ],
+    "hkAliases": [
+      "綜合成本率",
+      "综合成本率"
+    ]
   },
   {
     "key": "Float",
@@ -3477,11 +3574,19 @@ export const CANONICAL_FINANCIAL_DICTIONARY: CanonicalLineItemConfig[] = [
     "statement": "supplementary",
     "periodType": "instant",
     "modelSource": "buffett_tribe_extension",
-    "unitCandidates": ["USD", "CNY", "HKD"],
+    "unitCandidates": [
+      "USD",
+      "CNY",
+      "HKD"
+    ],
     "tagsUsGaap": [],
     "tagsIfrs": [],
-    "cnAliases": ["浮存金"],
-    "hkAliases": ["浮存金"]
+    "cnAliases": [
+      "浮存金"
+    ],
+    "hkAliases": [
+      "浮存金"
+    ]
   },
   {
     "key": "DueToCentralBanks",

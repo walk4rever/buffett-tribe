@@ -63,7 +63,7 @@ const expectedRoles = [
   "conglomerate",
 ] as const;
 
-describe("99 metric validation suite", () => {
+describe("101 metric validation suite", () => {
   it("fixes a 45-company, 15-per-market certification universe", () => {
     expect(suite.version).toBe(1);
     expect(suite.companies).toHaveLength(45);
@@ -107,11 +107,11 @@ describe("99 metric validation suite", () => {
     expect(pending).toEqual([]);
   });
 
-  it("contains exactly 99 in-scope metrics and 22 excluded rows", () => {
+  it("contains exactly 101 in-scope metrics and 24 excluded rows", () => {
     const rows = parseMetricContract(metricsMarkdown);
 
-    expect(rows.filter((row) => row.status !== "排除")).toHaveLength(99);
-    expect(rows.filter((row) => row.status === "排除")).toHaveLength(22);
+    expect(rows.filter((row) => row.status !== "排除")).toHaveLength(101);
+    expect(rows.filter((row) => row.status === "排除")).toHaveLength(24);
   });
 
   it("assigns every in-scope metric to at least one concrete validation role", () => {
@@ -123,14 +123,14 @@ describe("99 metric validation suite", () => {
     expect(orphanMetrics.map((row) => row.name)).toEqual([]);
   });
 
-  it("materializes a complete, stable 99-metric fact contract", () => {
+  it("materializes a complete, stable 101-metric fact contract", () => {
     expect(() => assertMetricContract(metricContract)).not.toThrow();
     expect(new Set(metricContract.metrics.map((metric) => metric.id)).size).toBe(
-      99,
+      101,
     );
     expect(
       new Set(metricContract.metrics.map((metric) => metric.key)).size,
-    ).toBe(99);
+    ).toBe(101);
   });
 
   it("keeps the generated contract aligned with the audited Markdown", () => {
