@@ -14,7 +14,7 @@ const DIRECT_FIELDS: Record<string, string[][]> = {
   总资产: [["TotalAssets"]],
   总负债: [["TotalLiabilities"]],
   股东权益: [["ShareholdersEquity"]],
-  总权益: [["TotalEquity"]],
+  总权益: [["TotalEquity"], ["ShareholdersEquity"]],
   现金及等价物: [["CashAndCashEquivalents"], ["CashEndOfPeriod"]],
   短期有息债务: [["ShortTermDebt"]],
   长期有息债务: [["LongTermDebt"]],
@@ -87,17 +87,36 @@ function rawRequirementForMetric(
 
   if (row.section === "general_derived") {
     const requirements: Record<string, DataRequirement> = {
-      营收同比: { alternatives: [["Revenue"]], minYears: 2 },
+      营收同比: {
+        alternatives: [["Revenue"], ["OperatingRevenue"]],
+        minYears: 2,
+      },
       净利润同比: { alternatives: [["NetIncome"]], minYears: 2 },
       总资产同比: { alternatives: [["TotalAssets"]], minYears: 2 },
-      毛利率: { alternatives: [["GrossProfit", "OperatingRevenue"]] },
-      营业利润率: { alternatives: [["OperatingIncome", "Revenue"]] },
-      净利率: { alternatives: [["NetIncome", "Revenue"]] },
+      毛利率: {
+        alternatives: [
+          ["GrossProfit", "Revenue"],
+          ["GrossProfit", "OperatingRevenue"],
+        ],
+      },
+      营业利润率: {
+        alternatives: [
+          ["OperatingIncome", "Revenue"],
+          ["OperatingIncome", "OperatingRevenue"],
+        ],
+      },
+      净利率: {
+        alternatives: [
+          ["NetIncome", "Revenue"],
+          ["NetIncome", "OperatingRevenue"],
+        ],
+      },
       ROE: {
         alternatives: [
           ["NetIncomeCommon", "ShareholdersCommonEquity"],
           ["NetIncome", "ShareholdersCommonEquity"],
           ["NetIncomeCommon", "ShareholdersEquity"],
+          ["NetIncome", "ShareholdersEquity"],
         ],
         minYears: 2,
       },
@@ -220,12 +239,14 @@ function rawRequirementForMetric(
       当前PB: {
         alternatives: [
           ["ShareholdersCommonEquity", "CommonStockSharesOutstanding"],
+          ["ShareholdersEquity", "CommonStockSharesOutstanding"],
         ],
         needsPrice: true,
       },
       BPS: {
         alternatives: [
           ["ShareholdersCommonEquity", "CommonStockSharesOutstanding"],
+          ["ShareholdersEquity", "CommonStockSharesOutstanding"],
         ],
         needsPrice: true,
       },
@@ -237,6 +258,7 @@ function rawRequirementForMetric(
       历史PB走廊: {
         alternatives: [
           ["ShareholdersCommonEquity", "CommonStockSharesOutstanding"],
+          ["ShareholdersEquity", "CommonStockSharesOutstanding"],
         ],
         needsPrice: true,
         minYears: 2,
@@ -270,6 +292,7 @@ function rawRequirementForMetric(
       PB估值走廊: {
         alternatives: [
           ["ShareholdersCommonEquity", "CommonStockSharesOutstanding"],
+          ["ShareholdersEquity", "CommonStockSharesOutstanding"],
         ],
         needsPrice: true,
         minYears: 2,

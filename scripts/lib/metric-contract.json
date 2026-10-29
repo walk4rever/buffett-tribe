@@ -417,6 +417,9 @@
         "alternatives": [
           [
             "TotalEquity"
+          ],
+          [
+            "ShareholdersEquity"
           ]
         ]
       }
@@ -1050,6 +1053,9 @@
         "alternatives": [
           [
             "Revenue"
+          ],
+          [
+            "OperatingRevenue"
           ]
         ],
         "minYears": 2
@@ -1166,6 +1172,10 @@
         "alternatives": [
           [
             "GrossProfit",
+            "Revenue"
+          ],
+          [
+            "GrossProfit",
             "OperatingRevenue"
           ]
         ]
@@ -1201,6 +1211,10 @@
           [
             "OperatingIncome",
             "Revenue"
+          ],
+          [
+            "OperatingIncome",
+            "OperatingRevenue"
           ]
         ]
       }
@@ -1242,6 +1256,10 @@
           [
             "NetIncome",
             "Revenue"
+          ],
+          [
+            "NetIncome",
+            "OperatingRevenue"
           ]
         ]
       }
@@ -1290,6 +1308,10 @@
           ],
           [
             "NetIncomeCommon",
+            "ShareholdersEquity"
+          ],
+          [
+            "NetIncome",
             "ShareholdersEquity"
           ]
         ],
@@ -2404,6 +2426,10 @@
           [
             "ShareholdersCommonEquity",
             "CommonStockSharesOutstanding"
+          ],
+          [
+            "ShareholdersEquity",
+            "CommonStockSharesOutstanding"
           ]
         ],
         "needsPrice": true
@@ -2445,6 +2471,10 @@
         "alternatives": [
           [
             "ShareholdersCommonEquity",
+            "CommonStockSharesOutstanding"
+          ],
+          [
+            "ShareholdersEquity",
             "CommonStockSharesOutstanding"
           ]
         ],
@@ -2529,6 +2559,10 @@
         "alternatives": [
           [
             "ShareholdersCommonEquity",
+            "CommonStockSharesOutstanding"
+          ],
+          [
+            "ShareholdersEquity",
             "CommonStockSharesOutstanding"
           ]
         ],
@@ -2778,6 +2812,10 @@
         "alternatives": [
           [
             "ShareholdersCommonEquity",
+            "CommonStockSharesOutstanding"
+          ],
+          [
+            "ShareholdersEquity",
             "CommonStockSharesOutstanding"
           ]
         ],
