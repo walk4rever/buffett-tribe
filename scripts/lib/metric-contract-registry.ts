@@ -53,7 +53,7 @@ export type MetricContractArtifact = {
 
 export function assertMetricContract(
   contract: MetricContractArtifact,
-  expectedMetricCount = 99,
+  expectedMetricCount = 101,
 ) {
   if (contract.version !== 1 || contract.source !== "METRICS.md") {
     throw new Error(
@@ -278,6 +278,16 @@ export function rolesForMetric(row: MetricContractRow): ValidationRole[] {
       ];
     }
     if (row.name === "投资性物业") return ["reit_property", "developer"];
+    if (row.name === "投资收益") {
+      return [
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "conglomerate",
+      ];
+    }
     if (
       ["资本开支", "短期有息债务", "长期有息债务", "总有息债务"].includes(
         row.name,
@@ -295,8 +305,9 @@ export function rolesForMetric(row: MetricContractRow): ValidationRole[] {
     if (["FCF", "FCF Margin", "现金转化率", "净负债率"].includes(row.name)) {
       return [...CASH_FLOW_ROLES];
     }
-    if (row.name === "ROIC") {
-      return [...INDUSTRIAL_ROLES, "developer"];
+    if (row.name === "资本开支率") return [...INDUSTRIAL_ROLES];
+    if (row.name === "研发费用率") {
+      return ["healthcare", "software_platform", "semiconductor_hardware"];
     }
     return [...VALIDATION_ROLES];
   }

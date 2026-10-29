@@ -52,7 +52,7 @@ function getClassification(item: TriageItem): GapClassification {
   const { ticker, metricId } = item;
 
   // 1. Dividends (BRK-B, 688981.SS)
-  if (ticker === "BRK-B" && ["GR-18", "CA-08", "GD-19", "VL-15"].includes(metricId)) {
+  if (ticker === "BRK-B" && ["GR-18", "CA-08", "GD-19"].includes(metricId)) {
     return {
       ticker,
       metricId,
@@ -60,7 +60,7 @@ function getClassification(item: TriageItem): GapClassification {
       evidence: "Berkshire Hathaway does not pay cash dividends (2025 Form 10-K Item 5 & p. K-48); dividend payout and dividend-derived returns did not occur.",
     };
   }
-  if (ticker === "688981.SS" && ["GR-18", "CA-08", "CA-09", "CA-10", "CA-11", "GD-19", "VL-15"].includes(metricId)) {
+  if (ticker === "688981.SS" && ["GR-18", "CA-08", "CA-09", "CA-10", "CA-11", "GD-19"].includes(metricId)) {
     return {
       ticker,
       metricId,

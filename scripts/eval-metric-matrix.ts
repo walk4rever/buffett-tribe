@@ -1,5 +1,5 @@
 /**
- * Generate the complete 45-company x 99-metric validation matrix.
+ * Generate the complete 45-company x contract-metric validation matrix.
  *
  * Usage:
  *   npx tsx --env-file=.env.local scripts/eval-metric-matrix.ts

@@ -1,0 +1,901 @@
+{
+  "GR-01": {
+    "pages": [
+      "financials",
+      "value_line"
+    ],
+    "keys": [
+      "Revenue",
+      "revenue"
+    ]
+  },
+  "GR-02": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "CostOfRevenue"
+    ]
+  },
+  "GR-03": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "GrossProfit"
+    ]
+  },
+  "GR-04": {
+    "pages": [
+      "financials",
+      "value_line"
+    ],
+    "keys": [
+      "OperatingIncome",
+      "operatingIncome"
+    ]
+  },
+  "GR-05": {
+    "pages": [
+      "financials",
+      "value_line",
+      "capital_allocation"
+    ],
+    "keys": [
+      "NetIncome",
+      "netIncome"
+    ]
+  },
+  "GR-06": {
+    "pages": [
+      "financials",
+      "valuation"
+    ],
+    "keys": [
+      "EPSDiluted",
+      "eps"
+    ]
+  },
+  "GR-07": {
+    "pages": [
+      "input_only"
+    ],
+    "keys": [
+      "EPSBasic"
+    ]
+  },
+  "GR-08": {
+    "pages": [
+      "financials",
+      "value_line"
+    ],
+    "keys": [
+      "TotalAssets",
+      "totalAssets"
+    ]
+  },
+  "GR-09": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "TotalLiabilities"
+    ]
+  },
+  "GR-10": {
+    "pages": [
+      "financials",
+      "value_line",
+      "valuation"
+    ],
+    "keys": [
+      "ShareholdersEquity",
+      "shareholdersEquity",
+      "commonEquity",
+      "shareholdersCommonEquity"
+    ]
+  },
+  "GR-11": {
+    "pages": [
+      "input_only"
+    ],
+    "keys": [
+      "TotalEquity"
+    ]
+  },
+  "GR-12": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "CashAndCashEquivalents"
+    ]
+  },
+  "GR-13": {
+    "pages": [
+      "input_only"
+    ],
+    "keys": [
+      "ShortTermDebt"
+    ]
+  },
+  "GR-14": {
+    "pages": [
+      "input_only"
+    ],
+    "keys": [
+      "LongTermDebt"
+    ]
+  },
+  "GR-15": {
+    "pages": [
+      "input_only"
+    ],
+    "keys": [
+      "TotalDebt"
+    ]
+  },
+  "GR-16": {
+    "pages": [
+      "financials",
+      "value_line"
+    ],
+    "keys": [
+      "OperatingCashFlow",
+      "operatingCashFlow"
+    ]
+  },
+  "GR-17": {
+    "pages": [
+      "financials",
+      "capital_allocation"
+    ],
+    "keys": [
+      "CapEx",
+      "capEx"
+    ]
+  },
+  "GR-18": {
+    "pages": [
+      "financials",
+      "capital_allocation",
+      "value_line"
+    ],
+    "keys": [
+      "DividendsPaid",
+      "dividendsPaid"
+    ]
+  },
+  "GR-19": {
+    "pages": [
+      "financials",
+      "capital_allocation"
+    ],
+    "keys": [
+      "ShareRepurchaseAmt",
+      "repurchaseAmt"
+    ]
+  },
+  "GR-20": {
+    "pages": [
+      "capital_allocation"
+    ],
+    "keys": [
+      "acquisitionsAmt",
+      "cumAcquisitions"
+    ]
+  },
+  "GR-21": {
+    "pages": [
+      "value_line",
+      "capital_allocation",
+      "valuation"
+    ],
+    "keys": [
+      "shares",
+      "CommonStockSharesOutstanding",
+      "periodEndShares"
+    ]
+  },
+  "GR-22": {
+    "pages": [
+      "input_only"
+    ],
+    "keys": [
+      "WeightedAverageSharesDiluted"
+    ]
+  },
+  "GR-23": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "RnDExpense"
+    ]
+  },
+  "GR-24": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "ContractLiabilities",
+      "contractLiabilities"
+    ]
+  },
+  "GR-25": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "Inventory",
+      "inventory"
+    ]
+  },
+  "GR-26": {
+    "pages": [
+      "financials",
+      "value_line"
+    ],
+    "keys": [
+      "InvestmentProperty",
+      "investmentProperty"
+    ]
+  },
+  "GR-27": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "InvestmentIncome"
+    ]
+  },
+  "GD-01": {
+    "pages": [
+      "financials",
+      "value_line"
+    ],
+    "keys": [
+      "RevenueGrowth",
+      "revenue_growth",
+      "revenue"
+    ]
+  },
+  "GD-02": {
+    "pages": [
+      "financials",
+      "value_line"
+    ],
+    "keys": [
+      "NetIncomeGrowth",
+      "net_income_growth",
+      "net-income"
+    ]
+  },
+  "GD-03": {
+    "pages": [
+      "financials",
+      "value_line"
+    ],
+    "keys": [
+      "AssetGrowth",
+      "asset_growth",
+      "assets"
+    ]
+  },
+  "GD-04": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "GrossMargin"
+    ]
+  },
+  "GD-05": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "OperatingMargin"
+    ]
+  },
+  "GD-06": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "NetMargin"
+    ]
+  },
+  "GD-07": {
+    "pages": [
+      "financials",
+      "capital_allocation",
+      "valuation"
+    ],
+    "keys": [
+      "ROE",
+      "roe",
+      "avgRoe"
+    ]
+  },
+  "GD-08": {
+    "pages": [
+      "financials",
+      "value_line"
+    ],
+    "keys": [
+      "ROA",
+      "roa"
+    ]
+  },
+  "GD-09": {
+    "pages": [
+      "financials",
+      "capital_allocation",
+      "valuation"
+    ],
+    "keys": [
+      "FreeCashFlow",
+      "freeCashFlow"
+    ]
+  },
+  "GD-10": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "FCFMargin"
+    ]
+  },
+  "GD-11": {
+    "pages": [
+      "financials",
+      "value_line"
+    ],
+    "keys": [
+      "CashConversion",
+      "cash_conversion",
+      "cash-conversion"
+    ]
+  },
+  "GD-12": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "AssetTurnover"
+    ]
+  },
+  "GD-13": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "LiabilitiesToAssets"
+    ]
+  },
+  "GD-14": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "EquityToAssets"
+    ]
+  },
+  "GD-15": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "NetDebtRatio"
+    ]
+  },
+  "GD-17": {
+    "pages": [
+      "value_line"
+    ],
+    "keys": [
+      "cagrValue",
+      "cagr"
+    ]
+  },
+  "GD-18": {
+    "pages": [
+      "value_line",
+      "capital_allocation"
+    ],
+    "keys": [
+      "shareDeltaPct",
+      "shares.change",
+      "shares"
+    ]
+  },
+  "GD-19": {
+    "pages": [
+      "value_line"
+    ],
+    "keys": [
+      "dividend_per_share",
+      "每股已实施分红增长"
+    ]
+  },
+  "GD-20": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "CapExToRevenue"
+    ]
+  },
+  "GD-21": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "RnDToRevenue"
+    ]
+  },
+  "CA-01": {
+    "pages": [
+      "capital_allocation"
+    ],
+    "keys": [
+      "flowCoverage"
+    ]
+  },
+  "CA-02": {
+    "pages": [
+      "capital_allocation"
+    ],
+    "keys": [
+      "cumOcf"
+    ]
+  },
+  "CA-03": {
+    "pages": [
+      "capital_allocation"
+    ],
+    "keys": [
+      "cumCapEx"
+    ]
+  },
+  "CA-04": {
+    "pages": [
+      "capital_allocation"
+    ],
+    "keys": [
+      "cumFcf"
+    ]
+  },
+  "CA-05": {
+    "pages": [
+      "capital_allocation"
+    ],
+    "keys": [
+      "cumAcquisitions"
+    ]
+  },
+  "CA-06": {
+    "pages": [
+      "capital_allocation"
+    ],
+    "keys": [
+      "acquisitionsCoverage"
+    ]
+  },
+  "CA-07": {
+    "pages": [
+      "capital_allocation"
+    ],
+    "keys": [
+      "cumBuybacks"
+    ]
+  },
+  "CA-08": {
+    "pages": [
+      "capital_allocation"
+    ],
+    "keys": [
+      "cumDividends"
+    ]
+  },
+  "CA-09": {
+    "pages": [
+      "capital_allocation"
+    ],
+    "keys": [
+      "shareholderReturnAmt"
+    ]
+  },
+  "CA-10": {
+    "pages": [
+      "capital_allocation"
+    ],
+    "keys": [
+      "fcfAfterDistributions"
+    ]
+  },
+  "CA-11": {
+    "pages": [
+      "capital_allocation"
+    ],
+    "keys": [
+      "retainedEarnings",
+      "retained_difference"
+    ]
+  },
+  "VL-01": {
+    "pages": [
+      "value_line",
+      "valuation"
+    ],
+    "keys": [
+      "price",
+      "latest_price",
+      "close"
+    ]
+  },
+  "VL-02": {
+    "pages": [
+      "value_line",
+      "valuation"
+    ],
+    "keys": [
+      "marketCap",
+      "market_cap"
+    ]
+  },
+  "VL-03": {
+    "pages": [
+      "value_line",
+      "valuation"
+    ],
+    "keys": [
+      "pe",
+      "currentPe",
+      "pe_current"
+    ]
+  },
+  "VL-04": {
+    "pages": [
+      "value_line",
+      "valuation"
+    ],
+    "keys": [
+      "pb",
+      "currentPb",
+      "pb_current"
+    ]
+  },
+  "VL-05": {
+    "pages": [
+      "valuation"
+    ],
+    "keys": [
+      "bps",
+      "BPS"
+    ]
+  },
+  "VL-06": {
+    "pages": [
+      "valuation"
+    ],
+    "keys": [
+      "peSeries",
+      "pe_history",
+      "historicalPe",
+      "buildHistoricalPeSeries",
+      "historicalPeMetrics"
+    ]
+  },
+  "VL-07": {
+    "pages": [
+      "valuation"
+    ],
+    "keys": [
+      "pbSeries",
+      "pb_history",
+      "historicalPb",
+      "buildHistoricalPbSeries",
+      "historicalPbMetrics"
+    ]
+  },
+  "VL-08": {
+    "pages": [
+      "valuation"
+    ],
+    "keys": [
+      "peMedian",
+      "pbMedian"
+    ]
+  },
+  "VL-09": {
+    "pages": [
+      "valuation"
+    ],
+    "keys": [
+      "currentPercentile",
+      "percentile"
+    ]
+  },
+  "VL-10": {
+    "pages": [
+      "valuation"
+    ],
+    "keys": [
+      "benchmarkPe",
+      "benchmarkPb"
+    ]
+  },
+  "VL-11": {
+    "pages": [
+      "valuation"
+    ],
+    "keys": [
+      "fcfYield"
+    ]
+  },
+  "VL-12": {
+    "pages": [
+      "valuation"
+    ],
+    "keys": [
+      "peBand",
+      "peMin",
+      "peMax"
+    ]
+  },
+  "VL-13": {
+    "pages": [
+      "valuation"
+    ],
+    "keys": [
+      "pbBand",
+      "pbMin",
+      "pbMax"
+    ]
+  },
+  "BK-01": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "NetInterestIncome"
+    ]
+  },
+  "BK-02": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "NetLoans"
+    ]
+  },
+  "BK-03": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "TotalDeposits"
+    ]
+  },
+  "BK-04": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "ProvisionForCreditLosses"
+    ]
+  },
+  "BK-05": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "NIM"
+    ]
+  },
+  "BK-06": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "NonPerformingLoans"
+    ]
+  },
+  "BK-07": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "NonPerformingLoanRatio"
+    ]
+  },
+  "BK-08": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "LoanLossAllowance"
+    ]
+  },
+  "BK-09": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "ProvisionCoverage"
+    ]
+  },
+  "BK-10": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "CET1Ratio"
+    ]
+  },
+  "BK-11": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "NonInterestIncome"
+    ]
+  },
+  "IN-01": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "NetPremiumsEarned"
+    ]
+  },
+  "IN-02": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "PolicyClaimsAndBenefits"
+    ]
+  },
+  "IN-03": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "ClaimsRatio"
+    ]
+  },
+  "IN-04": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "CombinedRatio"
+    ]
+  },
+  "IN-05": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "TotalInvestments"
+    ]
+  },
+  "IN-06": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "NetInvestmentIncome",
+      "InvestmentIncome"
+    ]
+  },
+  "IN-07": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "InsuranceContractLiabilities"
+    ]
+  },
+  "IN-08": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "EV"
+    ]
+  },
+  "IN-09": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "NBV"
+    ]
+  },
+  "IN-10": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "NewBusinessValueMargin"
+    ]
+  },
+  "IN-11": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "SolvencyRatio"
+    ]
+  },
+  "RE-01": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "NOI"
+    ]
+  },
+  "RE-02": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "FFO"
+    ]
+  },
+  "RE-03": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "Occupancy"
+    ]
+  },
+  "RE-04": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "FFOPerShare"
+    ]
+  },
+  "RE-05": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "ContractLiabilities"
+    ]
+  },
+  "RE-06": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "Inventory"
+    ]
+  },
+  "FS-01": {
+    "pages": [
+      "financials"
+    ],
+    "keys": [
+      "NetFeeAndCommissionIncome"
+    ]
+  },
+  "FS-02": {
+    "pages": [
+      "value_line"
+    ],
+    "keys": [
+      "investmentManagementFeeIncome",
+      "management-fees",
+      "资产管理费收入"
+    ]
+  }
+}

@@ -2,7 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [v0.47.18] - 2026-10-29
+
+### Added
+- **101 项公司页指标统一标准与验证矩阵基线**：
+  - 收敛指标契约为 101 项（72 项已实现、29 项部分、0 项缺失，排除 24 项模型与非标项），同步 `METRICS.md` 与进度报告 `METRICS_STATUS.md`；
+  - 45 家代表公司完成 4,545 格验证，2,597 个适用单元通过生产链路认证（`PIPELINE_PASS`），97 个单元完成年报证据化豁免登记（75 项未发生，22 项未单列披露），`FAIL / PARTIAL / BLOCKED` 保持归零；
+  - 增加页面双向绑定检查（`check:metrics:pages`）与来源依赖校验（`check:metrics:sources`），并固化未来 6 步盲测与全库推广路线。
+
+### Changed
+- **估值推演与财务口径规范**：
+  - 估值分析页 5 年情景测算与 PB-ROE 回报推演明确补充“情景测算，非预测”声明及假设参数说明；
+  - 综合财务看板投资收益行取消对保险净投资收益的静默回退，严格遵循契约独立取值与来源展示。
 
 ## [v0.47.17] - 2026-10-27
 

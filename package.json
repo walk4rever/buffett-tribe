@@ -179,7 +179,9 @@
     "db:prune-gcv:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/prune-gcv.ts",
     "db:seed-documents": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/seed-documents.ts",
     "backfill:embeddings": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-chunk-embeddings.ts --apply",
-    "backfill:embeddings:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-chunk-embeddings.ts"
+    "backfill:embeddings:dry": "node --env-file=.env.local ./node_modules/.bin/tsx scripts/backfill-chunk-embeddings.ts",
+    "check:metrics:pages": "./node_modules/.bin/tsx scripts/check-metric-pages.ts",
+    "check:metrics:sources": "./node_modules/.bin/tsx scripts/check-metric-sources.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",

@@ -11,7 +11,7 @@
       "source": "SEC XBRL、10-K、HKEX 年报、CNINFO/akshare",
       "status": "已实现",
       "gap": "无",
-      "detail": "已与经营收入、投资及公允价值变动收益隔离",
+      "detail": "与经营收入、投资及公允价值变动收益分开存放",
       "id": "GR-01",
       "key": "revenue",
       "basis": "reported",
@@ -150,7 +150,7 @@
       "source": "利润表",
       "status": "已实现",
       "gap": "无",
-      "detail": "三层语义已拆分；普通股口径 45/45，严格审计通过",
+      "detail": "归母、普通股、合并三层口径分开（见 4.1）；EPS、PE、ROE 使用普通股口径",
       "id": "GR-05",
       "key": "net_income",
       "basis": "reported",
@@ -350,7 +350,7 @@
       "source": "资产负债表",
       "status": "已实现",
       "gap": "无",
-      "detail": "归母权益和普通股权益已隔离；普通股权益 45/45",
+      "detail": "归母权益、普通股权益、总权益分开（见 4.1）；BPS、PB、ROE 使用普通股权益",
       "id": "GR-10",
       "key": "equity.shareholders",
       "basis": "reported",
@@ -984,6 +984,37 @@
       }
     },
     {
+      "section": "general_raw",
+      "subsection": null,
+      "name": "投资收益",
+      "definition": "利润表披露的利息、股息及金融工具公允价值变动损益，保持独立，不并入经营收入",
+      "formulaOrRule": "利润表披露的利息、股息及金融工具公允价值变动损益，保持独立，不并入经营收入",
+      "source": "利润表/附注",
+      "status": "部分",
+      "gap": "口径",
+      "detail": "各准则行项目口径不同；与保险“净投资收益”是两个指标，页面标签必须与实际口径一致",
+      "id": "GR-27",
+      "key": "investment_income",
+      "basis": "reported",
+      "roles": [
+        "bank",
+        "property_casualty",
+        "life_health",
+        "asset_mgmt",
+        "broker_exchange",
+        "conglomerate"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "InvestmentIncome"
+          ]
+        ]
+      }
+    },
+    {
       "section": "general_derived",
       "subsection": null,
       "name": "营收同比",
@@ -1596,67 +1627,6 @@
     {
       "section": "general_derived",
       "subsection": null,
-      "name": "ROIC",
-      "definition": "`NOPAT / average(invested_capital)`",
-      "formulaOrRule": "`NOPAT / average(invested_capital)`",
-      "source": "inputs:营业利润、税率、债务、现金、权益",
-      "status": "已实现",
-      "gap": "覆盖",
-      "detail": "投入资本 ≤ 0 时必须返回空值",
-      "id": "GD-16",
-      "key": "roic",
-      "basis": "derived",
-      "roles": [
-        "consumer_brand",
-        "healthcare",
-        "software_platform",
-        "semiconductor_hardware",
-        "energy_materials",
-        "utilities",
-        "telecommunications",
-        "developer"
-      ],
-      "requirement": {
-        "coverageYears": 5,
-        "minCoverageRatio": 0.8,
-        "alternatives": [
-          [
-            "OperatingIncome",
-            "ShareholdersEquity",
-            "TotalDebt",
-            "CashAndCashEquivalents"
-          ],
-          [
-            "OperatingIncome",
-            "ShareholdersEquity",
-            "ShortTermDebt",
-            "LongTermDebt",
-            "CashAndCashEquivalents"
-          ],
-          [
-            "OperatingIncome",
-            "ShareholdersEquity",
-            "LongTermDebt",
-            "CashAndCashEquivalents"
-          ],
-          [
-            "OperatingIncome",
-            "ShareholdersEquity",
-            "ShortTermDebt",
-            "CashAndCashEquivalents"
-          ],
-          [
-            "OperatingIncome",
-            "ShareholdersEquity",
-            "CashAndCashEquivalents"
-          ]
-        ],
-        "minYears": 2
-      }
-    },
-    {
-      "section": "general_derived",
-      "subsection": null,
       "name": "5 年 CAGR",
       "definition": "`(last/first)^(1/years)-1`",
       "formulaOrRule": "`(last/first)^(1/years)-1`",
@@ -1785,6 +1755,76 @@
           [
             "DividendsPaid",
             "CommonStockSharesOutstanding"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "资本开支率",
+      "definition": "`abs(CapEx) / OperatingRevenue`",
+      "formulaOrRule": "`abs(CapEx) / OperatingRevenue`",
+      "source": "inputs:资本开支、经营收入",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "经营收入 ≤ 0 时返回空值；适用工商角色",
+      "id": "GD-20",
+      "key": "capex_to_revenue",
+      "basis": "derived",
+      "roles": [
+        "consumer_brand",
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware",
+        "energy_materials",
+        "utilities",
+        "telecommunications"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "CapEx",
+            "OperatingRevenue"
+          ],
+          [
+            "CapEx",
+            "Revenue"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "general_derived",
+      "subsection": null,
+      "name": "研发费用率",
+      "definition": "`abs(RnDExpense) / OperatingRevenue`",
+      "formulaOrRule": "`abs(RnDExpense) / OperatingRevenue`",
+      "source": "inputs:研发费用、经营收入",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "经营收入 ≤ 0 时返回空值；仅适用医药、软件、半导体角色",
+      "id": "GD-21",
+      "key": "rnd_to_revenue",
+      "basis": "derived",
+      "roles": [
+        "healthcare",
+        "software_platform",
+        "semiconductor_hardware"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "RnDExpense",
+            "OperatingRevenue"
+          ],
+          [
+            "RnDExpense",
+            "Revenue"
           ]
         ]
       }
@@ -2746,93 +2786,6 @@
       }
     },
     {
-      "section": "valuation",
-      "subsection": null,
-      "name": "PE 情景回报",
-      "definition": "`latest_eps*(1+growth)^5*exit_pe`",
-      "formulaOrRule": "`latest_eps*(1+growth)^5*exit_pe`",
-      "source": "EPS、价格、增长率、退出 PE",
-      "status": "已实现",
-      "gap": "无",
-      "detail": "这是价格回报，不含股息",
-      "id": "VL-14",
-      "key": "valuation.pe_scenario",
-      "basis": "reported_or_derived",
-      "roles": [
-        "consumer_brand",
-        "healthcare",
-        "software_platform",
-        "semiconductor_hardware",
-        "energy_materials",
-        "utilities",
-        "telecommunications",
-        "bank",
-        "property_casualty",
-        "life_health",
-        "asset_mgmt",
-        "broker_exchange",
-        "reit_property",
-        "developer",
-        "conglomerate"
-      ],
-      "requirement": {
-        "coverageYears": 5,
-        "minCoverageRatio": 0.8,
-        "alternatives": [
-          [
-            "EPSDiluted"
-          ]
-        ],
-        "needsPrice": true,
-        "minYears": 2
-      }
-    },
-    {
-      "section": "valuation",
-      "subsection": null,
-      "name": "PB-ROE 情景回报",
-      "definition": "BPS 按留存收益增长，再乘退出 PB",
-      "formulaOrRule": "BPS 按留存收益增长，再乘退出 PB",
-      "source": "BPS、ROE、派息率、退出 PB",
-      "status": "已实现",
-      "gap": "覆盖",
-      "detail": "缺完整分红数据时不可计算",
-      "id": "VL-15",
-      "key": "valuation.pb_roe_scenario",
-      "basis": "reported_or_derived",
-      "roles": [
-        "consumer_brand",
-        "healthcare",
-        "software_platform",
-        "semiconductor_hardware",
-        "energy_materials",
-        "utilities",
-        "telecommunications",
-        "bank",
-        "property_casualty",
-        "life_health",
-        "asset_mgmt",
-        "broker_exchange",
-        "reit_property",
-        "developer",
-        "conglomerate"
-      ],
-      "requirement": {
-        "coverageYears": 5,
-        "minCoverageRatio": 0.8,
-        "alternatives": [
-          [
-            "ShareholdersCommonEquity",
-            "CommonStockSharesOutstanding",
-            "NetIncome",
-            "DividendsPaid"
-          ]
-        ],
-        "needsPrice": true,
-        "minYears": 2
-      }
-    },
-    {
       "section": "bank",
       "subsection": "8.1 银行",
       "name": "净利息收入",
@@ -2861,13 +2814,39 @@
     {
       "section": "bank",
       "subsection": "8.1 银行",
+      "name": "非利息收入",
+      "definition": "手续费、佣金及投资收益等非利息营业收入",
+      "formulaOrRule": "手续费、佣金及投资收益等非利息营业收入",
+      "source": "利润表",
+      "status": "已实现",
+      "gap": "无",
+      "detail": "与 净利息收入 合计为银行营业收入；口径随银行披露而不同，需在来源说明中标注",
+      "id": "BK-11",
+      "key": "bank.non_interest_income",
+      "basis": "reported",
+      "roles": [
+        "bank"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "NonInterestIncome"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "bank",
+      "subsection": "8.1 银行",
       "name": "贷款净额",
       "definition": "资产负债表列报的贷款及垫款净额；总额与准备的统计范围不同的银行以报表列报值为准",
       "formulaOrRule": "资产负债表列报的贷款及垫款净额；总额与准备的统计范围不同的银行以报表列报值为准",
       "source": "资产负债表/附注",
       "status": "已实现",
       "gap": "无",
-      "detail": "三家银行 2021–2025 年均已覆盖",
+      "detail": "以资产负债表列报值为准；总额与准备的统计范围不同时不得机械相减",
       "id": "BK-02",
       "key": "bank.net_loans",
       "basis": "reported_or_derived",
@@ -2945,7 +2924,7 @@
       "source": "年报经营表/监管披露",
       "status": "已实现",
       "gap": "无",
-      "detail": "三家银行 2021–2025 年均为 5/5；披露值与公式交叉校验通过",
+      "detail": "优先公司披露值，并与 净利息收入/平均生息资产 交叉校验；JPM 使用 FTE 口径",
       "id": "BK-05",
       "key": "bank.nim",
       "basis": "reported_or_derived",
@@ -2975,7 +2954,7 @@
       "source": "信用质量附注",
       "status": "已实现",
       "gap": "无",
-      "detail": "三家银行 2021–2025 年均为 5/5",
+      "detail": "中银香港使用“减值贷款”口径，须在来源说明中标注",
       "id": "BK-06",
       "key": "bank.npl",
       "basis": "reported_or_derived",
@@ -3001,7 +2980,7 @@
       "source": "信用质量附注",
       "status": "已实现",
       "gap": "无",
-      "detail": "三家银行五年披露值与公式交叉校验通过",
+      "detail": "优先公司披露值，并与 不良贷款/贷款总额 交叉校验",
       "id": "BK-07",
       "key": "bank.npl_ratio",
       "basis": "reported_or_derived",
@@ -3031,7 +3010,7 @@
       "source": "资产负债表/信用质量附注",
       "status": "已实现",
       "gap": "无",
-      "detail": "三家银行 2021–2025 年均为 5/5",
+      "detail": "统计范围（如是否含 FVOCI 贷款准备）须在来源说明中标注",
       "id": "BK-08",
       "key": "bank.loan_loss_allowance",
       "basis": "reported_or_derived",
@@ -3057,7 +3036,7 @@
       "source": "减值准备、不良贷款",
       "status": "已实现",
       "gap": "无",
-      "detail": "三家银行五年公式与披露值交叉校验通过",
+      "detail": "优先公司披露值，并与 贷款损失准备/不良贷款 交叉校验",
       "id": "BK-09",
       "key": "bank.provision_coverage",
       "basis": "reported_or_derived",
@@ -3087,7 +3066,7 @@
       "source": "监管资本表",
       "status": "已实现",
       "gap": "无",
-      "detail": "三家银行 2021–2025 年均为 5/5；监管口径已记录",
+      "detail": "保留监管口径（JPM Standardized；招商银行集团高级法）并写入来源说明",
       "id": "BK-10",
       "key": "bank.cet1",
       "basis": "reported_or_derived",
@@ -3167,7 +3146,7 @@
       "source": "利润表",
       "status": "已实现",
       "gap": "无",
-      "detail": "PGR、601319.SS、2328.HK 均为 5/5；只适用于财险角色",
+      "detail": "只适用于财险角色",
       "id": "IN-03",
       "key": "insurance.claims_ratio",
       "basis": "reported_or_derived",
@@ -3194,7 +3173,7 @@
       "source": "财险经营表",
       "status": "已实现",
       "gap": "无",
-      "detail": "PGR、601319.SS、2328.HK 均为 5/5，并保留公司计算口径",
+      "detail": "优先公司披露值，保留公司计算口径；只适用于财险角色",
       "id": "IN-04",
       "key": "insurance.combined_ratio",
       "basis": "reported_or_derived",
@@ -3247,7 +3226,7 @@
       "source": "利润表",
       "status": "部分",
       "gap": "口径",
-      "detail": "需与已实现投资损益分开",
+      "detail": "各准则无统一“经常性净投资收益”行项目；仅美国 US GAAP 保险（XBRL 可直接接入）适用，中港保险返回 not_applicable；需与已实现投资损益分开",
       "id": "IN-06",
       "key": "insurance.net_investment_income",
       "basis": "reported_or_derived",
@@ -3277,7 +3256,7 @@
       "source": "资产负债表/附注",
       "status": "已实现",
       "gap": "口径",
-      "detail": "2328.HK 2021–2025 已核对；作为核心浮存金池表达",
+      "detail": "页面以保险合同负债表达核心浮存金池；2023 年起使用 IFRS 17/CAS 25，序列需标注准则",
       "id": "IN-07",
       "key": "insurance.contract_liabilities",
       "basis": "reported",
@@ -3304,7 +3283,7 @@
       "source": "公司 EV 披露",
       "status": "已实现",
       "gap": "无",
-      "detail": "平安与友邦均为 5/5；MetLife 不披露适用集团 EV",
+      "detail": "只适用于披露 EV 的寿险公司；不披露时返回 not_applicable 或 not_disclosed",
       "id": "IN-08",
       "key": "insurance.ev",
       "basis": "reported",
@@ -3330,7 +3309,7 @@
       "source": "公司 EV/NBV 披露",
       "status": "已实现",
       "gap": "无",
-      "detail": "平安与友邦均为 5/5；保留公司精算假设",
+      "detail": "保留公司精算假设，不跨公司重算；跨公司比较须标注口径",
       "id": "IN-09",
       "key": "insurance.nbv",
       "basis": "reported",
@@ -3356,7 +3335,7 @@
       "source": "EV/NBV 补充表",
       "status": "已实现",
       "gap": "无",
-      "detail": "平安与友邦均为 5/5；按标准保费或年化首年保费分别标注",
+      "detail": "按标准保费或年化首年保费分别标注",
       "id": "IN-10",
       "key": "insurance.vnb_margin",
       "basis": "reported_or_derived",
@@ -3382,7 +3361,7 @@
       "source": "监管偿付能力披露",
       "status": "已实现",
       "gap": "无",
-      "detail": "平安、人保、友邦均为 5/5；C-ROSS 与香港 GWS/LCSM 分别保留",
+      "detail": "C-ROSS 与香港 GWS/LCSM 分别保留，不统一换算",
       "id": "IN-11",
       "key": "insurance.solvency",
       "basis": "reported_or_derived",
@@ -3409,7 +3388,7 @@
       "source": "物业组合/分部披露",
       "status": "已实现",
       "gap": "无",
-      "detail": "三家 REIT 代表公司均为 5/5；SPG 与领展使用公司披露口径，508000.SS 使用确定性公式",
+      "detail": "优先公司披露值；没有披露时用确定公式（物业收入减不含折旧摊销的运营费用）",
       "id": "RE-01",
       "key": "real_estate.noi",
       "basis": "reported_or_derived",
@@ -3435,7 +3414,7 @@
       "source": "公司 FFO 表或 NAREIT 公式",
       "status": "已实现",
       "gap": "无",
-      "detail": "SPG 按 NAREIT 口径完成 5/5；非 NAREIT 披露的 REIT 按公司适用性标为 N/A",
+      "detail": "只适用于披露 FFO 的 REIT；未按 NAREIT 披露的 REIT 标为不适用",
       "id": "RE-02",
       "key": "real_estate.ffo",
       "basis": "reported",
@@ -3461,7 +3440,7 @@
       "source": "物业运营补充表",
       "status": "已实现",
       "gap": "无",
-      "detail": "三家 REIT 代表公司均为 5/5；公司披露的物业组合范围保存在来源说明中",
+      "detail": "物业组合范围写入来源说明，不把不同地区或业态拼成未披露的总出租率",
       "id": "RE-03",
       "key": "real_estate.occupancy",
       "basis": "reported",
@@ -3487,7 +3466,7 @@
       "source": "FFO、股数与每份披露",
       "status": "已实现",
       "gap": "无",
-      "detail": "SPG 2021–2025 均为 5/5，并用摊薄股数交叉校验",
+      "detail": "优先公司披露的每份 FFO，并与 FFO/摊薄股数 交叉校验",
       "id": "RE-04",
       "key": "real_estate.ffo_per_share",
       "basis": "reported_or_derived",
@@ -3552,6 +3531,32 @@
         "alternatives": [
           [
             "Inventory"
+          ]
+        ]
+      }
+    },
+    {
+      "section": "financial_services",
+      "subsection": "8.5 金融服务",
+      "name": "管理费收入",
+      "definition": "资产管理业务费收入",
+      "formulaOrRule": "资产管理业务费收入",
+      "source": "利润表/公司补充表",
+      "status": "已实现",
+      "gap": "覆盖",
+      "detail": "字典科目 InvestmentManagementFeeIncome；仅适用披露该科目的资管公司，未披露返回 not_disclosed",
+      "id": "FS-02",
+      "key": "financial_services.management_fee",
+      "basis": "reported",
+      "roles": [
+        "asset_mgmt"
+      ],
+      "requirement": {
+        "coverageYears": 5,
+        "minCoverageRatio": 0.8,
+        "alternatives": [
+          [
+            "InvestmentManagementFeeIncome"
           ]
         ]
       }

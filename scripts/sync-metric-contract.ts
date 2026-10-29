@@ -23,6 +23,42 @@ const OUTPUT_PATH = path.join(
   "metric-contract.json",
 );
 
+const ID_REGISTRY_PATH = path.join(
+  process.cwd(),
+  "scripts",
+  "lib",
+  "metric-id-registry.json",
+);
+
+/**
+ * Metric ids are stable: a key keeps its id forever, ids of removed metrics
+ * are retired and never reused. Gap classifications and external references
+ * rely on this.
+ */
+type MetricIdRegistry = {
+  ids: Record<string, string>;
+  retired: Record<string, string>;
+};
+
+function loadRegistry(): MetricIdRegistry {
+  try {
+    return JSON.parse(readFileSync(ID_REGISTRY_PATH, "utf8")) as MetricIdRegistry;
+  } catch {
+    return { ids: {}, retired: {} };
+  }
+}
+
+function nextId(registry: MetricIdRegistry, prefix: string) {
+  let max = 0;
+  for (const id of [
+    ...Object.values(registry.ids),
+    ...Object.keys(registry.retired),
+  ]) {
+    if (id.startsWith(`${prefix}-`)) max = Math.max(max, Number(id.slice(prefix.length + 1)));
+  }
+  return `${prefix}-${String(max + 1).padStart(2, "0")}`;
+}
+
 const KEY_BY_NAME: Record<string, string> = {
   营业收入: "revenue",
   营业成本: "cost_of_revenue",
@@ -47,6 +83,7 @@ const KEY_BY_NAME: Record<string, string> = {
   期末股数: "shares.period_end",
   加权平均稀释股数: "shares.weighted_diluted",
   研发费用: "rnd_expense",
+  投资收益: "investment_income",
   "合同负债/预收款": "contract_liabilities",
   "存货/开发成本": "inventory",
   投资性物业: "investment_property",
@@ -65,10 +102,11 @@ const KEY_BY_NAME: Record<string, string> = {
   "负债/资产": "liabilities_to_assets",
   "账面权益/资产": "equity_to_assets",
   净负债率: "net_debt_ratio",
-  ROIC: "roic",
   "5 年 CAGR": "cagr_5y",
   期末股数变化: "shares.change",
   每股已实施分红: "dividend_per_share",
+  资本开支率: "capex_to_revenue",
+  研发费用率: "rnd_to_revenue",
   完整现金流年度: "capital.flow_coverage",
   累计经营现金流: "capital.cumulative_ocf",
   累计资本开支: "capital.cumulative_capex",
@@ -93,9 +131,8 @@ const KEY_BY_NAME: Record<string, string> = {
   FCFYield: "valuation.fcf_yield",
   PE估值走廊: "valuation.pe_band",
   PB估值走廊: "valuation.pb_band",
-  PE情景回报: "valuation.pe_scenario",
-  "PB-ROE情景回报": "valuation.pb_roe_scenario",
   净利息收入: "bank.net_interest_income",
+  非利息收入: "bank.non_interest_income",
   贷款净额: "bank.net_loans",
   客户存款: "bank.deposits",
   信用减值损失: "bank.provision",
@@ -165,12 +202,11 @@ function basisFor(row: MetricContractRow): MetricContractBasis {
     return "derived" as const;
   }
   if (row.name === "最新收盘价") return "reported" as const;
-  if (["PE情景回报", "PB-ROE情景回报"].includes(row.name)) {
-    return "modeled" as const;
-  }
   if (
     [
       "净利息收入",
+      "非利息收入",
+      "投资收益",
       "客户存款",
       "净已赚保费",
       "赔付与保单利益",
@@ -195,13 +231,10 @@ function main() {
   const rows = parseMetricContract(
     readFileSync(METRICS_PATH, "utf8"),
   ).filter((row) => row.status !== "排除");
-  const counters = new Map<string, number>();
+  const registry = loadRegistry();
   const seenKeys = new Set<string>();
   const metrics = rows.map((row) => {
     const prefix = prefixFor(row.section);
-    const count = (counters.get(prefix) ?? 0) + 1;
-    counters.set(prefix, count);
-    const id = `${prefix}-${String(count).padStart(2, "0")}`;
     const key =
       row.section === "real_estate" && row.name === "存货/开发成本"
         ? "real_estate.inventory"
@@ -210,6 +243,8 @@ function main() {
     if (!key) throw new Error(`Missing stable metric key for ${row.name}`);
     if (seenKeys.has(key)) throw new Error(`Duplicate metric key: ${key}`);
     seenKeys.add(key);
+    const id = registry.ids[key] ?? nextId(registry, prefix);
+    registry.ids[key] = id;
     return {
       ...row,
       id,
@@ -219,6 +254,17 @@ function main() {
       requirement: requirementForMetric(row),
     };
   });
+  for (const [key, id] of Object.entries(registry.ids)) {
+    if (!seenKeys.has(key)) {
+      registry.retired[id] = key;
+      delete registry.ids[key];
+    }
+  }
+  const sortedRegistry: MetricIdRegistry = {
+    ids: Object.fromEntries(Object.entries(registry.ids).sort(([, a], [, b]) => a.localeCompare(b))),
+    retired: Object.fromEntries(Object.entries(registry.retired).sort(([a], [b]) => a.localeCompare(b))),
+  };
+  const serializedRegistry = `${JSON.stringify(sortedRegistry, null, 2)}\n`;
 
   const contract: MetricContractArtifact = {
     version: 1,
@@ -233,9 +279,21 @@ function main() {
         `${OUTPUT_PATH} is stale; run npm run sync:metrics`,
       );
     }
+    let currentRegistry = "";
+    try {
+      currentRegistry = readFileSync(ID_REGISTRY_PATH, "utf8");
+    } catch {
+      // handled below
+    }
+    if (currentRegistry !== serializedRegistry) {
+      throw new Error(
+        `${ID_REGISTRY_PATH} is stale; run npm run sync:metrics`,
+      );
+    }
     console.log(`Verified ${metrics.length} metrics in ${OUTPUT_PATH}`);
     return;
   }
+  writeFileSync(ID_REGISTRY_PATH, serializedRegistry);
   writeFileSync(OUTPUT_PATH, serialized);
   console.log(`Wrote ${metrics.length} metrics to ${OUTPUT_PATH}`);
 }

@@ -8,20 +8,8 @@
       "evidence": "中芯国际 2021-2025 年报利润分配预案：处于先进制程重资本开支期，未进行现金分红；分红及派生分配指标未发生。"
     },
     {
-      "ticker": "688981.SS",
-      "metricId": "VL-15",
-      "status": "not_occurred",
-      "evidence": "中芯国际 2021-2025 年报利润分配预案：处于先进制程重资本开支期，未进行现金分红；分红及派生分配指标未发生。"
-    },
-    {
       "ticker": "BRK-B",
       "metricId": "GD-19",
-      "status": "not_occurred",
-      "evidence": "Berkshire Hathaway does not pay cash dividends (2025 Form 10-K Item 5 & p. K-48); dividend payout and dividend-derived returns did not occur."
-    },
-    {
-      "ticker": "BRK-B",
-      "metricId": "VL-15",
       "status": "not_occurred",
       "evidence": "Berkshire Hathaway does not pay cash dividends (2025 Form 10-K Item 5 & p. K-48); dividend payout and dividend-derived returns did not occur."
     },
@@ -528,6 +516,72 @@
       "metricId": "GR-13",
       "status": "not_occurred",
       "evidence": "Simon Property Group 2025 Form 10-K Note 7: short-term unsecured commercial paper notes were not issued in FY2021-FY2023."
+    },
+    {
+      "ticker": "0700.HK",
+      "metricId": "GD-21",
+      "status": "not_disclosed",
+      "evidence": "腾讯控股综合损益表未单独列示研发开支（并入一般及行政开支），导致派生研发费用率无法计算。"
+    },
+    {
+      "ticker": "000532.SZ",
+      "metricId": "FS-02",
+      "status": "not_disclosed",
+      "evidence": "华金资本年报主营业务按项目投资与资产管理等划分，但在法定综合利润表主表中未单列'资产管理费收入'独立科目。"
+    },
+    {
+      "ticker": "0806.HK",
+      "metricId": "FS-02",
+      "status": "not_disclosed",
+      "evidence": "惠理集团主要收入为管理费及表现费，财务报表主表列示为主营收益/营业额，未以独立标准科目列报资产管理费收入。"
+    },
+    {
+      "ticker": "BX",
+      "metricId": "FS-02",
+      "status": "not_disclosed",
+      "evidence": "Blackstone 10-K 报表将管理费列入主营业务收入细分（分部/附注），标准 GAAP 综合损益主表采用总营收及分部呈现。"
+    },
+    {
+      "ticker": "0388.HK",
+      "metricId": "GR-27",
+      "status": "not_disclosed",
+      "evidence": "香港交易所综合损益表将资金投资回报列入'投资收益净额'及保证金投资回报，未单独采用标准非金融类投资收益主表科目。"
+    },
+    {
+      "ticker": "BRK-B",
+      "metricId": "GR-27",
+      "status": "not_disclosed",
+      "evidence": "Berkshire Hathaway 10-K 利润表将投资损益区分为 Investment gains/losses，未合并为单一确定性 InvestmentIncome 主表科目。"
+    },
+    {
+      "ticker": "BX",
+      "metricId": "GR-27",
+      "status": "not_disclosed",
+      "evidence": "Blackstone 10-K 损益表以管理费、业绩报酬及自有资金投资回报细分列示，未列报通用 InvestmentIncome 科目。"
+    },
+    {
+      "ticker": "CME",
+      "metricId": "GR-27",
+      "status": "not_disclosed",
+      "evidence": "CME Group 作为衍生品交易所，主营为交易及清算费用，综合损益表中非经常性投资收益未单列或未发生。"
+    },
+    {
+      "ticker": "JPM",
+      "metricId": "GR-27",
+      "status": "not_disclosed",
+      "evidence": "JPMorgan Chase 综合损益表按净利息收入及非利息收入列报，投资及交易损益属于非利息收入子项，未单独列示为通用 InvestmentIncome 主表项。"
+    },
+    {
+      "ticker": "MET",
+      "metricId": "GR-27",
+      "status": "not_disclosed",
+      "evidence": "MetLife 作为寿险公司，财报主表采用净投资收益（NetInvestmentIncome，已实现 5/5 年），未单列通用投资收益。"
+    },
+    {
+      "ticker": "0806.HK",
+      "metricId": "GR-27",
+      "status": "not_disclosed",
+      "evidence": "惠理集团历史部分年度未在综合损益主表单独列示投资收益，部分收益归入金融资产公允价值变动及营业额。"
     }
   ]
 }

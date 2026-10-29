@@ -754,10 +754,9 @@ const metrics: MetricDef[] = [
     key: "InvestmentIncome",
     zhLabel: "投资收益",
     enLabel: "Investment Income",
-    hint: "利息、股息收益及金融工具公允价值变动损益",
+    hint: "利息、股息收益及金融工具公允价值变动损益（保持独立，不并入经营收入）",
     kind: "money",
-    compute: (year, ctx) =>
-      value(ctx, year, "InvestmentIncome") ?? value(ctx, year, "NetInvestmentIncome"),
+    compute: (year, ctx) => value(ctx, year, "InvestmentIncome"),
   },
   {
     key: "InsuranceContractLiabilities",

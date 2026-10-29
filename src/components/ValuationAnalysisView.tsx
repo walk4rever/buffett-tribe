@@ -980,9 +980,9 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
         <details className="val-sim-block">
           <summary className="val-sim-summary">
             <div>
-              <h4 className="val-block-title">5年情景测算</h4>
+              <h4 className="val-block-title">5年情景测算 (非预测)</h4>
               <p className="val-block-desc">
-                按 EPS 增长与退出 P/E 假设测算，不含分红
+                情景测算，非预测。按 EPS 增长率与 5 年后退出 P/E 参数假设推演回报区间，不含分红
               </p>
             </div>
             <span className="val-sim-chevron" aria-hidden="true" />
@@ -1161,9 +1161,9 @@ export function ValuationAnalysisView({ data }: ValuationAnalysisViewProps) {
         <details className="val-sim-block">
           <summary className="val-sim-summary">
             <div>
-              <h4 className="val-block-title">5年回报推演 (PB-ROE 框架)</h4>
+              <h4 className="val-block-title">5年回报推演 (PB-ROE 框架，非预测)</h4>
               <p className="val-block-desc">
-                基于历史披露分红率和 5 年后退出 P/B 假设测算；结果为近似推演
+                情景测算，非预测。基于留存收益增长率、历史披露分红率与 5 年后退出 P/B 参数假设推演回报区间
               </p>
             </div>
             <span className="val-sim-chevron" aria-hidden="true" />

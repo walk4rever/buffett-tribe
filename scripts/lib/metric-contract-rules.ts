@@ -40,6 +40,8 @@ const DIRECT_FIELDS: Record<string, string[][]> = {
   "合同负债/预收款": [["ContractLiabilities"]],
   "存货/开发成本": [["Inventory"]],
   投资性物业: [["InvestmentProperty"]],
+  投资收益: [["InvestmentIncome"]],
+  非利息收入: [["NonInterestIncome"]],
   NOI: [["NOI"]],
   FFO: [["FFO"]],
   AFFO: [["AFFO"]],
@@ -130,40 +132,17 @@ function rawRequirementForMetric(
           ["ShortTermDebt", "CashAndCashEquivalents", "ShareholdersEquity"],
         ],
       },
-      ROIC: {
+      资本开支率: {
         alternatives: [
-          [
-            "OperatingIncome",
-            "ShareholdersEquity",
-            "TotalDebt",
-            "CashAndCashEquivalents",
-          ],
-          [
-            "OperatingIncome",
-            "ShareholdersEquity",
-            "ShortTermDebt",
-            "LongTermDebt",
-            "CashAndCashEquivalents",
-          ],
-          [
-            "OperatingIncome",
-            "ShareholdersEquity",
-            "LongTermDebt",
-            "CashAndCashEquivalents",
-          ],
-          [
-            "OperatingIncome",
-            "ShareholdersEquity",
-            "ShortTermDebt",
-            "CashAndCashEquivalents",
-          ],
-          [
-            "OperatingIncome",
-            "ShareholdersEquity",
-            "CashAndCashEquivalents",
-          ],
+          ["CapEx", "OperatingRevenue"],
+          ["CapEx", "Revenue"],
         ],
-        minYears: 2,
+      },
+      研发费用率: {
+        alternatives: [
+          ["RnDExpense", "OperatingRevenue"],
+          ["RnDExpense", "Revenue"],
+        ],
       },
       "5年CAGR": {
         alternatives: [
