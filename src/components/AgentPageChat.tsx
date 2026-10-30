@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { useSession } from "next-auth/react";
 import {
   PanelLeftClose,
@@ -135,21 +142,36 @@ export function AgentPageChat({ initialMessages }: AgentPageChatProps) {
 
   const [leftOpen, setLeftOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);
+  const previousDesktopRef = useRef<boolean | null>(null);
+  const hadSessionRef = useRef(false);
 
   useEffect(() => {
-    const handleResize = () => {
-      const desktop = window.innerWidth >= 1280;
+    const mobileMediaQuery = window.matchMedia("(max-width: 1280px)");
+
+    const syncWorkspaceLayout = () => {
+      const desktop = !mobileMediaQuery.matches;
+      const hasSession = Boolean(session);
+      const desktopChanged =
+        previousDesktopRef.current !== null &&
+        previousDesktopRef.current !== desktop;
+      const sessionBecameAvailable = hasSession && !hadSessionRef.current;
+
       setIsDesktop(desktop);
-      if (desktop && session) {
-        setLeftOpen(true);
-      } else {
-        setLeftOpen(false);
+      if (
+        previousDesktopRef.current === null ||
+        desktopChanged ||
+        sessionBecameAvailable
+      ) {
+        setLeftOpen(desktop && hasSession);
       }
+
+      previousDesktopRef.current = desktop;
+      hadSessionRef.current = hasSession;
     };
 
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    syncWorkspaceLayout();
+    mobileMediaQuery.addEventListener("change", syncWorkspaceLayout);
+    return () => mobileMediaQuery.removeEventListener("change", syncWorkspaceLayout);
   }, [session]);
 
   const activeCompanyTicker = tabs.find((t) => t.id === activeTabId)?.ticker ?? null;
