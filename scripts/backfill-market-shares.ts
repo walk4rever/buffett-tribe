@@ -64,7 +64,7 @@ function parseArgs(): Args {
   if (execute && (!batchId || !/^[a-zA-Z0-9_-]+$/.test(batchId))) {
     throw new Error("--execute requires a safe --batch-id");
   }
-  const tickerList = valueAfter("--tickers");
+  const tickerList = valueAfter("--tickers") ?? valueAfter("--ticker");
   const fromYear = Number(valueAfter("--from-year") ?? 2021);
   if (!Number.isInteger(fromYear) || fromYear < 1990 || fromYear > 2030) {
     throw new Error("--from-year must be an integer between 1990 and 2030");
