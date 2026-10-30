@@ -25,27 +25,6 @@ export function isInsightFormat(value: unknown): value is InsightFormat {
   return typeof value === "string" && (INSIGHT_FORMATS as readonly string[]).includes(value);
 }
 
-// Established Vault authoring convention for translated podcast/video pieces:
-// `source:` holds the episode URL and `author:` holds the show/publication
-// name (e.g. "Colossus", "Acquired", "20VC") — the opposite of what those field
-// names suggest. Recognize the known shows so the real name survives as
-// `source`; genuine personal bylines (an actual person's blog post, e.g.
-// author: lilian-weng) are never in this list, so they're untouched.
-const KNOWN_SHOW_NAMES = new Set([
-  "Colossus",
-  "Acquired",
-  "No Priors",
-  "20VC",
-  "Capital Allocators",
-  "My First Million",
-  "Latent Space",
-  "SemiAnalysis",
-  "Founders",
-  "TWIML AI",
-  "Generating Alpha",
-  "The a16z Show",
-]);
-
 function isHttpUrl(value: string | undefined): value is string {
   return typeof value === "string" && /^https?:\/\//i.test(value);
 }
@@ -59,8 +38,9 @@ export function stripWikiLinkBrackets(value: string): string {
 
 /**
  * Resolves the final `source`/`author` pair for an InsightPost from explicit
- * overrides (CLI flags / API payload) plus raw frontmatter, applying the
- * KNOWN_SHOW_NAMES convention above and bracket-stripping to both.
+ * overrides (CLI flags / API payload) plus raw frontmatter (2026-10-30
+ * Vault/FRONTMATTER.md 规范：source=来源名、source_url=原文地址、author=真实
+ * 署名作者可空；播客 author 与栏目同名，留空）。
  *
  * Throws if `source` still ends up empty — a null `source` makes a post
  * invisible under every /insights filter pill while still *looking* filed
@@ -70,37 +50,27 @@ export function stripWikiLinkBrackets(value: string): string {
  * was noticed. Never guess a `source` — reject instead so the importer fixes
  * the frontmatter or passes --source explicitly.
  *
- * `author` is optional and, when absent, defaults to the resolved `source`
- * — the two are the same value for the vast majority of posts; the site no
- * longer displays `author` separately (see PRODUCT.md), so this is mostly
- * about keeping the column's historical meaning intact, not UI.
+ * `author` 缺省为 null（2026-10-30 起不再回落为 source——历史上 291 篇
+ * author===source 纯冗余，已批量置空）。
  */
 export function resolveInsightSourceAndAuthor(input: {
   explicitSource?: string;
   explicitAuthor?: string;
   frontmatterSource?: string;
   frontmatterAuthor?: string;
-}): { source: string; author: string } {
+}): { source: string; author: string | null } {
   const frontmatterSourceIsUrl = isHttpUrl(input.frontmatterSource);
-  const authorIsKnownShowName =
-    frontmatterSourceIsUrl && !!input.frontmatterAuthor && KNOWN_SHOW_NAMES.has(input.frontmatterAuthor);
 
-  const rawSource =
-    input.explicitSource ??
-    (authorIsKnownShowName
-      ? input.frontmatterAuthor!
-      : frontmatterSourceIsUrl
-        ? undefined
-        : input.frontmatterSource);
+  const rawSource = input.explicitSource ?? (frontmatterSourceIsUrl ? undefined : input.frontmatterSource);
   const source = rawSource ? stripWikiLinkBrackets(rawSource) : "";
   if (!source) {
     throw new Error(
-      "source 不能为空 — 请在 frontmatter 里设置 `source:`，或传 --source（也可能是 `source:` 写成了链接但 `author:` 不是已知节目名，见 KNOWN_SHOW_NAMES）。",
+      "source 不能为空 — 请在 frontmatter 里设置 `source:`（来源名，如 20VC；URL 归 `source_url:`），或传 --source。",
     );
   }
 
-  const rawAuthor = input.explicitAuthor ?? (authorIsKnownShowName ? undefined : input.frontmatterAuthor);
-  const author = rawAuthor ? stripWikiLinkBrackets(rawAuthor) : source;
+  const rawAuthor = input.explicitAuthor ?? input.frontmatterAuthor;
+  const author = rawAuthor ? stripWikiLinkBrackets(rawAuthor) : null;
 
   return { source, author };
 }
@@ -158,7 +128,8 @@ export function parseInsightFrontmatter(raw: string): ParsedInsightContent {
 
     if (key === "title") metadata.title = value;
     if (key === "source") metadata.source = value;
-    if (key === "sourceUrl") metadata.sourceUrl = value;
+    // Vault frontmatter 规范（2026-10-30）用蛇形 source_url；sourceUrl 为旧兼容
+    if (key === "sourceUrl" || key === "source_url") metadata.sourceUrl = value;
     if (key === "author") metadata.author = value;
     if (key === "date") metadata.date = value;
     if (key === "description") metadata.description = value;

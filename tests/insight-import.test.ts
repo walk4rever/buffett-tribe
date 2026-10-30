@@ -146,7 +146,7 @@ source: "[[Acquired]]"
     expect(data.source).toBe("Acquired");
   });
 
-  it("defaults author to the resolved source when author is absent", () => {
+  it("leaves author null when absent (2026-10-30 规范：播客 author 与栏目同名，不填)", () => {
     const args = parseInsightImportArgs(["/tmp/no-author.md"]);
     const data = buildInsightImportData(
       `---
@@ -158,16 +158,16 @@ source: Buffett Tribe
     );
 
     expect(data.source).toBe("Buffett Tribe");
-    expect(data.author).toBe("Buffett Tribe");
+    expect(data.author).toBeNull();
   });
 
-  it("recovers a known show name from `author:` when `source:` holds the episode URL", () => {
+  it("reads new-spec frontmatter: source 为来源名、source_url 为原文链接", () => {
     const args = parseInsightImportArgs(["/tmp/GA56 test.md"]);
     const data = buildInsightImportData(
       `---
 title: 测试文章
-source: https://www.youtube.com/watch?v=abc123
-author: Generating Alpha
+source: Generating Alpha
+source_url: https://www.youtube.com/watch?v=abc123
 ---
 正文`,
       args,
@@ -175,7 +175,22 @@ author: Generating Alpha
 
     expect(data.source).toBe("Generating Alpha");
     expect(data.sourceUrl).toBe("https://www.youtube.com/watch?v=abc123");
-    expect(data.author).toBe("Generating Alpha");
+    expect(data.author).toBeNull();
+  });
+
+  it("rejects legacy frontmatter where source holds the episode URL (KNOWN_SHOW_NAMES 已删)", () => {
+    const args = parseInsightImportArgs(["/tmp/GA56 test.md"]);
+    expect(() =>
+      buildInsightImportData(
+        `---
+title: 测试文章
+source: https://www.youtube.com/watch?v=abc123
+author: Generating Alpha
+---
+正文`,
+        args,
+      ),
+    ).toThrow("source 不能为空");
   });
 
   it("leaves a genuine personal byline alone when author isn't a known show name", () => {
