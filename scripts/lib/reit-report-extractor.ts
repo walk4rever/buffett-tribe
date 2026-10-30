@@ -8,7 +8,10 @@ export type SpgReitReportFacts = {
   ffo: EvidenceValue | null;
   occupancy: EvidenceValue | null;
   ffoPerShare: EvidenceValue | null;
+  scale?: number;
 };
+
+export type UsReitReportFacts = SpgReitReportFacts;
 
 export type CnReitReportFacts = {
   propertyRevenue: EvidenceValue | null;
@@ -122,33 +125,97 @@ function percentageByPattern(
 export function extractSpgReitFacts(
   sections: FilingTextSection[],
 ): SpgReitReportFacts {
+  return extractUsReitFacts(sections);
+}
+
+export function extractUsReitFacts(
+  sections: FilingTextSection[],
+): UsReitReportFacts {
   const ordered = [...sections].sort(
     (left, right) =>
       Number(right.section === "item_7_mda") -
       Number(left.section === "item_7_mda"),
   );
-  return {
-    noi: numberAfterLabel(
+  const spgNoi = numberAfterLabel(
+    ordered,
+    ["Beneficial interest of Portfolio NOI", "Portfolio NOI"],
+    100_000,
+  );
+  if (spgNoi) {
+    return {
+      noi: spgNoi,
+      ffo: numberAfterLabel(
+        ordered,
+        ["Dilutive FFO allocable to common stockholders"],
+        100_000,
+      ),
+      occupancy: percentageAfterLabel(
+        ordered,
+        "Ending occupancy for our U.S. Malls and Premium Outlets",
+        0,
+        100,
+      ),
+      ffoPerShare: numberAfterLabel(
+        ordered,
+        ["Diluted FFO per share"],
+        0,
+      ),
+      scale: 1_000,
+    };
+  }
+
+  const noi = numberAfterLabel(
+    ordered,
+    [
+      "Real Estate Segment – NOI",
+      "Real Estate Segment - NOI",
+      "Real Estate Operations – NOI",
+      "Real Estate Operations - NOI",
+      "Total Net Operating Income",
+      "Net Operating Income",
+    ],
+    100,
+  );
+  const ffo = numberAfterLabel(
+    ordered,
+    [
+      "NAREIT defined FFO attributable to common stockholders/unitholders",
+      "NAREIT defined FFO attributable to common stockholders",
+      "FFO attributable to common stockholders/unitholders",
+      "FFO attributable to common stockholders",
+      "Core FFO attributable to common stockholders/unitholders",
+      "Funds from operations attributable to common stockholders",
+    ],
+    100,
+  );
+  const occupancy =
+    percentageByPattern(
       ordered,
-      ["Beneficial interest of Portfolio NOI", "Portfolio NOI"],
-      100_000,
-    ),
-    ffo: numberAfterLabel(
-      ordered,
-      ["Dilutive FFO allocable to common stockholders"],
-      100_000,
-    ),
-    occupancy: percentageAfterLabel(
-      ordered,
-      "Ending occupancy for our U.S. Malls and Premium Outlets",
-      0,
+      /Percentage Occupied[\s\S]{0,200}?Consolidated(?:\s*\|\s*|\s+)[\d,]+(?:\s*\|\s*|\s+)[\d,]+(?:\s*\|\s*|\s+)(\d{1,3}(?:\.\d+)?)\s*(?:\|\s*)?%/i,
+      50,
       100,
-    ),
-    ffoPerShare: numberAfterLabel(
+    ) ??
+    percentageByPattern(
       ordered,
-      ["Diluted FFO per share"],
-      0,
-    ),
+      /occupancy in our operating portfolio of\s+(\d{1,3}(?:\.\d+)?)\s*%/i,
+      50,
+      100,
+    ) ??
+    percentageAfterLabel(ordered, "Ending occupancy", 50, 100);
+  const ffoPerShare = numberAfterLabel(
+    ordered,
+    ["Diluted FFO per share", "FFO per diluted share", "Core FFO per diluted share"],
+    0.1,
+  );
+  const scale =
+    noi && noi.value < 100_000 ? 1_000_000 : 1_000;
+
+  return {
+    noi,
+    ffo,
+    occupancy,
+    ffoPerShare,
+    scale,
   };
 }
 

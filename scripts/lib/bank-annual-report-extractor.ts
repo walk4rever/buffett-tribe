@@ -119,53 +119,146 @@ export function findEvidenceInSections(
   return null;
 }
 
+function matchPatternInSections(
+  sections: FilingTextSection[],
+  patterns: RegExp[],
+  preferredSections: readonly string[],
+  transform: (raw: number) => number,
+  locatorPrefix: string,
+): EvidenceValue | null {
+  const ordered = [...sections].sort((left, right) => {
+    const leftIdx = preferredSections.indexOf(left.section);
+    const rightIdx = preferredSections.indexOf(right.section);
+    return (
+      (leftIdx === -1 ? 999 : leftIdx) -
+      (rightIdx === -1 ? 999 : rightIdx)
+    );
+  });
+
+  for (const s of ordered) {
+    const text = normalizeText(s.text);
+    for (const pattern of patterns) {
+      const m = pattern.exec(text);
+      if (m && m[1]) {
+        const parsed = Number.parseFloat(m[1].replace(/,/g, ""));
+        if (Number.isFinite(parsed) && parsed > 0) {
+          return {
+            value: transform(parsed),
+            section: s.section,
+            locator: `${locatorPrefix}@${m.index}`,
+            snippet: text.slice(Math.max(0, m.index - 20), m.index + 160),
+          };
+        }
+      }
+    }
+  }
+  return null;
+}
+
 export function extractJpmBankFacts(
   sections: FilingTextSection[],
-  verifiedValues: Record<string, number>,
+  verifiedValues: Record<string, number> = {},
 ): BankReportFacts {
   const preferred = [
-    "item_15_exhibits",
+    "item_6_selected_data",
     "item_7_mda",
+    "item_7a_market_risk",
+    "item_15_exhibits",
     "item_8_financial_statements",
     "item_1_business",
     "item_5_market",
     "item_10_directors",
   ];
 
+  const hasVerified = Object.keys(verifiedValues).length > 0;
+  if (hasVerified) {
+    return {
+      grossLoans: verifiedValues.GrossLoans != null
+        ? findEvidenceInSections(sections, ["total retained loans", "Loans, retained", "Gross loans"], verifiedValues.GrossLoans, preferred)
+        : null,
+      loanLossAllowance: verifiedValues.LoanLossAllowance != null
+        ? findEvidenceInSections(sections, ["Allowance for loan losses", "allowance for credit losses"], verifiedValues.LoanLossAllowance, preferred)
+        : null,
+      nonPerformingLoans: verifiedValues.NonPerformingLoans != null
+        ? findEvidenceInSections(sections, ["Nonperforming loans", "nonperforming assets", "Nonaccrual loans"], verifiedValues.NonPerformingLoans, preferred)
+        : null,
+      netInterestIncome: verifiedValues.NetInterestIncome != null
+        ? findEvidenceInSections(sections, ["Net interest income", "managed net interest income"], verifiedValues.NetInterestIncome, preferred)
+        : null,
+      nonPerformingLoanRatio: verifiedValues.NonPerformingLoanRatio != null
+        ? findEvidenceInSections(sections, ["Nonperforming loans to total", "nonaccrual loans to retained loans", "NPL ratio"], verifiedValues.NonPerformingLoanRatio, preferred)
+        : null,
+      provisionCoverage: verifiedValues.ProvisionCoverage != null
+        ? findEvidenceInSections(sections, ["allowance for loan losses to retained loans coverage ratio", "coverage ratio", "Allowance to nonperforming"], verifiedValues.ProvisionCoverage, preferred)
+        : null,
+      earningAssets: verifiedValues.EarningAssets != null
+        ? findEvidenceInSections(sections, ["Average earning assets", "interest-earning assets", "Total average earning assets"], verifiedValues.EarningAssets, preferred)
+        : null,
+      nim: verifiedValues.NIM != null
+        ? findEvidenceInSections(sections, ["net yield on these assets", "net yield", "Net interest margin"], verifiedValues.NIM, preferred)
+        : null,
+      cet1Ratio: verifiedValues.CET1Ratio != null
+        ? findEvidenceInSections(sections, ["Common equity Tier 1", "CET1", "CET1 capital ratio"], verifiedValues.CET1Ratio, preferred)
+        : null,
+    };
+  }
+
   return {
-    grossLoans: verifiedValues.GrossLoans != null
-      ? findEvidenceInSections(sections, ["total retained loans", "Loans, retained", "Gross loans"], verifiedValues.GrossLoans, preferred)
-      : null,
-    loanLossAllowance: verifiedValues.LoanLossAllowance != null
-      ? findEvidenceInSections(sections, ["Allowance for loan losses", "allowance for credit losses"], verifiedValues.LoanLossAllowance, preferred)
-      : null,
-    nonPerformingLoans: verifiedValues.NonPerformingLoans != null
-      ? findEvidenceInSections(sections, ["Nonperforming loans", "nonperforming assets", "Nonaccrual loans"], verifiedValues.NonPerformingLoans, preferred)
-      : null,
-    netInterestIncome: verifiedValues.NetInterestIncome != null
-      ? findEvidenceInSections(sections, ["Net interest income", "managed net interest income"], verifiedValues.NetInterestIncome, preferred)
-      : null,
-    nonPerformingLoanRatio: verifiedValues.NonPerformingLoanRatio != null
-      ? findEvidenceInSections(sections, ["Nonperforming loans to total", "nonaccrual loans to retained loans", "NPL ratio"], verifiedValues.NonPerformingLoanRatio, preferred)
-      : null,
-    provisionCoverage: verifiedValues.ProvisionCoverage != null
-      ? findEvidenceInSections(sections, ["allowance for loan losses to retained loans coverage ratio", "coverage ratio", "Allowance to nonperforming"], verifiedValues.ProvisionCoverage, preferred)
-      : null,
-    earningAssets: verifiedValues.EarningAssets != null
-      ? findEvidenceInSections(sections, ["Average earning assets", "interest-earning assets", "Total average earning assets"], verifiedValues.EarningAssets, preferred)
-      : null,
-    nim: verifiedValues.NIM != null
-      ? findEvidenceInSections(sections, ["net yield on these assets", "net yield", "Net interest margin"], verifiedValues.NIM, preferred)
-      : null,
-    cet1Ratio: verifiedValues.CET1Ratio != null
-      ? findEvidenceInSections(sections, ["Common equity Tier 1", "CET1", "CET1 capital ratio"], verifiedValues.CET1Ratio, preferred)
-      : null,
+    loanLossAllowance: matchPatternInSections(
+      sections,
+      [
+        /Allowance for loan and lease losses\s*\|\s*(?:\$\s*)?\(?([\d,]+)\)?/i,
+        /Allowance for loan losses\s*\|\s*(?:\$\s*)?\(?([\d,]+)\)?/i,
+      ],
+      preferred,
+      (v) => v * 1_000_000,
+      "Allowance for loan and lease losses",
+    ),
+    nonPerformingLoans: matchPatternInSections(
+      sections,
+      [
+        /Nonperforming loans, leases and foreclosed properties(?:\s*\(\d+\))?\s*\|\s*(?:\$\s*)?([\d,]+)/i,
+        /Total nonperforming loans and leases\s*\|\s*(?:\$\s*)?([\d,]+)/i,
+      ],
+      preferred,
+      (v) => v * 1_000_000,
+      "Nonperforming loans",
+    ),
+    provisionCoverage: matchPatternInSections(
+      sections,
+      [
+        /Allowance for loan and lease losses as a percentage of total nonperforming loans and leases(?:\s*\(\d+\)|\s*at December 31)?\s*\|\s*(\d{2,4}(?:\.\d+)?)\s*(?:\|\s*)?%/i,
+      ],
+      preferred,
+      (v) => Number((v / 100).toFixed(4)),
+      "Allowance to nonperforming loans",
+    ),
+    nim: matchPatternInSections(
+      sections,
+      [
+        /Net interest yield on a fully taxable-equivalent \(FTE\) basis (?:increased|decreased)[\s\S]{0,120}?to (\d+\.\d+)\s*percent/i,
+        /Net interest yield\s*\|\s*(\d+\.\d+)\s*(?:\|\s*)?%/i,
+      ],
+      preferred,
+      (v) => Number((v / 100).toFixed(4)),
+      "Net interest yield",
+    ),
+    cet1Ratio: matchPatternInSections(
+      sections,
+      [
+        /Common equity tier 1 capital ratio\s*\|\s*(\d{1,2}\.\d+)\s*(?:\|\s*)?%/i,
+        /CET1 capital ratio\s*\|\s*(\d{1,2}\.\d+)\s*(?:\|\s*)?%/i,
+      ],
+      preferred,
+      (v) => Number((v / 100).toFixed(4)),
+      "Common equity tier 1 capital ratio",
+    ),
   };
 }
 
 export function extractCmbBankFacts(
   sections: FilingTextSection[],
-  verifiedValues: Record<string, number>,
+  verifiedValues: Record<string, number> = {},
 ): BankReportFacts {
   const preferred = [
     "cn_annual_report_1",
@@ -175,34 +268,76 @@ export function extractCmbBankFacts(
     "cn_mda_business",
   ];
 
+  const hasVerified = Object.keys(verifiedValues).length > 0;
+  if (hasVerified) {
+    return {
+      grossLoans: verifiedValues.GrossLoans != null
+        ? findEvidenceInSections(sections, ["贷款和垫款总额", "客户贷款和垫款总额", "贷款总额"], verifiedValues.GrossLoans, preferred)
+        : null,
+      loanLossAllowance: verifiedValues.LoanLossAllowance != null
+        ? findEvidenceInSections(sections, ["贷款损失准备", "贷款减值准备", "损失准备"], verifiedValues.LoanLossAllowance, preferred)
+        : null,
+      nonPerformingLoans: verifiedValues.NonPerformingLoans != null
+        ? findEvidenceInSections(sections, ["不良贷款余额", "不良贷款", "不良资产"], verifiedValues.NonPerformingLoans, preferred)
+        : null,
+      netInterestIncome: verifiedValues.NetInterestIncome != null
+        ? findEvidenceInSections(sections, ["净利息收入", "利息净收入"], verifiedValues.NetInterestIncome, preferred)
+        : null,
+      nonPerformingLoanRatio: verifiedValues.NonPerformingLoanRatio != null
+        ? findEvidenceInSections(sections, ["不良贷款率", "不良率"], verifiedValues.NonPerformingLoanRatio, preferred)
+        : null,
+      provisionCoverage: verifiedValues.ProvisionCoverage != null
+        ? findEvidenceInSections(sections, ["拨备覆盖率", "拨备率"], verifiedValues.ProvisionCoverage, preferred)
+        : null,
+      earningAssets: verifiedValues.EarningAssets != null
+        ? findEvidenceInSections(sections, ["总生息资产平均余额", "生息资产平均余额", "生息资产"], verifiedValues.EarningAssets, preferred)
+        : null,
+      nim: verifiedValues.NIM != null
+        ? findEvidenceInSections(sections, ["净利息收益率", "净利差"], verifiedValues.NIM, preferred)
+        : null,
+      cet1Ratio: verifiedValues.CET1Ratio != null
+        ? findEvidenceInSections(sections, ["核心一级资本充足率", "资本充足率"], verifiedValues.CET1Ratio, preferred)
+        : null,
+    };
+  }
+
   return {
-    grossLoans: verifiedValues.GrossLoans != null
-      ? findEvidenceInSections(sections, ["贷款和垫款总额", "客户贷款和垫款总额", "贷款总额"], verifiedValues.GrossLoans, preferred)
-      : null,
-    loanLossAllowance: verifiedValues.LoanLossAllowance != null
-      ? findEvidenceInSections(sections, ["贷款损失准备", "贷款减值准备", "损失准备"], verifiedValues.LoanLossAllowance, preferred)
-      : null,
-    nonPerformingLoans: verifiedValues.NonPerformingLoans != null
-      ? findEvidenceInSections(sections, ["不良贷款余额", "不良贷款", "不良资产"], verifiedValues.NonPerformingLoans, preferred)
-      : null,
-    netInterestIncome: verifiedValues.NetInterestIncome != null
-      ? findEvidenceInSections(sections, ["净利息收入", "利息净收入"], verifiedValues.NetInterestIncome, preferred)
-      : null,
-    nonPerformingLoanRatio: verifiedValues.NonPerformingLoanRatio != null
-      ? findEvidenceInSections(sections, ["不良贷款率", "不良率"], verifiedValues.NonPerformingLoanRatio, preferred)
-      : null,
-    provisionCoverage: verifiedValues.ProvisionCoverage != null
-      ? findEvidenceInSections(sections, ["拨备覆盖率", "拨备率"], verifiedValues.ProvisionCoverage, preferred)
-      : null,
-    earningAssets: verifiedValues.EarningAssets != null
-      ? findEvidenceInSections(sections, ["总生息资产平均余额", "生息资产平均余额", "生息资产"], verifiedValues.EarningAssets, preferred)
-      : null,
-    nim: verifiedValues.NIM != null
-      ? findEvidenceInSections(sections, ["净利息收益率", "净利差"], verifiedValues.NIM, preferred)
-      : null,
-    cet1Ratio: verifiedValues.CET1Ratio != null
-      ? findEvidenceInSections(sections, ["核心一级资本充足率", "资本充足率"], verifiedValues.CET1Ratio, preferred)
-      : null,
+    nonPerformingLoanRatio: matchPatternInSections(
+      sections,
+      [
+        /不良贷款率(?:为|\s+|[\|])*(?:[≤<]\s*\d+(?:\.\d+)?%?\s*(?:\|\s*|\s+))?(\d+\.\d+)\s*%/u,
+      ],
+      preferred,
+      (v) => Number((v / 100).toFixed(4)),
+      "不良贷款率",
+    ),
+    provisionCoverage: matchPatternInSections(
+      sections,
+      [
+        /拨备覆盖率(?:为|\s+|[\|])*(?:[≥>]\s*\d+(?:\.\d+)?%?\s*(?:\([^)]*\)\s*)?(?:\|\s*|\s+))?(\d{2,4}\.\d+)\s*%/u,
+      ],
+      preferred,
+      (v) => Number((v / 100).toFixed(4)),
+      "拨备覆盖率",
+    ),
+    nim: matchPatternInSections(
+      sections,
+      [
+        /(?:净息差|净利息收益率)(?:为|\s+|[\|])*(\d+\.\d+)\s*%/u,
+      ],
+      preferred,
+      (v) => Number((v / 100).toFixed(4)),
+      "净息差",
+    ),
+    cet1Ratio: matchPatternInSections(
+      sections,
+      [
+        /核心一级资本充足率[\s\S]{0,60}?(\d+\.\d+)\s*%/u,
+      ],
+      preferred,
+      (v) => Number((v / 100).toFixed(4)),
+      "核心一级资本充足率",
+    ),
   };
 }
 

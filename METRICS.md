@@ -545,7 +545,7 @@ npm run check:metrics
 | GR-24 | 合同负债/预收款 | 预收款是否充裕 | 财务 | reported | canonical:ContractLiabilities | US CN HK | ✓ |
 | GR-25 | 存货/开发成本 | 土地与在建开发规模 | 财务 | reported | canonical:Inventory | US CN HK | ✓ |
 | GR-26 | 投资性物业 | 持有物业规模 | 财务、价值线 | reported | canonical:InvestmentProperty | US CN HK | ✓ |
-| GR-27 | 投资收益 | 金融类公司的投资端收益 | 财务 | reported | canonical:InvestmentIncome | US CN HK | 页面当前回退取 NetInvestmentIncome，标签需与口径一致 |
+| GR-27 | 投资收益 | 金融类公司的投资端收益 | 财务 | reported | canonical:InvestmentIncome | US CN HK | ✓ |
 | GD-01 | 营收同比 | 收入增速 | 财务、价值线 | derived | revenue（连续 2 年） | US CN HK | ✓ |
 | GD-02 | 净利润同比 | 利润增速 | 财务、价值线 | derived | net_income（连续 2 年） | US CN HK | ✓ |
 | GD-03 | 总资产同比 | 资产扩张速度 | 财务、价值线 | derived | assets.total（连续 2 年） | US CN HK | ✓ |
@@ -606,7 +606,7 @@ npm run check:metrics
 | IN-03 | 赔付率 | 财险赔付水平 | 财务 | reported_or_derived | |赔付与保单利益| / 净已赚保费 | US CN HK | ✓ |
 | IN-04 | 综合成本率 | 财险承保是否盈利 | 财务 | reported_or_derived | extractor:insurance-annual-report-v1；或 (赔付+费用)/已赚保费 | US CN HK | ✓ |
 | IN-05 | 投资资产组合 | 保险资金投资规模 | 财务 | reported_or_derived | canonical:TotalInvestments | US CN HK | ✓ |
-| IN-06 | 净投资收益 | 保险投资端经常性收益 | 财务 | reported_or_derived | canonical:NetInvestmentIncome | US | 仅 US GAAP 保险；页面行当前混用 InvestmentIncome，需对齐 |
+| IN-06 | 净投资收益 | 保险投资端经常性收益 | 财务 | reported_or_derived | canonical:NetInvestmentIncome | US | ✓（仅 US GAAP 保险，与 InvestmentIncome 独立列示） |
 | IN-07 | 保险合同负债 | 保险负债规模（核心浮存金池） | 财务 | reported | canonical:InsuranceContractLiabilities | US CN HK | ✓ |
 | IN-08 | EV | 寿险内含价值 | 财务 | reported | extractor:insurance-annual-report-v1 | CN HK | ✓ |
 | IN-09 | NBV | 新业务价值 | 财务 | reported | extractor:insurance-annual-report-v1 | CN HK | ✓ |
@@ -621,18 +621,18 @@ npm run check:metrics
 | FS-02 | 管理费收入 | 资管公司的主要收入来源 | 价值线 | reported | canonical:InvestmentManagementFeeIncome | US CN HK | 仅披露该科目的资管公司；未披露返回 not_disclosed |
 | FS-01 | 手续费及佣金净收入 | 券商、资管、交易所的中间业务收入 | 财务 | reported | canonical:NetFeeAndCommissionIncome；无则取经营收入 | US CN HK | ✓ |
 
-### 12.2 已决事项与待落实的页面改动
+### 12.2 已决事项与页面对齐结果
 
-下表是 v1 指标集定稿时的决定。“页面改动”一栏是尚未做的代码工作，属于下一步。
+下表是 v1 指标集定稿时的决定及已完成的页面对齐状态。
 
 | 事项 | 决定 | 页面改动 |
 | --- | --- | --- |
 | 非利息收入、投资收益、资本开支率、研发费用率 | 纳入清单 | 无，页面已展示 |
 | 总权益、基本 EPS、加权平均稀释股数、短期/长期/总有息债务 | 保留，性质为“输入项”，不单独统计展示 | 无 |
 | ROIC | 移出清单（各页面均未展示） | 无；`calculateROIC` 仍被 canvas 接口使用，暂不删 |
-| PE 情景回报、PB-ROE 情景回报 | 移出标准，页面保留为“情景测算”，不计入覆盖率 | 页面标注“情景测算，非预测”并列出假设参数 |
-| 投资收益 与 净投资收益 | 两项分开定义；净投资收益仅适用美国 US GAAP 保险 | 保险页“投资收益”行目前回退取 `NetInvestmentIncome`，需改为只取 `InvestmentIncome`，或把标签改为实际口径 |
-| AUM、客户净流量 | 维持排除 | 价值线金融服务卡片展示时标注“公司披露”，不计入覆盖率 |
+| PE 情景回报、PB-ROE 情景回报 | 移出标准，页面保留为“情景测算”，不计入覆盖率 | 已完成：页面标注“情景测算，非预测”并列出假设参数 |
+| 投资收益 与 净投资收益 | 两项分开定义；净投资收益仅适用美国 US GAAP 保险 | 已完成：保险页分别定义 `NetInvestmentIncome`（净投资收益）与 `InvestmentIncome`（投资收益），各自独立取值 |
+| AUM、客户净流量 | 维持排除 | 已完成：价值线金融服务卡片展示时标注“公司披露”，不计入覆盖率 |
 | 管理费收入 | 纳入清单（适用资管） | 无 |
 | EV、NBV、新业务价值率、偿付能力充足率 | 适用市场收窄为 CN、HK | 无 |
 | FFO、FFO/股 | 适用市场收窄为 US | 无 |

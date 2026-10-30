@@ -54,9 +54,10 @@ export function buildFinancialServicesMetricCard(
       : managementFees
         ? "资产管理费收入"
         : "手续费及佣金净收入";
+  const isNonStandardDisclosure = Boolean(aum || (!aum && flows));
   const subText = [
-    aum ? `FY${aum.year} 期末客户管理资产` : null,
-    flows ? `FY${flows.year} 净流入 ${amount(flows.netClientFlows)}` : null,
+    aum ? `FY${aum.year} 期末客户管理资产（公司披露）` : null,
+    flows ? `FY${flows.year} 净流入 ${amount(flows.netClientFlows)}（公司披露）` : null,
     managementFees
       ? `FY${managementFees.year} 管理费 ${amount(managementFees.investmentManagementFeeIncome)}`
       : null,
@@ -70,7 +71,7 @@ export function buildFinancialServicesMetricCard(
   return {
     applicable: true,
     title,
-    badge: `FY${primary.year}`,
+    badge: isNonStandardDisclosure ? `FY${primary.year} · 公司披露` : `FY${primary.year}`,
     mainNum: amount(primaryValue),
     subText,
   };

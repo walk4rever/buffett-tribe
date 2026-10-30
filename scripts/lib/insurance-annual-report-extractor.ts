@@ -337,9 +337,36 @@ export function extractPingAnInsuranceFacts(
   };
 }
 
+function matchInsurancePatternInSections(
+  sections: FilingTextSection[],
+  patterns: RegExp[],
+  preferredSections: readonly string[],
+  transform: (raw: number) => number,
+  locatorPrefix: string,
+): EvidenceValue | null {
+  for (const s of orderedSections(sections, preferredSections)) {
+    const text = normalizeText(s.text);
+    for (const pattern of patterns) {
+      const m = pattern.exec(text);
+      if (m && m[1]) {
+        const parsed = Number.parseFloat(m[1].replace(/,/g, ""));
+        if (Number.isFinite(parsed) && parsed > 0) {
+          return {
+            value: transform(parsed),
+            section: s.section,
+            locator: `${locatorPrefix}@${m.index}`,
+            snippet: text.slice(Math.max(0, m.index - 20), m.index + 160),
+          };
+        }
+      }
+    }
+  }
+  return null;
+}
+
 export function extractAiaInsuranceFacts(
   sections: FilingTextSection[],
-  verifiedValues: Record<string, number>,
+  verifiedValues: Record<string, number> = {},
 ) {
   const preferred = [
     "hk_annual_report_1",
@@ -347,25 +374,72 @@ export function extractAiaInsuranceFacts(
     "hk_mda",
     "hk_mda_business",
   ];
+  const hasVerified = Object.keys(verifiedValues).length > 0;
+  if (hasVerified) {
+    return {
+      ev: verifiedValues.EV != null
+        ? findInsuranceEvidenceInSections(sections, ["Embedded value", "EV equity", "EV"], verifiedValues.EV, preferred)
+        : null,
+      nbv: verifiedValues.NBV != null
+        ? findInsuranceEvidenceInSections(sections, ["Value of new business", "VONB", "NBV"], verifiedValues.NBV, preferred)
+        : null,
+      newBusinessValueMargin: verifiedValues.NewBusinessValueMargin != null
+        ? findInsuranceEvidenceInSections(sections, ["VONB margin", "margin", "NBV margin"], verifiedValues.NewBusinessValueMargin, preferred)
+        : null,
+      solvencyRatio: verifiedValues.SolvencyRatio != null
+        ? findInsuranceEvidenceInSections(sections, ["Group LCSM coverage ratio", "solvency ratio", "coverage ratio"], verifiedValues.SolvencyRatio, preferred)
+        : null,
+    };
+  }
+
   return {
-    ev: verifiedValues.EV != null
-      ? findInsuranceEvidenceInSections(sections, ["Embedded value", "EV equity", "EV"], verifiedValues.EV, preferred)
-      : null,
-    nbv: verifiedValues.NBV != null
-      ? findInsuranceEvidenceInSections(sections, ["Value of new business", "VONB", "NBV"], verifiedValues.NBV, preferred)
-      : null,
-    newBusinessValueMargin: verifiedValues.NewBusinessValueMargin != null
-      ? findInsuranceEvidenceInSections(sections, ["VONB margin", "margin", "NBV margin"], verifiedValues.NewBusinessValueMargin, preferred)
-      : null,
-    solvencyRatio: verifiedValues.SolvencyRatio != null
-      ? findInsuranceEvidenceInSections(sections, ["Group LCSM coverage ratio", "solvency ratio", "coverage ratio"], verifiedValues.SolvencyRatio, preferred)
-      : null,
+    ev: matchInsurancePatternInSections(
+      sections,
+      [
+        /Group Embedded Value\s*總內含價值\s*([\d,]+(?:\.\d+)?)/i,
+        /普通股股東應佔總內含價值\s*([\d,]+(?:\.\d+)?)/u,
+        /Embedded Value\s*內含價值\s*([\d,]+(?:\.\d+)?)/i,
+      ],
+      preferred,
+      (v) => Math.round(v * 1_000_000),
+      "Embedded Value",
+    ),
+    nbv: matchInsurancePatternInSections(
+      sections,
+      [
+        /New Business Value after cost of capital\s*新業務扣除資本\s*成本後之價值\s*([\d,]+(?:\.\d+)?)/i,
+        /新業務扣除資本\s*成本後之價值\s*([\d,]+(?:\.\d+)?)/u,
+      ],
+      preferred,
+      (v) => Math.round(v * 1_000_000),
+      "New Business Value",
+    ),
+    newBusinessValueMargin: matchInsurancePatternInSections(
+      sections,
+      [
+        /New business margin of TPL[\s\S]{0,60}?was\s*(\d+\.\d+)\s*%/i,
+        /新業務價值\s*率為\s*(\d+\.\d+)\s*%/u,
+      ],
+      preferred,
+      (v) => Number((v / 100).toFixed(4)),
+      "New Business Margin",
+    ),
+    solvencyRatio: matchInsurancePatternInSections(
+      sections,
+      [
+        /綜合償付能力充足率(?:\s+TPL\s+太平人壽)?\s+(\d{3})\s*%/u,
+        /Solvency Ratio\s*綜合償付能力充足率\s*(\d{3})\s*%/i,
+      ],
+      preferred,
+      (v) => Number((v / 100).toFixed(4)),
+      "Solvency Ratio",
+    ),
   };
 }
 
 export function extractProgressiveInsuranceFacts(
   sections: FilingTextSection[],
-  verifiedValues: Record<string, number>,
+  verifiedValues: Record<string, number> = {},
 ) {
   const preferred = [
     "item_1_business",
@@ -373,19 +447,74 @@ export function extractProgressiveInsuranceFacts(
     "item_8_financial_statements",
     "item_15_exhibits",
   ];
+  const hasVerified = Object.keys(verifiedValues).length > 0;
+  if (hasVerified) {
+    return {
+      netPremiumsEarned: verifiedValues.NetPremiumsEarned != null
+        ? findInsuranceEvidenceInSections(sections, ["Net premiums earned", "Premiums earned"], verifiedValues.NetPremiumsEarned, preferred)
+        : null,
+      policyClaimsAndBenefits: verifiedValues.PolicyClaimsAndBenefits != null
+        ? findInsuranceEvidenceInSections(sections, ["Losses and loss adjustment expenses", "loss adjustment expenses"], verifiedValues.PolicyClaimsAndBenefits, preferred)
+        : null,
+      claimsRatio: verifiedValues.ClaimsRatio != null
+        ? findInsuranceEvidenceInSections(sections, ["Loss ratio", "loss and loss adjustment expense ratio"], verifiedValues.ClaimsRatio, preferred)
+        : null,
+      combinedRatio: verifiedValues.CombinedRatio != null
+        ? findInsuranceEvidenceInSections(sections, ["Combined ratio"], verifiedValues.CombinedRatio, preferred)
+        : null,
+      totalInvestments: null as EvidenceValue | null,
+      insuranceContractLiabilities: null as EvidenceValue | null,
+    };
+  }
+
   return {
-    netPremiumsEarned: verifiedValues.NetPremiumsEarned != null
-      ? findInsuranceEvidenceInSections(sections, ["Net premiums earned", "Premiums earned"], verifiedValues.NetPremiumsEarned, preferred)
-      : null,
-    policyClaimsAndBenefits: verifiedValues.PolicyClaimsAndBenefits != null
-      ? findInsuranceEvidenceInSections(sections, ["Losses and loss adjustment expenses", "loss adjustment expenses"], verifiedValues.PolicyClaimsAndBenefits, preferred)
-      : null,
-    claimsRatio: verifiedValues.ClaimsRatio != null
-      ? findInsuranceEvidenceInSections(sections, ["Loss ratio", "loss and loss adjustment expense ratio"], verifiedValues.ClaimsRatio, preferred)
-      : null,
-    combinedRatio: verifiedValues.CombinedRatio != null
-      ? findInsuranceEvidenceInSections(sections, ["Combined ratio"], verifiedValues.CombinedRatio, preferred)
-      : null,
+    netPremiumsEarned: null as EvidenceValue | null,
+    policyClaimsAndBenefits: matchInsurancePatternInSections(
+      sections,
+      [
+        /Claims and claim adjustment expenses\s*\|\s*(?:\$\s*)?([\d,]+)/i,
+        /Losses and loss adjustment expenses\s*\|\s*(?:\$\s*)?([\d,]+)/i,
+      ],
+      preferred,
+      (v) => v * 1_000_000,
+      "Claims and claim adjustment expenses",
+    ),
+    claimsRatio: matchInsurancePatternInSections(
+      sections,
+      [
+        /Loss and loss adjustment expense ratio\s*\|\s*(\d+\.\d+)\s*(?:\|\s*)?%/i,
+      ],
+      preferred,
+      (v) => Number((v / 100).toFixed(4)),
+      "Loss and loss adjustment expense ratio",
+    ),
+    combinedRatio: matchInsurancePatternInSections(
+      sections,
+      [
+        /Combined ratio\s*\|\s*(\d+\.\d+)\s*(?:\|\s*)?%/i,
+      ],
+      preferred,
+      (v) => Number((v / 100).toFixed(4)),
+      "Combined ratio",
+    ),
+    totalInvestments: matchInsurancePatternInSections(
+      sections,
+      [
+        /Total investments of \$(\d+\.\d+)\s*billion/i,
+      ],
+      preferred,
+      (v) => Math.round(v * 1_000_000_000),
+      "Total investments",
+    ),
+    insuranceContractLiabilities: matchInsurancePatternInSections(
+      sections,
+      [
+        /claims and claim adjustment expense reserves balance at December 31,\s*20\d\d\s*was\s*\$(\d+\.\d+)\s*billion/i,
+      ],
+      preferred,
+      (v) => Math.round(v * 1_000_000_000),
+      "Claims and claim adjustment expense reserves",
+    ),
   };
 }
 

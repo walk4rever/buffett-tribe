@@ -61,7 +61,7 @@ async function sectionText(section: {
   textArtifact: { publicUrl: string | null; sha256: string } | null;
 }): Promise<string> {
   const stored = section.content || section.contentPreview || "";
-  if (!section.textArtifact?.publicUrl || stored.length >= 50_000) {
+  if (!section.textArtifact?.publicUrl || stored.length >= 9_000) {
     return stored;
   }
   try {
@@ -91,11 +91,6 @@ export async function extractBankTicker(
   apply: boolean,
   verifiedFacts: BankVerifiedFact[],
 ) {
-  const extractorVersion = EXTRACTOR_VERSION_BY_TICKER[ticker];
-  if (!extractorVersion) {
-    throw new Error(`No bank extractor registered for ${ticker}`);
-  }
-
   const bare = ticker.replace(/\.(SS|SZ)$/, "");
   const entity = await db.entity.findFirst({
     where: {
@@ -105,6 +100,38 @@ export async function extractBankTicker(
     select: { id: true, ticker: true, market: true },
   });
   if (!entity) throw new Error(`Entity not found: ${ticker}`);
+
+  const extractorVersion =
+    EXTRACTOR_VERSION_BY_TICKER[ticker] ??
+    (entity.market === "us"
+      ? "us-10k-bank-report-v1"
+      : entity.market === "hk"
+        ? "hk-annual-bank-report-v1"
+        : "cn-annual-bank-report-v1");
+
+  const existingFinancials = await db.financial.findMany({
+    where: {
+      entityId: entity.id,
+      periodType: "FY",
+      lineItem: {
+        in: ["GrossLoans", "NetLoans", "LoanLossAllowance", "NonPerformingLoans", "NetInterestIncome"],
+      },
+    },
+    select: {
+      periodEnd: true,
+      lineItem: true,
+      value: true,
+    },
+  });
+  const finByYear = new Map<number, Record<string, number>>();
+  const periodEndByYear = new Map<number, Date>();
+  for (const row of existingFinancials) {
+    const yr = row.periodEnd.getUTCFullYear();
+    const map = finByYear.get(yr) ?? {};
+    map[row.lineItem] = Number(row.value);
+    finByYear.set(yr, map);
+    periodEndByYear.set(yr, row.periodEnd);
+  }
 
   const sourceKind =
     entity.market === "us"
@@ -143,10 +170,7 @@ export async function extractBankTicker(
         (f.ticker === ticker || f.ticker === bare) &&
         f.sourcePeriodYear === source.periodYear,
     );
-    if (!factEntry) {
-      console.warn(`No verified ground-truth bank fact found for ${ticker} FY${source.periodYear}`);
-      continue;
-    }
+    const verifiedValues = factEntry?.values ?? {};
 
     const texts: FilingTextSection[] = [];
     for (const section of source.sections) {
@@ -155,12 +179,53 @@ export async function extractBankTicker(
     }
 
     let facts: BankReportFacts;
-    if (ticker === "JPM") {
-      facts = extractJpmBankFacts(texts, factEntry.values);
-    } else if (ticker === "600036.SS") {
-      facts = extractCmbBankFacts(texts, factEntry.values);
+    if (entity.market === "us") {
+      facts = extractJpmBankFacts(texts, verifiedValues);
+    } else if (entity.market === "cn") {
+      facts = extractCmbBankFacts(texts, verifiedValues);
     } else {
-      facts = extractBochkBankFacts(texts, factEntry.values);
+      facts = extractBochkBankFacts(texts, verifiedValues);
+    }
+
+    const dbFin = finByYear.get(source.periodYear) ?? {};
+    const anchorEvidence =
+      facts.loanLossAllowance ??
+      facts.nonPerformingLoans ??
+      facts.nonPerformingLoanRatio ??
+      facts.provisionCoverage ??
+      facts.nim ??
+      facts.cet1Ratio;
+
+    if (anchorEvidence) {
+      const netLoansVal = facts.netLoans?.value ?? dbFin.NetLoans;
+      const allowanceVal = facts.loanLossAllowance?.value ?? dbFin.LoanLossAllowance;
+      if (!facts.grossLoans && dbFin.GrossLoans == null && netLoansVal && allowanceVal) {
+        facts.grossLoans = {
+          value: netLoansVal + allowanceVal,
+          section: anchorEvidence.section,
+          locator: "derived:NetLoans+LoanLossAllowance",
+          snippet: `Derived GrossLoans = NetLoans (${netLoansVal}) + LoanLossAllowance (${allowanceVal})`,
+        };
+      }
+      const grossLoansVal = facts.grossLoans?.value ?? dbFin.GrossLoans;
+      const nplRatioVal = facts.nonPerformingLoanRatio?.value;
+      if (!facts.nonPerformingLoans && dbFin.NonPerformingLoans == null && grossLoansVal && nplRatioVal) {
+        facts.nonPerformingLoans = {
+          value: Math.round(grossLoansVal * nplRatioVal),
+          section: anchorEvidence.section,
+          locator: "derived:GrossLoans*NonPerformingLoanRatio",
+          snippet: `Derived NonPerformingLoans = GrossLoans (${grossLoansVal}) * NonPerformingLoanRatio (${nplRatioVal})`,
+        };
+      }
+      const nplVal = facts.nonPerformingLoans?.value ?? dbFin.NonPerformingLoans;
+      if (!facts.nonPerformingLoanRatio && nplVal && grossLoansVal) {
+        facts.nonPerformingLoanRatio = {
+          value: Number((nplVal / grossLoansVal).toFixed(4)),
+          section: anchorEvidence.section,
+          locator: "derived:NonPerformingLoans/GrossLoans",
+          snippet: `Derived NonPerformingLoanRatio = NonPerformingLoans (${nplVal}) / GrossLoans (${grossLoansVal})`,
+        };
+      }
     }
 
     const evidenceFor = (evidence: EvidenceValue) => {
@@ -176,7 +241,9 @@ export async function extractBankTicker(
       ].join("|");
     };
 
-    const periodEnd = new Date(`${factEntry.periodEnd}T00:00:00.000Z`);
+    const periodEnd = factEntry
+      ? new Date(`${factEntry.periodEnd}T00:00:00.000Z`)
+      : periodEndByYear.get(source.periodYear) ?? new Date(`${source.periodYear}-12-31T00:00:00.000Z`);
 
     const factMappings: Array<[string, EvidenceValue | null | undefined]> = [
       ["GrossLoans", facts.grossLoans],

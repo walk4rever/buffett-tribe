@@ -42,6 +42,7 @@ export type MetricContractRecord = MetricContractRow & {
   key: string;
   basis: MetricContractBasis;
   roles: ValidationRole[];
+  markets?: ("us" | "cn" | "hk")[];
   requirement: DataRequirement;
 };
 
@@ -163,6 +164,12 @@ const INDUSTRIAL_ROLES: ValidationRole[] = [
   "energy_materials",
   "utilities",
   "telecommunications",
+];
+
+const INDUSTRIAL_CASH_FLOW_ROLES: ValidationRole[] = [
+  ...INDUSTRIAL_ROLES,
+  "developer",
+  "conglomerate",
 ];
 
 const CASH_FLOW_ROLES: ValidationRole[] = [
@@ -288,8 +295,11 @@ export function rolesForMetric(row: MetricContractRow): ValidationRole[] {
         "conglomerate",
       ];
     }
+    if (row.name === "资本开支") {
+      return [...INDUSTRIAL_CASH_FLOW_ROLES];
+    }
     if (
-      ["资本开支", "短期有息债务", "长期有息债务", "总有息债务"].includes(
+      ["短期有息债务", "长期有息债务", "总有息债务"].includes(
         row.name,
       )
     ) {
@@ -302,7 +312,10 @@ export function rolesForMetric(row: MetricContractRow): ValidationRole[] {
     if (["毛利率", "营业利润率"].includes(row.name)) {
       return [...INDUSTRIAL_ROLES, "developer"];
     }
-    if (["FCF", "FCF Margin", "现金转化率", "净负债率"].includes(row.name)) {
+    if (["FCF", "FCF Margin"].includes(row.name)) {
+      return [...INDUSTRIAL_CASH_FLOW_ROLES];
+    }
+    if (["现金转化率", "净负债率"].includes(row.name)) {
       return [...CASH_FLOW_ROLES];
     }
     if (row.name === "资本开支率") return [...INDUSTRIAL_ROLES];
@@ -327,14 +340,14 @@ export function rolesForMetric(row: MetricContractRow): ValidationRole[] {
         "FCF 扣除分配结余",
       ].includes(row.name)
     ) {
-      return [...CASH_FLOW_ROLES];
+      return [...INDUSTRIAL_CASH_FLOW_ROLES];
     }
     return [...VALIDATION_ROLES];
   }
 
   if (row.section === "valuation") {
     if (row.name === "FCF Yield") {
-      return [...CASH_FLOW_ROLES];
+      return [...INDUSTRIAL_CASH_FLOW_ROLES];
     }
     return [...VALIDATION_ROLES];
   }
@@ -380,4 +393,22 @@ export function rolesForMetric(row: MetricContractRow): ValidationRole[] {
   }
 
   return [];
+}
+
+export function marketsForMetric(
+  row: MetricContractRow,
+): ("us" | "cn" | "hk")[] {
+  if (
+    row.section === "insurance" &&
+    ["EV", "NBV", "新业务价值率", "偿付能力充足率"].includes(row.name)
+  ) {
+    return ["cn", "hk"];
+  }
+  if (
+    row.section === "real_estate" &&
+    ["FFO", "FFO/股"].includes(row.name)
+  ) {
+    return ["us"];
+  }
+  return ["us", "cn", "hk"];
 }

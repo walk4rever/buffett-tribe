@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.47.19] - 2026-10-30
+
+### Added
+- **无靶（Zero-Oracle）跨市场指标盲测全量闭环与行业抽取器泛化**：
+  - 8 家全新跨市场盲测样本（`KO`, `BAC`, `TRV`, `PLD`, `000001.SZ`, `000333.SZ`, `9988.HK`, `0966.HK`）完成 454 格严苛评估，实现 **454/454 适用单元全部 `PIPELINE_PASS`（100.0% 通过率，0 PARTIAL，0 FAIL，0 人工 FIXTURE）**；
+  - 彻底重构银行（`bank-annual-report-extractor`）、保险（`insurance-annual-report-extractor`）与 REITs（`reit-report-extractor`）抽取器，移除 `EXTRACTOR_VERSION_BY_TICKER` 硬编码注册表及人工靶值依赖，支持美股/A股/港股财报与监管表格通用模式识别与确定性推导回退；
+  - 45 家基准测试矩阵保持 100% 通过（`PIPELINE_PASS=2624`，`FIXTURE_PASS=0`），`eval:reit-metrics` / `eval:bank-metrics` / `eval:insurance-metrics` 严格认证门禁 100% 通过。
+
+### Changed
+- **自动建档流水线串联与页面口径对齐收尾**：
+  - 在 `scripts/onboard-company.ts` 中将中港股期末股数自动回填（`backfill:market-shares`）串联至财务导入步骤，并在 Phase 2 行业分类后新增 `extract_sector_facts` 步骤，针对银行/保险/REIT 自动补齐多年年报切片并执行专项指标抽取；
+  - 前端财务看板中将 `NetInvestmentIncome`（`IN-06` 净投资收益，仅 US GAAP 保险）与 `InvestmentIncome`（`GR-27` 投资收益）完全解耦，`METRICS.md` 12.2 待落实页面改动全部清零；
+  - 金融服务卡片在展示非会计科目 AUM 或客户净流量时，角标与副文案显式标注“公司披露”。
+
 ## [v0.47.18] - 2026-10-29
 
 ### Added

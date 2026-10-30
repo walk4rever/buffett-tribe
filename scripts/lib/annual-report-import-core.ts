@@ -75,11 +75,11 @@ export type LineItemConfig = {
 
 export const LINE_ITEMS: LineItemConfig[] = CANONICAL_FINANCIAL_DICTIONARY.map((item) => ({
   key: item.key,
-  tagsUsGaap: item.tagsUsGaap,
-  tagsIfrs: item.tagsIfrs,
+  tagsUsGaap: item.tagsUsGaap ?? [],
+  tagsIfrs: item.tagsIfrs ?? [],
   tagsCustom: item.tagsCustom ?? [],
-  unitCandidates: item.unitCandidates,
-  periodType: item.periodType,
+  unitCandidates: item.unitCandidates ?? [],
+  periodType: item.periodType as "instant" | "duration",
 }));
 
 

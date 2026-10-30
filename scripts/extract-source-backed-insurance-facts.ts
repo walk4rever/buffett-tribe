@@ -77,7 +77,7 @@ async function sectionText(section: {
   textArtifact: { publicUrl: string | null; sha256: string } | null;
 }): Promise<string> {
   const stored = section.content || section.contentPreview || "";
-  if (!section.textArtifact?.publicUrl || stored.length >= 50_000) {
+  if (!section.textArtifact?.publicUrl || stored.length >= 9_000) {
     return stored;
   }
   try {
@@ -103,11 +103,6 @@ export async function extractInsuranceTicker(
   apply: boolean,
   verifiedFacts: InsuranceFact[],
 ) {
-  const extractorVersion = EXTRACTOR_VERSION_BY_TICKER[ticker];
-  if (!extractorVersion) {
-    throw new Error(`No insurance extractor registered for ${ticker}`);
-  }
-
   const bare = ticker.replace(/\.(SS|SZ)$/, "");
   const entity = await db.entity.findFirst({
     where: {
@@ -117,6 +112,14 @@ export async function extractInsuranceTicker(
     select: { id: true, ticker: true, market: true },
   });
   if (!entity) throw new Error(`Entity not found: ${ticker}`);
+
+  const extractorVersion =
+    EXTRACTOR_VERSION_BY_TICKER[ticker] ??
+    (entity.market === "us"
+      ? "us-10k-insurance-report-v1"
+      : entity.market === "hk"
+        ? "hk-annual-insurance-report-v1"
+        : "cn-annual-insurance-report-v1");
 
   const sourceKind =
     entity.market === "us"
@@ -155,6 +158,90 @@ export async function extractInsuranceTicker(
       Number(f.periodEnd.slice(0, 4)) >= fromYear &&
       Number(f.periodEnd.slice(0, 4)) <= toYear,
   );
+
+  if (tickerFacts.length === 0) {
+    for (const source of sources) {
+      if (!source.periodYear) continue;
+      const texts: FilingTextSection[] = [];
+      for (const section of source.sections) {
+        const text = await sectionText(section);
+        if (text.trim()) texts.push({ section: section.section, text });
+      }
+      const evidenceFor = (fact: EvidenceValue) => {
+        const section = source.sections.find(
+          (candidate) => candidate.section === fact.section,
+        );
+        return [
+          extractorVersion,
+          `source=${source.id}`,
+          `section=${fact.section}`,
+          `locator=${fact.locator}`,
+          `artifact=${section?.textArtifact?.sha256 ?? "section_preview"}`,
+        ].join("|");
+      };
+      const periodEnd = new Date(`${source.periodYear}-12-31T00:00:00.000Z`);
+      const sourceRows: Prisma.FinancialCreateManyInput[] = [];
+
+      if (entity.market === "us") {
+        const facts = extractProgressiveInsuranceFacts(texts);
+        const factList: Array<[string, EvidenceValue | null]> = [
+          ["NetPremiumsEarned", facts.netPremiumsEarned],
+          ["PolicyClaimsAndBenefits", facts.policyClaimsAndBenefits],
+          ["ClaimsRatio", facts.claimsRatio],
+          ["CombinedRatio", facts.combinedRatio],
+          ["TotalInvestments", facts.totalInvestments],
+          ["InsuranceContractLiabilities", facts.insuranceContractLiabilities],
+        ];
+        for (const [lineItem, ev] of factList) {
+          if (!ev) continue;
+          sourceRows.push({
+            entityId: entity.id,
+            sourceId: source.id,
+            periodEnd,
+            periodType: "FY",
+            lineItem,
+            value: ev.value,
+            unit: unitFor(lineItem, entity.market),
+            mappingRule: `annual-report-extractor:${evidenceFor(ev)}`,
+            confidence: 1,
+          });
+        }
+      } else if (entity.market === "hk") {
+        const facts = extractAiaInsuranceFacts(texts);
+        const factList: Array<[string, EvidenceValue | null]> = [
+          ["EV", facts.ev],
+          ["NBV", facts.nbv],
+          ["NewBusinessValueMargin", facts.newBusinessValueMargin],
+          ["SolvencyRatio", facts.solvencyRatio],
+        ];
+        for (const [lineItem, ev] of factList) {
+          if (!ev) continue;
+          sourceRows.push({
+            entityId: entity.id,
+            sourceId: source.id,
+            periodEnd,
+            periodType: "FY",
+            lineItem,
+            value: ev.value,
+            unit: unitFor(lineItem, entity.market),
+            mappingRule: `annual-report-extractor:${evidenceFor(ev)}`,
+            confidence: 1,
+          });
+        }
+      }
+
+      console.log(
+        `${ticker} FY${source.periodYear} (source FY${source.periodYear}): extracted ${sourceRows.length} insurance facts (source=${source.id})`,
+      );
+      totalRows.push(...sourceRows);
+    }
+
+    if (apply && totalRows.length > 0) {
+      await upsertFinancialRows(db, totalRows, { skipInterimGc: true });
+      console.log(`${ticker}: successfully upserted ${totalRows.length} insurance rows.`);
+    }
+    return;
+  }
 
   for (const factEntry of tickerFacts) {
     const periodYear = Number(factEntry.periodEnd.slice(0, 4));

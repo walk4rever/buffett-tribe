@@ -106,6 +106,7 @@ type StepId =
   | "slice_annual_report"
   | "generate_company_profile"
   | "classify_sector"
+  | "extract_sector_facts"
   | "generate_business_model"
   | "generate_value_analysis"
   | "generate_management_analysis"
@@ -444,7 +445,7 @@ function buildImportFinancialsStep(ticker: string, market: "cn" | "hk", code: st
         console.log(
           `[onboard-company] ${ticker} is a CN public REIT; using annual-report REIT financial adapter.`,
         );
-        return runNpmScript("import:cn-reit-financials", [
+        await runNpmScript("import:cn-reit-financials", [
           "--code",
           code,
           "--ticker",
@@ -455,14 +456,29 @@ function buildImportFinancialsStep(ticker: string, market: "cn" | "hk", code: st
           fromYear,
           "--import-db",
         ]);
-      }
-      if (usesYfinanceFallback) {
+      } else if (usesYfinanceFallback) {
         console.log(
           `[onboard-company] ${ticker} is a HK REIT outside akshare's financial template; using yfinance fallback.`,
         );
-        return runNpmScript("import:us-financials-yf", ["--ticker", ticker]);
+        await runNpmScript("import:us-financials-yf", ["--ticker", ticker]);
+      } else {
+        await runNpmScript("import:cn-hk-financials", args);
       }
-      return runNpmScript("import:cn-hk-financials", args);
+
+      try {
+        const batchId = `onboard-shares-${ticker.toLowerCase().replace(/[^a-z0-9]/g, "-")}`;
+        await runNpmScript("backfill:market-shares", [
+          "--ticker",
+          ticker,
+          "--from-year",
+          fromYear,
+          "--execute",
+          "--batch-id",
+          batchId,
+        ]);
+      } catch (err) {
+        console.warn(`[onboard-company] 期末股数自动补齐跳过 (${ticker}):`, err);
+      }
     },
     verify: async (entityId) => {
       const count = await prisma.financial.count({ where: { entityId } });
@@ -891,7 +907,99 @@ async function main() {
 
   let steps: Step[];
 
+  const buildExtractSectorFactsStep = (codeOrNull?: string): Step => ({
+    id: "extract_sector_facts",
+    label: "行业专项年报事实抽取（银行/保险/REITs 原文定位入库）",
+    run: async () => {
+      const entityId = await findEntityId(ticker);
+      if (!entityId) return;
+      const entity = await prisma.entity.findUnique({
+        where: { id: entityId },
+        select: { sectorModelType: true },
+      });
+      const sectorModelType = entity?.sectorModelType ?? null;
+      const extractorScript =
+        sectorModelType === "banks"
+          ? "extract:bank-facts:source"
+          : sectorModelType === "insurance"
+            ? "extract:insurance-facts:source"
+            : sectorModelType === "real_estate"
+              ? "extract:reit-facts:source"
+              : null;
+
+      if (!extractorScript) {
+        console.log(
+          `[onboard-company] 行业分类 (${sectorModelType ?? "industrial"}) 无需专项年报指标抽取，跳过。`,
+        );
+        return;
+      }
+
+      // Ensure multi-year FilingSection slices exist across [fromYear, toYear] before running 5-year sector extractor
+      const filingKinds =
+        market === "us"
+          ? ["10k", "20f", "40f"]
+          : market === "cn"
+            ? ["cn-annual-report", "cn-prospectus"]
+            : ["hk-annual-report"];
+      const unslicedCount = await prisma.extSource.count({
+        where: {
+          filerEntityId: entityId,
+          kind: { in: filingKinds },
+          sections: { none: {} },
+        },
+      });
+      if (unslicedCount > 0) {
+        console.log(
+          `[onboard-company] 行业专项抽取需要多年年报切片，正在补齐剩余 ${unslicedCount} 份年报切片 (${fromYear}-${toYear})...`,
+        );
+        if (market === "us") {
+          await runNpmScript("extract:10k:sections", [
+            "--ticker",
+            ticker,
+            "--from",
+            fromYear,
+            "--to",
+            toYear,
+          ]);
+        } else if (codeOrNull) {
+          const sliceScript =
+            market === "hk" ? "import:hk-annual-report" : "import:cn-annual-report";
+          await runNpmScript(sliceScript, [
+            "--code",
+            codeOrNull,
+            "--market",
+            market,
+            "--ticker",
+            ticker,
+            "--from-year",
+            fromYear,
+            "--import-db",
+            "--skip-r2-upload",
+          ]);
+        }
+      }
+
+      console.log(
+        `[onboard-company] 执行行业专项年报事实抽取 (${sectorModelType} -> ${extractorScript})...`,
+      );
+      await runNpmScript(extractorScript, [
+        "--ticker",
+        ticker,
+        "--from",
+        fromYear,
+        "--to",
+        toYear,
+        "--apply",
+      ]);
+    },
+    verify: async (entityId) => {
+      const count = await prisma.financial.count({ where: { entityId } });
+      return count > 0;
+    },
+  });
+
   if (market === "us") {
+    const extractSectorFactsStep = buildExtractSectorFactsStep();
     const phase1Steps: Step[] = [
       importFinancialsFastStep,
       createUsAnnualExtSourceStep,
@@ -903,6 +1011,7 @@ async function main() {
     const phase2Steps: Step[] = [
       import10kFullStep,
       classifySectorStep,
+      extractSectorFactsStep,
       ...phase2AnalysisSteps,
     ];
 
@@ -925,6 +1034,7 @@ async function main() {
       code,
       force,
     );
+    const extractSectorFactsStep = buildExtractSectorFactsStep(code);
 
     const phase1Steps: Step[] = [
       seedEntityStep,
@@ -938,6 +1048,7 @@ async function main() {
     const phase2Steps: Step[] = [
       sliceAnnualReportStep,
       classifySectorStep,
+      extractSectorFactsStep,
       ...phase2AnalysisSteps,
     ];
 

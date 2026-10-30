@@ -751,6 +751,14 @@ const metrics: MetricDef[] = [
     compute: (year, ctx) => value(ctx, year, "TotalInvestments"),
   },
   {
+    key: "NetInvestmentIncome",
+    zhLabel: "净投资收益",
+    enLabel: "Net Investment Income",
+    hint: "利息、股息、租金等经常性净投资收益（US GAAP 保险口径，不含已实现投资损益）",
+    kind: "money",
+    compute: (year, ctx) => value(ctx, year, "NetInvestmentIncome"),
+  },
+  {
     key: "InvestmentIncome",
     zhLabel: "投资收益",
     enLabel: "Investment Income",
@@ -907,6 +915,7 @@ const profiles: Record<FinancialTemplate, TemplateProfile> = {
       "NBV",
       "NewBusinessValueMargin",
       "SolvencyRatio",
+      "NetInvestmentIncome",
       "InvestmentIncome",
       "NetIncome",
       "NetIncomeGrowth",

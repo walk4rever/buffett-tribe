@@ -26,10 +26,10 @@ describe("buildFinancialServicesMetricCard", () => {
     expect(card).toEqual({
       applicable: true,
       title: "管理资产规模",
-      badge: "FY2025",
+      badge: "FY2025 · 公司披露",
       mainNum: "$12.0万亿",
       subText:
-        "FY2025 期末客户管理资产 · FY2024 净流入 $2,500亿 · FY2025 管理费 $180.0亿 · FY2024 手续费净收入 $40.0亿",
+        "FY2025 期末客户管理资产（公司披露） · FY2024 净流入 $2,500亿（公司披露） · FY2025 管理费 $180.0亿 · FY2024 手续费净收入 $40.0亿",
     });
   });
 
@@ -57,7 +57,7 @@ describe("buildFinancialServicesMetricCard", () => {
       "$",
     );
 
-    expect(card.subText).toBe("FY2025 期末客户管理资产");
+    expect(card.subText).toBe("FY2025 期末客户管理资产（公司披露）");
     expect(card.subText).not.toContain("净流入");
   });
 });

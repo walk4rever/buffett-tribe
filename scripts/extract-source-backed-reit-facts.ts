@@ -13,7 +13,7 @@ import {
   extractCnReitPairFacts,
   extractLinkReitFacts,
   extractLinkReitSeriesFacts,
-  extractSpgReitFacts,
+  extractUsReitFacts,
 } from "./lib/reit-report-extractor";
 import type {
   EvidenceValue,
@@ -37,7 +37,7 @@ async function sectionText(section: {
   textArtifact: { publicUrl: string | null; sha256: string } | null;
 }) {
   const stored = section.content || section.contentPreview || "";
-  if (!section.textArtifact?.publicUrl) return stored;
+  if (stored.length >= 9_000 || !section.textArtifact?.publicUrl) return stored;
   const response = await fetch(section.textArtifact.publicUrl);
   if (!response.ok) {
     throw new Error(
@@ -53,21 +53,46 @@ export async function extractTicker(
   toYear: number,
   apply: boolean,
 ) {
-  const extractorVersion = EXTRACTOR_VERSION_BY_TICKER[ticker];
-  if (!extractorVersion) {
-    throw new Error(`No source-backed REIT extractor registered for ${ticker}`);
-  }
-  const sourceKind =
-    ticker === "SPG"
-      ? "10k"
-      : ticker === "508000.SS"
-        ? "cn-annual-report"
-        : "hk-annual-report";
+  const bare = ticker.replace(/\.(SS|SZ)$/, "");
   const entity = await db.entity.findFirst({
-    where: { type: "company", ticker },
-    select: { id: true },
+    where: {
+      type: "company",
+      OR: [{ ticker }, { ticker: bare }, { code: bare }],
+    },
+    select: { id: true, market: true },
   });
   if (!entity) throw new Error(`Entity not found: ${ticker}`);
+
+  const extractorVersion =
+    EXTRACTOR_VERSION_BY_TICKER[ticker] ??
+    (entity.market === "us"
+      ? "us-reit-10k-v1"
+      : entity.market === "hk"
+        ? "hk-reit-annual-report-v1"
+        : "cn-public-reit-annual-report-v1");
+  const sourceKind =
+    entity.market === "us"
+      ? "10k"
+      : entity.market === "hk"
+        ? "hk-annual-report"
+        : "cn-annual-report";
+
+  const dilutedSharesByYear = new Map<number, number>();
+  const existingShareRows = await db.financial.findMany({
+    where: {
+      entityId: entity.id,
+      periodType: "FY",
+      lineItem: { in: ["WeightedAverageSharesDiluted", "CommonSharesOutstanding"] },
+    },
+    select: { periodEnd: true, lineItem: true, value: true },
+  });
+  for (const row of existingShareRows) {
+    if (row.value == null) continue;
+    const year = row.periodEnd.getUTCFullYear();
+    if (row.lineItem === "WeightedAverageSharesDiluted" || !dilutedSharesByYear.has(year)) {
+      dilutedSharesByYear.set(year, Number(row.value));
+    }
+  }
 
   const sources = await db.extSource.findMany({
     where: {
@@ -382,18 +407,18 @@ export async function extractTicker(
       if (text.trim()) texts.push({ section: section.section, text });
     }
     const spgFacts =
-      ticker === "SPG" ? extractSpgReitFacts(texts) : null;
+      entity.market === "us" ? extractUsReitFacts(texts) : null;
     const cnFacts =
-      ticker === "508000.SS" && source.periodYear
+      entity.market === "cn" && source.periodYear
         ? extractCnReitFacts(texts, source.periodYear)
         : null;
     const linkFacts =
-      ticker === "0823.HK" ? extractLinkReitFacts(texts) : null;
+      entity.market === "hk" ? extractLinkReitFacts(texts) : null;
     const resolved =
       (spgFacts?.noi &&
         spgFacts.ffo &&
         spgFacts.occupancy &&
-        spgFacts.ffoPerShare) ||
+        (spgFacts.ffoPerShare || dilutedSharesByYear.has(sourceYear))) ||
       (cnFacts?.propertyRevenue && cnFacts.noi && cnFacts.occupancy) ||
       (linkFacts?.noi && linkFacts.occupancy);
     if (!resolved) {
@@ -429,17 +454,14 @@ export async function extractTicker(
     let rows: Prisma.FinancialCreateManyInput[] = [];
     let logMessage = "";
 
-    if (spgFacts?.noi && spgFacts.ffo && spgFacts.occupancy && spgFacts.ffoPerShare) {
+    if (spgFacts?.noi && spgFacts.ffo && spgFacts.occupancy) {
+      const scale = spgFacts.scale ?? 1_000;
+      const noiScaled = spgFacts.noi.value * scale;
+      const ffoScaled = spgFacts.ffo.value * scale;
       rows = [
-        ["NOI", spgFacts.noi, spgFacts.noi.value * 1_000, "USD"],
-        ["FFO", spgFacts.ffo, spgFacts.ffo.value * 1_000, "USD"],
+        ["NOI", spgFacts.noi, noiScaled, "USD"],
+        ["FFO", spgFacts.ffo, ffoScaled, "USD"],
         ["Occupancy", spgFacts.occupancy, spgFacts.occupancy.value, "ratio"],
-        [
-          "FFOPerShare",
-          spgFacts.ffoPerShare,
-          spgFacts.ffoPerShare.value,
-          "USD/share",
-        ],
       ].map(([lineItem, fact, value, unit]) => ({
         entityId: entity.id,
         sourceId: source.id,
@@ -453,7 +475,38 @@ export async function extractTicker(
         )}`,
         confidence: 1,
       }));
-      logMessage = `NOI=${spgFacts.noi.value} FFO=${spgFacts.ffo.value} occupancy=${spgFacts.occupancy.value.toFixed(3)} FFO/share=${spgFacts.ffoPerShare.value}`;
+      let ffoPerShareVal: number | null = null;
+      if (spgFacts.ffoPerShare) {
+        ffoPerShareVal = spgFacts.ffoPerShare.value;
+        rows.push({
+          entityId: entity.id,
+          sourceId: source.id,
+          periodEnd,
+          periodType: "FY",
+          lineItem: "FFOPerShare",
+          value: ffoPerShareVal,
+          unit: "USD/share",
+          mappingRule: `annual-report-extractor:${evidenceFor(spgFacts.ffoPerShare)}`,
+          confidence: 1,
+        });
+      } else {
+        const dilutedShares = dilutedSharesByYear.get(sourceYear);
+        if (dilutedShares && dilutedShares > 0) {
+          ffoPerShareVal = Number((ffoScaled / dilutedShares).toFixed(4));
+          rows.push({
+            entityId: entity.id,
+            sourceId: source.id,
+            periodEnd,
+            periodType: "FY",
+            lineItem: "FFOPerShare",
+            value: ffoPerShareVal,
+            unit: "USD/share",
+            mappingRule: `derived:${extractorVersion}:FFOPerShare=FFO/WeightedAverageSharesDiluted|source=${source.id}`,
+            confidence: 0.95,
+          });
+        }
+      }
+      logMessage = `NOI=${spgFacts.noi.value} FFO=${spgFacts.ffo.value} occupancy=${spgFacts.occupancy.value.toFixed(3)} FFO/share=${ffoPerShareVal ?? "-"}`;
     } else if (
       cnFacts?.propertyRevenue &&
       cnFacts.noi &&

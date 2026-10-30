@@ -81,16 +81,32 @@ function parseArgs(): Args {
 }
 
 async function targetCompanies(args: Args) {
+  const marketFilter = args.market === "all" ? undefined : args.market;
+  if (args.tickers?.size) {
+    return db.entity.findMany({
+      where: {
+        type: "company",
+        ...(marketFilter ? { market: marketFilter } : { market: { in: ["cn", "hk"] } }),
+        ticker: { in: [...args.tickers] },
+      },
+      select: {
+        id: true,
+        ticker: true,
+        code: true,
+        market: true,
+        canonicalName: true,
+      },
+      orderBy: [{ market: "asc" }, { ticker: "asc" }],
+    });
+  }
   const suite = JSON.parse(
     readFileSync(SUITE_PATH, "utf8"),
   ) as { companies: SuiteCompany[] };
-  const marketFilter = args.market === "all" ? undefined : args.market;
   const validationTickers = suite.companies
     .filter(
       (company) =>
         ["cn", "hk"].includes(company.market) &&
-        (!marketFilter || company.market === marketFilter) &&
-        (!args.tickers || args.tickers.has(company.ticker)),
+        (!marketFilter || company.market === marketFilter),
     )
     .map((company) => company.ticker);
   return db.entity.findMany({

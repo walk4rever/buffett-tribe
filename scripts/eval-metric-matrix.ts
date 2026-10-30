@@ -348,6 +348,7 @@ async function main() {
     for (const metric of metrics) {
       const roleApplicable =
         metric.roles.includes(company.role) &&
+        (!metric.markets || metric.markets.includes(company.market)) &&
         !company.nonApplicableMetrics?.includes(metric.name);
       const gapClassification = gapClassifications.get(
         `${company.ticker}|${metric.id}`,

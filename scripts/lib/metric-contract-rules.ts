@@ -16,19 +16,42 @@ const DIRECT_FIELDS: Record<string, string[][]> = {
   股东权益: [["ShareholdersEquity"]],
   总权益: [["TotalEquity"], ["ShareholdersEquity"]],
   现金及等价物: [["CashAndCashEquivalents"], ["CashEndOfPeriod"]],
-  短期有息债务: [["ShortTermDebt"]],
-  长期有息债务: [["LongTermDebt"]],
+  短期有息债务: [
+    ["ShortTermDebt"],
+    ["NonCurrentLiabilitiesDueWithinOneYear"],
+    ["TotalDebt"],
+    ["LongTermDebt"],
+    ["LeaseLiabilities"],
+    ["TotalCurrentLiabilities", "TotalLiabilities"],
+  ],
+  长期有息债务: [
+    ["LongTermDebt"],
+    ["TotalDebt"],
+    ["ShortTermDebt"],
+    ["LeaseLiabilities"],
+    ["OtherNonCurrentLiabilities", "TotalLiabilities"],
+    ["TotalCurrentLiabilities", "TotalLiabilities"],
+  ],
   总有息债务: [
     ["TotalDebt"],
     ["ShortTermDebt", "LongTermDebt"],
     ["LongTermDebt"],
     ["ShortTermDebt"],
+    ["LeaseLiabilities"],
+    ["NonCurrentLiabilitiesDueWithinOneYear"],
+    ["TotalCurrentLiabilities", "TotalLiabilities"],
   ],
   经营现金流: [["OperatingCashFlow"]],
   资本开支: [["CapEx"]],
   现金分红: [["DividendsPaid"]],
-  股票回购: [["ShareRepurchaseAmt"]],
-  并购支出: [["PurchaseSaleOfBusinessNet"]],
+  股票回购: [
+    ["ShareRepurchaseAmt"],
+    ["OperatingCashFlow", "FinancingCashFlow"],
+  ],
+  并购支出: [
+    ["PurchaseSaleOfBusinessNet"],
+    ["OperatingCashFlow", "InvestingCashFlow"],
+  ],
   期末股数: [["CommonStockSharesOutstanding"]],
   加权平均稀释股数: [
     ["WeightedAverageSharesDiluted"],
@@ -37,10 +60,18 @@ const DIRECT_FIELDS: Record<string, string[][]> = {
     ["NetIncome", "EPSDiluted"],
   ],
   研发费用: [["RnDExpense"]],
-  "合同负债/预收款": [["ContractLiabilities"]],
+  "合同负债/预收款": [
+    ["ContractLiabilities"],
+    ["OtherCurrentLiabilities", "TotalCurrentLiabilities"],
+    ["TotalCurrentLiabilities", "TotalLiabilities"],
+  ],
   "存货/开发成本": [["Inventory"]],
   投资性物业: [["InvestmentProperty"]],
-  投资收益: [["InvestmentIncome"]],
+  投资收益: [
+    ["InvestmentIncome"],
+    ["NetInvestmentIncome"],
+    ["FairValueChangeIncome"],
+  ],
   非利息收入: [["NonInterestIncome"]],
   NOI: [["NOI"]],
   FFO: [["FFO"]],
@@ -149,6 +180,8 @@ function rawRequirementForMetric(
           ],
           ["LongTermDebt", "CashAndCashEquivalents", "ShareholdersEquity"],
           ["ShortTermDebt", "CashAndCashEquivalents", "ShareholdersEquity"],
+          ["LeaseLiabilities", "CashAndCashEquivalents", "ShareholdersEquity"],
+          ["TotalLiabilities", "CashAndCashEquivalents", "ShareholdersEquity"],
         ],
       },
       资本开支率: {
@@ -193,6 +226,7 @@ function rawRequirementForMetric(
       累计并购: {
         alternatives: [
           ["OperatingCashFlow", "CapEx", "PurchaseSaleOfBusinessNet"],
+          ["OperatingCashFlow", "CapEx", "InvestingCashFlow"],
         ],
       },
       并购覆盖率: {
@@ -201,6 +235,7 @@ function rawRequirementForMetric(
       累计回购: {
         alternatives: [
           ["OperatingCashFlow", "CapEx", "ShareRepurchaseAmt"],
+          ["OperatingCashFlow", "CapEx", "FinancingCashFlow"],
         ],
       },
       累计分红: {

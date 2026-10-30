@@ -7,6 +7,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
+  marketsForMetric,
   parseMetricContract,
   rolesForMetric,
   type MetricContractArtifact,
@@ -251,6 +252,7 @@ function main() {
       key,
       basis: basisFor(row),
       roles: rolesForMetric(row),
+      markets: marketsForMetric(row),
       requirement: requirementForMetric(row),
     };
   });

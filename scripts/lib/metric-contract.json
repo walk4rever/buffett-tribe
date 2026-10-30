@@ -32,6 +32,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -64,6 +69,11 @@
         "utilities",
         "telecommunications",
         "developer"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -98,6 +108,11 @@
         "telecommunications",
         "developer"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -130,6 +145,11 @@
         "utilities",
         "telecommunications",
         "developer"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -171,6 +191,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -210,6 +235,11 @@
         "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -251,6 +281,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -290,6 +325,11 @@
         "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -331,6 +371,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -371,6 +416,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -410,6 +460,11 @@
         "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -454,6 +509,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -492,12 +552,33 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
         "alternatives": [
           [
             "ShortTermDebt"
+          ],
+          [
+            "NonCurrentLiabilitiesDueWithinOneYear"
+          ],
+          [
+            "TotalDebt"
+          ],
+          [
+            "LongTermDebt"
+          ],
+          [
+            "LeaseLiabilities"
+          ],
+          [
+            "TotalCurrentLiabilities",
+            "TotalLiabilities"
           ]
         ]
       }
@@ -527,12 +608,34 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
         "alternatives": [
           [
             "LongTermDebt"
+          ],
+          [
+            "TotalDebt"
+          ],
+          [
+            "ShortTermDebt"
+          ],
+          [
+            "LeaseLiabilities"
+          ],
+          [
+            "OtherNonCurrentLiabilities",
+            "TotalLiabilities"
+          ],
+          [
+            "TotalCurrentLiabilities",
+            "TotalLiabilities"
           ]
         ]
       }
@@ -562,6 +665,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -578,6 +686,16 @@
           ],
           [
             "ShortTermDebt"
+          ],
+          [
+            "LeaseLiabilities"
+          ],
+          [
+            "NonCurrentLiabilitiesDueWithinOneYear"
+          ],
+          [
+            "TotalCurrentLiabilities",
+            "TotalLiabilities"
           ]
         ]
       }
@@ -612,6 +730,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -643,9 +766,13 @@
         "energy_materials",
         "utilities",
         "telecommunications",
-        "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -687,6 +814,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -727,12 +859,21 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
         "alternatives": [
           [
             "ShareRepurchaseAmt"
+          ],
+          [
+            "OperatingCashFlow",
+            "FinancingCashFlow"
           ]
         ]
       }
@@ -767,12 +908,21 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
         "alternatives": [
           [
             "PurchaseSaleOfBusinessNet"
+          ],
+          [
+            "OperatingCashFlow",
+            "InvestingCashFlow"
           ]
         ]
       }
@@ -806,6 +956,11 @@
         "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -847,6 +1002,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -886,6 +1046,11 @@
         "software_platform",
         "semiconductor_hardware"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -919,12 +1084,25 @@
         "telecommunications",
         "developer"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
         "alternatives": [
           [
             "ContractLiabilities"
+          ],
+          [
+            "OtherCurrentLiabilities",
+            "TotalCurrentLiabilities"
+          ],
+          [
+            "TotalCurrentLiabilities",
+            "TotalLiabilities"
           ]
         ]
       }
@@ -948,6 +1126,11 @@
         "semiconductor_hardware",
         "energy_materials",
         "developer"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -975,6 +1158,11 @@
       "roles": [
         "reit_property",
         "developer"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -1007,12 +1195,23 @@
         "broker_exchange",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
         "alternatives": [
           [
             "InvestmentIncome"
+          ],
+          [
+            "NetInvestmentIncome"
+          ],
+          [
+            "FairValueChangeIncome"
           ]
         ]
       }
@@ -1046,6 +1245,11 @@
         "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -1091,6 +1295,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -1132,6 +1341,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -1165,6 +1379,11 @@
         "utilities",
         "telecommunications",
         "developer"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -1203,6 +1422,11 @@
         "utilities",
         "telecommunications",
         "developer"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -1249,6 +1473,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -1293,6 +1522,11 @@
         "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -1348,6 +1582,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -1381,9 +1620,13 @@
         "energy_materials",
         "utilities",
         "telecommunications",
-        "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -1417,9 +1660,13 @@
         "energy_materials",
         "utilities",
         "telecommunications",
-        "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -1457,6 +1704,11 @@
         "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -1498,6 +1750,11 @@
         "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -1541,6 +1798,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -1582,6 +1844,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -1618,6 +1885,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -1640,6 +1912,16 @@
           ],
           [
             "ShortTermDebt",
+            "CashAndCashEquivalents",
+            "ShareholdersEquity"
+          ],
+          [
+            "LeaseLiabilities",
+            "CashAndCashEquivalents",
+            "ShareholdersEquity"
+          ],
+          [
+            "TotalLiabilities",
             "CashAndCashEquivalents",
             "ShareholdersEquity"
           ]
@@ -1675,6 +1957,11 @@
         "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -1729,6 +2016,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -1770,6 +2062,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -1803,6 +2100,11 @@
         "utilities",
         "telecommunications"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -1835,6 +2137,11 @@
         "healthcare",
         "software_platform",
         "semiconductor_hardware"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -1872,9 +2179,13 @@
         "energy_materials",
         "utilities",
         "telecommunications",
-        "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -1908,9 +2219,13 @@
         "energy_materials",
         "utilities",
         "telecommunications",
-        "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -1944,9 +2259,13 @@
         "energy_materials",
         "utilities",
         "telecommunications",
-        "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -1980,9 +2299,13 @@
         "energy_materials",
         "utilities",
         "telecommunications",
-        "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -2016,9 +2339,13 @@
         "energy_materials",
         "utilities",
         "telecommunications",
-        "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -2028,6 +2355,11 @@
             "OperatingCashFlow",
             "CapEx",
             "PurchaseSaleOfBusinessNet"
+          ],
+          [
+            "OperatingCashFlow",
+            "CapEx",
+            "InvestingCashFlow"
           ]
         ]
       }
@@ -2053,9 +2385,13 @@
         "energy_materials",
         "utilities",
         "telecommunications",
-        "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -2089,9 +2425,13 @@
         "energy_materials",
         "utilities",
         "telecommunications",
-        "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -2101,6 +2441,11 @@
             "OperatingCashFlow",
             "CapEx",
             "ShareRepurchaseAmt"
+          ],
+          [
+            "OperatingCashFlow",
+            "CapEx",
+            "FinancingCashFlow"
           ]
         ]
       }
@@ -2126,9 +2471,13 @@
         "energy_materials",
         "utilities",
         "telecommunications",
-        "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -2163,9 +2512,13 @@
         "energy_materials",
         "utilities",
         "telecommunications",
-        "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -2205,9 +2558,13 @@
         "energy_materials",
         "utilities",
         "telecommunications",
-        "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -2256,6 +2613,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -2301,6 +2663,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -2336,6 +2703,11 @@
         "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -2378,6 +2750,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -2418,6 +2795,11 @@
         "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -2465,6 +2847,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -2511,6 +2898,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -2552,6 +2944,11 @@
         "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -2600,6 +2997,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -2641,6 +3043,11 @@
         "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -2684,6 +3091,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -2717,9 +3129,13 @@
         "energy_materials",
         "utilities",
         "telecommunications",
-        "reit_property",
         "developer",
         "conglomerate"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -2764,6 +3180,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -2806,6 +3227,11 @@
         "developer",
         "conglomerate"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -2839,6 +3265,11 @@
       "roles": [
         "bank"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -2864,6 +3295,11 @@
       "basis": "reported",
       "roles": [
         "bank"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -2891,6 +3327,11 @@
       "roles": [
         "bank"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -2916,6 +3357,11 @@
       "basis": "reported",
       "roles": [
         "bank"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -2943,6 +3389,11 @@
       "roles": [
         "bank"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -2968,6 +3419,11 @@
       "basis": "reported_or_derived",
       "roles": [
         "bank"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -2999,6 +3455,11 @@
       "roles": [
         "bank"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -3024,6 +3485,11 @@
       "basis": "reported_or_derived",
       "roles": [
         "bank"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -3055,6 +3521,11 @@
       "roles": [
         "bank"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -3080,6 +3551,11 @@
       "basis": "reported_or_derived",
       "roles": [
         "bank"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -3111,6 +3587,11 @@
       "roles": [
         "bank"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -3137,6 +3618,11 @@
       "roles": [
         "life_health",
         "property_casualty"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -3165,6 +3651,11 @@
         "life_health",
         "property_casualty"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -3190,6 +3681,11 @@
       "basis": "reported_or_derived",
       "roles": [
         "property_casualty"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -3218,6 +3714,11 @@
       "roles": [
         "property_casualty"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -3245,6 +3746,11 @@
         "life_health",
         "property_casualty"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -3271,6 +3777,11 @@
       "roles": [
         "life_health",
         "property_casualty"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -3302,6 +3813,11 @@
         "life_health",
         "property_casualty"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -3327,6 +3843,10 @@
       "basis": "reported",
       "roles": [
         "life_health"
+      ],
+      "markets": [
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -3354,6 +3874,10 @@
       "roles": [
         "life_health"
       ],
+      "markets": [
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -3379,6 +3903,10 @@
       "basis": "reported_or_derived",
       "roles": [
         "life_health"
+      ],
+      "markets": [
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -3407,6 +3935,10 @@
         "life_health",
         "property_casualty"
       ],
+      "markets": [
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -3432,6 +3964,11 @@
       "basis": "reported_or_derived",
       "roles": [
         "reit_property"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -3459,6 +3996,9 @@
       "roles": [
         "reit_property"
       ],
+      "markets": [
+        "us"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -3484,6 +4024,11 @@
       "basis": "reported",
       "roles": [
         "reit_property"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -3511,6 +4056,9 @@
       "roles": [
         "reit_property"
       ],
+      "markets": [
+        "us"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -3536,6 +4084,11 @@
       "basis": "reported_or_derived",
       "roles": [
         "developer"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -3563,6 +4116,11 @@
       "roles": [
         "developer"
       ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
+      ],
       "requirement": {
         "coverageYears": 5,
         "minCoverageRatio": 0.8,
@@ -3588,6 +4146,11 @@
       "basis": "reported",
       "roles": [
         "asset_mgmt"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,
@@ -3615,6 +4178,11 @@
       "roles": [
         "asset_mgmt",
         "broker_exchange"
+      ],
+      "markets": [
+        "us",
+        "cn",
+        "hk"
       ],
       "requirement": {
         "coverageYears": 5,

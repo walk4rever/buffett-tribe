@@ -788,8 +788,7 @@
       "financials"
     ],
     "keys": [
-      "NetInvestmentIncome",
-      "InvestmentIncome"
+      "NetInvestmentIncome"
     ]
   },
   "IN-07": {
