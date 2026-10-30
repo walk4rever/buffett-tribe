@@ -14,6 +14,22 @@ import pandas as pd
 import yfinance as yf
 
 
+# Internal ticker keys are also used as StockPrice keys. Several of them are
+# legacy holding identifiers whose current listed symbol is different. Keep
+# the internal key for storage continuity and use this map only for downloads.
+YF_SYMBOL_ALIASES = {
+    "ARCH": "CNR",
+    "BFB": "BF-B",
+    "BF.B": "BF-B",
+    "BITF": "KEEL",
+    "BK-PK": "BNY",
+    "CEIX": "CNR",
+    "HHC": "HHH",
+    "SATS": "ECHO",
+    "SEGRT": "SEG",
+}
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Fetch daily stock prices with yfinance and optionally import them into the database."
@@ -90,6 +106,13 @@ def normalize_frame(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
             df = df.xs(ticker, axis=1, level=-1, drop_level=True)
         elif ticker in df.columns.get_level_values(0):
             df = df.xs(ticker, axis=1, level=0, drop_level=True)
+        elif len(set(df.columns.get_level_values(-1))) == 1:
+            # yfinance returns a single-ticker response as (Price, Symbol).
+            # The symbol can differ from the internal ticker passed by callers
+            # after alias resolution, so remove the redundant symbol level.
+            df = df.droplevel(-1, axis=1)
+        elif len(set(df.columns.get_level_values(0))) == 1:
+            df = df.droplevel(0, axis=1)
         else:
             raise ValueError("Expected a single-ticker DataFrame, got MultiIndex columns")
     expected = ["Open", "High", "Low", "Close", "Adj Close", "Volume"]
@@ -278,14 +301,7 @@ def main() -> int:
             summary.append({"ticker": ticker, "status": "skipped"})
             continue
 
-        YF_SYMBOL_ALIAS = {
-            "BFB": "BF-B",
-            "BF.B": "BF-B",
-            "HHC": "HHH",
-            "SATS": "ECHO",
-            "SEGRT": "SEG",
-        }
-        yf_symbol = YF_SYMBOL_ALIAS.get(ticker.upper(), ticker)
+        yf_symbol = YF_SYMBOL_ALIASES.get(ticker.upper(), ticker)
         is_beijing = ticker.upper().endswith(".BJ")
         source = "AKShare Beijing Stock Exchange" if is_beijing else "yfinance"
         print(f"Downloading {ticker} from {source} (symbol: {yf_symbol})...", flush=True)
@@ -307,8 +323,14 @@ def main() -> int:
             if df.empty:
                 raise ValueError(f"No data returned for {ticker} ({source})")
 
-            payload = dataframe_to_chart_json(ticker, df)
-            json_path, csv_path = write_outputs(out_dir, ticker, df, payload, download_symbol=ticker)
+            payload = dataframe_to_chart_json(yf_symbol, df)
+            json_path, csv_path = write_outputs(
+                out_dir,
+                ticker,
+                df,
+                payload,
+                download_symbol=yf_symbol,
+            )
             print(f"  wrote {json_path}", flush=True)
             print(f"  wrote {csv_path}", flush=True)
 

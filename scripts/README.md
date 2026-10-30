@@ -331,6 +331,7 @@ python3 -m venv .venv
 说明：
 
 - 脚本会默认写入 checkpoint，成功的 ticker 在 20 小时内重跑会自动跳过（用于同批次崩溃后重跑不必重下已完成的 ticker）——checkpoint 超过 20 小时视为过期，即使参数签名相同也会重新检查。这个过期窗口是必需的：`import-company-stock-prices-yf.ts` 的 `--start` 是从当前 `StockPrice` 最大日期反推的，一旦某个 ticker 被跳过，它自己的最大日期就不会前进，下一次（哪怕是一周后的定时任务）算出的签名会完全相同——没有过期窗口的话，一个 ticker 一旦被跳过一次就会永久冻结在那个日期，每周的 cron 都会误判"已是最新"而继续跳过（2026-08-30 在美股周更 cron 上实测发现，已修复）。
+- 历史持仓代码与当前上市代码不同时，用 `YF_SYMBOL_ALIASES` 只转换下载符号，生成的 JSON/CSV 和入库仍沿用原 ticker。目前包括 `ARCH/CEIX → CNR`、`BFB → BF-B`、`BITF → KEEL`、`BK-PK → BNY`、`HHC → HHH`、`SATS → ECHO`、`SEGRT → SEG`。
 - 如需忽略 checkpoint 重新跑一遍，追加 `--fresh`。
 - 如需遇到单个 ticker 失败就立刻停止，追加 `--fail-fast`。
 
